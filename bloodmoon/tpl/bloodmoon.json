@@ -1,0 +1,83 @@
+{
+  "rule": "bloodmoon",
+  "name": "블러드문",
+  "aliases": ["블러드문", "블러드 문", "블러드문 가디언 워", "BM", "BMGW", "Blood Moon", "BLOOD MOON"],
+  "theme": { "band": "#2b0a10", "ink": "#f4e7e7", "accent": "#e0394b", "word": "BLOOD MOON", "chip": "#6b1420" },
+  "sections": [
+    { "kind": "head", "img": true, "sub": "ruby",
+      "fields": [
+        { "k": "pl", "label": "PL", "span": 3 },
+        { "k": "sex", "label": "성별", "span": 2 },
+        { "k": "age", "label": "연령", "span": 2 },
+        { "k": "lv", "label": "LV", "span": 2, "type": "num", "def": "1" },
+        { "k": "exp", "label": "경험치", "span": 3, "type": "num" },
+        { "k": "intro", "label": "도입 타입", "span": 3 },
+        { "k": "race", "label": "종족", "span": 3 },
+        { "k": "org", "label": "조직", "span": 3 },
+        { "k": "weapon", "label": "주무장", "span": 3 }
+      ],
+      "stats": { "k": "traits", "span": 3, "items": [ { "k": "atk", "label": "공격력" }, { "k": "hit", "label": "타격력" }, { "k": "def", "label": "방어력" }, { "k": "act", "label": "행동력" } ] },
+      "gauges": [
+        { "k": "dur", "label": "내구력", "max": 4, "style": "num", "span": 4 },
+        { "k": "calm", "label": "여유", "max": 6, "style": "num", "span": 4 },
+        { "k": "blood", "label": "혈량", "max": 6, "style": "num", "tone": "red", "span": 4 },
+        { "k": "tension", "label": "텐션", "max": 30, "cur": 0, "style": "num", "span": 4 },
+        { "k": "mad", "label": "광기", "max": 10, "cur": 0, "style": "num", "tone": "red", "span": 4 },
+        { "k": "passion", "label": "격정", "max": 3, "cur": 0, "style": "pips", "tone": "red", "span": 4 }
+      ]
+    },
+    { "kind": "checks", "k": "cond", "label": "변조", "span": 4, "items": ["공황", "불길", "유혈", "포박", "중상", "방해"] },
+    { "kind": "checks", "k": "parts", "label": "부위 데미지", "span": 8, "tone": "lost",
+      "groups": [
+        { "label": "", "items": [
+          { "n": "뇌", "sub": "2" }, { "n": "주팔", "sub": "3" }, { "n": "주다리", "sub": "4" }, { "n": "소화기", "sub": "5" },
+          { "n": "감각기", "sub": "6" }, { "n": "입", "sub": "8" }, { "n": "호흡기", "sub": "9" }, { "n": "반대다리", "sub": "10" },
+          { "n": "반대팔", "sub": "11" }, { "n": "심장", "sub": "12" },
+          { "n": "자신감" }, { "n": "지위" }, { "n": "일상" }, { "n": "인맥" }, { "n": "퇴로" }
+        ] }
+      ] },
+    { "kind": "skills", "k": "sk", "label": "특기", "wrap": false, "strikeFrom": "parts", "strikeMode": "cross",
+      "heads": ["사회", "머리", "팔", "동체", "다리", "환경"],
+      "gapLabels": ["A", "B", "C", "D", "E"],
+      "marks": { "두려워하기": "▲", "조이기": "▲", "달리기": "▲", "화내기": "▲", "던지기": "▲", "걷기": "▲" },
+      "cols": [
+        ["두려워하기", "위협하기", "생각하지 않기", "자신감", "침묵하기", "전하기", "속이기", "지위", "웃기", "말하기", "화내기"],
+        ["듣기", "감각기", "보기", "반응", "생각하기", "뇌", "직감", "예감", "외치기", "입", "물기"],
+        ["조이기", "때리기", "베기", "주팔", "쏘기", "조작", "찌르기", "반대팔", "휘두르기", "잡기", "던지기"],
+        ["막기", "호흡기", "멈추기", "받기", "재기", "심장", "비껴내기", "피하기", "견디기", "소화기", "떨어지기"],
+        ["달리기", "다가가기", "차기", "주다리", "뛰어오르기", "설치하기", "밟기", "반대다리", "기어가기", "숙이기", "걷기"],
+        ["쉬기", "일상", "숨기", "기다리기", "나타나기", "인맥", "포획하기", "열기", "도망치기", "퇴로", "쉬지 않기"]
+      ]
+    },
+    { "kind": "rows", "k": "abil", "label": "어빌리티", "layout": "lines", "eff": "eff", "eff2": "desc", "eff2Label": "개요", "data": "ability", "add": "어빌리티",
+      "total": [ { "col": "cost", "label": "상주 코스트", "where": { "type": "상주" } } ],
+      "cols": [
+        { "k": "name", "label": "이름", "main": true, "sub": "ruby", "subLabel": "원어", "aka": ["이름"] },
+        { "k": "group", "label": "그룹", "chip": true, "aka": ["그룹"] },
+        { "k": "type", "label": "타입", "chip": true, "type": "select", "free": true, "opts": ["공격", "보조", "지원", "상주"] },
+        { "k": "cost", "label": "코스트" },
+        { "k": "skill", "label": "지정특기", "type": "skill" }
+      ],
+      "defaults": [
+        { "name": "경증광기", "type": "상주", "cost": "×", "skill": "없음" },
+        { "name": "중증광기", "type": "상주", "cost": "×", "skill": "없음" }
+      ] },
+    { "kind": "rows", "k": "items", "label": "아이템", "span": 6, "layout": "lines", "eff": "eff", "eff2": "desc", "eff2Label": "설명", "data": "item", "add": "아이템",
+      "cols": [
+        { "k": "name", "label": "아이템", "main": true, "aka": ["아이템명", "이름"] },
+        { "k": "kind", "label": "분류", "chip": true, "aka": ["분류"] },
+        { "k": "n", "label": "개수", "type": "count" }
+      ] },
+    { "kind": "stack", "span": 6, "sections": [
+      { "kind": "rows", "k": "happy", "label": "행복", "layout": "table", "add": "행복", "total": [ { "col": "power", "label": "강도 합계" } ],
+        "cols": [ { "k": "name", "label": "이름", "main": true }, { "k": "link", "label": "링크" }, { "k": "power", "label": "강도", "type": "num", "w": "52px" } ] },
+      { "kind": "rows", "k": "rel", "label": "관계", "layout": "table", "add": "관계", "total": [ { "col": "depth", "label": "심도 합계" } ],
+        "cols": [ { "k": "name", "label": "이름", "main": true }, { "k": "attr", "label": "속성" }, { "k": "depth", "label": "심도", "type": "num", "w": "52px" } ] }
+    ] },
+    { "kind": "text", "k": "story", "label": "캐릭터 스토리", "span": 6, "vis": "pub", "visSel": true, "lines": 3 },
+    { "kind": "stack", "span": 6, "sections": [
+      { "kind": "text", "k": "memo", "label": "메모", "vis": "pub", "visSel": true },
+      { "kind": "sessions", "label": "참가 세션" }
+    ] }
+  ]
+}
