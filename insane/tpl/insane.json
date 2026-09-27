@@ -1,0 +1,63 @@
+{
+  "rule": "insane",
+  "name": "인세인",
+  "aliases": ["인세인", "INSANE", "Insane"],
+  "theme": { "band": "#161414", "ink": "#ffffff", "accent": "#c42a2a", "word": "INSANE", "chip": "#1d1a1a" },
+  "sections": [
+    { "kind": "head", "img": true, "sub": "ruby",
+      "fields": [
+        { "k": "job", "label": "직업", "span": 6 },
+        { "k": "curio", "label": "호기심", "span": 3, "type": "select", "opts": ["폭력", "정서", "지각", "기술", "지식", "괴이"] },
+        { "k": "mad", "label": "광기", "span": 3, "type": "num" },
+        { "label": "공포심", "span": 12, "from": "sk", "part": "fear" }
+      ],
+      "gauges": [
+        { "k": "hp", "label": "생명력", "max": 6, "style": "pips", "span": 6 },
+        { "k": "sp", "label": "정신력", "max": 6, "style": "pips", "tone": "red", "span": 6 }
+      ]
+    },
+    { "kind": "skills", "k": "sk", "label": "특기", "fear": true, "wrap": false, "hiFrom": "curio",
+      "heads": ["폭력", "정서", "지각", "기술", "지식", "괴이"],
+      "cols": [
+        ["소각", "고문", "긴박", "위협", "파괴", "구타", "절단", "찌르기", "사격", "전쟁", "매장"],
+        ["사랑", "기쁨", "근심", "부끄러움", "웃음", "인내", "놀람", "분노", "원한", "슬픔", "애정"],
+        ["통증", "관능", "촉감", "냄새", "맛", "소리", "정경", "추적", "예술", "육감", "그늘"],
+        ["분해", "전자기기", "정리", "약품", "효율", "미디어", "카메라", "탈것", "기계", "함정", "병기"],
+        ["물리학", "수학", "화학", "생물학", "의학", "교양", "인류학", "역사", "민속학", "고고학", "천문학"],
+        ["시간", "혼돈", "심해", "죽음", "영혼", "마술", "암흑", "종말", "꿈", "지저", "우주"]
+      ]
+    },
+    { "kind": "rows", "k": "abil", "label": "어빌리티", "span": 8, "layout": "lines", "eff": "eff", "eff2": "desc", "eff2Label": "해설", "data": "ability", "add": "어빌리티",
+      "cols": [
+        { "k": "name", "label": "이름", "main": true },
+        { "k": "type", "label": "타입", "chip": true, "type": "select", "opts": ["공격", "서포트", "장비"], "free": true },
+        { "k": "skill", "label": "지정특기", "type": "skill" }
+      ],
+      "defaults": [
+        { "name": "기본공격", "type": "공격", "skill": "랜덤" },
+        { "name": "전장이동", "type": "서포트", "skill": "없음" }
+      ]
+    },
+    { "kind": "counters", "k": "items", "label": "아이템", "span": 4, "items": ["진통제", "무기", "부적"] },
+    { "kind": "stack", "span": 6, "sections": [
+      { "kind": "text", "k": "mission", "label": "사명", "vis": "pub", "visSel": true },
+      { "kind": "text", "k": "secret", "label": "비밀", "vis": "cur", "visSel": true, "lines": 3 },
+      { "kind": "text", "k": "hidden", "label": "숨은 설정", "vis": "log", "visSel": true }
+    ] },
+    { "kind": "stack", "span": 6, "sections": [
+      { "kind": "rows", "k": "emo", "label": "감정", "layout": "table", "add": "감정",
+        "cols": [
+          { "k": "name", "label": "대상", "main": true },
+          { "k": "emo", "label": "감정" },
+          { "k": "dir", "label": "방향", "type": "sign", "w": "48px" }
+        ] },
+      { "kind": "rows", "k": "madness", "label": "광기", "layout": "lines", "eff": "eff", "effLabel": "효과", "add": "광기", "vis": "pub",
+        "cols": [
+          { "k": "name", "label": "이름", "main": true },
+          { "k": "trig", "label": "트리거" }
+        ] },
+      { "kind": "sessions", "label": "참가 세션" }
+    ] },
+    { "kind": "text", "k": "memo", "label": "메모", "vis": "pub", "visSel": true }
+  ]
+}
