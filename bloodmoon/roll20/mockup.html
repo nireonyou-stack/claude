@@ -27,16 +27,16 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .toggle:checked{background:var(--accent)}.toggle:checked::after{left:16px}
 
 /* ── 머리 ── */
-.top{display:grid;grid-template-columns:minmax(0,1fr) 220px minmax(0,1fr);gap:14px;align-items:start;position:relative}
-.top::before{content:"";position:absolute;left:50%;top:-40px;width:170px;height:170px;transform:translateX(-50%) rotate(45deg);background:var(--cell);z-index:0}
-.top>*{position:relative;z-index:1}
+.top{display:grid;grid-template-columns:104px minmax(0,1fr) 200px minmax(0,1fr);gap:14px;align-items:start}
+.portrait{aspect-ratio:3/4;max-width:100%;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
 .idn .name{display:block;width:100%;font-size:22px;font-weight:700;border-bottom:1px solid var(--line)}
 .idn ruby,.idn .ruby{font-size:11px;color:var(--sub)}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
 .row3 label{display:flex;flex-direction:column;min-width:0}
 .row3 input,.idn label input,.idn .ruby input{width:100%}
 .idn label.ph,.idn .ruby{display:flex;gap:6px;align-items:center;white-space:nowrap}
-.logo{text-align:center;padding-top:6px}
+.logo{text-align:center;padding-top:6px;position:relative;isolation:isolate}
+.logo::before{content:"";position:absolute;left:50%;top:-44px;width:150px;height:150px;transform:translateX(-50%) rotate(45deg);background:var(--cell);z-index:-1}
 .logo b{display:block;font:900 30px/1 Georgia,'Noto Serif KR',serif;letter-spacing:1px;color:var(--deep);text-shadow:0 0 1px #fff,0 0 8px rgba(224,57,75,.8)}
 .dark .logo b{color:#f4e7e7}
 .logo small{display:inline-block;margin-top:4px;padding:1px 10px;background:var(--bar);color:var(--bar-ink);font-size:11px;border-radius:9em}
@@ -65,6 +65,7 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .mid{display:grid;grid-template-columns:260px 1fr;gap:12px}
 .panel{border:1px solid var(--bar)}
 .panel>h3,.lbar{margin:0;background:var(--bar);color:var(--bar-ink);font-size:12px;font-weight:700;padding:4px 10px}
+.arms{display:flex;gap:6px;min-width:0}.arms select{flex:1;min-width:0}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 8px;padding:8px 10px;align-items:center}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 10px 8px}
 .stats label{text-align:center;font-size:11px}
@@ -143,7 +144,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 
 @media (max-width:720px){
   .sheet{padding:14px 16px 0;margin:0}
-  .top{grid-template-columns:1fr;text-align:left}.top::before{display:none}.logo{order:-1}
+  .top{grid-template-columns:88px minmax(0,1fr)}.logo{grid-column:1/-1;order:-1}.logo::before{display:none}.top>div:last-child{grid-column:1/-1}
   .mid,.two{grid-template-columns:1fr}
   .gauges{grid-template-columns:repeat(3,1fr)}
   .ab{grid-template-columns:22px 1fr 64px 48px}.ab .g,.ab .s{display:none}
@@ -154,6 +155,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 <div class="sheet" id="sheet">
   <!-- 머리: 인적 사항 · 로고 · 레벨 -->
   <div class="top">
+    <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
     <div class="idn">
       <label class="ph">PL <input type="text" aria-label="PL"></label>
       <div class="ruby" style="margin-top:6px">원어 <input type="text" aria-label="원어(루비)"></div>
@@ -167,7 +169,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
     <div class="logo">
       <b>BLOOD MOON</b>
       <small>블러드문 · 헌터 시트</small>
-      <select aria-label="레귤레이션"><option>기본 룰북</option><option selected>기본 + 길티 위치즈</option></select>
+      <select id="reg" aria-label="레귤레이션"><option value="bm">기본 룰북</option><option value="gw" selected>기본 + 길티 위치즈</option></select>
     </div>
     <div>
       <div class="corner"><label>다크 모드<input class="toggle" type="checkbox" id="dm"></label><br>Blood Moon Sheet v0.1</div>
@@ -181,7 +183,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 
   <!-- 수치 상자: 내구력·여유·혈량·텐션·격정·광기 -->
   <div class="boxes gauges">
-    <div class="box"><div>내구력</div><div><input type="number" value="4" aria-label="내구력"><span class="max">/ 4</span></div></div>
+    <div class="box"><div>내구력</div><div><input type="number" value="6" aria-label="내구력" readonly><span class="max" title="4 + 행복 강도 합계">4+2</span></div></div>
     <div class="box"><div>여유</div><div><input type="number" value="6" aria-label="여유"><span class="max">/ 6</span></div></div>
     <div class="box red"><div>혈량</div><div><input type="number" value="6" aria-label="혈량"><span class="max">/ 6</span></div></div>
     <div class="box"><div>텐션</div><div><input type="number" value="0" aria-label="텐션"><span class="max">/ 30</span></div></div>
@@ -202,7 +204,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="kv">
           <span class="ph">종족</span><select><option>인간</option><option>접촉자</option><option>반흡혈귀</option><option>변신자</option><option>마법소녀</option></select>
           <span class="ph">조직</span><select><option>무소속</option><option>실버 불릿</option><option>황금의 잔</option></select>
-          <span class="ph">주무장</span><select><option>권총</option><option>도끼</option><option>화염</option></select>
+          <span class="ph">무장</span><div class="arms"><select aria-label="무장 1"><option></option><option>개</option><option selected>도끼</option><option>화염</option><option>격투기</option><option>말뚝</option><option>사슬</option><option>행운</option><option>십자궁</option><option>부적</option><option>성물</option><option>장총</option><option>도검</option><option>나이프</option><option>인형</option><option>고양이</option><option>해머</option><option>채찍</option><option>창</option><option>함정</option><optgroup label="길티 위치즈"><option>횃불</option><option>주사기</option><option>노래</option><option>소문</option><option>고문도구</option><option>화장품</option><option>요리</option></optgroup></select><select aria-label="무장 2"><option></option><option>개</option><option>도끼</option><option>화염</option><option>격투기</option><option>말뚝</option><option>사슬</option><option>행운</option><option>십자궁</option><option>부적</option><option>성물</option><option>장총</option><option>도검</option><option>나이프</option><option>인형</option><option>고양이</option><option>해머</option><option>채찍</option><option>창</option><option>함정</option><optgroup label="길티 위치즈"><option>횃불</option><option>주사기</option><option>노래</option><option>소문</option><option>고문도구</option><option>화장품</option><option>요리</option></optgroup></select></div>
         </div>
         <div class="stats">
           <label>공격력<input type="number" value="1"></label><label>타격력<input type="number" value="0"></label>
@@ -211,27 +213,26 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="sum">특성치 합계 2 / 상한 1</div>
       </div>
       <div class="rolls">
-        <div class="rl"><b>특기 판정</b><div>
-          <select aria-label="판정 특기"><option>쏘기 (목표치 5)</option></select>
-          수정 <input type="number" value="0" aria-label="수정치"><button class="dice" aria-label="특기 판정 굴림"></button></div></div>
+        <div class="rl"><b>행동판정</b><div>
+          <select aria-label="판정 특기"><option>보기 (목표치 5)</option></select>
+          수정 <input type="number" value="0" aria-label="수정치"><button class="dice" aria-label="행동판정 굴림"></button></div></div>
         <div class="rl"><b>랜덤 특기</b><div>
           <select aria-label="분야"><option>전체</option><option>사회</option><option>머리</option></select><button class="dice" aria-label="랜덤 특기 굴림"></button>
-          <span class="ph">부위 결정 2D6</span><button class="dice red" aria-label="부위 결정 굴림"></button>
+          <span class="ph">신체부위 결정 2D6</span><button class="dice red" aria-label="신체부위 결정 굴림"></button>
           <span class="ph">선제 지정 1D6</span><button class="dice" aria-label="선제 지정 굴림"></button></div></div>
         <div class="rl cond"><b>변조</b><div>
-          <label title="▲특기 사용불능 / 받는 데미지 +3">공황<input class="toggle" type="checkbox" id="panic"></label>
+          <label title="▲특기 사용불능 / 받는 대미지 +3">공황<input class="toggle" type="checkbox" id="panic"></label>
           <label title="행동 전에 【텐션】이 3 증가">불길<input class="toggle" type="checkbox"></label>
           <label title="행동 후에 【혈량】이 1 감소">유혈<input class="toggle" type="checkbox"></label>
           <label title="공격판정에 -1의 수정">포박<input class="toggle" type="checkbox"></label>
-          <label title="받는 데미지가 전부 2 증가">중상<input class="toggle" type="checkbox"></label>
+          <label title="받는 대미지가 전부 2 증가">중상<input class="toggle" type="checkbox"></label>
           <label title="모든 행위판정에 -1의 수정">방해<input class="toggle" type="checkbox"></label></div></div>
       </div>
     </div>
 
     <!-- 특기표: 스크립트가 채움(실제 시트는 빌드 스크립트로 정적 생성) -->
     <div class="skwrap"><div class="sk" id="sk" aria-label="특기표"></div></div>
-    <div class="dmg"><b>부위 데미지</b><div id="parts"></div><div class="total">합계&nbsp;<span id="dmgsum">0</span></div></div>
-    <p class="legend">◆ 습득 · <u style="text-decoration:underline dotted #e0394b 1.5px">점선</u> 부위 특기 · <span style="color:#e0394b">▲</span> 공황 시 사용불능 · 빗금 = 사용불능 · 세로 막대를 누르면 갭</p>
+    <div class="dmg"><b>부위 대미지</b><div id="parts"></div><div class="total">합계&nbsp;<span id="dmgsum">0</span></div></div>
 
     <!-- 어빌리티 -->
     <div class="list" style="position:relative">
@@ -254,7 +255,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
       </div>
       <div>
         <div class="list">
-          <h3>행복</h3>
+          <h3 id="happy-h">행복&amp;배덕</h3>
           <div class="lh hp"><span>이름</span><span>링크</span><span>강도</span></div>
           <div class="li hp"><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input type="number" value="2"></div>
           <div class="tot">강도 합계 <b>2</b></div>
@@ -263,7 +264,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="list">
           <h3>관계</h3>
           <div class="lh hp"><span>이름</span><span>속성</span><span>심도</span></div>
-          <div class="li hp"><input type="text" placeholder="이름"><input type="text" placeholder="속성"><input type="number" value="0"></div>
+          <div class="li hp"><input type="text" placeholder="이름"><input type="text" placeholder="속성"><input type="number" min="1" max="5" placeholder="1~5"></div>
           <div class="tot">심도 합계 <b>0</b></div>
           <div class="repbar"><span>+Add</span><span>Modify</span></div>
         </div>
@@ -291,18 +292,16 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
       </div>
       <div><div class="lbar">헌터 작성 체크</div>
         <ul class="check" style="padding:6px 4px">
-          <li class="ok">종족 하나</li><li class="ok">조직 하나 또는 무소속</li><li class="ok">무장 최소 하나</li>
-          <li class="ok">특기 6개</li><li class="ok">갭 2열</li><li class="ng">어빌리티 4개 (현재 3)</li>
-          <li class="ok">공격 타입 어빌리티 1개 이상</li><li class="ok">특성치 「1이 둘, 0이 둘」</li>
-          <li class="ok">【행복】 강도 합계 2</li><li class="ng">아이템 3개 (현재 2)</li><li class="ok">상주 코스트만큼 【텐션】</li>
-          <li class="ok">LV 1 · 경험치 0</li><li class="ok">이름 · 성별 · 나이</li>
+          <li class="ok">종족 1개</li><li><label><input type="checkbox"> 이력 (시트에 적지 않음)</label></li><li class="ok">조직 1개 또는 무소속</li><li class="ok">무장 최소 1개</li>
+          <li class="ok">특기 6개</li><li class="ok">갭 2열</li><li class="ng">어빌리티 4개 (현재 3)</li><li class="ok">공격 타입 어빌리티 1개 이상</li>
+          <li class="ok">특성치 「1이 2개, 0이 2개」</li><li class="ok">【행복】 강도 합계 2</li><li class="ok">【내구력】·【여유】·【혈량】</li>
+          <li class="ng">아이템 3개 (현재 2)</li><li class="ok">상주 코스트만큼 【텐션】</li><li class="ok">LV 1 · 경험치 0</li><li class="ok">이름 · 성별 · 나이</li>
         </ul></div>
     </div>
   </div>
 
   <div class="pane p-set">
     <div class="rolls" style="max-width:520px">
-      <div class="rl"><b>레귤레이션</b><div><select><option>기본 룰북</option><option selected>기본 + 길티 위치즈</option></select></div></div>
       <div class="rl"><b>굴림 공개</b><div><select><option>전체 공개</option><option>GM에게만</option></select></div></div>
       <div class="rl"><b>채팅 카드</b><div><label>효과문 함께 출력<input class="toggle" type="checkbox" checked></label></div></div>
     </div>
@@ -313,9 +312,9 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 
 <p class="note"><b>채팅 카드 미리보기(롤 템플릿)</b> — 시트 바깥, Roll20 채팅창에 나오는 모양</p>
 <div class="chat">
-  <div class="card"><h4>특기 판정 《쏘기》</h4><div class="b"><div class="r"><span>목표치</span><b>5</b></div><div class="r"><span>수정</span><b>+0</b></div><div class="r"><span>2D6</span><b>4 + 5 = 9</b></div><div class="res">성공</div></div></div>
+  <div class="card"><h4>행동판정 《보기》</h4><div class="b"><div class="r"><span>목표치</span><b>5</b></div><div class="r"><span>2D6 + 수정</span><b>[4,5] + 0</b></div><div class="r"><span>달성치</span><b>9</b></div><div class="res">성공</div></div></div>
   <div class="card"><h4>소녀의 일격</h4><div class="b"><div class="r"><span>공격 · 코스트 -</span><b>《자유》</b></div><div style="padding-top:4px">공격목표에게 1d6의 대미지를 입힌다 대미지 적용 후 목표의 【여유】가 2 감소한다.</div></div></div>
-  <div class="card"><h4>부위 결정</h4><div class="b"><div class="r"><span>2D6</span><b>3</b></div><div class="res">주팔</div></div></div>
+  <div class="card"><h4>신체부위 결정 표</h4><div class="b"><div class="r"><span>2D6</span><b>3</b></div><div class="res">주팔</div></div></div>
 </div>
 
 <script>
@@ -331,6 +330,7 @@ const TRI=['두려워하기','조이기','달리기','화내기','던지기','�
 const BODY=[['뇌',2],['주팔',3],['주다리',4],['소화기',5],['감각기',6],['입',8],['호흡기',9],['반대다리',10],['반대팔',11],['심장',12]];
 const MIND=['자신감','지위','일상','인맥','퇴로'];
 const PARTS=new Set([...BODY.map(b=>b[0]),...MIND]);
+const POS={};COLS.forEach((col,c)=>col.forEach((n,r)=>POS[n]=[c,r]));
 const own=new Set(['위협하기','보기','쏘기','피하기','달리기','숨기']), gaps=new Set([0,2]), hurt=new Set(['주팔']);
 const sk=document.getElementById('sk');
 const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
@@ -357,7 +357,10 @@ const panic=document.getElementById('panic');panic.onchange=calc;
 function dist(c1,r1,c2,r2){let d=Math.abs(r1-r2);const [a,b]=c1<c2?[c1,c2]:[c2,c1];for(let c=a;c<b;c++)d+=gaps.has(c)?1:2;return d}
 function calc(){
   const cells=[...sk.querySelectorAll('.c')];
-  const off=n=>hurt.has(n)||(panic.checked&&TRI.includes(n));
+  // 부위 대미지: 그 부위를 중심으로 십자 모양(상하좌우 1칸)이 사용불능 · 공황: ▲특기 사용불능
+  const dead=new Set(panic.checked?TRI:[]);
+  hurt.forEach(n=>{const [c,r]=POS[n];[[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dc,dr])=>{const x=COLS[c+dc]?.[r+dr];if(x)dead.add(x)})});
+  const off=n=>dead.has(n);
   const src=cells.filter(x=>own.has(x.dataset.n)&&!off(x.dataset.n));
   cells.forEach(x=>{const o=off(x.dataset.n);x.classList.toggle('off',o);
     const t=src.length?5+Math.min(...src.map(s=>dist(+s.dataset.c,+s.dataset.r,+x.dataset.c,+x.dataset.r))):'';
@@ -365,6 +368,7 @@ function calc(){
   document.getElementById('dmgsum').textContent=hurt.size;
 }
 calc();
+const reg=document.getElementById('reg');reg.onchange=()=>{document.getElementById('happy-h').textContent=reg.value==='gw'?'행복&배덕':'행복'};
 document.getElementById('dm').onchange=e=>document.getElementById('sheet').classList.toggle('dark',e.target.checked);
 </script>
 </body>
