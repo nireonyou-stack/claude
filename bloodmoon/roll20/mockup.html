@@ -41,34 +41,36 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .pl input{width:140px;border-bottom:1px solid rgba(244,231,231,.4);color:inherit;font-size:13px}
 .ver{opacity:.5}
 
-/* ── 상단: 룰북 캐릭터 시트 배치 — 일러스트·인적 사항 | 특성치·내구력·여유·혈량 | 변조·격정·텐션·광기 ── */
-.top{display:grid;grid-template-columns:236px 164px minmax(0,1fr);gap:12px;align-items:stretch}
-.colA,.colB,.colC{display:flex;flex-direction:column;gap:4px;min-width:0}
-.colC{gap:8px}
-.portrait{width:100%;aspect-ratio:1/1;margin-bottom:4px;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
+/* ── 상단: 일러스트(1:1) | 인적 사항 | 특성치 · 내구력 · 여유 · 혈량 — 세 칸 모두 높이 236px ── */
+.top{display:grid;grid-template-columns:236px 262px minmax(0,1fr);gap:12px;height:236px}
+.portrait{aspect-ratio:1/1;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
+.idcol{display:grid;grid-auto-rows:1fr;gap:4px;min-width:0}
+.statcol{display:flex;flex-direction:column;gap:4px;min-width:0}
+.res3{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-height:0}
 /* 검은 라벨 칸 + 테두리 입력 칸 (룰북 시트의 이름 · 레벨 · 성별 … 칸) */
-.fr{display:grid;gap:3px;grid-auto-rows:26px}
+.fr{display:grid;gap:3px;grid-auto-rows:minmax(26px,1fr)}
 .fr>b{background:var(--bar);color:var(--bar-ink);font-size:11px;display:flex;align-items:center;justify-content:center;padding:0 6px;white-space:nowrap}
 .fr input{border:1px solid var(--line);padding:0 6px;height:100%;width:100%;min-width:0}
-.r1{grid-template-columns:44px minmax(0,1fr)}
-.r2{grid-template-columns:44px minmax(0,1fr) 44px minmax(0,1fr)}
-.r-lv{grid-template-columns:44px minmax(0,1fr) 50px minmax(0,1fr)}
-.sheet.monster .r-lv{grid-template-columns:44px minmax(0,1fr)}
-.st-r{grid-template-columns:minmax(0,1fr) 56px}
+.r1{grid-template-columns:62px minmax(0,1fr)}
+.r2{grid-template-columns:62px minmax(0,1fr) 44px minmax(0,1fr)}
+.r-lv{grid-template-columns:62px minmax(0,1fr) 50px minmax(0,1fr)}
+.sheet.monster .r-lv{grid-template-columns:62px minmax(0,1fr)}
+.fr .two-in{display:flex;gap:3px;min-width:0}
+.st-r{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .st-r input{font-weight:700;font-size:16px;text-align:center}
 .hbar{display:flex;justify-content:center;gap:8px;background:var(--bar);color:var(--bar-ink);font-size:11.5px;font-weight:700;padding:2px 0}
 .hbar span{font-weight:400;opacity:.8}
 /* 세로 라벨 칸 (룰북 시트의 내구력 · 여유 · 혈량 · 변조 · 격정) */
 .vbox{display:grid;grid-template-columns:22px minmax(0,1fr);border:1px solid var(--bar);min-height:0}
-.colB .vbox{flex:1}
 .vl{background:var(--bar);color:var(--bar-ink);writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .vbox.red{border-color:var(--accent)}.vbox.red .vl{background:var(--accent);color:#fff}
 .vc{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;padding:4px}
 .vc input{width:44px;border:0;font-weight:700;font-size:22px;text-align:center}
+.vc.col{flex-direction:column;gap:0}
 .step button{border:0;background:none;color:var(--sub);cursor:pointer;font-size:11px;padding:4px 6px;line-height:1}
 .step button:hover{color:var(--accent)}
 .durb{font-size:12px;color:var(--sub)}
-.durb input{width:36px;font-size:15px;border-bottom:1px solid var(--line)}
+.durb input{width:44px;font-size:13px;font-weight:400;border-bottom:1px solid var(--line)}
 .durb b{font-size:22px;color:var(--ink);min-width:18px;text-align:center}
 .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;padding:6px 8px;align-content:center}
 .cgrid label{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);padding:2px 6px;font-size:12px;cursor:pointer}
@@ -78,7 +80,6 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .xbox input:checked{border-color:var(--accent);background:linear-gradient(to top right,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px)),linear-gradient(to bottom right,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px))}
 /* 텐션 1~30 · 광기 1~10 칸 (10 · 20 · 30 은 격정을 얻는 칸이라 음영) */
 .track{display:flex;flex-direction:column;border:1px solid var(--bar)}
-.track.grow{flex:1}
 .cells{flex:1;display:grid;gap:3px;padding:4px;grid-auto-rows:minmax(22px,1fr)}
 .c10{grid-template-columns:repeat(10,minmax(0,1fr))}.c5{grid-template-columns:repeat(5,minmax(0,1fr))}.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .tk{border:1px solid var(--line);background:var(--bg);color:var(--sub);font-size:11px;cursor:pointer;padding:0}
@@ -86,10 +87,10 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .tk.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .acts span{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line)}
 .acts small{font-size:10px;color:var(--sub)}.acts b{font-size:18px}
-/* 소속 줄: 무장 · 조직 · 도입 타입 · PL / 몬스터: 체형·혈통 · 약점 부위 · 헌터 수 */
-.strip{margin-top:8px;grid-template-columns:auto minmax(0,1.5fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr)}
-.strip.m-only{grid-template-columns:auto minmax(0,1.6fr) auto minmax(0,1fr) auto 64px}
-.strip .two-in{display:flex;gap:3px;min-width:0}
+/* 상태: 변조 | 텐션 | 격정 + 광기(몬스터: 행동 횟수) */
+.state{display:grid;grid-template-columns:232px minmax(0,1fr) 212px;gap:12px;margin-top:16px;height:128px}
+.state>*{min-height:0}
+.stack{display:flex;flex-direction:column;gap:6px;min-height:0}.stack .track{flex:1;min-height:0}
 /* 특기 리스트 머리줄 + 굴림 */
 .skbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--bar);color:var(--bar-ink);padding:4px 10px;margin-top:12px;font-size:12px}
 .skbar>b{margin-right:auto}
@@ -99,31 +100,7 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .skbar input{width:34px}
 .skbar .dice{background-color:#55555e}
 
-/* ── 탭 ── */
-.tabsel{position:absolute;opacity:0;pointer-events:none}
-.tabs{display:flex;gap:2px;margin:14px 0 10px;border-bottom:1px solid var(--bar)}
-.tabs label{padding:4px 18px;border:1px solid var(--line);border-bottom:0;border-radius:4px 4px 0 0;font-size:12px;cursor:pointer;color:var(--sub)}
-.pane{display:none}
-#t-main:checked~.tabs [for=t-main],#t-guide:checked~.tabs [for=t-guide],#t-set:checked~.tabs [for=t-set]{background:var(--bar);color:var(--bar-ink);font-weight:700}
-#t-main:checked~.p-main,#t-guide:checked~.p-guide,#t-set:checked~.p-set{display:block}
-
-/* ── 패널 (설정 탭) ── */
-.panel{display:flex;flex-direction:column;border:1px solid var(--bar);min-width:0}
-.panel>h3,.lbar{margin:0;background:var(--bar);color:var(--bar-ink);font-size:12px;font-weight:700;padding:4px 10px}
-.lines{flex:1;display:grid;grid-auto-rows:minmax(34px,1fr);padding:0 10px}
-.line{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);min-width:0}
-.line:last-child{border-bottom:0}
-.line>span:first-child{flex:none;font-size:12px}
-.lines.kv .line>span:first-child{width:58px;color:var(--sub)}
-.lines.kv input{flex:1;min-width:0}
-.two-in{flex:1;display:flex;gap:6px;min-width:0}.two-in input{flex:1;min-width:0}
-.line .ctl{display:flex;align-items:center;gap:5px}
-.panel select{border:1px solid var(--line);border-radius:9em;padding:1px 8px}
-.line input[type=number]{width:36px;border:1px solid var(--line);border-radius:9em}
-.lines.kv input[type=number]{flex:none;width:52px}
-.cond .lines{grid-template-columns:1fr 1fr;column-gap:16px}
-.cond .line:nth-last-child(-n+2){border-bottom:0}
-.cond .line{cursor:pointer}
+.main{margin-top:0}
 
 /* ── 특기표 ── */
 .skwrap{overflow-x:auto;margin-top:6px}
@@ -134,7 +111,8 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .gap input{appearance:none;width:6px;height:100%;margin:0;background:var(--line);border-radius:3px;cursor:pointer}
 .gap input:checked{background:var(--bar)}
 .dark .gap input:checked{background:var(--ink)}
-.gh{font-size:10px;color:var(--sub);text-align:center;align-self:end}
+.gh{font-size:10px;font-weight:700;color:var(--sub);text-align:center;align-self:end;border:0;background:none;padding:1px 0;cursor:pointer;border-radius:2px}
+.gh:hover{color:var(--accent)}.gh.on{background:var(--bar);color:var(--bar-ink)}
 .c{display:flex;align-items:center;gap:5px;border:1px solid var(--line);padding:5px 4px;margin:0 1px;font-size:12.5px;background:var(--bg);min-width:0}
 .c input{appearance:none;flex:none;width:11px;height:11px;border:1.5px solid var(--ink);transform:rotate(45deg);margin:0 2px;cursor:pointer}
 .c input:checked{background:var(--ink)}
@@ -203,14 +181,7 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .memos{margin-top:16px}
 textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border-radius:2px;padding:10px;resize:vertical}
 
-/* ── 작성 가이드 · 설정 ── */
-.calc{display:grid;grid-template-columns:1fr auto;border:1px solid var(--line)}
-.calc div{padding:4px 10px;border-bottom:1px solid var(--line)}
-.calc div:nth-child(odd){background:var(--cell)}
-.check li{list-style:none;margin:3px 0}.check{padding:0 4px;margin:0}
-.ok::before{content:"✓ ";color:#2e9b57;font-weight:700}.ng::before{content:"✗ ";color:var(--accent);font-weight:700}
-.ng{color:var(--accent)}
-.set{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:560px}
+/* ── 하단 ── */
 .foot{margin:20px -20px 0;background:var(--band);color:rgba(244,231,231,.6);text-align:center;font-size:11px;padding:6px;clip-path:polygon(4% 0,96% 0,100% 100%,0 100%)}
 
 /* ── 채팅 카드(롤 템플릿) 미리보기 ── */
@@ -229,8 +200,8 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 @media (max-width:720px){
   .sheet{padding:0 16px;margin:0}
   .band{margin:0 -16px 12px;padding:9px 16px}.band-r{margin-left:0;width:100%;justify-content:space-between}
-  .top{grid-template-columns:1fr}.portrait{max-width:220px;align-self:center}.colB .vbox{min-height:60px}
-  .strip,.strip.m-only{grid-template-columns:auto minmax(0,1fr)}
+  .top{grid-template-columns:1fr;height:auto}.portrait{width:100%;max-width:220px;justify-self:center}.res3{min-height:96px}
+  .state{grid-template-columns:1fr;height:auto}.cells{grid-auto-rows:28px}
   .two,.set{grid-template-columns:1fr}
   .ab{grid-template-columns:22px 1fr 66px 48px}.ab .g,.ab .s{display:none}
   .fw{grid-template-columns:22px minmax(0,1fr) 40px 40px 48px 36px}.fw .kd,.fw .itm{display:none}
@@ -248,57 +219,43 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
     <span class="band-r"><label>다크 모드<input class="toggle" type="checkbox" id="dm"></label><span class="ver">v0.5</span></span>
   </header>
 
-  <!-- 상단 세 칸 -->
+  <!-- 상단: 일러스트 | 인적 사항 | 특성치 · 내구력 · 여유 · 혈량 -->
   <section class="top">
-    <div class="colA">
-      <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
+    <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
+    <div class="idcol">
       <div class="fr r1"><b>이름</b><input id="cname" type="text" aria-label="이름"></div>
       <div class="fr r-lv"><b>레벨</b><input id="clv" type="number" aria-label="레벨"><b class="h-only">경험치</b><input class="h-only" id="cexp" type="number" aria-label="경험치"></div>
       <div class="fr r2"><b>성별</b><input id="csex" type="text" aria-label="성별"><b>연령</b><input id="cage" type="text" aria-label="연령"></div>
       <div class="fr r1"><b>종족</b><input id="h-race" type="text" aria-label="종족"></div>
+      <div class="fr r1 h-only"><b>무장</b><span class="two-in"><input id="h-arm1" type="text" aria-label="무장 1"><input id="h-arm2" type="text" aria-label="무장 2"></span></div>
+      <div class="fr r1 h-only"><b>조직</b><input id="h-org" type="text" aria-label="조직"></div>
+      <div class="fr r1 h-only"><b>도입 타입</b><input type="text" aria-label="도입 타입"></div>
+      <div class="fr r1 h-only"><b>PL</b><input type="text" aria-label="PL"></div>
+      <div class="fr r1 m-only"><b>체형·혈통</b><input type="text" placeholder="체형 · 혈통 · 양상" aria-label="체형·혈통·양상"></div>
+      <div class="fr r1 m-only"><b>약점 부위</b><input type="text" aria-label="약점 부위"></div>
+      <div class="fr r1 m-only"><b>헌터 수</b><input id="pn" type="number" min="3" aria-label="헌터 수"></div>
     </div>
-    <div class="colB">
+    <div class="statcol">
       <div class="hbar">특성치</div>
       <div class="fr st-r"><b>공격력</b><input id="atk" class="st" type="number" aria-label="공격력"></div>
       <div class="fr st-r"><b>타격력</b><input class="st" type="number" aria-label="타격력"></div>
       <div class="fr st-r"><b>방어력</b><input class="st" type="number" aria-label="방어력"></div>
       <div class="fr st-r"><b>행동력</b><input class="st" type="number" aria-label="행동력"></div>
       <!-- 내구력 = 기본치(입력) + 강도 합계(헌터: 행복·배덕, 몬스터: 지배력 — 자동) -->
-      <div class="vbox"><b class="vl">내구력</b><div class="vc durb"><input id="dbase" type="number" min="0" placeholder="기본" aria-label="내구력 기본치"><span>+<span id="dsum">0</span>=</span><b id="dur">—</b></div></div>
-      <div class="vbox"><b class="vl">여유</b><div class="vc step"><button type="button" class="dn" aria-label="여유 1 감소">▼</button><input id="yu" type="number" min="0" aria-label="여유"><button type="button" class="up" aria-label="여유 1 증가">▲</button></div></div>
-      <div class="vbox red"><b class="vl">혈량</b><div class="vc step"><button type="button" class="dn" aria-label="혈량 1 감소">▼</button><input id="hy" type="number" min="0" aria-label="혈량"><button type="button" class="up" aria-label="혈량 1 증가">▲</button></div></div>
-    </div>
-    <div class="colC">
-      <div class="vbox"><b class="vl">변조</b><div class="cgrid">
-        <label title="▲특기 사용불능 / 받는 대미지 +3">공황<input type="checkbox" id="panic"></label>
-        <label title="행동 후에 【혈량】이 1 감소">유혈<input type="checkbox"></label>
-        <label title="받는 대미지가 전부 2 증가">중상<input type="checkbox"></label>
-        <label title="행동 전에 【텐션】이 3 증가">불길<input type="checkbox"></label>
-        <label title="공격판정에 -1의 수정">포박<input type="checkbox"></label>
-        <label title="모든 행위판정에 -1의 수정">방해<input type="checkbox"></label>
-      </div></div>
-      <div class="vbox"><b class="vl">격정</b><div class="vc xbox"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
-      <div class="track grow"><div class="hbar">텐션 <span><span id="ten-n">0</span> / 30</span></div><div class="cells c10" id="trk-ten" aria-label="텐션"></div><input type="hidden" id="ten"></div>
-      <div class="track h-only"><div class="hbar">광기 <span><span id="mad-n">0</span> / 10</span></div><div class="cells c5" id="trk-mad" aria-label="광기"></div><input type="hidden" id="mad"></div>
-      <!-- 몬스터 행동 횟수: 1·2사이클 [헌터 수−2]회, 3사이클 [헌터 수−1]회 -->
-      <div class="track m-only"><div class="hbar">행동 횟수</div><div class="cells c3 acts"><span><small>1사이클</small><b id="a1">—</b></span><span><small>2사이클</small><b id="a2">—</b></span><span><small>3사이클</small><b id="a3">—</b></span></div></div>
+      <div class="res3">
+        <div class="vbox"><b class="vl">내구력</b><div class="vc durb col"><input id="dbase" type="number" min="0" placeholder="기본" aria-label="내구력 기본치"><span>+ <span id="dsum">0</span></span><b id="dur">—</b></div></div>
+        <div class="vbox"><b class="vl">여유</b><div class="vc step col"><button type="button" class="up" aria-label="여유 1 증가">▲</button><input id="yu" type="number" min="0" aria-label="여유"><button type="button" class="dn" aria-label="여유 1 감소">▼</button></div></div>
+        <div class="vbox red"><b class="vl">혈량</b><div class="vc step col"><button type="button" class="up" aria-label="혈량 1 증가">▲</button><input id="hy" type="number" min="0" aria-label="혈량"><button type="button" class="dn" aria-label="혈량 1 감소">▼</button></div></div>
+      </div>
     </div>
   </section>
-  <div class="fr strip h-only"><b>무장</b><span class="two-in"><input id="h-arm1" type="text" aria-label="무장 1"><input id="h-arm2" type="text" aria-label="무장 2"></span><b>조직</b><input id="h-org" type="text" aria-label="조직"><b>도입 타입</b><input type="text" aria-label="도입 타입"><b>PL</b><input type="text" aria-label="PL"></div>
-  <div class="fr strip m-only"><b>체형·혈통</b><input type="text" placeholder="체형 · 혈통 · 양상" aria-label="체형·혈통·양상"><b>약점 부위</b><input type="text" aria-label="약점 부위"><b>헌터 수</b><input id="pn" type="number" min="3" aria-label="헌터 수"></div>
 
-  <!-- 탭: 시트 / 작성 가이드(헌터) / 설정 -->
-  <input class="tabsel" type="radio" name="tab" id="t-main" checked>
-  <input class="tabsel" type="radio" name="tab" id="t-guide">
-  <input class="tabsel" type="radio" name="tab" id="t-set">
-  <div class="tabs" role="tablist"><label for="t-main">시트</label><label for="t-guide" class="h-only">작성 가이드</label><label for="t-set">설정</label></div>
-
-  <div class="pane p-main">
-    <!-- 특기 리스트 머리줄: 랜덤 특기 · 신체부위 결정표 · 선제지정표 · nD6+수정치 굴림 -->
+  <div class="main">
+    <!-- 특기 리스트 머리줄: 랜덤 특기 · 신체부위 결정표 · 선제판정표 · nD6+수정치 굴림 -->
     <div class="skbar"><b>특기 리스트</b>
       <span class="ctl">랜덤 특기<select id="rsk" aria-label="분야"><option value="-1">전체</option><option value="0">사회</option><option value="1">머리</option><option value="2">팔</option><option value="3">동체</option><option value="4">다리</option><option value="5">환경</option></select><button type="button" class="dice" id="r-skill" aria-label="랜덤 특기 굴림"></button></span>
       <span class="ctl">신체부위 결정표<button type="button" class="dice red" id="r-part" aria-label="신체부위 결정표 굴림"></button></span>
-      <span class="ctl">선제지정표<button type="button" class="dice" id="r-sen" aria-label="선제지정표 굴림"></button></span>
+      <span class="ctl">선제판정표<button type="button" class="dice" id="r-sen" aria-label="선제판정표 굴림"></button></span>
       <span class="ctl" title="대미지 · 회피 · 방해 등">주사위<input id="nd" type="number" min="1" max="20" placeholder="n" aria-label="주사위 개수">D6 +<input id="ndm" type="number" placeholder="0" aria-label="수정치(마이너스 가능)"><button type="button" class="dice" id="r-nd" aria-label="nD6 굴림"></button></span>
     </div>
     <!-- 특기표: 스크립트가 채움(실제 시트는 빌드 스크립트로 정적 생성) -->
@@ -348,6 +305,22 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
       </div>
     </div>
 
+    <!-- 상태: 변조 | 텐션 | 격정 + 광기(몬스터: 행동 횟수) -->
+    <section class="state">
+      <div class="vbox"><b class="vl">변조</b><div class="cgrid">
+        <label>공황<input type="checkbox" id="panic"></label><label>유혈<input type="checkbox"></label>
+        <label>중상<input type="checkbox"></label><label>불길<input type="checkbox"></label>
+        <label>포박<input type="checkbox"></label><label>방해<input type="checkbox"></label>
+      </div></div>
+      <div class="track"><div class="hbar">텐션 <span><span id="ten-n">0</span> / 30</span></div><div class="cells c10" id="trk-ten" aria-label="텐션"></div><input type="hidden" id="ten"></div>
+      <div class="stack">
+        <div class="vbox"><b class="vl">격정</b><div class="vc xbox"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
+        <div class="track h-only"><div class="hbar">광기 <span><span id="mad-n">0</span> / 10</span></div><div class="cells c5" id="trk-mad" aria-label="광기"></div><input type="hidden" id="mad"></div>
+        <!-- 몬스터 행동 횟수: 1·2사이클 [헌터 수−2]회, 3사이클 [헌터 수−1]회 -->
+        <div class="track m-only"><div class="hbar">행동 횟수</div><div class="cells c3 acts"><span><small>1사이클</small><b id="a1">—</b></span><span><small>2사이클</small><b id="a2">—</b></span><span><small>3사이클</small><b id="a3">—</b></span></div></div>
+      </div>
+    </section>
+
     <!-- 몬스터: 팔로워 — 룰북 3.02: 판정치 [10 − 레벨](최저 5), 내구력 [2 + 레벨] 자동 -->
     <div class="list m-only" data-rep id="fw">
       <h3>팔로워</h3>
@@ -360,37 +333,6 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
       <textarea class="memo h-only" placeholder="캐릭터 스토리…" aria-label="캐릭터 스토리"></textarea>
       <textarea class="memo m-only" placeholder="몬스터 비밀(SECRET)…" aria-label="몬스터 비밀"></textarea>
       <textarea class="memo" placeholder="메모…" aria-label="메모"></textarea>
-    </div>
-  </div>
-
-  <!-- 작성 가이드: 스프레드시트의 스테이터스 계산기 + 룰북 헌터 작성 체크 시트 (입력에 따라 자동 판정) -->
-  <div class="pane p-guide">
-    <div class="two">
-      <div><div class="lbar">스테이터스 계산기</div>
-        <div class="calc">
-          <div>LV / 경험치</div><div id="g-lv">— / —</div><div>NEXT LV</div><div id="g-next">—</div>
-          <div>다음 성장</div><div>어빌리티의 습득</div><div>특성치 합계 / 상한</div><div><span id="g-st">0</span> / 1</div>
-          <div>강도 합계 / 상한</div><div><span id="g-pw">0</span> / 2</div><div>내구력</div><div id="g-dur">—</div>
-          <div>어빌리티 수</div><div id="g-ab">0</div><div>특기 수</div><div id="g-sk">0</div>
-        </div>
-        <div class="lbar" style="margin-top:10px">레벨업표</div>
-        <div class="calc"><div>LV 2 · 3 · 4 · 5 · 6 · 7</div><div>10 · 25 · 40 · 60 · 80 · 110</div></div>
-      </div>
-      <div><div class="lbar">헌터 작성 체크</div>
-        <ul class="check" id="chk" style="padding:6px 4px">
-          <li data-k="race">종족 1개</li><li><label><input type="checkbox"> 이력 (시트에 적지 않음)</label></li><li data-k="org">조직 1개 또는 무소속</li><li data-k="arms">무장 최소 1개</li>
-          <li data-k="sk">특기 6개</li><li data-k="gap">갭 2열</li><li data-k="ab">어빌리티 4개</li><li data-k="atk">공격 타입 어빌리티 1개 이상</li>
-          <li data-k="st">특성치 「1이 2개, 0이 2개」</li><li data-k="pw">【행복】 강도 합계 2</li><li data-k="dur">【내구력】·【여유】·【혈량】</li>
-          <li data-k="it">아이템 3개</li><li data-k="ten">상주 코스트만큼 【텐션】</li><li data-k="lv">LV 1 · 경험치 0</li><li data-k="who">이름 · 성별 · 나이</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="pane p-set">
-    <div class="set">
-      <section class="panel"><h3>공개</h3><div class="lines"><div class="line"><span>굴림 공개</span><select aria-label="굴림 공개"><option>전체 공개</option><option>GM에게만</option></select></div></div></section>
-      <section class="panel"><h3>채팅</h3><div class="lines"><label class="line"><span>효과문 함께 출력</span><input class="toggle" type="checkbox" checked></label></div></section>
     </div>
   </div>
 
@@ -434,14 +376,17 @@ const MIND=['자신감','지위','일상','인맥','퇴로'];
 const PARTS=new Set([...BODY.map(b=>b[0]),...MIND]);
 const PART_TABLE={2:'뇌',3:'주팔',4:'주다리',5:'소화기',6:'감각기',7:'공격한 자가 임의로 지정',8:'입',9:'호흡기',10:'반대다리',11:'반대팔',12:'심장'};
 const SENJE=['《자신감/사회5》','《지위/사회9》','《일상/환경3》','《인맥/환경7》','《퇴로/환경11》','《심장/동체7》'];
-const NEXT={1:10,2:25,3:40,4:60,5:80,6:110};
 const POS={};COLS.forEach((col,c)=>col.forEach((n,r)=>POS[n]=[c,r]));
 const own=new Set(), gaps=new Set(), hurt=new Set();
 const sheet=$('#sheet'), sk=$('#sk'), chat=$('#chat');
 
 // ── 특기표
 sk.append(el('div'));
-HEADS.forEach((h,i)=>{sk.append(el('div','hd',h));if(i<5)sk.append(el('div','gh','ABCDE'[i]))});
+// 갭은 열 단위로 칠한다: 머리줄 A~E 나 그 열의 막대 아무 곳을 눌러도 열 전체가 바뀐다
+function setGap(c,on){on?gaps.add(c):gaps.delete(c);$$(`.gap input[data-g="${c}"]`,sk).forEach(i=>i.checked=on);
+  const h=$$('.gh',sk)[c];h.classList.toggle('on',on);h.setAttribute('aria-pressed',on);calc()}
+HEADS.forEach((h,i)=>{sk.append(el('div','hd',h));if(i<5){const g=el('button','gh','ABCDE'[i]);g.type='button';
+  g.setAttribute('aria-label',`갭 ${'ABCDE'[i]} 열 칠하기`);g.setAttribute('aria-pressed','false');g.onclick=()=>setGap(i,!gaps.has(i));sk.append(g)}});
 for(let r=0;r<11;r++){
   sk.append(el('div','no',r+2));
   COLS.forEach((col,c)=>{
@@ -451,8 +396,8 @@ for(let r=0;r<11;r++){
     cell.querySelector('input').onchange=e=>{e.target.checked?own.add(n):own.delete(n);calc()};
     cell.querySelector('.n').onclick=e=>openPop({title:'행동판정',skill:n,from:e.currentTarget});
     sk.append(cell);
-    if(c<5){const g=el('label','gap');g.innerHTML=`<input type="checkbox" aria-label="갭 ${'ABCDE'[c]}">`;
-      g.querySelector('input').onchange=e=>{e.target.checked?gaps.add(c):gaps.delete(c);calc()};sk.append(g)}
+    if(c<5){const g=el('label','gap');g.innerHTML=`<input type="checkbox" data-g="${c}" aria-label="갭 ${'ABCDE'[c]}">`;
+      g.querySelector('input').onchange=e=>setGap(c,e.target.checked);sk.append(g)}
   });
 }
 const parts=$('#parts');
@@ -520,11 +465,11 @@ function useFwAbility(fa,row,btn){const q=s=>fa.querySelector(s),who=row.querySe
   if(ty==='상주'||s==='없음'){post(`${esc(who)} · ${esc(an)} <small>${ty||'-'} · 코스트 ${esc(q('.aco').value||'-')}</small>`,[['지정특기',esc(s||'-')]],null,eff);return}
   openPop({title:`${who} · ${an}`,target:fwT(row.querySelector('.lv').value),eff,from:btn})}
 
-// ── 굴림: 랜덤 특기 · 신체부위 결정표 · 선제지정표 · nD6+수정치
+// ── 굴림: 랜덤 특기 · 신체부위 결정표 · 선제판정표 · nD6+수정치
 $('#r-skill').onclick=()=>{const f=+$('#rsk').value,ff=f<0?d6()-1:f,a=d6(),b=d6();
   post('랜덤 특기',[f<0?['분야 1D6',`${ff+1} → ${HEADS[ff]}`]:['분야',HEADS[ff]],['2D6',`[${a},${b}] = ${a+b}`]],['《'+COLS[ff][a+b-2]+'》',true])};
 $('#r-part').onclick=()=>{const a=d6(),b=d6();post('신체부위 결정표',[['2D6',`[${a},${b}] = ${a+b}`]],[PART_TABLE[a+b],true])};
-$('#r-sen').onclick=()=>{const a=d6();post('선제지정표',[['1D6',a]],[SENJE[a-1],true])};
+$('#r-sen').onclick=()=>{const a=d6();post('선제판정표',[['1D6',a]],[SENJE[a-1],true])};
 $('#r-nd').onclick=()=>{const n=Math.max(1,Math.min(20,+$('#nd').value||1)),m=+$('#ndm').value||0,rs=Array.from({length:n},d6),s=rs.reduce((a,b)=>a+b,0);
   post(`${n}D6${m?sgn(m):''}`,[['주사위',`[${rs.join(',')}]`],...(m?[['수정',sgn(m)]]:[])],['합계 '+(s+m),true])};
 
@@ -563,30 +508,17 @@ sheet.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)retu
 
 // ── 헌터 / 몬스터
 const hb=$('#hb'),isMon=()=>sheet.classList.contains('monster');
-$('#stype').onchange=e=>{sheet.classList.toggle('monster',e.target.value==='m');if(isMon())$('#t-main').checked=true;refresh()};
+$('#stype').onchange=e=>{sheet.classList.toggle('monster',e.target.value==='m');refresh()};
 
-// ── 자동 계산: 내구력 = 기본치 + 강도 합계, 특성치 합계, 상주 코스트, 팔로워 목표치, 행동 횟수, 작성 가이드
+// ── 자동 계산: 내구력 = 기본치 + 강도 합계, 상주 코스트, 팔로워 판정치 · 내구력, 행동 횟수
 const num=q=>{const x=$(q)?.value;return x===''||x==null?null:+x};
 const rowsOf=id=>$$('#'+id+'>.li');
 function refresh(){
   const list=isMon()?$('#dp'):hb,n=$$('.li .pw',list).reduce((a,x)=>a+(+x.value||0),0),base=num('#dbase');
   list.querySelector('.pwsum').textContent=n;$('#dsum').textContent=n;$('#dur').textContent=base==null?'—':base+n;
-  const st=$$('.st').map(x=>+x.value||0),stsum=st.reduce((a,b)=>a+b,0);
-  const abil=rowsOf('abl').filter(r=>!r.dataset.madness&&r.querySelector('.nm').value.trim());
   const jc=rowsOf('abl').filter(r=>r.querySelector('.ty').value==='상주').reduce((a,r)=>a+(parseInt(r.querySelector('.co').value)||0),0);$('#jcost').textContent=jc;
   rowsOf('fw').forEach(r=>{const lv=r.querySelector('.lv').value,t=fwT(lv);r.querySelector('.tg').textContent=Number.isFinite(t)?t:'—';r.querySelector('.fhp').textContent=lv===''?'—':2+(+lv)});
   const p=num('#pn');['#a1','#a2','#a3'].forEach((q,i)=>$(q).textContent=p==null?'—':Math.max(0,p-(i<2?2:1)));
-  // 작성 가이드 (헌터)
-  const lv=num('#clv'),ex=num('#cexp'),hpw=$$('.li .pw',hb).reduce((a,x)=>a+(+x.value||0),0);
-  const items=rowsOf('itl').filter(r=>r.querySelector('.nm').value.trim()).reduce((a,r)=>a+(+r.querySelector('.ct').value||1),0);
-  $('#g-lv').textContent=`${lv??'—'} / ${ex??'—'}`;$('#g-next').textContent=NEXT[lv]??'—';$('#g-st').textContent=stsum;
-  $('#g-pw').textContent=hpw;$('#g-dur').textContent=$('#dur').textContent;$('#g-ab').textContent=abil.length;$('#g-sk').textContent=own.size;
-  const filled=q=>!!$(q).value.trim();
-  const C={race:[filled('#h-race')],org:[filled('#h-org')],arms:[filled('#h-arm1')||filled('#h-arm2')],sk:[own.size===6,own.size],gap:[gaps.size===2,gaps.size],
-    ab:[abil.length===4,abil.length],atk:[abil.some(r=>r.querySelector('.ty').value==='공격')],st:[st.filter(x=>x===1).length===2&&st.filter(x=>x===0).length===2],
-    pw:[hpw===2,hpw],dur:[base!=null&&num('#yu')!=null&&num('#hy')!=null],it:[items===3,items],ten:[(num('#ten')??0)===jc],lv:[lv===1&&ex===0],
-    who:[filled('#cname')&&filled('#csex')&&filled('#cage')]};
-  $$('#chk li[data-k]').forEach(li=>{const [ok,cur]=C[li.dataset.k];li.dataset.b??=li.textContent;li.className=ok?'ok':'ng';li.textContent=li.dataset.b+(!ok&&cur!==undefined?` (현재 ${cur})`:'')});
 }
 sheet.addEventListener('input',refresh);
 calc();
