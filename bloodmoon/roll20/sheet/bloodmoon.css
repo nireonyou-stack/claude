@@ -177,3 +177,16 @@
   .bm .fw{grid-template-columns:22px minmax(0,1fr) 40px 40px 48px 36px}.bm .fw .kd,.bm .fw .itm{display:none}
   .bm .fa,.bm .fab-h{grid-template-columns:22px 1fr 62px 52px}.bm .fa .ag,.bm .fa .as,.bm .fab-h .ag,.bm .fab-h .as{display:none}
 }
+
+/* ── 채팅 카드 (롤 템플릿) ── */
+.sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#fff;--c-ink:#222226;--c-sub:#8b8b93;--c-line:#dddde2;background:var(--c-bg);color:var(--c-ink);border:1px solid #26262b;font:12px/1.45 'Noto Sans KR','Malgun Gothic',Arial,sans-serif;margin-left:-7px}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#1d1d21;--c-ink:#ececf0;--c-sub:#9a9aa3;--c-line:#3a3a42;border-color:#55555e}
+.sheet-rolltemplate-bloodmoon .sheet-h{background:#26262b;color:#fff;font-weight:700;padding:4px 8px;border-left:4px solid #e0394b}
+.sheet-rolltemplate-bloodmoon .sheet-h small{font-weight:400;opacity:.75;font-size:11px}
+.sheet-rolltemplate-bloodmoon .sheet-b{padding:6px 8px}
+.sheet-rolltemplate-bloodmoon .sheet-r{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--c-line);padding:2px 0}
+.sheet-rolltemplate-bloodmoon .sheet-r span{color:var(--c-sub)}
+.sheet-rolltemplate-bloodmoon .sheet-tx{padding-top:4px}
+.sheet-rolltemplate-bloodmoon .sheet-fl{padding-top:3px;font-style:italic;opacity:.75}
+.sheet-rolltemplate-bloodmoon .sheet-res{margin-top:5px;text-align:center;font-weight:700;color:#fff;background:#e0394b;border-radius:9em;padding:1px 6px}
+.sheet-rolltemplate-bloodmoon .inlinerollresult,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullcrit,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullfail,.sheet-rolltemplate-bloodmoon .inlinerollresult.importantroll{background:none;border:0;padding:0;color:inherit;font-weight:700}
