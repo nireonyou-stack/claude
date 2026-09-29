@@ -27,29 +27,35 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .toggle:checked{background:var(--accent)}.toggle:checked::after{left:16px}
 
 /* ── 머리 ── */
-.top{display:grid;grid-template-columns:104px minmax(0,1fr) 200px minmax(0,1fr);gap:14px;align-items:start}
-.portrait{aspect-ratio:3/4;max-width:100%;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
+.top{display:grid;grid-template-columns:176px minmax(0,1fr);gap:16px;align-items:start}
+.brand{display:grid;gap:10px;align-content:start}
+.info{display:grid;gap:10px;min-width:0}
+.namerow{display:grid;grid-template-columns:minmax(0,1fr) 60px 76px;gap:8px;align-items:end}
+.namerow .box input{width:100%}
+.portrait{aspect-ratio:1/1;max-width:100%;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
 .idn .name{display:block;width:100%;font-size:22px;font-weight:700;border-bottom:1px solid var(--line)}
-.idn ruby,.idn .ruby{font-size:11px;color:var(--sub)}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
 .row3 label{display:flex;flex-direction:column;min-width:0}
-.row3 input,.idn label input,.idn .ruby input{width:100%}
-.idn label.ph,.idn .ruby{display:flex;gap:6px;align-items:center;white-space:nowrap}
-.logo{text-align:center;padding-top:6px;position:relative;isolation:isolate}
-.logo::before{content:"";position:absolute;left:50%;top:-44px;width:150px;height:150px;transform:translateX(-50%) rotate(45deg);background:var(--cell);z-index:-1}
-.logo b{display:block;font:900 30px/1 Georgia,'Noto Serif KR',serif;letter-spacing:1px;color:var(--deep);text-shadow:0 0 1px #fff,0 0 8px rgba(224,57,75,.8)}
+.row3 input,.idn label.ph input{width:100%}
+.idn label.ph{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.logo{text-align:center}
+.logo b{display:block;font:900 27px/1 Georgia,'Noto Serif KR',serif;letter-spacing:1px;color:var(--deep);text-shadow:0 0 1px #fff,0 0 8px rgba(224,57,75,.8)}
 .dark .logo b{color:#f4e7e7}
 .logo small{display:inline-block;margin-top:4px;padding:1px 10px;background:var(--bar);color:var(--bar-ink);font-size:11px;border-radius:9em}
 .logo select{display:block;margin:8px auto 0;font-size:11px}
 .corner{text-align:right;font-size:11px;color:var(--sub)}
-.boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.boxes{display:grid;gap:6px}
 .box{border:1px solid var(--bar);border-radius:6px;overflow:hidden;text-align:center}
 .box>div:first-child{background:var(--bar);color:var(--bar-ink);font-weight:700;font-size:12px;padding:3px 0}
 .box>div:last-child{padding:4px 2px;display:flex;justify-content:center;align-items:center;gap:2px}
 .box input{width:34px;border:0;font-weight:700;font-size:15px}
 .box .max{color:var(--sub)}
+.box>div:first-child .max{color:inherit;opacity:.6;font-weight:400;font-size:10px}
 .box.red>div:first-child{background:var(--accent)}
-.gauges{grid-template-columns:repeat(6,1fr);margin-top:14px}
+.gauges{grid-template-columns:repeat(3,1fr)}
+.step button{border:0;background:none;color:var(--sub);cursor:pointer;font-size:10px;padding:2px 5px;line-height:1}
+.step button:hover{color:var(--accent)}
+.step input{width:30px}
 .pips input{appearance:none;width:13px;height:13px;border:1.5px solid var(--accent);border-radius:50%;margin:2px}
 .pips input:checked{background:var(--accent)}
 
@@ -89,10 +95,25 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .gap input:checked{background:var(--bar)}
 .dark .gap input:checked{background:var(--ink)}
 .gh{font-size:10px;color:var(--sub);text-align:center;align-self:end}
-.c{display:flex;align-items:center;gap:5px;border:1px solid var(--line);padding:5px 4px;margin:0 1px;font-size:12.5px;background:var(--bg);cursor:pointer;min-width:0}
+.c{display:flex;align-items:center;gap:5px;border:1px solid var(--line);padding:5px 4px;margin:0 1px;font-size:12.5px;background:var(--bg);min-width:0}
 .c input{appearance:none;flex:none;width:11px;height:11px;border:1.5px solid var(--ink);transform:rotate(45deg);margin:0 2px;cursor:pointer}
 .c input:checked{background:var(--ink)}
-.c .n{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.c .n:hover{color:var(--accent)}
+.skarea{position:relative}
+.pop{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-start;justify-content:center;padding-top:70px;z-index:5}
+.pop[hidden]{display:none}
+.pop-card{width:250px;max-width:calc(100% - 24px);background:var(--bg);color:var(--ink);border:1px solid var(--bar);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.pop-card h4{margin:0;background:var(--bar);color:var(--bar-ink);padding:6px 10px;border-left:4px solid var(--accent)}
+.pop-b{padding:8px 10px;display:grid;gap:6px}
+.pop-b .r{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.pop-b input{width:56px;border:1px solid var(--line);border-radius:9em}
+.pop-note{font-size:11px;color:var(--accent)}
+.pop-act{display:flex;justify-content:flex-end;gap:6px}
+.pop-act button{border:1px solid var(--bar);background:var(--bg);color:var(--ink);border-radius:9em;padding:2px 14px;cursor:pointer}
+.pop-act .go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.card .res.fail{background:var(--sub)}
+.card.flash{outline:3px solid var(--accent)}
 .c .t{flex:none;width:18px;text-align:right;font-size:11px;color:var(--sub);border-left:1px solid var(--line)}
 .c.part .n{text-decoration:underline dotted var(--accent) 1.5px;text-underline-offset:3px}
 .c .tri{color:var(--accent);font-size:9px;margin-left:1px}
@@ -122,6 +143,9 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .hb{grid-template-columns:58px minmax(0,1.2fr) minmax(0,1fr) 44px}
 .hb select.kind{border:1px solid var(--line);border-radius:9em;padding:1px 2px;font-size:12px}
 #hb.basic .hb{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 44px}#hb.basic .kind{display:none}
+.repbar button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
+.li{position:relative}.del{display:none;position:absolute;right:-6px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:11px;line-height:18px;cursor:pointer;padding:0}
+#hb.editing .del{display:block}
 .repbar{display:flex;justify-content:space-between;background:var(--bar);color:var(--bar-ink);border-radius:9em;padding:2px 12px;font-size:11px;font-weight:700;margin-top:4px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .tot{display:flex;justify-content:flex-end;gap:6px;font-size:12px;padding:3px 8px;color:var(--sub)}
@@ -147,7 +171,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 
 @media (max-width:720px){
   .sheet{padding:14px 16px 0;margin:0}
-  .top{grid-template-columns:88px minmax(0,1fr)}.logo{grid-column:1/-1;order:-1}.logo::before{display:none}.top>div:last-child{grid-column:1/-1}
+  .top{grid-template-columns:1fr}.brand{grid-template-columns:minmax(0,1fr) 96px;align-items:center}
   .mid,.two{grid-template-columns:1fr}
   .gauges{grid-template-columns:repeat(3,1fr)}
   .ab{grid-template-columns:22px 1fr 64px 48px}.ab .g,.ab .s{display:none}
@@ -156,42 +180,41 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 </head>
 <body>
 <div class="sheet" id="sheet">
-  <!-- 머리: 인적 사항 · 로고 · 레벨 -->
+  <!-- 머리: 로고·레귤레이션 + 일러스트(1:1) | 인적 사항 · 레벨 · 수치 -->
   <div class="top">
-    <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
-    <div class="idn">
-      <label class="ph">PL <input type="text" aria-label="PL"></label>
-      <div class="ruby" style="margin-top:6px">원어 <input type="text" aria-label="원어(루비)"></div>
-      <input class="name" type="text" value="캐릭터 이름" aria-label="캐릭터 이름">
-      <div class="row3">
-        <label><span class="ph">성별</span><input type="text"></label>
-        <label><span class="ph">연령</span><input type="text"></label>
-        <label><span class="ph">도입 타입</span><input type="text"></label>
+    <div class="brand">
+      <div class="logo">
+        <b>BLOOD MOON</b>
+        <small>블러드문 · 헌터 시트</small>
+        <select id="reg" aria-label="레귤레이션"><option value="bm">기본 룰북</option><option value="gw" selected>기본 + 길티 위치즈</option></select>
+      </div>
+      <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
+    </div>
+    <div class="info">
+      <div class="idn">
+        <div class="corner"><label>다크 모드<input class="toggle" type="checkbox" id="dm"></label> · Blood Moon Sheet v0.1</div>
+        <label class="ph">PL <input type="text" aria-label="PL"></label>
+        <div class="namerow">
+          <input class="name" type="text" value="캐릭터 이름" aria-label="캐릭터 이름">
+          <div class="box"><div>LV</div><div><input type="number" value="1" aria-label="레벨"></div></div>
+          <div class="box"><div>경험치</div><div><input type="number" value="0" aria-label="경험치"></div></div>
+        </div>
+        <div class="row3">
+          <label><span class="ph">성별</span><input type="text"></label>
+          <label><span class="ph">연령</span><input type="text"></label>
+          <label><span class="ph">도입 타입</span><input type="text"></label>
+        </div>
+      </div>
+      <!-- 수치: 내구력은 4 + 행복·배덕 강도 합계(자동), 여유·혈량은 그 값에서 시작해 화살표로 조절 -->
+      <div class="boxes gauges">
+        <div class="box"><div>내구력</div><div><input id="dur" type="number" value="6" aria-label="내구력" readonly><span id="durx" class="max" title="4 + 행복·배덕 강도 합계">4+2</span></div></div>
+        <div class="box"><div>여유</div><div class="step"><button type="button" class="dn" aria-label="여유 1 감소">▼</button><input class="ini" type="number" min="0" value="6" aria-label="여유"><button type="button" class="up" aria-label="여유 1 증가">▲</button></div></div>
+        <div class="box red"><div>혈량</div><div class="step"><button type="button" class="dn" aria-label="혈량 1 감소">▼</button><input class="ini" type="number" min="0" value="6" aria-label="혈량"><button type="button" class="up" aria-label="혈량 1 증가">▲</button></div></div>
+        <div class="box"><div>텐션 <span class="max">/30</span></div><div class="step"><button type="button" class="dn" aria-label="텐션 1 감소">▼</button><input type="number" min="0" max="30" value="0" aria-label="텐션"><button type="button" class="up" aria-label="텐션 1 증가">▲</button></div></div>
+        <div class="box red"><div>격정</div><div class="pips"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
+        <div class="box red"><div>광기 <span class="max">/10</span></div><div class="step"><button type="button" class="dn" aria-label="광기 1 감소">▼</button><input type="number" min="0" max="10" value="0" aria-label="광기"><button type="button" class="up" aria-label="광기 1 증가">▲</button></div></div>
       </div>
     </div>
-    <div class="logo">
-      <b>BLOOD MOON</b>
-      <small>블러드문 · 헌터 시트</small>
-      <select id="reg" aria-label="레귤레이션"><option value="bm">기본 룰북</option><option value="gw" selected>기본 + 길티 위치즈</option></select>
-    </div>
-    <div>
-      <div class="corner"><label>다크 모드<input class="toggle" type="checkbox" id="dm"></label><br>Blood Moon Sheet v0.1</div>
-      <div class="boxes">
-        <div class="box"><div>LV</div><div><input type="number" value="1" aria-label="레벨"></div></div>
-        <div class="box"><div>경험치</div><div><input type="number" value="0" aria-label="경험치"></div></div>
-        <div class="box"><div>NEXT</div><div><span class="max">10</span></div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 수치 상자: 내구력·여유·혈량·텐션·격정·광기 -->
-  <div class="boxes gauges">
-    <div class="box"><div>내구력</div><div><input id="dur" type="number" value="6" aria-label="내구력" readonly><span id="durx" class="max" title="4 + 행복·배덕 강도 합계">4+2</span></div></div>
-    <div class="box"><div>여유</div><div><input type="number" value="6" aria-label="여유"><span class="max durmax">/ 6</span></div></div>
-    <div class="box red"><div>혈량</div><div><input type="number" value="6" aria-label="혈량"><span class="max durmax">/ 6</span></div></div>
-    <div class="box"><div>텐션</div><div><input type="number" value="0" aria-label="텐션"><span class="max">/ 30</span></div></div>
-    <div class="box red"><div>격정</div><div class="pips"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
-    <div class="box red"><div>광기</div><div><input type="number" value="0" aria-label="광기"><span class="max">/ 10</span></div></div>
   </div>
 
   <!-- 탭: 시트 / 작성 가이드 / 설정 -->
@@ -216,11 +239,8 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="sum">특성치 합계 2 / 상한 1</div>
       </div>
       <div class="rolls">
-        <div class="rl"><b>행동판정</b><div>
-          <select aria-label="판정 특기"><option>보기 (목표치 5)</option></select>
-          수정 <input type="number" value="0" aria-label="수정치"><button class="dice" aria-label="행동판정 굴림"></button></div></div>
-        <div class="rl"><b>랜덤 특기</b><div>
-          <select aria-label="분야"><option>전체</option><option>사회</option><option>머리</option></select><button class="dice" aria-label="랜덤 특기 굴림"></button>
+        <div class="rl"><b>굴림</b><div>
+          <span class="ph">랜덤 특기</span><select aria-label="분야"><option>전체</option><option>사회</option><option>머리</option></select><button class="dice" aria-label="랜덤 특기 굴림"></button>
           <span class="ph">신체부위 결정 2D6</span><button class="dice red" aria-label="신체부위 결정 굴림"></button>
           <span class="ph">선제 지정 1D6</span><button class="dice" aria-label="선제 지정 굴림"></button></div></div>
         <div class="rl cond"><b>변조</b><div>
@@ -234,7 +254,19 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
     </div>
 
     <!-- 특기표: 스크립트가 채움(실제 시트는 빌드 스크립트로 정적 생성) -->
+    <div class="skarea">
     <div class="skwrap"><div class="sk" id="sk" aria-label="특기표"></div></div>
+    <!-- 행동판정 창: 특기 이름을 누르면 열림 (실제 시트는 액션 버튼 + sheet worker) -->
+    <div class="pop" id="pop" role="dialog" aria-modal="true" aria-labelledby="pop-h" hidden>
+      <div class="pop-card"><h4 id="pop-h">행동판정</h4><div class="pop-b">
+        <div class="r"><span>특기</span><b id="pop-n"></b></div>
+        <div class="r"><span>목표치</span><b id="pop-t"></b></div>
+        <div class="pop-note" id="pop-o" hidden>사용불능 · 스페셜(12)일 때만 성공</div>
+        <label class="r"><span>수정치</span><input id="pop-m" type="number" value="0"></label>
+        <div class="pop-act"><button type="button" id="pop-x">취소</button><button type="button" id="pop-go" class="go">굴림</button></div>
+      </div></div>
+    </div>
+    </div>
     <div class="dmg"><b>부위 대미지</b><div id="parts"></div><div class="total">합계&nbsp;<span id="dmgsum">0</span></div></div>
 
     <!-- 어빌리티 -->
@@ -260,10 +292,10 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="list" id="hb">
           <h3 id="happy-h">행복&amp;배덕</h3>
           <div class="lh hb"><span class="kind">구분</span><span>이름</span><span>링크</span><span>강도</span></div>
-          <div class="li hb"><select class="kind" aria-label="구분"><option>행복</option><option>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="1" aria-label="강도"></div>
-          <div class="li hb"><select class="kind" aria-label="구분"><option>행복</option><option selected>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="1" aria-label="강도"></div>
+          <div class="li hb"><select class="kind" aria-label="구분"><option>행복</option><option>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="1" aria-label="강도"><button type="button" class="del" aria-label="줄 삭제">×</button></div>
+          <div class="li hb"><select class="kind" aria-label="구분"><option>행복</option><option selected>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="1" aria-label="강도"><button type="button" class="del" aria-label="줄 삭제">×</button></div>
           <div class="tot">강도 합계 <b id="pwsum">2</b></div>
-          <div class="repbar"><span>+Add</span><span>Modify</span></div>
+          <div class="repbar"><button type="button" id="hb-add">+Add</button><button type="button" id="hb-mod">Modify</button></div>
         </div>
         <div class="list">
           <h3>관계</h3>
@@ -316,7 +348,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 
 <p class="note"><b>채팅 카드 미리보기(롤 템플릿)</b> — 시트 바깥, Roll20 채팅창에 나오는 모양</p>
 <div class="chat">
-  <div class="card"><h4>행동판정 《보기》</h4><div class="b"><div class="r"><span>목표치</span><b>5</b></div><div class="r"><span>2D6 + 수정</span><b>[4,5] + 0</b></div><div class="r"><span>달성치</span><b>9</b></div><div class="res">성공</div></div></div>
+  <div class="card" id="roll-card"><h4>행동판정 《보기》</h4><div class="b"><div class="r"><span>목표치</span><b>5</b></div><div class="r"><span>2D6 + 수정</span><b>[4,5] + 0</b></div><div class="r"><span>달성치</span><b>9</b></div><div class="res">성공</div></div></div>
   <div class="card"><h4>소녀의 일격</h4><div class="b"><div class="r"><span>공격 · 코스트 -</span><b>《자유》</b></div><div style="padding-top:4px">공격목표에게 1d6의 대미지를 입힌다 대미지 적용 후 목표의 【여유】가 2 감소한다.</div></div></div>
   <div class="card"><h4>신체부위 결정 표</h4><div class="b"><div class="r"><span>2D6</span><b>3</b></div><div class="res">주팔</div></div></div>
 </div>
@@ -343,8 +375,9 @@ HEADS.forEach((h,i)=>{sk.append(el('div','hd',h));if(i<5)sk.append(el('div','gh'
 for(let r=0;r<11;r++){
   sk.append(el('div','no',r+2));
   COLS.forEach((col,c)=>{
-    const n=col[r],cell=el('label','c'+(PARTS.has(n)?' part':''));
-    cell.innerHTML=`<input type="checkbox" aria-label="${n} 습득"${own.has(n)?' checked':''}><span class="n">${n}${TRI.includes(n)?'<span class="tri">▲</span>':''}</span><span class="t"></span>`;
+    const n=col[r],cell=el('div','c'+(PARTS.has(n)?' part':''));
+    cell.innerHTML=`<input type="checkbox" aria-label="${n} 습득"${own.has(n)?' checked':''}><button type="button" class="n" aria-label="${n} 행동판정">${n}${TRI.includes(n)?'<span class="tri">▲</span>':''}</button><span class="t"></span>`;
+    cell.querySelector('.n').onclick=()=>openPop(cell);
     cell.dataset.n=n;cell.dataset.r=r;cell.dataset.c=c;
     cell.querySelector('input').onchange=e=>{e.target.checked?own.add(n):own.delete(n);calc()};
     sk.append(cell);
@@ -367,8 +400,9 @@ function calc(){
   const off=n=>dead.has(n);
   const src=cells.filter(x=>own.has(x.dataset.n)&&!off(x.dataset.n));
   cells.forEach(x=>{const o=off(x.dataset.n);x.classList.toggle('off',o);
-    const t=src.length?5+Math.min(...src.map(s=>dist(+s.dataset.c,+s.dataset.r,+x.dataset.c,+x.dataset.r))):'';
-    x.querySelector('.t').textContent=o?'×':(t>12?'—':t)});
+    // 사용불능이거나 대용할 특기가 없으면 스페셜(12)만 성공 → 12, 12를 넘는 목표치도 12
+    const t=(o||!src.length)?12:Math.min(12,5+Math.min(...src.map(s=>dist(+s.dataset.c,+s.dataset.r,+x.dataset.c,+x.dataset.r))));
+    x.dataset.t=t;x.dataset.o=o?1:'';x.querySelector('.t').textContent=t});
   document.getElementById('dmgsum').textContent=hurt.size;
 }
 calc();
@@ -376,10 +410,34 @@ calc();
 const reg=document.getElementById('reg'),hb=document.getElementById('hb');
 reg.onchange=()=>{const gw=reg.value==='gw';document.getElementById('happy-h').textContent=gw?'행복&배덕':'행복';hb.classList.toggle('basic',!gw)};
 // 내구력 = 4 + 행복·배덕 강도 합계 (여유·혈량 기준값도 같이)
-function pw(){const n=[...hb.querySelectorAll('.pw')].reduce((a,x)=>a+(+x.value||0),0);
+// 행복·배덕이 파괴되면(강도 0·줄 삭제) 내구력도 내려간다. 전부 없으면 4
+// 여유·혈량은 처음에만 내구력 값으로 채우고, 이후에는 화살표로 조절
+function pw(init){const n=[...hb.querySelectorAll('.pw')].reduce((a,x)=>a+(+x.value||0),0);
   document.getElementById('pwsum').textContent=n;document.getElementById('dur').value=4+n;document.getElementById('durx').textContent='4+'+n;
-  document.querySelectorAll('.durmax').forEach(x=>x.textContent='/ '+(4+n))}
-hb.addEventListener('input',pw);pw();
+  if(init)document.querySelectorAll('.ini').forEach(x=>x.value=4+n)}
+hb.addEventListener('input',()=>pw());pw(true);
+document.getElementById('hb-mod').onclick=()=>hb.classList.toggle('editing');
+hb.addEventListener('click',e=>{if(e.target.classList.contains('del')){e.target.closest('.li').remove();pw()}});
+document.getElementById('hb-add').onclick=()=>{const row=hb.querySelector('.li.hb')?.cloneNode(true)||null;if(!row)return addBlank();
+  row.querySelectorAll('input').forEach(x=>x.value=x.classList.contains('pw')?0:'');row.querySelector('select').selectedIndex=0;hb.querySelector('.tot').before(row);pw()};
+function addBlank(){const row=el('div','li hb','<select class="kind" aria-label="구분"><option>행복</option><option>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="0" aria-label="강도"><button type="button" class="del" aria-label="줄 삭제">×</button>');
+  hb.querySelector('.tot').before(row);pw()}
+// 수치 화살표
+document.querySelectorAll('.step').forEach(st=>st.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  const i=st.querySelector('input'),mx=i.max===''?Infinity:+i.max;i.value=Math.max(0,Math.min(mx,(+i.value||0)+(b.classList.contains('up')?1:-1)))}));
+// 행동판정 창 → 2D6 + 수정치, 2는 펌블(실패) · 12는 스페셜(성공)
+const pop=document.getElementById('pop'),pm=document.getElementById('pop-m');let cur=null;
+function openPop(cell){cur=cell;document.getElementById('pop-n').textContent='《'+cell.dataset.n+'》';document.getElementById('pop-t').textContent=cell.dataset.t;
+  document.getElementById('pop-o').hidden=!cell.dataset.o;pm.value=0;pop.hidden=false;pm.focus();pm.select()}
+function closePop(){pop.hidden=true;cur?.querySelector('.n').focus()}
+function roll(){const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6),m=+pm.value||0,t=+cur.dataset.t,sum=a+b,tot=sum+m;
+  const [txt,ok]=sum===2?['펌블 · 【여유】 0',false]:sum===12?['스페셜 · 【여유】 +3',true]:tot>=t?['성공',true]:['실패',false];
+  const card=document.getElementById('roll-card');
+  card.innerHTML=`<h4>행동판정 《${cur.dataset.n}》</h4><div class="b"><div class="r"><span>목표치</span><b>${t}</b></div><div class="r"><span>2D6 + 수정</span><b>[${a},${b}] ${m<0?'−':'+'} ${Math.abs(m)}</b></div><div class="r"><span>달성치</span><b>${tot}</b></div><div class="res${ok?'':' fail'}">${txt}</div></div>`;
+  card.classList.add('flash');setTimeout(()=>card.classList.remove('flash'),900);closePop()}
+document.getElementById('pop-go').onclick=roll;document.getElementById('pop-x').onclick=closePop;
+pop.addEventListener('click',e=>{if(e.target===pop)closePop()});
+pop.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();if(e.key==='Enter'&&e.target===pm)roll()});
 document.getElementById('dm').onchange=e=>document.getElementById('sheet').classList.toggle('dark',e.target.checked);
 </script>
 </body>
