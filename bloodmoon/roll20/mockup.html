@@ -169,9 +169,15 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 #hb.basic .hb{grid-template-columns:22px minmax(0,1.2fr) 76px 44px}#hb.basic .kind{display:none}
 .fw{grid-template-columns:22px minmax(0,1.2fr) minmax(0,1fr) 40px 40px 48px minmax(0,1fr) 36px}
 .fw .tg{text-align:center;font-weight:700}.fw .ko{justify-self:center}.lh.fw span{text-align:center}.lh.fw span:nth-child(-n+3){text-align:left}
+.fab{grid-column:1/-1;border:1px solid var(--line);border-radius:4px;margin:2px 0 4px}
+.fa,.fab-h{display:grid;grid-template-columns:22px minmax(0,1.3fr) minmax(0,1fr) 62px 52px minmax(0,1fr);gap:6px;align-items:center;padding:3px 6px}
+.fab-h{font-size:11px;color:var(--sub);border-bottom:1px solid var(--line)}
+.fa+.fa{border-top:1px dashed var(--line)}
+.fa select{border:1px solid var(--line);border-radius:9em;padding:1px 4px;font-size:12px}
 .del{display:none;position:absolute;right:-6px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:11px;line-height:18px;cursor:pointer;padding:0}
 .list.editing .del{display:block}
 .repbar{display:flex;justify-content:space-between;background:var(--bar);color:var(--bar-ink);border-radius:9em;padding:2px 12px;font-size:11px;font-weight:700;margin-top:4px}
+.repbar .adds{display:flex;gap:14px;flex-wrap:wrap}
 .repbar button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .tot{display:flex;justify-content:flex-end;gap:6px;font-size:12px;padding:3px 8px;color:var(--sub)}
@@ -206,6 +212,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
   .mid,.two{grid-template-columns:1fr}
   .ab{grid-template-columns:22px 1fr 66px 48px}.ab .g,.ab .s{display:none}
   .fw{grid-template-columns:22px minmax(0,1fr) 40px 40px 48px 36px}.fw .kd,.fw .itm{display:none}
+  .fa,.fab-h{grid-template-columns:22px 1fr 62px 52px}.fa .ag,.fa .as,.fab-h .ag,.fab-h .as{display:none}
 }
 </style>
 </head>
@@ -236,11 +243,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="row3">
           <label><span class="ph">성별</span><input id="csex" type="text"></label>
           <label><span class="ph">연령</span><input id="cage" type="text"></label>
-          <label class="h-only"><span class="ph">도입 타입</span><input type="text"></label>
-        </div>
-        <div class="row2 m-only">
-          <label><span class="ph">평소의 모습</span><input type="text"></label>
-          <label><span class="ph">진정한 모습</span><input type="text"></label>
+          <label><span class="ph">종족</span><input id="h-race" type="text"></label>
         </div>
       </div>
       <!-- 수치: 내구력 = 기본치(직접 입력) + 강도 합계(헌터: 행복·배덕, 몬스터: 지배력 — 자동) -->
@@ -267,12 +270,11 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
       <div class="panel">
         <h3><span class="h-only">헌터</span><span class="m-only">몬스터</span></h3>
         <div class="kv h-only">
-          <span class="ph">종족</span><input id="h-race" type="text" aria-label="종족">
           <span class="ph">조직</span><input id="h-org" type="text" aria-label="조직">
-          <span class="ph">무장</span><div class="two-in"><input id="h-arm1" type="text" aria-label="무장 1"><input id="h-arm2" type="text" placeholder="미결정" aria-label="무장 2"></div>
+          <span class="ph">무장</span><div class="two-in"><input id="h-arm1" type="text" aria-label="무장 1"><input id="h-arm2" type="text" aria-label="무장 2"></div>
+          <span class="ph">도입 타입</span><input type="text" aria-label="도입 타입">
         </div>
         <div class="kv m-only">
-          <span class="ph">종족</span><input type="text" placeholder="모노비스트 · 뱀파이어 …" aria-label="종족">
           <span class="ph">체형·혈통</span><input type="text" placeholder="체형 · 혈통 · 양상" aria-label="체형·혈통·양상">
           <span class="ph">약점 부위</span><input type="text" aria-label="약점 부위">
         </div>
@@ -308,10 +310,8 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
     <div class="list" data-rep id="abl" style="position:relative">
       <h3>어빌리티 <small>상주 코스트 합계 <b id="jcost">0</b></small></h3>
       <div class="lh ab"><span></span><span>이름</span><span class="g">그룹</span><span>타입</span><span>코스트</span><span class="s">지정특기</span></div>
-      <div class="li ab h-only"><button type="button" class="dice" data-roll="abil" aria-label="어빌리티 사용"></button><input class="nm" type="text" value="경증광기"><input class="g" type="text"><select class="ty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option selected>상주</option></select><input class="co" type="text" value="×"><input class="s" type="text" value="없음"><div class="eff" contenteditable="true" data-ph="효과…"></div><div class="eff fl" contenteditable="true" data-ph="개요(플레이버)…"></div></div>
-      <div class="li ab h-only"><button type="button" class="dice" data-roll="abil" aria-label="어빌리티 사용"></button><input class="nm" type="text" value="중증광기"><input class="g" type="text"><select class="ty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option selected>상주</option></select><input class="co" type="text" value="×"><input class="s" type="text" value="없음"><div class="eff" contenteditable="true" data-ph="효과…"></div><div class="eff fl" contenteditable="true" data-ph="개요(플레이버)…"></div></div>
-      <template><div class="li ab"><button type="button" class="dice" data-roll="abil" aria-label="어빌리티 사용"></button><input class="nm" type="text" placeholder="이름"><input class="g" type="text" placeholder="그룹"><select class="ty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="co" type="text"><input class="s" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div><div class="eff fl" contenteditable="true" data-ph="개요(플레이버)…"></div></div></template>
-      <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
+      <template><div class="li ab"><button type="button" class="dice" data-roll="abil" aria-label="어빌리티 사용"></button><input class="nm" type="text" placeholder="이름"><input class="g" type="text" placeholder="그룹"><select class="ty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="co" type="text"><input class="s" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div><div class="eff fl" contenteditable="true" data-ph="개요…"></div></div></template>
+      <div class="repbar"><span class="adds"><button type="button" class="add">+Add</button><button type="button" class="add h-only" data-preset="경증광기">+Add 경증광기</button><button type="button" class="add h-only" data-preset="중증광기">+Add 중증광기</button></span><button type="button" class="mod">Modify</button></div>
     </div>
 
     <div class="two">
@@ -326,14 +326,14 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="list h-only" data-rep id="hb">
           <h3 id="happy-h">행복&amp;배덕</h3>
           <div class="lh hb"><span></span><span class="kind">구분</span><span>이름</span><span>링크</span><span>강도</span></div>
-          <template><div class="li hb"><button type="button" class="say" data-say="hb" aria-label="채팅에 출력"></button><select class="kind" aria-label="구분"><option>행복</option><option>배덕</option></select><input class="nm" type="text" placeholder="이름"><select class="lk" aria-label="링크"><option value=""></option><option>자신감</option><option>지위</option><option>일상</option><option>인맥</option><option>퇴로</option></select><input class="pw" type="number" min="0" aria-label="강도"><div class="eff fl" contenteditable="true" data-ph="설명(플레이버)…"></div></div></template>
+          <template><div class="li hb"><button type="button" class="say" data-say="hb" aria-label="채팅에 출력"></button><select class="kind" aria-label="구분"><option>행복</option><option>배덕</option></select><input class="nm" type="text" placeholder="이름"><select class="lk" aria-label="링크"><option value=""></option><option>자신감</option><option>지위</option><option>일상</option><option>인맥</option><option>퇴로</option></select><input class="pw" type="number" min="0" aria-label="강도"><div class="eff fl" contenteditable="true" data-ph="설명…"></div></div></template>
           <div class="tot">강도 합계 <b class="pwsum">0</b></div>
           <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
         </div>
         <div class="list m-only" data-rep id="dp">
           <h3>지배력</h3>
           <div class="lh dp"><span></span><span>이름</span><span>링크</span><span>강도</span></div>
-          <template><div class="li dp"><button type="button" class="say" data-say="dp" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="이름"><select class="lk" aria-label="링크"><option value=""></option><option>자신감</option><option>지위</option><option>일상</option><option>인맥</option><option>퇴로</option></select><input class="pw" type="number" min="0" aria-label="강도"><div class="eff fl" contenteditable="true" data-ph="설명(플레이버)…"></div></div></template>
+          <template><div class="li dp"><button type="button" class="say" data-say="dp" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="이름"><select class="lk" aria-label="링크"><option value=""></option><option>자신감</option><option>지위</option><option>일상</option><option>인맥</option><option>퇴로</option></select><input class="pw" type="number" min="0" aria-label="강도"><div class="eff fl" contenteditable="true" data-ph="설명…"></div></div></template>
           <div class="tot">강도 합계 <b class="pwsum">0</b></div>
           <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
         </div>
@@ -341,7 +341,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="list" data-rep id="rel">
           <h3>관계</h3>
           <div class="lh hp"><span></span><span>이름</span><span>속성</span><span>심도</span></div>
-          <template><div class="li hp"><button type="button" class="say" data-say="rel" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="이름"><input class="at" type="text" placeholder="속성"><input class="dv" type="number" min="1" max="5" placeholder="1~5"><div class="eff fl" contenteditable="true" data-ph="설명(플레이버)…"></div></div></template>
+          <template><div class="li hp"><button type="button" class="say" data-say="rel" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="이름"><input class="at" type="text" placeholder="속성"><input class="dv" type="number" min="1" max="5" placeholder="1~5"><div class="eff fl" contenteditable="true" data-ph="설명…"></div></div></template>
           <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
         </div>
       </div>
@@ -351,7 +351,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
     <div class="list m-only" data-rep id="fw">
       <h3>팔로워</h3>
       <div class="lh fw"><span></span><span>이름</span><span class="kd">종별</span><span>LV</span><span>판정</span><span>내구력</span><span class="itm">아이템</span><span>사망</span></div>
-      <template><div class="li fw"><button type="button" class="dice" data-roll="fw" aria-label="팔로워 판정"></button><input class="nm" type="text" placeholder="이름"><input class="kd" type="text" placeholder="종별"><input class="lv" type="number" min="1" aria-label="LV"><span class="tg" aria-label="판정 목표치">—</span><input class="hp" type="number" min="0" aria-label="내구력"><input class="itm" type="text" placeholder="아이템"><input class="ko" type="checkbox" aria-label="사망"><div class="eff" contenteditable="true" data-ph="특수 능력 · 어빌리티…"></div></div></template>
+      <template><div class="li fw"><button type="button" class="dice" data-roll="fw" aria-label="팔로워 판정"></button><input class="nm" type="text" placeholder="이름"><input class="kd" type="text" placeholder="종별"><input class="lv" type="number" min="1" aria-label="LV"><span class="tg" aria-label="판정 목표치">—</span><input class="hp" type="number" min="0" aria-label="내구력"><input class="itm" type="text" placeholder="아이템"><input class="ko" type="checkbox" aria-label="사망"><div class="eff" contenteditable="true" data-ph="특수 능력…"></div><div class="fab"><div class="fab-h"><span></span><span>어빌리티</span><span class="ag">그룹</span><span>타입</span><span>코스트</span><span class="as">지정특기</span></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div></div></div></template>
       <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
     </div>
 
@@ -405,7 +405,7 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
     </div></div>
   </div>
 
-  <div class="foot">Blood Moon © 冒険企画局 · Sheet by ___ · 디자인 기조: Sad QAQ &amp; Tateck</div>
+  <div class="foot">디자인 기조: Sad QAQ &amp; Tateck</div>
 </div>
 
 <p class="note"><b>채팅 카드 미리보기(롤 템플릿)</b> — 시트에서 굴리거나 출력하면 앞에 쌓입니다</p>
@@ -514,6 +514,10 @@ function useAbility(row,btn){const q=s=>row.querySelector(s),nm=q('.nm').value||
 const fwT=lv=>lv===''?NaN:Math.max(5,10-(+lv));
 function useFollower(row,btn){const q=s=>row.querySelector(s);
   openPop({title:'팔로워 · '+(q('.nm').value||'이름 없음'),target:fwT(q('.lv').value),eff:txtOf(row),from:btn})}
+// 팔로워 어빌리티: 팔로워 목표치로 판정, 상주 · 지정특기 없음은 효과만 출력
+function useFwAbility(fa,row,btn){const q=s=>fa.querySelector(s),who=row.querySelector('.nm').value||'팔로워',an=q('.an').value||'어빌리티',ty=q('.aty').value,s=q('.as').value.trim(),eff=esc(q('.eff').textContent);
+  if(ty==='상주'||s==='없음'){post(`${esc(who)} · ${esc(an)} <small>${ty||'-'} · 코스트 ${esc(q('.aco').value||'-')}</small>`,[['지정특기',esc(s||'-')]],null,eff);return}
+  openPop({title:`${who} · ${an}`,target:fwT(row.querySelector('.lv').value),eff,from:btn})}
 
 // ── 굴림: 랜덤 특기 · 신체부위 결정표 · 선제지정표 · nD6+수정치
 $('#r-skill').onclick=()=>{const f=+$('#rsk').value,ff=f<0?d6()-1:f,a=d6(),b=d6();
@@ -538,9 +542,11 @@ sheet.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)retu
   if(b.dataset.say)return say(b.dataset.say,row);
   if(b.dataset.roll==='abil')return useAbility(row,b);
   if(b.dataset.roll==='fw')return useFollower(row,b);
+  if(b.dataset.roll==='fwab')return useFwAbility(b.closest('.fa'),row,b);
   if(b.classList.contains('del')){row.remove();return refresh()}
   if(b.classList.contains('mod'))return b.closest('.list').classList.toggle('editing');
   if(b.classList.contains('add')){const l=b.closest('.list'),nr=l.querySelector('template').content.firstElementChild.cloneNode(true);
+    if(b.dataset.preset){const q=s=>nr.querySelector(s);q('.nm').value=b.dataset.preset;q('.ty').value='상주';q('.co').value='×';q('.s').value='없음';nr.dataset.madness=1}  // 광기 그룹(헌터 전용)
     l.querySelector(':scope>.tot, :scope>.repbar').before(nr);addDel(nr);return refresh()}
   const st=b.closest('.step');if(st){const i=st.querySelector('input'),mx=i.max===''?Infinity:+i.max;
     i.value=Math.max(0,Math.min(mx,(+i.value||0)+(b.classList.contains('up')?1:-1)));refresh()}});
@@ -557,7 +563,7 @@ function refresh(){
   const list=isMon()?$('#dp'):hb,n=$$('.li .pw',list).reduce((a,x)=>a+(+x.value||0),0),base=num('#dbase');
   list.querySelector('.pwsum').textContent=n;$('#dsum').textContent=n;$('#dur').textContent=base==null?'—':base+n;
   const st=$$('.st').map(x=>+x.value||0);$('#stsum').textContent=st.reduce((a,b)=>a+b,0);
-  const abil=rowsOf('abl').filter(r=>!r.classList.contains('h-only')&&r.querySelector('.nm').value.trim());
+  const abil=rowsOf('abl').filter(r=>!r.dataset.madness&&r.querySelector('.nm').value.trim());
   const jc=rowsOf('abl').filter(r=>r.querySelector('.ty').value==='상주').reduce((a,r)=>a+(parseInt(r.querySelector('.co').value)||0),0);$('#jcost').textContent=jc;
   rowsOf('fw').forEach(r=>{const t=fwT(r.querySelector('.lv').value);r.querySelector('.tg').textContent=Number.isFinite(t)?t:'—'});
   const p=num('#pn');$('#acts').textContent=p==null?'—':[p-2,p-2,p-1].map(x=>Math.max(0,x)).join('·');
