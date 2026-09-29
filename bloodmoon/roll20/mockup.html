@@ -119,6 +119,9 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .ab{grid-template-columns:22px minmax(0,1.6fr) minmax(0,1fr) 64px 48px minmax(0,1fr)}
 .it{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 44px}
 .hp{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 44px}
+.hb{grid-template-columns:58px minmax(0,1.2fr) minmax(0,1fr) 44px}
+.hb select.kind{border:1px solid var(--line);border-radius:9em;padding:1px 2px;font-size:12px}
+#hb.basic .hb{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 44px}#hb.basic .kind{display:none}
 .repbar{display:flex;justify-content:space-between;background:var(--bar);color:var(--bar-ink);border-radius:9em;padding:2px 12px;font-size:11px;font-weight:700;margin-top:4px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .tot{display:flex;justify-content:flex-end;gap:6px;font-size:12px;padding:3px 8px;color:var(--sub)}
@@ -183,9 +186,9 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 
   <!-- 수치 상자: 내구력·여유·혈량·텐션·격정·광기 -->
   <div class="boxes gauges">
-    <div class="box"><div>내구력</div><div><input type="number" value="6" aria-label="내구력" readonly><span class="max" title="4 + 행복 강도 합계">4+2</span></div></div>
-    <div class="box"><div>여유</div><div><input type="number" value="6" aria-label="여유"><span class="max">/ 6</span></div></div>
-    <div class="box red"><div>혈량</div><div><input type="number" value="6" aria-label="혈량"><span class="max">/ 6</span></div></div>
+    <div class="box"><div>내구력</div><div><input id="dur" type="number" value="6" aria-label="내구력" readonly><span id="durx" class="max" title="4 + 행복·배덕 강도 합계">4+2</span></div></div>
+    <div class="box"><div>여유</div><div><input type="number" value="6" aria-label="여유"><span class="max durmax">/ 6</span></div></div>
+    <div class="box red"><div>혈량</div><div><input type="number" value="6" aria-label="혈량"><span class="max durmax">/ 6</span></div></div>
     <div class="box"><div>텐션</div><div><input type="number" value="0" aria-label="텐션"><span class="max">/ 30</span></div></div>
     <div class="box red"><div>격정</div><div class="pips"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
     <div class="box red"><div>광기</div><div><input type="number" value="0" aria-label="광기"><span class="max">/ 10</span></div></div>
@@ -254,11 +257,12 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
         <div class="repbar"><span>+Add</span><span>Modify</span></div>
       </div>
       <div>
-        <div class="list">
+        <div class="list" id="hb">
           <h3 id="happy-h">행복&amp;배덕</h3>
-          <div class="lh hp"><span>이름</span><span>링크</span><span>강도</span></div>
-          <div class="li hp"><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input type="number" value="2"></div>
-          <div class="tot">강도 합계 <b>2</b></div>
+          <div class="lh hb"><span class="kind">구분</span><span>이름</span><span>링크</span><span>강도</span></div>
+          <div class="li hb"><select class="kind" aria-label="구분"><option>행복</option><option>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="1" aria-label="강도"></div>
+          <div class="li hb"><select class="kind" aria-label="구분"><option>행복</option><option selected>배덕</option></select><input type="text" placeholder="이름"><input type="text" placeholder="링크"><input class="pw" type="number" min="0" value="1" aria-label="강도"></div>
+          <div class="tot">강도 합계 <b id="pwsum">2</b></div>
           <div class="repbar"><span>+Add</span><span>Modify</span></div>
         </div>
         <div class="list">
@@ -368,7 +372,14 @@ function calc(){
   document.getElementById('dmgsum').textContent=hurt.size;
 }
 calc();
-const reg=document.getElementById('reg');reg.onchange=()=>{document.getElementById('happy-h').textContent=reg.value==='gw'?'행복&배덕':'행복'};
+// 레귤레이션: 길티 위치즈면 행복&배덕(줄마다 구분), 기본 룰북이면 행복만
+const reg=document.getElementById('reg'),hb=document.getElementById('hb');
+reg.onchange=()=>{const gw=reg.value==='gw';document.getElementById('happy-h').textContent=gw?'행복&배덕':'행복';hb.classList.toggle('basic',!gw)};
+// 내구력 = 4 + 행복·배덕 강도 합계 (여유·혈량 기준값도 같이)
+function pw(){const n=[...hb.querySelectorAll('.pw')].reduce((a,x)=>a+(+x.value||0),0);
+  document.getElementById('pwsum').textContent=n;document.getElementById('dur').value=4+n;document.getElementById('durx').textContent='4+'+n;
+  document.querySelectorAll('.durmax').forEach(x=>x.textContent='/ '+(4+n))}
+hb.addEventListener('input',pw);pw();
 document.getElementById('dm').onchange=e=>document.getElementById('sheet').classList.toggle('dark',e.target.checked);
 </script>
 </body>
