@@ -33,40 +33,71 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 /* ── 띠: 로고 · 시트 종류 · PL · 다크 모드 ── */
 .band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 -20px 14px;padding:9px 20px;background:var(--band);color:var(--band-ink)}
 .mark{font:900 24px/1 Georgia,'Noto Serif KR',serif;letter-spacing:2px;color:#f4e7e7;text-shadow:0 0 10px rgba(224,57,75,.9);white-space:nowrap}
-.kind{display:flex;align-items:center;gap:2px;font-size:12px;border:1px solid rgba(244,231,231,.35);border-radius:9em;padding:1px 2px 1px 12px}
-.kind select{border:0;background:transparent;color:inherit;font-weight:700;padding:1px 4px;cursor:pointer}
-.kind option{color:#222226}
+.stype{display:flex;align-items:center;gap:2px;font-size:12px;border:1px solid rgba(244,231,231,.35);border-radius:9em;padding:1px 2px 1px 12px}
+.stype select{border:0;background:transparent;color:inherit;font-weight:700;padding:1px 4px;cursor:pointer}
+.stype option{color:#222226}
 .band-r{margin-left:auto;display:flex;align-items:center;gap:16px;font-size:11px}
 .band-r label{display:flex;align-items:center;gap:6px}
 .pl input{width:140px;border-bottom:1px solid rgba(244,231,231,.4);color:inherit;font-size:13px}
 .ver{opacity:.5}
 
-/* ── 인적 사항: 일러스트 210×210 과 오른쪽 블록 높이를 맞춘다 (44 + 30 + 118 + 간격 18) ── */
-.profile{display:grid;grid-template-columns:210px minmax(0,1fr);grid-template-rows:44px 30px 118px;row-gap:9px;column-gap:16px;
-  grid-template-areas:"pic name" "pic attr" "pic gauge"}
-.portrait{grid-area:pic;aspect-ratio:1/1;max-width:100%;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
-.namerow{grid-area:name;display:flex;align-items:flex-end;gap:16px;min-width:0}
-.name{flex:1;min-width:0;font-size:22px;font-weight:700;padding-bottom:1px}
-.fld{display:flex;align-items:baseline;gap:6px;font-size:11px;color:var(--sub);white-space:nowrap;min-width:0}
-.fld input{color:var(--ink);font-size:14px;width:48px}
-.attrs{grid-area:attr;display:grid;grid-template-columns:1fr 1fr 2fr;gap:16px;align-items:end}
-.attrs .fld input{flex:1;width:auto}
-.gauges{grid-area:gauge;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(2,1fr);gap:6px}
-.box{display:grid;grid-template-rows:20px 1fr;border:1px solid var(--bar);border-radius:6px;overflow:hidden;min-width:0}
-.bh{display:flex;align-items:center;justify-content:center;gap:3px;background:var(--bar);color:var(--bar-ink);font-weight:700;font-size:11.5px}
-.bh .max{opacity:.6;font-weight:400;font-size:10px}
-.bb{display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
-.bb input,.bb b{width:36px;border:0;font-weight:700;font-size:17px;text-align:center}
-.box.red{border-color:var(--accent)}.box.red .bh{background:var(--accent);color:#fff}
-.box.stat{border-color:var(--line)}.box.stat .bh{background:var(--cell);color:var(--ink)}
-.step button{border:0;background:none;color:var(--sub);cursor:pointer;font-size:10px;padding:2px 4px;line-height:1}
+/* ── 상단: 룰북 캐릭터 시트 배치 — 일러스트·인적 사항 | 특성치·내구력·여유·혈량 | 변조·격정·텐션·광기 ── */
+.top{display:grid;grid-template-columns:236px 164px minmax(0,1fr);gap:12px;align-items:stretch}
+.colA,.colB,.colC{display:flex;flex-direction:column;gap:4px;min-width:0}
+.colC{gap:8px}
+.portrait{width:100%;aspect-ratio:1/1;margin-bottom:4px;border:1px solid var(--bar);background:var(--cell);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
+/* 검은 라벨 칸 + 테두리 입력 칸 (룰북 시트의 이름 · 레벨 · 성별 … 칸) */
+.fr{display:grid;gap:3px;grid-auto-rows:26px}
+.fr>b{background:var(--bar);color:var(--bar-ink);font-size:11px;display:flex;align-items:center;justify-content:center;padding:0 6px;white-space:nowrap}
+.fr input{border:1px solid var(--line);padding:0 6px;height:100%;width:100%;min-width:0}
+.r1{grid-template-columns:44px minmax(0,1fr)}
+.r2{grid-template-columns:44px minmax(0,1fr) 44px minmax(0,1fr)}
+.r-lv{grid-template-columns:44px minmax(0,1fr) 50px minmax(0,1fr)}
+.sheet.monster .r-lv{grid-template-columns:44px minmax(0,1fr)}
+.st-r{grid-template-columns:minmax(0,1fr) 56px}
+.st-r input{font-weight:700;font-size:16px;text-align:center}
+.hbar{display:flex;justify-content:center;gap:8px;background:var(--bar);color:var(--bar-ink);font-size:11.5px;font-weight:700;padding:2px 0}
+.hbar span{font-weight:400;opacity:.8}
+/* 세로 라벨 칸 (룰북 시트의 내구력 · 여유 · 혈량 · 변조 · 격정) */
+.vbox{display:grid;grid-template-columns:22px minmax(0,1fr);border:1px solid var(--bar);min-height:0}
+.colB .vbox{flex:1}
+.vl{background:var(--bar);color:var(--bar-ink);writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.vbox.red{border-color:var(--accent)}.vbox.red .vl{background:var(--accent);color:#fff}
+.vc{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;padding:4px}
+.vc input{width:44px;border:0;font-weight:700;font-size:22px;text-align:center}
+.step button{border:0;background:none;color:var(--sub);cursor:pointer;font-size:11px;padding:4px 6px;line-height:1}
 .step button:hover{color:var(--accent)}
-.step input{width:30px}
-.durb{gap:4px;font-size:12px;color:var(--sub)}
-.durb input{width:32px;font-size:14px;border-bottom:1px solid var(--line)}
-.durb b{width:auto;min-width:16px;color:var(--ink)}
-.pips input{appearance:none;width:13px;height:13px;border:1.5px solid var(--accent);border-radius:50%;margin:2px}
-.pips input:checked{background:var(--accent)}
+.durb{font-size:12px;color:var(--sub)}
+.durb input{width:36px;font-size:15px;border-bottom:1px solid var(--line)}
+.durb b{font-size:22px;color:var(--ink);min-width:18px;text-align:center}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;padding:6px 8px;align-content:center}
+.cgrid label{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);padding:2px 6px;font-size:12px;cursor:pointer}
+.cgrid input{appearance:none;flex:none;width:13px;height:13px;border:1.5px solid var(--ink);margin:0;cursor:pointer}
+.cgrid input:checked{background:var(--accent);border-color:var(--accent)}
+.xbox input{appearance:none;width:36px;height:28px;border:1.5px solid var(--ink);margin:0 4px;cursor:pointer;background:transparent}
+.xbox input:checked{border-color:var(--accent);background:linear-gradient(to top right,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px)),linear-gradient(to bottom right,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px))}
+/* 텐션 1~30 · 광기 1~10 칸 (10 · 20 · 30 은 격정을 얻는 칸이라 음영) */
+.track{display:flex;flex-direction:column;border:1px solid var(--bar)}
+.track.grow{flex:1}
+.cells{flex:1;display:grid;gap:3px;padding:4px;grid-auto-rows:minmax(22px,1fr)}
+.c10{grid-template-columns:repeat(10,minmax(0,1fr))}.c5{grid-template-columns:repeat(5,minmax(0,1fr))}.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tk{border:1px solid var(--line);background:var(--bg);color:var(--sub);font-size:11px;cursor:pointer;padding:0}
+.tk.ten{background:var(--cell);color:var(--ink);font-weight:700}
+.tk.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.acts span{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line)}
+.acts small{font-size:10px;color:var(--sub)}.acts b{font-size:18px}
+/* 소속 줄: 무장 · 조직 · 도입 타입 · PL / 몬스터: 체형·혈통 · 약점 부위 · 헌터 수 */
+.strip{margin-top:8px;grid-template-columns:auto minmax(0,1.5fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr)}
+.strip.m-only{grid-template-columns:auto minmax(0,1.6fr) auto minmax(0,1fr) auto 64px}
+.strip .two-in{display:flex;gap:3px;min-width:0}
+/* 특기 리스트 머리줄 + 굴림 */
+.skbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--bar);color:var(--bar-ink);padding:4px 10px;margin-top:12px;font-size:12px}
+.skbar>b{margin-right:auto}
+.skbar .ctl{display:flex;align-items:center;gap:5px}
+.skbar select,.skbar input{background:transparent;color:inherit;border:1px solid rgba(255,255,255,.35);border-radius:9em;padding:0 6px}
+.skbar option{color:#222226}
+.skbar input{width:34px}
+.skbar .dice{background-color:#55555e}
 
 /* ── 탭 ── */
 .tabsel{position:absolute;opacity:0;pointer-events:none}
@@ -76,8 +107,7 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 #t-main:checked~.tabs [for=t-main],#t-guide:checked~.tabs [for=t-guide],#t-set:checked~.tabs [for=t-set]{background:var(--bar);color:var(--bar-ink);font-weight:700}
 #t-main:checked~.p-main,#t-guide:checked~.p-guide,#t-set:checked~.p-set{display:block}
 
-/* ── 세 패널: 같은 높이, 줄은 높이를 나눠 가진다 ── */
-.mid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+/* ── 패널 (설정 탭) ── */
 .panel{display:flex;flex-direction:column;border:1px solid var(--bar);min-width:0}
 .panel>h3,.lbar{margin:0;background:var(--bar);color:var(--bar-ink);font-size:12px;font-weight:700;padding:4px 10px}
 .lines{flex:1;display:grid;grid-auto-rows:minmax(34px,1fr);padding:0 10px}
@@ -96,7 +126,7 @@ input::-webkit-inner-spin-button{-webkit-appearance:none}
 .cond .line{cursor:pointer}
 
 /* ── 특기표 ── */
-.skwrap{overflow-x:auto;margin-top:12px}
+.skwrap{overflow-x:auto;margin-top:6px}
 .sk{display:grid;grid-template-columns:34px repeat(5,minmax(96px,1fr) 12px) minmax(96px,1fr);gap:4px 0;min-width:700px}
 .sk .hd{background:var(--bar);color:var(--bar-ink);text-align:center;font-weight:700;padding:5px 0}
 .sk .no{background:#6a6a72;color:#fff;text-align:center;font-weight:700;display:flex;align-items:center;justify-content:center;border-radius:2px}
@@ -199,10 +229,9 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
 @media (max-width:720px){
   .sheet{padding:0 16px;margin:0}
   .band{margin:0 -16px 12px;padding:9px 16px}.band-r{margin-left:0;width:100%;justify-content:space-between}
-  .profile{grid-template-columns:96px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"pic name" "pic attr" "gauge gauge"}
-  .namerow{flex-wrap:wrap;gap:8px 16px}.name{flex-basis:100%}.attrs{grid-template-columns:1fr 1fr;gap:8px 16px}.attrs .wide{grid-column:1/-1}
-  .gauges{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:56px}
-  .mid,.two,.set{grid-template-columns:1fr}
+  .top{grid-template-columns:1fr}.portrait{max-width:220px;align-self:center}.colB .vbox{min-height:60px}
+  .strip,.strip.m-only{grid-template-columns:auto minmax(0,1fr)}
+  .two,.set{grid-template-columns:1fr}
   .ab{grid-template-columns:22px 1fr 66px 48px}.ab .g,.ab .s{display:none}
   .fw{grid-template-columns:22px minmax(0,1fr) 40px 40px 48px 36px}.fw .kd,.fw .itm{display:none}
   .fa,.fab-h{grid-template-columns:22px 1fr 62px 52px}.fa .ag,.fa .as,.fab-h .ag,.fab-h .as{display:none}
@@ -215,42 +244,48 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
   <!-- 띠 -->
   <header class="band">
     <b class="mark">BLOOD MOON</b>
-    <label class="kind">블러드문 ·<select id="stype" aria-label="시트 종류"><option value="h">헌터 시트</option><option value="m">몬스터 시트</option></select></label>
-    <span class="band-r">
-      <label class="pl h-only">PL<input type="text" aria-label="PL"></label>
-      <label>다크 모드<input class="toggle" type="checkbox" id="dm"></label>
-      <span class="ver">v0.4</span>
-    </span>
+    <label class="stype">♡ 블러드문 ·<select id="stype" aria-label="시트 종류"><option value="h">헌터 시트</option><option value="m">몬스터 시트</option></select></label>
+    <span class="band-r"><label>다크 모드<input class="toggle" type="checkbox" id="dm"></label><span class="ver">v0.5</span></span>
   </header>
 
-  <!-- 인적 사항 -->
-  <section class="profile">
-    <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
-    <div class="namerow">
-      <input class="name" id="cname" type="text" placeholder="이름" aria-label="이름">
-      <label class="fld"><span>LV</span><input id="clv" type="number" aria-label="레벨"></label>
-      <label class="fld h-only"><span>경험치</span><input id="cexp" type="number" aria-label="경험치"></label>
+  <!-- 상단 세 칸 -->
+  <section class="top">
+    <div class="colA">
+      <div class="portrait" role="img" aria-label="캐릭터 일러스트">일러스트</div>
+      <div class="fr r1"><b>이름</b><input id="cname" type="text" aria-label="이름"></div>
+      <div class="fr r-lv"><b>레벨</b><input id="clv" type="number" aria-label="레벨"><b class="h-only">경험치</b><input class="h-only" id="cexp" type="number" aria-label="경험치"></div>
+      <div class="fr r2"><b>성별</b><input id="csex" type="text" aria-label="성별"><b>연령</b><input id="cage" type="text" aria-label="연령"></div>
+      <div class="fr r1"><b>종족</b><input id="h-race" type="text" aria-label="종족"></div>
     </div>
-    <div class="attrs">
-      <label class="fld"><span>성별</span><input id="csex" type="text"></label>
-      <label class="fld"><span>연령</span><input id="cage" type="text"></label>
-      <label class="fld wide"><span>종족</span><input id="h-race" type="text"></label>
+    <div class="colB">
+      <div class="hbar">특성치</div>
+      <div class="fr st-r"><b>공격력</b><input id="atk" class="st" type="number" aria-label="공격력"></div>
+      <div class="fr st-r"><b>타격력</b><input class="st" type="number" aria-label="타격력"></div>
+      <div class="fr st-r"><b>방어력</b><input class="st" type="number" aria-label="방어력"></div>
+      <div class="fr st-r"><b>행동력</b><input class="st" type="number" aria-label="행동력"></div>
+      <!-- 내구력 = 기본치(입력) + 강도 합계(헌터: 행복·배덕, 몬스터: 지배력 — 자동) -->
+      <div class="vbox"><b class="vl">내구력</b><div class="vc durb"><input id="dbase" type="number" min="0" placeholder="기본" aria-label="내구력 기본치"><span>+<span id="dsum">0</span>=</span><b id="dur">—</b></div></div>
+      <div class="vbox"><b class="vl">여유</b><div class="vc step"><button type="button" class="dn" aria-label="여유 1 감소">▼</button><input id="yu" type="number" min="0" aria-label="여유"><button type="button" class="up" aria-label="여유 1 증가">▲</button></div></div>
+      <div class="vbox red"><b class="vl">혈량</b><div class="vc step"><button type="button" class="dn" aria-label="혈량 1 감소">▼</button><input id="hy" type="number" min="0" aria-label="혈량"><button type="button" class="up" aria-label="혈량 1 증가">▲</button></div></div>
     </div>
-    <!-- 수치 5×2: 윗줄 자원(텐션 옆 광기·아래 격정), 아랫줄 특성치. 내구력 = 기본치(입력) + 강도 합계(자동) -->
-    <div class="gauges">
-      <div class="box"><div class="bh">내구력</div><div class="bb durb"><input id="dbase" type="number" min="0" placeholder="기본" aria-label="내구력 기본치"><span>+<span id="dsum">0</span>=</span><b id="dur">—</b></div></div>
-      <div class="box"><div class="bh">여유</div><div class="bb step"><button type="button" class="dn" aria-label="여유 1 감소">▼</button><input id="yu" type="number" min="0" aria-label="여유"><button type="button" class="up" aria-label="여유 1 증가">▲</button></div></div>
-      <div class="box red"><div class="bh">혈량</div><div class="bb step"><button type="button" class="dn" aria-label="혈량 1 감소">▼</button><input id="hy" type="number" min="0" aria-label="혈량"><button type="button" class="up" aria-label="혈량 1 증가">▲</button></div></div>
-      <div class="box red h-only"><div class="bh">광기 <span class="max">/10</span></div><div class="bb step"><button type="button" class="dn" aria-label="광기 1 감소">▼</button><input type="number" min="0" max="10" aria-label="광기"><button type="button" class="up" aria-label="광기 1 증가">▲</button></div></div>
-      <div class="box m-only"><div class="bh">행동 횟수</div><div class="bb"><b id="acts">—</b></div></div>
-      <div class="box"><div class="bh">텐션 <span class="max">/30</span></div><div class="bb step"><button type="button" class="dn" aria-label="텐션 1 감소">▼</button><input id="ten" type="number" min="0" max="30" aria-label="텐션"><button type="button" class="up" aria-label="텐션 1 증가">▲</button></div></div>
-      <div class="box stat"><div class="bh">공격력</div><div class="bb"><input id="atk" class="st" type="number" aria-label="공격력"></div></div>
-      <div class="box stat"><div class="bh">타격력</div><div class="bb"><input class="st" type="number" aria-label="타격력"></div></div>
-      <div class="box stat"><div class="bh">방어력</div><div class="bb"><input class="st" type="number" aria-label="방어력"></div></div>
-      <div class="box stat"><div class="bh">행동력</div><div class="bb"><input class="st" type="number" aria-label="행동력"></div></div>
-      <div class="box red"><div class="bh">격정</div><div class="bb pips"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
+    <div class="colC">
+      <div class="vbox"><b class="vl">변조</b><div class="cgrid">
+        <label title="▲특기 사용불능 / 받는 대미지 +3">공황<input type="checkbox" id="panic"></label>
+        <label title="행동 후에 【혈량】이 1 감소">유혈<input type="checkbox"></label>
+        <label title="받는 대미지가 전부 2 증가">중상<input type="checkbox"></label>
+        <label title="행동 전에 【텐션】이 3 증가">불길<input type="checkbox"></label>
+        <label title="공격판정에 -1의 수정">포박<input type="checkbox"></label>
+        <label title="모든 행위판정에 -1의 수정">방해<input type="checkbox"></label>
+      </div></div>
+      <div class="vbox"><b class="vl">격정</b><div class="vc xbox"><input type="checkbox" aria-label="격정 1"><input type="checkbox" aria-label="격정 2"><input type="checkbox" aria-label="격정 3"></div></div>
+      <div class="track grow"><div class="hbar">텐션 <span><span id="ten-n">0</span> / 30</span></div><div class="cells c10" id="trk-ten" aria-label="텐션"></div><input type="hidden" id="ten"></div>
+      <div class="track h-only"><div class="hbar">광기 <span><span id="mad-n">0</span> / 10</span></div><div class="cells c5" id="trk-mad" aria-label="광기"></div><input type="hidden" id="mad"></div>
+      <!-- 몬스터 행동 횟수: 1·2사이클 [헌터 수−2]회, 3사이클 [헌터 수−1]회 -->
+      <div class="track m-only"><div class="hbar">행동 횟수</div><div class="cells c3 acts"><span><small>1사이클</small><b id="a1">—</b></span><span><small>2사이클</small><b id="a2">—</b></span><span><small>3사이클</small><b id="a3">—</b></span></div></div>
     </div>
   </section>
+  <div class="fr strip h-only"><b>무장</b><span class="two-in"><input id="h-arm1" type="text" aria-label="무장 1"><input id="h-arm2" type="text" aria-label="무장 2"></span><b>조직</b><input id="h-org" type="text" aria-label="조직"><b>도입 타입</b><input type="text" aria-label="도입 타입"><b>PL</b><input type="text" aria-label="PL"></div>
+  <div class="fr strip m-only"><b>체형·혈통</b><input type="text" placeholder="체형 · 혈통 · 양상" aria-label="체형·혈통·양상"><b>약점 부위</b><input type="text" aria-label="약점 부위"><b>헌터 수</b><input id="pn" type="number" min="3" aria-label="헌터 수"></div>
 
   <!-- 탭: 시트 / 작성 가이드(헌터) / 설정 -->
   <input class="tabsel" type="radio" name="tab" id="t-main" checked>
@@ -259,42 +294,13 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
   <div class="tabs" role="tablist"><label for="t-main">시트</label><label for="t-guide" class="h-only">작성 가이드</label><label for="t-set">설정</label></div>
 
   <div class="pane p-main">
-    <div class="mid">
-      <section class="panel">
-        <h3><span class="h-only">헌터</span><span class="m-only">몬스터</span></h3>
-        <div class="lines kv h-only">
-          <label class="line"><span>조직</span><input id="h-org" type="text"></label>
-          <div class="line"><span>무장</span><span class="two-in"><input id="h-arm1" type="text" aria-label="무장 1"><input id="h-arm2" type="text" aria-label="무장 2"></span></div>
-          <label class="line"><span>도입 타입</span><input type="text"></label>
-        </div>
-        <div class="lines kv m-only">
-          <label class="line"><span>체형·혈통</span><input type="text" placeholder="체형 · 혈통 · 양상"></label>
-          <label class="line"><span>약점 부위</span><input type="text"></label>
-          <label class="line"><span>헌터 수</span><input id="pn" type="number" min="3"></label>
-        </div>
-      </section>
-      <section class="panel">
-        <h3>굴림</h3>
-        <div class="lines">
-          <div class="line"><span>랜덤 특기</span><span class="ctl"><select id="rsk" aria-label="분야"><option value="-1">전체</option><option value="0">사회</option><option value="1">머리</option><option value="2">팔</option><option value="3">동체</option><option value="4">다리</option><option value="5">환경</option></select><button type="button" class="dice" id="r-skill" aria-label="랜덤 특기 굴림"></button></span></div>
-          <div class="line"><span>신체부위 결정표</span><button type="button" class="dice red" id="r-part" aria-label="신체부위 결정표 굴림"></button></div>
-          <div class="line"><span>선제지정표</span><button type="button" class="dice" id="r-sen" aria-label="선제지정표 굴림"></button></div>
-          <div class="line" title="대미지 · 회피 · 방해 등"><span>주사위</span><span class="ctl"><input id="nd" type="number" min="1" max="20" placeholder="n" aria-label="주사위 개수">D6 +<input id="ndm" type="number" placeholder="0" aria-label="수정치(마이너스 가능)"><button type="button" class="dice" id="r-nd" aria-label="nD6 굴림"></button></span></div>
-        </div>
-      </section>
-      <section class="panel cond">
-        <h3>변조</h3>
-        <div class="lines">
-          <label class="line" title="▲특기 사용불능 / 받는 대미지 +3"><span>공황</span><input class="toggle" type="checkbox" id="panic"></label>
-          <label class="line" title="행동 전에 【텐션】이 3 증가"><span>불길</span><input class="toggle" type="checkbox"></label>
-          <label class="line" title="행동 후에 【혈량】이 1 감소"><span>유혈</span><input class="toggle" type="checkbox"></label>
-          <label class="line" title="공격판정에 -1의 수정"><span>포박</span><input class="toggle" type="checkbox"></label>
-          <label class="line" title="받는 대미지가 전부 2 증가"><span>중상</span><input class="toggle" type="checkbox"></label>
-          <label class="line" title="모든 행위판정에 -1의 수정"><span>방해</span><input class="toggle" type="checkbox"></label>
-        </div>
-      </section>
+    <!-- 특기 리스트 머리줄: 랜덤 특기 · 신체부위 결정표 · 선제지정표 · nD6+수정치 굴림 -->
+    <div class="skbar"><b>특기 리스트</b>
+      <span class="ctl">랜덤 특기<select id="rsk" aria-label="분야"><option value="-1">전체</option><option value="0">사회</option><option value="1">머리</option><option value="2">팔</option><option value="3">동체</option><option value="4">다리</option><option value="5">환경</option></select><button type="button" class="dice" id="r-skill" aria-label="랜덤 특기 굴림"></button></span>
+      <span class="ctl">신체부위 결정표<button type="button" class="dice red" id="r-part" aria-label="신체부위 결정표 굴림"></button></span>
+      <span class="ctl">선제지정표<button type="button" class="dice" id="r-sen" aria-label="선제지정표 굴림"></button></span>
+      <span class="ctl" title="대미지 · 회피 · 방해 등">주사위<input id="nd" type="number" min="1" max="20" placeholder="n" aria-label="주사위 개수">D6 +<input id="ndm" type="number" placeholder="0" aria-label="수정치(마이너스 가능)"><button type="button" class="dice" id="r-nd" aria-label="nD6 굴림"></button></span>
     </div>
-
     <!-- 특기표: 스크립트가 채움(실제 시트는 빌드 스크립트로 정적 생성) -->
     <div class="skwrap"><div class="sk" id="sk" aria-label="특기표"></div></div>
     <div class="dmg"><b>부위 대미지</b><div id="parts"></div><div class="total">합계&nbsp;<span id="dmgsum">0</span></div></div>
@@ -315,13 +321,6 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
           <template><div class="li it"><button type="button" class="say" data-say="item" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="아이템"><input class="kd" type="text" placeholder="분류"><input class="ct" type="number" min="0"><div class="eff" contenteditable="true" data-ph="효과…"></div></div></template>
           <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
         </div>
-        <!-- 관계: 헌터 · 몬스터 공통 -->
-        <div class="list" data-rep id="rel">
-          <h3>관계</h3>
-          <div class="lh hp"><span></span><span>이름</span><span>속성</span><span>심도</span></div>
-          <template><div class="li hp"><button type="button" class="say" data-say="rel" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="이름"><input class="at" type="text" placeholder="속성"><input class="dv" type="number" min="1" max="5" placeholder="1~5"><div class="eff fl" contenteditable="true" data-ph="설명…"></div></div></template>
-          <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
-        </div>
       </div>
       <div>
         <!-- 헌터: 행복&배덕 / 몬스터: 지배력 — 링크는 정신 부위 다섯 중 하나 -->
@@ -339,14 +338,21 @@ textarea.memo{width:100%;min-height:110px;background:var(--cell);border:0;border
           <div class="tot">강도 합계 <b class="pwsum">0</b></div>
           <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
         </div>
+        <!-- 관계: 헌터 · 몬스터 공통 -->
+        <div class="list" data-rep id="rel">
+          <h3>관계</h3>
+          <div class="lh hp"><span></span><span>이름</span><span>속성</span><span>심도</span></div>
+          <template><div class="li hp"><button type="button" class="say" data-say="rel" aria-label="채팅에 출력"></button><input class="nm" type="text" placeholder="이름"><input class="at" type="text" placeholder="속성"><input class="dv" type="number" min="1" max="5" placeholder="1~5"><div class="eff fl" contenteditable="true" data-ph="설명…"></div></div></template>
+          <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
+        </div>
       </div>
     </div>
 
-    <!-- 몬스터: 팔로워 — 판정 목표치는 LV 로 자동(10 − LV, 최소 5), 주사위로 굴림 -->
+    <!-- 몬스터: 팔로워 — 룰북 3.02: 판정치 [10 − 레벨](최저 5), 내구력 [2 + 레벨] 자동 -->
     <div class="list m-only" data-rep id="fw">
       <h3>팔로워</h3>
-      <div class="lh fw"><span></span><span>이름</span><span class="kd">종별</span><span>LV</span><span>판정</span><span>내구력</span><span class="itm">아이템</span><span>사망</span></div>
-      <template><div class="li fw"><button type="button" class="dice" data-roll="fw" aria-label="팔로워 판정"></button><input class="nm" type="text" placeholder="이름"><input class="kd" type="text" placeholder="종별"><input class="lv" type="number" min="1" aria-label="LV"><span class="tg" aria-label="판정 목표치">—</span><input class="hp" type="number" min="0" aria-label="내구력"><input class="itm" type="text" placeholder="아이템"><input class="ko" type="checkbox" aria-label="사망"><div class="eff" contenteditable="true" data-ph="특수 능력…"></div><div class="fab"><div class="fab-h"><span></span><span>어빌리티</span><span class="ag">그룹</span><span>타입</span><span>코스트</span><span class="as">지정특기</span></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div></div></div></template>
+      <div class="lh fw"><span></span><span>이름</span><span class="kd">종별</span><span>LV</span><span>판정치</span><span>내구력</span><span class="itm">아이템</span><span>사망</span></div>
+      <template><div class="li fw"><button type="button" class="dice" data-roll="fw" aria-label="팔로워 판정"></button><input class="nm" type="text" placeholder="이름"><input class="kd" type="text" placeholder="종별"><input class="lv" type="number" min="1" aria-label="LV"><span class="tg" aria-label="판정 목표치">—</span><span class="tg fhp" aria-label="내구력">—</span><input class="itm" type="text" placeholder="아이템"><input class="ko" type="checkbox" aria-label="사망"><div class="eff" contenteditable="true" data-ph="특수 능력…"></div><div class="fab"><div class="fab-h"><span></span><span>어빌리티</span><span class="ag">그룹</span><span>타입</span><span>코스트</span><span class="as">지정특기</span></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div><div class="fa"><button type="button" class="dice" data-roll="fwab" aria-label="팔로워 어빌리티 사용"></button><input class="an" type="text" placeholder="어빌리티"><input class="ag" type="text" placeholder="그룹"><select class="aty" aria-label="타입"><option value=""></option><option>공격</option><option>보조</option><option>지원</option><option>상주</option></select><input class="aco" type="text" placeholder="코스트"><input class="as" type="text" placeholder="지정특기"><div class="eff" contenteditable="true" data-ph="효과…"></div></div></div></div></template>
       <div class="repbar"><button type="button" class="add">+Add</button><button type="button" class="mod">Modify</button></div>
     </div>
 
@@ -533,6 +539,17 @@ function say(k,r){
 // ── +Add / Modify(줄 삭제) — Roll20 반복 섹션 흉내
 const addDel=row=>{if(row.querySelector(':scope>.del'))return;const d=el('button','del','×');d.type='button';d.setAttribute('aria-label','줄 삭제');row.append(d)};
 $$('.list[data-rep]>.li').forEach(addDel);
+function addRow(l,preset){const nr=l.querySelector('template').content.firstElementChild.cloneNode(true);
+  if(preset){const q=s=>nr.querySelector(s);q('.nm').value=preset;q('.ty').value='상주';q('.co').value='×';q('.s').value='없음';nr.dataset.madness=1}  // 광기 그룹(헌터 전용)
+  l.querySelector(':scope>.tot, :scope>.repbar').before(nr);addDel(nr);return nr}
+for(let i=0;i<3;i++)addRow($('#itl'));   // 아이템은 3칸 펼친 상태로 시작
+// 텐션 1~30 · 광기 1~10 칸: 누른 칸까지 채운다(같은 칸을 다시 누르면 한 칸 뺀다)
+function track(id,max){const box=$('#trk-'+id),v=$('#'+id),out=$('#'+id+'-n');
+  const paint=()=>{[...box.children].forEach((c,k)=>c.classList.toggle('on',k<(+v.value||0)));out.textContent=+v.value||0};
+  for(let i=1;i<=max;i++){const c=el('button','tk'+(i%10===0?' ten':''),i);c.type='button';c.setAttribute('aria-label',`${i}`);
+    c.onclick=()=>{v.value=(+v.value===i?i-1:i);paint();refresh()};box.append(c)}
+  paint()}
+track('ten',30);track('mad',10);
 sheet.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const row=b.closest('.li');
   if(b.dataset.say)return say(b.dataset.say,row);
   if(b.dataset.roll==='abil')return useAbility(row,b);
@@ -540,9 +557,7 @@ sheet.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)retu
   if(b.dataset.roll==='fwab')return useFwAbility(b.closest('.fa'),row,b);
   if(b.classList.contains('del')){row.remove();return refresh()}
   if(b.classList.contains('mod'))return b.closest('.list').classList.toggle('editing');
-  if(b.classList.contains('add')){const l=b.closest('.list'),nr=l.querySelector('template').content.firstElementChild.cloneNode(true);
-    if(b.dataset.preset){const q=s=>nr.querySelector(s);q('.nm').value=b.dataset.preset;q('.ty').value='상주';q('.co').value='×';q('.s').value='없음';nr.dataset.madness=1}  // 광기 그룹(헌터 전용)
-    l.querySelector(':scope>.tot, :scope>.repbar').before(nr);addDel(nr);return refresh()}
+  if(b.classList.contains('add')){addRow(b.closest('.list'),b.dataset.preset);return refresh()}
   const st=b.closest('.step');if(st){const i=st.querySelector('input'),mx=i.max===''?Infinity:+i.max;
     i.value=Math.max(0,Math.min(mx,(+i.value||0)+(b.classList.contains('up')?1:-1)));refresh()}});
 
@@ -559,8 +574,8 @@ function refresh(){
   const st=$$('.st').map(x=>+x.value||0),stsum=st.reduce((a,b)=>a+b,0);
   const abil=rowsOf('abl').filter(r=>!r.dataset.madness&&r.querySelector('.nm').value.trim());
   const jc=rowsOf('abl').filter(r=>r.querySelector('.ty').value==='상주').reduce((a,r)=>a+(parseInt(r.querySelector('.co').value)||0),0);$('#jcost').textContent=jc;
-  rowsOf('fw').forEach(r=>{const t=fwT(r.querySelector('.lv').value);r.querySelector('.tg').textContent=Number.isFinite(t)?t:'—'});
-  const p=num('#pn');$('#acts').textContent=p==null?'—':[p-2,p-2,p-1].map(x=>Math.max(0,x)).join('·');
+  rowsOf('fw').forEach(r=>{const lv=r.querySelector('.lv').value,t=fwT(lv);r.querySelector('.tg').textContent=Number.isFinite(t)?t:'—';r.querySelector('.fhp').textContent=lv===''?'—':2+(+lv)});
+  const p=num('#pn');['#a1','#a2','#a3'].forEach((q,i)=>$(q).textContent=p==null?'—':Math.max(0,p-(i<2?2:1)));
   // 작성 가이드 (헌터)
   const lv=num('#clv'),ex=num('#cexp'),hpw=$$('.li .pw',hb).reduce((a,x)=>a+(+x.value||0),0);
   const items=rowsOf('itl').filter(r=>r.querySelector('.nm').value.trim()).reduce((a,r)=>a+(+r.querySelector('.ct').value||1),0);
