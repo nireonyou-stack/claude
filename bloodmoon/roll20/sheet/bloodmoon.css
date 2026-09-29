@@ -159,7 +159,7 @@
 .bm .trk input.z{position:absolute;top:2px;right:6px;width:16px;height:16px;border:0;background:none;color:var(--bar-ink);opacity:.6}
 .bm .trk input.z::before{content:"↺"}
 .bm .acts span{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--line)}
-.bm .acts small{font-size:10px;color:var(--sub)}.bm .acts b{font-size:18px}
+.bm .acts small{font-size:10px;color:var(--sub)}.bm .acts .an{font-size:18px;font-weight:700}
 
 /* ── 메모 · 하단 ── */
 .bm .memos{margin-top:16px}

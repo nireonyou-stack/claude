@@ -4,6 +4,7 @@
 
 <!-- 시트 종류: 띠의 드롭다운과 같은 속성. 값에 따라 CSS 로 헌터/몬스터 칸을 가른다 -->
 <input type="hidden" class="bm-type" name="attr_sheet_type" value="hunter">
+<input type="hidden" name="attr_sheet_version" value="">
 <div class="bm">
   <!-- 띠 -->
   <div class="band">
@@ -76,7 +77,7 @@
       <h3>아이템</h3>
       <div class="lh it"><span></span><span>아이템</span><span>분류</span><span>개수</span></div>
       <fieldset class="repeating_items">
-        <div class="li it"><button type="action" name="act_say" class="say" title="채팅에 출력"></button><input type="text" name="attr_name" placeholder="아이템"><input type="text" name="attr_kind" placeholder="분류"><input type="number" name="attr_count" min="0">
+        <div class="li it"><input type="hidden" name="attr_row" value=""><button type="action" name="act_say" class="say" title="채팅에 출력"></button><input type="text" name="attr_name" placeholder="아이템"><input type="text" name="attr_kind" placeholder="분류"><input type="number" name="attr_count" min="0">
           <textarea class="eff" name="attr_effect" placeholder="효과…"></textarea></div>
       </fieldset>
     </div>
@@ -128,7 +129,7 @@
       </div></div>
       <!-- 몬스터 행동 횟수: 1·2사이클 [헌터 수−2]회, 3사이클 [헌터 수−1]회 -->
       <div class="track m-only"><div class="hbar">행동 횟수</div><div class="cells c3 acts">
-        <span><small>1사이클</small><b name="attr_acts1">—</b></span><span><small>2사이클</small><b name="attr_acts2">—</b></span><span><small>3사이클</small><b name="attr_acts3">—</b></span>
+        <span><small>1사이클</small><span class="an" name="attr_acts1">—</span></span><span><small>2사이클</small><span class="an" name="attr_acts2">—</span></span><span><small>3사이클</small><span class="an" name="attr_acts3">—</span></span>
       </div></div>
     </div>
   </div>
