@@ -358,7 +358,31 @@
   <div class="foot">디자인 기조: Sad QAQ &amp; Tateck</div>
 </div>
 
-
+<!-- 채팅 카드: 굴림은 sheet worker 가 startRoll 로 보내고, computed:: 칸(결과 · 달성치 · 특기 · 목표치 · 분야 · 주사위 목록)은 finishRoll 로 채운다.
+     computed 칸은 매크로 앞쪽 10칸 안에 있어야 표시되므로 워커가 맨 앞에 넣는다. -->
+<rolltemplate class="sheet-rolltemplate-bloodmoon">
+  <div class="sheet-card">
+    <div class="sheet-h">{{title}}{{#sub}} <small>{{sub}}</small>{{/sub}}</div>
+    <div class="sheet-b">
+      {{#skill}}<div class="sheet-r"><span>특기</span><b>{{computed::skill}}</b></div>{{/skill}}
+      {{#field}}<div class="sheet-r"><span>분야</span><b>{{computed::field}}</b></div>{{/field}}
+      {{#target}}<div class="sheet-r"><span>목표치</span><b>{{computed::target}}</b></div>{{/target}}
+      {{#d1}}<div class="sheet-r"><span>2D6</span><b>{{d1}} · {{d2}}</b></div>{{/d1}}
+      {{#die}}<div class="sheet-r"><span>1D6</span><b>{{die}}</b></div>{{/die}}
+      {{#dice}}<div class="sheet-r"><span>주사위</span><b>{{computed::dice}}</b></div>{{/dice}}
+      {{#atk}}<div class="sheet-r"><span>공격력</span><b>+{{atk}}</b></div>{{/atk}}
+      {{#mod}}{{#^rollTotal() mod 0}}<div class="sheet-r"><span>수정</span><b>{{mod}}</b></div>{{/^rollTotal() mod 0}}{{/mod}}
+      {{#total}}<div class="sheet-r"><span>달성치</span><b>{{computed::total}}</b></div>{{/total}}
+      {{#k1}}<div class="sheet-r"><span>{{k1}}</span><b>{{v1}}</b></div>{{/k1}}
+      {{#k2}}<div class="sheet-r"><span>{{k2}}</span><b>{{v2}}</b></div>{{/k2}}
+      {{#k3}}<div class="sheet-r"><span>{{k3}}</span><b>{{v3}}</b></div>{{/k3}}
+      {{#k4}}<div class="sheet-r"><span>{{k4}}</span><b>{{v4}}</b></div>{{/k4}}
+      {{#effect}}<div class="sheet-tx">{{effect}}</div>{{/effect}}
+      {{#flavor}}<div class="sheet-fl">{{flavor}}</div>{{/flavor}}
+      {{#res}}<div class="sheet-res">{{computed::res}}</div>{{/res}}
+    </div>
+  </div>
+</rolltemplate>
 <script type="text/worker">
 // 블러드문 sheet worker — 자동 계산 (굴림은 아래 "굴림" 구역)
 'use strict';
@@ -488,5 +512,106 @@ on('sheet:opened', () => getAttrs(['sheet_version'], v => {
     if (!ids.length) for (let i = 0; i < 3; i++) out[`repeating_items_${generateRowID()}_row`] = 1;
     setAttrs(out, { silent: true });
   });
+}));
+
+// ════════ 굴림 — Custom Roll Parsing (startRoll → finishRoll) ════════
+// 채팅 카드 템플릿은 src/rolltemplate.html. computed 칸(res · total · skill · target · field · dice)은 매크로 앞쪽 10칸 안에 둔다.
+const PART_TABLE = { 2: '뇌', 3: '주팔', 4: '주다리', 5: '소화기', 6: '감각기', 7: '공격한 자가 임의로 지정', 8: '입', 9: '호흡기', 10: '반대다리', 11: '반대팔', 12: '심장' };
+const INIT_TABLE = ['《자신감/사회5》', '《지위/사회9》', '《일상/환경3》', '《인맥/환경7》', '《퇴로/환경11》', '《심장/동체7》'];
+const NAME_TO_ID = Object.fromEntries(SKILL_IDS.map(id => [skillName(id), id]));
+
+// 매크로에 넣는 글: 템플릿 · 인라인 굴림 · 속성 호출을 깨뜨리는 문자를 바꾼다(줄바꿈은 공백)
+const clean = s => String(s == null ? '' : s).replace(/\r?\n/g, ' ').replace(/\{/g, '｛').replace(/\}/g, '｝')
+  .replace(/\[\[/g, '[ [').replace(/\]\]/g, '] ]').replace(/([@%&])\{/g, '$1 {').trim();
+const ask = s => clean(s).replace(/[|,]/g, ' ');     // Roll20 입력창 문구
+const field = (k, v) => (v === '' || v == null ? '' : ` {{${k}=${clean(v)}}}`);
+const post = (s, computed) => startRoll(s, r => finishRoll(r.rollId, computed ? computed(r.results) : {}));
+
+// 행동판정: 2D6 + (공격력) + 수정치 ≥ 목표치. 2 는 펌블, 12 는 스페셜
+//   skill: 특기 id (목표치 · 사용불능은 sheet worker 가 계산해 둔 값), pick: 자유 · 전부일 때 고를 특기 목록
+//   follower: 팔로워 판정치(특기 없이 판정)
+function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor }) {
+  const need = ['sk_' + (skill || 'soc2') + '_tn', 'sk_' + (skill || 'soc2') + '_off', ...(pick ? SKILL_IDS.map(id => `sk_${id}_tn`) : [])];
+  getAttrs(need, v => {
+    const isF = follower !== undefined;
+    const tnOf = id => num(v[`sk_${id}_tn`]) || 12;
+    const opts = pick ? [...SKILL_IDS].sort((a, b) => tnOf(a) - tnOf(b)) : null;
+    let s = '&{template:bloodmoon} {{res=[[0]]}} {{total=[[0]]}}' + (isF ? '' : ' {{skill=[[0]]}}') + ' {{target=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}';
+    if (opts) s += ` {{pick=[[?{판정 특기|${opts.map((id, i) => `${skillName(id)} (${tnOf(id)}),${i}`).join('|')}}]]}}`;
+    const lead = isF ? `판정치 ${follower}` : opts ? '' : `《${skillName(skill)}》 목표치 ${tnOf(skill)}${on1(v[`sk_${skill}_off`]) ? ' (사용불능 · 스페셜만 성공)' : ''}`;
+    s += ` {{mod=[[?{${ask(lead ? `${lead} — 수정치` : '수정치')}|0}]]}}`;
+    if (atk) s += ` {{atk=[[${atk}]]}}`;
+    s += field('title', title) + field('sub', sub) + field('effect', effect) + field('flavor', flavor);
+    post(s, R => {
+      const id = opts ? (opts[R.pick.result] || opts[0]) : skill;
+      const t = isF ? follower : tnOf(id), sum = R.d1.result + R.d2.result, tot = sum + (atk || 0) + R.mod.result;
+      const res = sum === 2 ? (isF ? '✗ 펌블 · 무력화' : '✗ 펌블 · 【여유】 0') : sum === 12 ? (isF ? '★ 스페셜' : '★ 스페셜 · 【여유】 +3') : tot >= t ? '✓ 성공' : '✗ 실패';
+      return Object.assign({ res, total: tot, target: t }, isF ? {} : { skill: `《${skillName(id)}》` });
+    });
+  });
+}
+
+// 특기 칸 이름 → 행동판정
+on(SKILL_IDS.map(id => `clicked:r${id}`).join(' '), e => {
+  const id = (e.triggerName || '').replace(/^clicked:r/, '');
+  if (SKILL_IDS.includes(id)) actionCheck({ title: '행동판정', skill: id });
+});
+
+// 반복 섹션 버튼 → 그 행 접두어 (repeating_<section>_<id>_)
+const rowOf = (e, sec) => { const m = `${e.sourceAttribute || ''} ${e.triggerName || ''}`.match(new RegExp(`repeating_${sec}_([^_\\s]+)_`, 'i')); return m ? `repeating_${sec}_${m[1]}_` : null; };
+const pickRow = (row, v, keys) => Object.fromEntries(keys.map(k => [k, v[row + k] || '']));
+// 목록 줄 채팅 출력(굴림 없음)
+const info = (title, sub, rows, effect, flavor) => post('&{template:bloodmoon}' + field('title', title) + field('sub', sub)
+  + rows.filter(([, val]) => val !== '').slice(0, 4).map(([k, val], i) => field(`k${i + 1}`, k) + field(`v${i + 1}`, val)).join('') + field('effect', effect) + field('flavor', flavor));
+
+// 어빌리티: 지정특기로 행동판정(공격 타입은 【공격력】 자동 가산). 상주 · 지정특기 없음은 효과만 출력
+on('clicked:repeating_abilities:use', e => {
+  const row = rowOf(e, 'abilities'); if (!row) return;
+  const keys = ['name', 'group', 'type', 'cost', 'skill', 'effect', 'flavor'];
+  getAttrs([...keys.map(k => row + k), 'attack'], v => {
+    const a = pickRow(row, v, keys), sub = [a.type, a.cost && `코스트 ${a.cost}`].filter(Boolean).join(' · ');
+    const title = a.name || '어빌리티', skill = a.skill.replace(/[《》\s]/g, '');
+    if (a.type === '상주' || !skill || skill === '없음') return info(title, sub, [['지정특기', a.skill || '-']], a.effect, a.flavor);
+    actionCheck({ title, sub, skill: NAME_TO_ID[skill], pick: !NAME_TO_ID[skill], atk: a.type === '공격' ? (num(v.attack) || 0) : 0, effect: a.effect, flavor: a.flavor });
+  });
+});
+
+// 팔로워 판정 · 팔로워 어빌리티 1~3 (판정치 = 10 − 레벨, 최저 5)
+on('clicked:repeating_followers:roll clicked:repeating_followers:ab1 clicked:repeating_followers:ab2 clicked:repeating_followers:ab3', e => {
+  const row = rowOf(e, 'followers'); if (!row) return;
+  const k = ((e.triggerName || '').match(/_(ab[123])$/) || [])[1];
+  const keys = ['name', 'lv', 'special', ...(k ? ['name', 'type', 'cost', 'skill', 'effect'].map(f => `${k}_${f}`) : [])];
+  getAttrs(keys.map(x => row + x), v => {
+    const a = pickRow(row, v, keys), who = a.name || '팔로워', lv = num(a.lv), tn = lv === null ? null : Math.max(5, 10 - lv);
+    if (!k) return tn === null ? info(`팔로워 · ${who}`, '', [['LV', '미입력']], a.special) : actionCheck({ title: `팔로워 · ${who}`, follower: tn, effect: a.special });
+    const ab = a[`${k}_name`] || '어빌리티', ty = a[`${k}_type`], sk = a[`${k}_skill`];
+    const sub = [ty, a[`${k}_cost`] && `코스트 ${a[`${k}_cost`]}`].filter(Boolean).join(' · ');
+    if (ty === '상주' || sk === '없음' || tn === null) return info(`${who} · ${ab}`, sub, [['지정특기', sk || '-'], ['LV', lv === null ? '미입력' : lv]], a[`${k}_effect`]);
+    actionCheck({ title: `${who} · ${ab}`, sub, follower: tn, effect: a[`${k}_effect`] });
+  });
+});
+
+// 목록 줄 채팅 출력: 아이템 · 행복&배덕 · 관계 · 지배력 (설명은 플레이버로)
+on('clicked:repeating_items:say', e => { const row = rowOf(e, 'items'); if (row) getAttrs(['name', 'kind', 'count', 'effect'].map(k => row + k), v => { const a = pickRow(row, v, ['name', 'kind', 'count', 'effect']); info(a.name || '아이템', '', [['분류', a.kind], ['개수', a.count]], a.effect); }); });
+on('clicked:repeating_happiness:say', e => { const row = rowOf(e, 'happiness'); if (row) getAttrs(['kind', 'name', 'link', 'power', 'flavor'].map(k => row + k), v => { const a = pickRow(row, v, ['kind', 'name', 'link', 'power', 'flavor']); info(`【${a.kind || '행복'}】 ${a.name}`, '', [['링크', a.link && `《${a.link}》`], ['강도', a.power]], '', a.flavor); }); });
+on('clicked:repeating_dominance:say', e => { const row = rowOf(e, 'dominance'); if (row) getAttrs(['name', 'link', 'power', 'flavor'].map(k => row + k), v => { const a = pickRow(row, v, ['name', 'link', 'power', 'flavor']); info(`【지배력】 ${a.name}`, '', [['링크', a.link && `《${a.link}》`], ['강도', a.power]], '', a.flavor); }); });
+on('clicked:repeating_relations:say', e => { const row = rowOf(e, 'relations'); if (row) getAttrs(['name', 'attr', 'depth', 'flavor'].map(k => row + k), v => { const a = pickRow(row, v, ['name', 'attr', 'depth', 'flavor']); info(`관계 · ${a.name}`, '', [['속성', a.attr], ['심도', a.depth]], '', a.flavor); }); });
+
+// 표 굴림: 랜덤 특기(전체면 분야 1D6 → 눈 2D6) · 신체부위 결정표 · 선제판정표
+on('clicked:rskill', () => getAttrs(['rand_field'], v => {
+  const f = FIELDS.indexOf(v.rand_field);
+  post(`&{template:bloodmoon} {{res=[[0]]}} {{field=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}${f < 0 ? ' {{f=[[1d6]]}}' : ''} {{title=랜덤 특기}}`, R => {
+    const c = f < 0 ? R.f.result - 1 : f, row = R.d1.result + R.d2.result;
+    return { res: `《${SKILLS[FIELDS[c]][row - 2]}》`, field: f < 0 ? `1D6 ${c + 1} → ${FIELD_NAMES[FIELDS[c]]}` : FIELD_NAMES[FIELDS[c]] };
+  });
+}));
+on('clicked:rpart', () => post('&{template:bloodmoon} {{res=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{title=신체부위 결정표}}', R => ({ res: PART_TABLE[R.d1.result + R.d2.result] })));
+on('clicked:rinit', () => post('&{template:bloodmoon} {{res=[[0]]}} {{die=[[1d6]]}} {{title=선제판정표}}', R => ({ res: INIT_TABLE[R.die.result - 1] })));
+
+// nD6 + 수정치 (대미지 · 회피 · 방해 등, 수정치는 마이너스 가능)
+on('clicked:rnd', () => getAttrs(['nd_count', 'nd_mod'], v => {
+  const n = Math.min(20, Math.max(1, num(v.nd_count) || 1)), m = num(v.nd_mod) || 0;
+  post(`&{template:bloodmoon} {{res=[[0]]}} {{dice=[[0]]}} {{nd=[[${n}d6]]}} {{mod=[[${m}]]}} {{title=${n}D6${m ? (m > 0 ? '+' : '') + m : ''}}}`,
+    R => ({ dice: R.nd.dice.join(', '), res: `합계 ${R.nd.result + m}` }));
 }));
 </script>
