@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.3.0
+// @version      1.3.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -10,6 +10,18 @@
 
 (function () {
 "use strict";
+
+// 같은 스크립트가 두 개 설치돼 있으면 버튼·편집기가 겹쳐 오동작한다 → 알린다
+let dupWarned = false;
+const warnDuplicate = () => {
+    if (dupWarned) return;
+    dupWarned = true;
+    console.warn("[올인원] 스크립트가 두 개 설치되어 있습니다.");
+    alert("「롤20 레이아웃2 올인원」이 두 개 설치되어 있는 것 같습니다.\nTampermonkey 대시보드에서 예전 것을 끄거나 지워 주세요.");
+};
+if (window.__r20aio) { warnDuplicate(); return; }
+window.__r20aio = true;
+const SCRIPT_VER = typeof GM_info !== "undefined" ? GM_info.script.version : "";
 
 const CONFIG={
     prefix: "/desc ",
@@ -1068,9 +1080,13 @@ document.addEventListener("mousedown", (e) => {
     }
 }, true);
 
-if (!document.getElementById("r20-addon-style")) {
-    const style = document.createElement("style");
+// 예전 버전 사본이 먼저 넣은 스타일이 있으면 이 버전 것으로 바꾼다
+const oldAddonStyle = document.getElementById("r20-addon-style");
+if (oldAddonStyle && !oldAddonStyle.dataset.aio) warnDuplicate();
+if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
+    const style = oldAddonStyle || document.createElement("style");
     style.id = "r20-addon-style";
+    style.dataset.aio = "1";
     style.innerHTML = `
         #r20-ac-box { position:fixed; z-index:100000; min-width:220px; max-width:360px; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:12px; color:#333; display:none; }
         #r20-ac-box.show { display:block; }
@@ -1090,6 +1106,7 @@ if (!document.getElementById("r20-addon-style")) {
         #r20be button:focus-visible, #r20be input:focus-visible, #r20be select:focus-visible, #r20be textarea:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
         #r20be .r20be-head { display:flex; align-items:center; gap:10px; height:36px; padding:0 6px 0 10px; background:#f0f0f0; border-bottom:1px solid #dcdcdc; cursor:move; user-select:none; flex-shrink:0; }
         #r20be .r20be-head strong { font-size:12px; color:#555; }
+        #r20be .r20be-ver { margin-left:-6px; color:#999; font-size:10px; }
         #r20be .r20be-seg { display:flex; gap:2px; padding:2px; background:#e2e2e2; border-radius:4px; }
         #r20be .r20be-seg button { border:0; background:transparent; height:24px; padding:0 12px; font-size:12px; font-weight:700; color:#555; border-radius:3px; cursor:pointer; }
         #r20be .r20be-seg button.on { background:#1867c7; color:#fff; }
@@ -1184,42 +1201,50 @@ if (!document.getElementById("r20-addon-style")) {
             #r20be .r20be-col.tree { flex:0 0 40%; border-right:0; border-bottom:1px solid #e6e6e6; }
             #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
         }
-        /* 주크박스 한 줄 보기: Roll20 요소는 그대로 두고 배치만 바꾼다 (.playbackcontrol 을 풀어 한 줄 flex 로) */
-        body.r20jb-on #jukebox .instructions, body.r20jb-on #jukeboxwhatsplaying { display:none !important; }
+        /* 주크박스 한 줄 보기: Roll20 요소는 그대로 두고 배치·크기만 바꾼다 (.playbackcontrol 을 풀어 한 줄 flex 로) */
+        body.r20jb-on #jukebox .instructions { display:none !important; }
         body.r20jb-on #jukebox .secondarycontrols { margin:2px 0 6px !important; }
         body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:30px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; line-height:30px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; gap:6px; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
+        body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { padding-left:12px !important; }
+        /* 재생목록 머리줄: 폴더째 재생 버튼만 */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:28px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:700 !important; line-height:28px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.playstyle, body.r20jb-on #jukeboxfolderroot .playlistcontrols a.exportplaylist { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play { display:inline-flex !important; align-items:center; justify-content:center; width:22px; margin:0 !important; color:#777 !important; text-decoration:none !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:28px !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
         /* 빈 재생목록의 자리표시(끌어 넣기용)는 남기되 높이만 줄인다 */
         body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
+        /* 곡 줄 */
         body.r20jb-on #jukebox li.jukeboxitem { position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:14px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; overflow:hidden !important; text-indent:-9999px !important; cursor:grab; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle:hover { background:rgba(128,128,128,0.18) !important; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:28px !important; margin:0 0 0 14px !important; padding:0 2px !important; border-bottom:1px solid rgba(128,128,128,0.18); }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:12px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; overflow:hidden !important; text-indent:-9999px !important; cursor:grab; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle:hover { background:rgba(128,128,128,0.15) !important; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:1px; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 1px !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 4px !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; line-height:28px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; }
-        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { order:3; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; width:56px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { width:100% !important; margin:0 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { order:5; }
-        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.12); }
+        body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 4px !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:18px; text-align:center; font-size:11px; filter:grayscale(1); opacity:0.4; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:18px; color:#777 !important; text-decoration:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { font-size:12px !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { order:3; display:inline-flex !important; align-items:center; width:18px; justify-content:center; }
+        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label * { margin:0 !important; padding:0 !important; font-size:10px !important; line-height:26px !important; color:#c6c6c6 !important; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop:checked + label, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop:checked + label * { color:#5f8fc7 !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:48px !important; height:26px; margin:0 3px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { -webkit-appearance:none !important; appearance:none !important; width:100% !important; height:14px !important; margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-webkit-slider-runnable-track { height:2px !important; border:0 !important; border-radius:1px; background:#d3dbe6 !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-webkit-slider-thumb { -webkit-appearance:none !important; width:8px !important; height:8px !important; margin-top:-3px !important; border:0 !important; border-radius:50% !important; background:#7d9fc9 !important; box-shadow:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-moz-range-track { height:2px; border:0; background:#d3dbe6; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-moz-range-thumb { width:8px; height:8px; border:0; border-radius:50%; background:#7d9fc9; }
+        body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { order:5; display:inline-flex !important; align-items:center; justify-content:center; width:14px; color:#aaa !important; text-decoration:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu, body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu * { font-size:10px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play:hover, body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu:hover, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label:hover * { color:#222 !important; }
+        /* 재생 중인 곡 */
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
-        #r20jb-now { display:none; flex-wrap:wrap; align-items:center; gap:4px; min-height:30px; margin:0 0 6px; padding:4px 6px; border:1px solid rgba(128,128,128,0.35); border-radius:4px; font-size:11px; }
-        body.r20jb-on #r20jb-now { display:flex; }
-        #r20jb-now > strong { margin-right:2px; font-size:11px; }
-        #r20jb-now .r20jb-none { opacity:0.7; }
-        #r20jb-now button { font:inherit; cursor:pointer; }
-        #r20jb-now .r20jb-chip { display:inline-flex; align-items:center; gap:4px; max-width:100%; height:22px; margin:0; padding:0 8px; border:1px solid rgba(24,103,199,0.45); border-radius:11px; background:rgba(24,103,199,0.1); color:inherit; font-size:11px; }
-        #r20jb-now .r20jb-chip:hover { background:rgba(24,103,199,0.2); }
-        #r20jb-now .r20jb-chip i { width:8px; height:8px; border-radius:1px; background:currentColor; flex-shrink:0; }
-        #r20jb-now .r20jb-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        #r20jb-now .r20jb-chip b { flex-shrink:0; font-weight:700; font-variant-numeric:tabular-nums; color:#1867c7; }
-        #r20jb-now .r20jb-all { margin:0 0 0 auto; padding:0 4px; border:0; background:none; color:#1867c7; font-size:11px; }
-        #r20jb-now .r20jb-all:hover { text-decoration:underline; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
         body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
         body button.r20be-open:hover { background:#f2f2f2; }
         body.r20be-off button.r20be-open { display:none; }
@@ -2263,13 +2288,12 @@ const bulkEditor = (() => {
     const scrollCol = (area, kind) => {
         const thumb = el("div", { class: "r20be-sb-th" });
         const track = el("div", { class: "r20be-sb", "aria-hidden": "true" }, thumb);
+        // 넘치지 않을 때도 막대는 보이게 둔다 (손잡이가 막대를 꽉 채움)
         const sync = () => {
-            const sh = area.scrollHeight, ch = area.clientHeight;
-            track.hidden = sh <= ch + 1;
-            if (track.hidden) return;
-            const th = Math.max(24, track.clientHeight * ch / sh);
+            const sh = area.scrollHeight, ch = area.clientHeight, tH = track.clientHeight, over = sh > ch + 1;
+            const th = over ? Math.max(24, tH * ch / sh) : tH;
             thumb.style.height = th + "px";
-            thumb.style.transform = `translateY(${(track.clientHeight - th) * area.scrollTop / (sh - ch)}px)`;
+            thumb.style.transform = `translateY(${over ? (tH - th) * area.scrollTop / (sh - ch) : 0}px)`;
         };
         let raf = 0;
         const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); };
@@ -2301,6 +2325,7 @@ const bulkEditor = (() => {
         ui.segB = el("button", { type: "button", onclick: () => switchTab("bgm") }, "배경음악");
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
+            SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
             el("div", { class: "r20be-seg" }, ui.segJ, ui.segB),
             el("span", { class: "r20be-flex" }),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
@@ -2339,8 +2364,11 @@ const bulkEditor = (() => {
         if (!btnVisible.bulk) return;
         [["journal", "journal"], ["jukebox", "bgm"]].forEach(([id, tab]) => {
             const host = document.getElementById(id);
-            if (!host || host.querySelector(".r20be-open")) return;
-            (host.querySelector(".content") || host).prepend(el("button", { type: "button", class: "r20be-open",
+            if (!host) return;
+            // 예전 버전 사본이 단 버튼이면 지우고 이 버전 것으로 단다
+            host.querySelectorAll(".r20be-open:not([data-aio])").forEach(b => { b.remove(); warnDuplicate(); });
+            if (host.querySelector(".r20be-open")) return;
+            (host.querySelector(".content") || host).prepend(el("button", { type: "button", class: "r20be-open", "data-aio": "1",
                 onclick: e => { e.preventDefault(); e.stopPropagation(); open(tab); } }, el("span", { html: ICON.pen }), "일괄 편집"));
         });
     };
@@ -2354,98 +2382,18 @@ const bulkEditor = (() => {
     return { inject, setEnabled, open, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
 })();
 
-// ───────── 주크박스 한 줄 보기: 곡 하나 = 한 줄, '지금 재생 중'은 남은 시간이 보이는 칩으로 ─────────
+// ───────── 주크박스 한 줄 보기: 곡 하나 = 한 줄 ('지금 재생 중'은 Roll20 원래 상자 그대로) ─────────
 // 재생·반복·볼륨·메뉴는 Roll20 요소를 그대로 쓰고 CSS 로 배치만 바꾼다 (body.r20jb-on)
 const jukeboxRow = (() => {
-    let box = null, shownIds = "", warned = false;
-    const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    // Roll20 이 재생 중인 소리 객체에서 남은 시간(초) — SoundManager2 · HTML Audio 둘 다 대응
-    const remain = id => {
-        const s = window.Jukebox?.soundObjs?.[id] || window.soundManager?.getSoundById?.(id);
-        if (!s) return null;
-        if (typeof s.currentTime === "number" && isFinite(s.duration)) return s.duration - s.currentTime;
-        const dur = s.durationEstimate || s.duration;
-        return typeof s.position === "number" && dur > 0 ? (dur - s.position) / 1000 : null;
-    };
-    // Roll20 의 재생 버튼을 눌러 멈춘다 (목록에 없으면 모델로 직접)
-    const stopTrack = id => {
-        const a = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"] a.play`);
-        if (a) a.click();
-        else window.Jukebox?.playlist?.get(id)?.save({ playing: false, softstop: false });
-    };
-    const playingTracks = () => (window.Jukebox?.playlist?.models || []).filter(m => m.get("playing"));
-
-    const tick = () => {
-        if (!box?.isConnected || !btnVisible.jbrow) return;
-        const list = playingTracks(), ids = list.map(m => m.id).join("|");
-        if (ids !== shownIds) {
-            shownIds = ids;
-            box.textContent = "";
-            const head = document.createElement("strong");
-            head.textContent = "재생 중";
-            box.appendChild(head);
-            if (!list.length) {
-                const none = document.createElement("span");
-                none.className = "r20jb-none";
-                none.textContent = "없음";
-                box.appendChild(none);
-            }
-            list.forEach(m => {
-                const b = document.createElement("button");
-                b.type = "button";
-                b.className = "r20jb-chip";
-                b.dataset.id = m.id;
-                b.title = `정지: ${m.get("title")}`;
-                b.innerHTML = "<i aria-hidden=\"true\"></i><span></span><b></b>";
-                b.querySelector("span").textContent = m.get("title") || "(제목 없음)";
-                b.onclick = () => stopTrack(m.id);
-                box.appendChild(b);
-            });
-            if (list.length) {
-                const all = document.createElement("button");
-                all.type = "button";
-                all.className = "r20jb-all";
-                all.textContent = "모두 정지";
-                all.onclick = () => playingTracks().forEach(m => stopTrack(m.id));
-                box.appendChild(all);
-            }
-        }
-        // 남은 시간만 매초 갱신
-        box.querySelectorAll(".r20jb-chip").forEach(b => {
-            const r = remain(b.dataset.id);
-            b.querySelector("b").textContent = r == null ? "" : `${fmt(Math.max(0, r))} 남음`;
-            if (r == null && !warned) {
-                warned = true;
-                console.info("[주크박스] 남은 시간 정보를 찾지 못함", { soundObjs: Object.keys(window.Jukebox?.soundObjs || {}).slice(0, 5), soundManager: typeof window.soundManager });
-            }
-        });
-    };
-    setInterval(tick, 1000);
-
-    const inject = () => {
-        if (!btnVisible.jbrow) return;
-        const anchor = document.getElementById("jukeboxwhatsplaying");
-        if (!anchor || box?.isConnected) return;
-        box = document.createElement("div");
-        box.id = "r20jb-now";
-        box.setAttribute("aria-label", "지금 재생 중");
-        shownIds = null;
-        anchor.after(box);
-        tick();
-    };
-    const setEnabled = on => {
-        document.body.classList.toggle("r20jb-on", on);
-        if (on) inject();
-    };
+    const setEnabled = on => document.body.classList.toggle("r20jb-on", on);
     setEnabled(btnVisible.jbrow);
-
-    return { inject, setEnabled };
+    return { setEnabled };
 })();
 
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); bgmPreview.inject(); bulkEditor.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
