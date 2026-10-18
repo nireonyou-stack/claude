@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.3.2
+// @version      1.3.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -21,7 +21,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.3.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.3.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -520,7 +520,7 @@ function applyCocofoliaLayout() {
         const bulkRow = makeRow("일괄 편집기", "bulk");
         bulkRow.firstChild.after(bulkEditor.openButton());
         settingsPopup.appendChild(bulkRow);
-        settingsPopup.appendChild(makeRow("주크박스 한 줄 보기", "jbrow"));
+        settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널)", "jbrow"));
 
         // 커스텀 버튼 섹션
         const csCustomHeader = document.createElement("div");
@@ -1245,6 +1245,19 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { order:5; display:inline-flex !important; align-items:center; justify-content:center; width:14px; color:#aaa !important; text-decoration:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu, body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu * { font-size:10px !important; }
         body.r20jb-on #jukebox li.jukeboxitem a.play:hover, body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu:hover, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label:hover * { color:#222 !important; }
+        /* 저널 한 줄 보기: 항목 = 작은 동그란 아바타 + 이름 (폴더 계층은 10px 씩만 들여쓴다) */
+        body.r20jb-on #journalfolderroot .dd-list .dd-list { clear:both; padding-left:10px !important; margin-left:0 !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; height:auto !important; min-height:26px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-handle { height:26px !important; }
+        body.r20jb-on #journalfolderroot li.journalitem { min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        body.r20jb-on #journalfolderroot li.journalitem > .dd-content { display:flex !important; align-items:center !important; gap:6px; float:none !important; position:relative !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .token { float:none !important; position:static !important; flex:0 0 18px; width:18px !important; height:18px !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:50%; overflow:hidden; background:none !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .token img { width:18px !important; height:18px !important; max-width:none !important; margin:0 !important; border-radius:50%; object-fit:cover; }
+        body.r20jb-on #journalfolderroot li.journalitem .name { flex:1 1 auto; min-width:0; display:flex !important; align-items:center; gap:4px; float:none !important; position:static !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .namecontainer { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .playerdots { flex-shrink:0; margin:0 !important; font-size:12px !important; line-height:1 !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .sourcefooter:empty { display:none !important; }
         /* 재생 중인 곡 */
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
@@ -2386,7 +2399,7 @@ const bulkEditor = (() => {
     return { inject, setEnabled, open, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
 })();
 
-// ───────── 주크박스 한 줄 보기: 곡 하나 = 한 줄 ('지금 재생 중'은 Roll20 원래 상자 그대로) ─────────
+// ───────── 한 줄 보기: 주크박스 곡 · 저널 항목을 한 줄씩 ('지금 재생 중'은 Roll20 원래 상자 그대로) ─────────
 // 재생·반복·볼륨·메뉴는 Roll20 요소를 그대로 쓰고 CSS 로 배치만 바꾼다 (body.r20jb-on)
 const jukeboxRow = (() => {
     const setEnabled = on => document.body.classList.toggle("r20jb-on", on);
