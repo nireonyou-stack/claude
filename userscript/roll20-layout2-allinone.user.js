@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.5.0
+// @version      1.5.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -21,7 +21,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.5.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.5.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -50,7 +50,8 @@ const btnVisible = {
     autofill:  localStorage.getItem("r20_show_autofill") !== "false",
     bgm:       localStorage.getItem("r20_show_bgm")     !== "false",
     bulk:      localStorage.getItem("r20_show_bulk")    !== "false",
-    jbrow:     localStorage.getItem("r20_show_jbrow")   !== "false"
+    jbrow:     localStorage.getItem("r20_show_jbrow")   !== "false",
+    sidepick:  localStorage.getItem("r20_show_sidepick") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -524,6 +525,7 @@ function applyCocofoliaLayout() {
         bulkRow.firstChild.after(bulkEditor.openButton());
         settingsPopup.appendChild(bulkRow);
         settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널)", "jbrow"));
+        settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
 
         // 커스텀 버튼 섹션
         const csCustomHeader = document.createElement("div");
@@ -1336,6 +1338,24 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
         body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
+        /* 면 선택(Choose Side): 슬라이더 대신 썸네일 격자, 번호는 CSS counter 로 붙인다 */
+        .ui-dialog.r20cs .sideslider { display:none !important; }
+        .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
+        .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
+        .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
+        .ui-dialog.r20cs .sidechoice img, .ui-dialog.r20cs .sidechoice video { display:block !important; width:100% !important; height:100% !important; max-width:none !important; object-fit:cover; pointer-events:none; }
+        .ui-dialog.r20cs .sidechoice::after { content:counter(side); position:absolute; left:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:10px; font-weight:700; line-height:15px; }
+        .ui-dialog.r20cs .sidechoice:hover { outline:2px solid #9cc1ea; outline-offset:-2px; }
+        .ui-dialog.r20cs .sidechoice[data-selected="true"] { outline:3px solid #1867c7; outline-offset:-3px; }
+        .ui-dialog.r20cs .sidechoice.r20cs-cur::before { content:"현재"; position:absolute; right:4px; top:4px; z-index:1; padding:0 5px; border-radius:7px; background:#fff; color:#1867c7; font-size:9px; font-weight:700; line-height:14px; }
+        .r20cs-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid #e5e5e5; font-size:12px; color:#333; }
+        .r20cs-bar .r20cs-info { color:#6b6b6b; font-size:11px; }
+        .r20cs-bar .r20cs-flex { flex:1; }
+        .r20cs-bar label { display:flex; align-items:center; gap:4px; margin:0; font-size:11px; font-weight:normal; color:#555; }
+        .r20cs-bar input { width:58px !important; height:24px !important; margin:0 !important; padding:0 6px !important; font-size:12px !important; }
+        .r20cs-zoom { display:flex; gap:2px; }
+        .r20cs-zoom button { width:24px; height:22px; padding:0; border:1px solid #ccc; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
+        .r20cs-zoom button:hover { background:#ebebeb; color:#222; }
         body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
         body button.r20be-open:hover { background:#f2f2f2; }
         body.r20be-off button.r20be-open { display:none; }
@@ -2762,10 +2782,102 @@ const jukeboxRow = (() => {
     return { inject, setEnabled };
 })();
 
+// ───────── 면 선택: 다면 토큰의 Choose Side 창을 썸네일 격자로 (슬라이더 대신 눌러서 고르기) ─────────
+// Roll20 창과 이미지는 그대로 두고, 고른 면에 맞춰 Roll20 슬라이더를 움직인 뒤 원래 [Choose] 로 적용한다
+const sidePicker = (() => {
+    let size = Math.max(48, Math.min(220, parseInt(localStorage.getItem("r20_cs_size"), 10) || 96));
+    const choicesOf = dlg => [...dlg.querySelectorAll(".sidechoices > .sidechoice")];
+
+    const select = (dlg, idx) => {
+        const list = choicesOf(dlg);
+        if (idx < 0 || idx >= list.length) return;
+        const $ = window.jQuery, sl = dlg.querySelector(".sideslider");
+        if ($ && sl) {
+            try {
+                const min = $(sl).slider("option", "min"), max = $(sl).slider("option", "max");
+                const v = max - min === list.length - 1 ? min + idx : Math.round(min + idx * (max - min) / Math.max(1, list.length - 1));
+                $(sl).slider("value", v);
+                // Roll20 이 slide 이벤트로 선택을 바꾸는 경우도 맞춘다
+                const slide = $(sl).slider("option", "slide");
+                if (typeof slide === "function") slide.call(sl, $.Event("slide"), { value: v, handle: sl.querySelector(".ui-slider-handle") });
+            } catch (e) { console.warn("[면 선택] 슬라이더 연동 실패", e); }
+        }
+        list.forEach((c, i) => c.setAttribute("data-selected", String(i === idx)));
+        const bar = dlg.querySelector(".r20cs-bar");
+        if (bar) {
+            bar.querySelector(".r20cs-num").textContent = `${idx + 1}번`;
+            bar.querySelector("input").value = idx + 1;
+        }
+    };
+    const choose = dlg => {
+        const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
+        (btns.find(b => /choose/i.test(b.textContent)) || btns[0])?.click();
+    };
+
+    const enhance = dlg => {
+        const list = choicesOf(dlg), cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
+        dlg.classList.add("r20cs");
+        dlg._r20csFirst = list[0];
+        dlg.style.setProperty("--cs-size", size + "px");
+        list[cur]?.classList.add("r20cs-cur");
+        const bar = document.createElement("div");
+        bar.className = "r20cs-bar";
+        bar.innerHTML = '<strong class="r20cs-num"></strong><span class="r20cs-info"></span><span class="r20cs-flex"></span>'
+            + '<label>번호로 가기 <input type="number" min="1" aria-label="번호로 가기"></label>'
+            + '<span class="r20cs-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span>';
+        bar.querySelector(".r20cs-num").textContent = `${cur + 1}번`;
+        bar.querySelector(".r20cs-info").textContent = `/ 전체 ${list.length}면 · 지금 ${cur + 1}번 · 더블클릭하면 바로 적용`;
+        const inp = bar.querySelector("input");
+        inp.max = list.length;
+        inp.value = cur + 1;
+        inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") choose(dlg); });
+        inp.addEventListener("input", () => {
+            const n = parseInt(inp.value, 10);
+            if (n >= 1 && n <= list.length) { select(dlg, n - 1); list[n - 1].scrollIntoView({ block: "nearest" }); }
+        });
+        bar.querySelectorAll(".r20cs-zoom button").forEach(b => b.addEventListener("click", () => {
+            size = Math.max(48, Math.min(220, size + Number(b.dataset.d) * 16));
+            localStorage.setItem("r20_cs_size", size);
+            dlg.style.setProperty("--cs-size", size + "px");
+        }));
+        dlg.querySelector(".ui-dialog-titlebar")?.after(bar);
+        // 창을 키워서 화면 가운데로
+        const w = Math.min(760, window.innerWidth - 40);
+        dlg.style.width = w + "px";
+        dlg.style.left = Math.max(10, (window.innerWidth - w) / 2) + "px";
+        dlg.style.top = Math.max(10, (window.innerHeight - dlg.offsetHeight) / 2) + "px";
+        list[cur]?.scrollIntoView({ block: "center" });
+    };
+
+    const inject = () => {
+        if (!btnVisible.sidepick) return;
+        document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)").forEach(dlg => {
+            const first = dlg.querySelector(".sidechoices > .sidechoice");
+            if (dlg.classList.contains("r20cs")) {
+                if (dlg._r20csFirst === first) return;
+                // Roll20 이 같은 창을 다른 토큰으로 다시 쓴 경우: 새로 꾸민다
+                dlg.querySelector(".r20cs-bar")?.remove();
+                dlg.querySelectorAll(".r20cs-cur").forEach(c => c.classList.remove("r20cs-cur"));
+            }
+            enhance(dlg);
+        });
+    };
+    const pick = (e, apply) => {
+        const c = e.target.closest?.(".ui-dialog.r20cs .sidechoice");
+        if (!c) return;
+        const dlg = c.closest(".ui-dialog");
+        select(dlg, choicesOf(dlg).indexOf(c));
+        if (apply) choose(dlg);
+    };
+    document.addEventListener("click", e => pick(e, false), true);
+    document.addEventListener("dblclick", e => pick(e, true), true);
+    return { inject };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
