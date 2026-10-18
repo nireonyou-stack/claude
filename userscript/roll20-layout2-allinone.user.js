@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.5.1
+// @version      1.5.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -21,7 +21,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.5.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.5.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -519,7 +519,9 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("오너 사담", "sadam"));
         settingsPopup.appendChild(makeRow("캐릭터 사담", "charsadam"));
         settingsPopup.appendChild(makeRow("저널", "journal"));
-        settingsPopup.appendChild(makeRow("자동완성", "autofill"));
+        // @require 데이터가 들어왔는지 바로 보이게 개수를 붙인다
+        const rdCount = Object.values(window.NIRE_RULEDATA || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0);
+        settingsPopup.appendChild(makeRow(`자동완성 (${rdCount ? rdCount + "개" : "데이터 없음"})`, "autofill"));
         settingsPopup.appendChild(makeRow("BGM 미리듣기", "bgm"));
         const bulkRow = makeRow("일괄 편집기", "bulk");
         bulkRow.firstChild.after(bulkEditor.openButton());
@@ -1455,12 +1457,19 @@ const autofill = (() => {
             box.appendChild(it);
         });
         const rc = input.getBoundingClientRect();
-        box.style.left = Math.min(rc.left, window.innerWidth - 230) + "px";
+        // 시트 iframe 안의 칸이면 iframe 위치만큼 옮겨서 맨 위 화면 좌표로 바꾼다
+        let ox = 0, oy = 0;
+        for (let w = input.ownerDocument.defaultView; w?.frameElement; w = w.parent) {
+            const fr = w.frameElement.getBoundingClientRect();
+            ox += fr.left + w.frameElement.clientLeft; oy += fr.top + w.frameElement.clientTop;
+        }
+        const top = rc.top + oy, bottom = rc.bottom + oy;
+        box.style.left = Math.min(rc.left + ox, window.innerWidth - 230) + "px";
         box.style.minWidth = Math.max(220, rc.width) + "px";
         // 아래 공간이 부족하면 위로 띄운다
-        const below = window.innerHeight - rc.bottom;
-        box.style.top = below > 270 ? (rc.bottom + 2) + "px" : "auto";
-        box.style.bottom = below > 270 ? "auto" : (window.innerHeight - rc.top + 2) + "px";
+        const below = window.innerHeight - bottom;
+        box.style.top = below > 270 ? (bottom + 2) + "px" : "auto";
+        box.style.bottom = below > 270 ? "auto" : (window.innerHeight - top + 2) + "px";
         box.classList.add("show");
         box.children[sel]?.scrollIntoView({ block: "nearest" });
     };
@@ -1482,8 +1491,9 @@ const autofill = (() => {
         } else {
             el.value = value;
         }
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+        const Ev = el.ownerDocument.defaultView?.Event || Event;
+        el.dispatchEvent(new Ev("input", { bubbles: true }));
+        el.dispatchEvent(new Ev("change", { bubbles: true }));
     };
 
     const apply = rec => {
@@ -1504,7 +1514,7 @@ const autofill = (() => {
         close();
     };
 
-    document.addEventListener("input", e => {
+    const onInput = e => {
         if (!btnVisible.autofill || filling) return;
         const c = ctx(e.target);
         if (!c) return;
@@ -1514,9 +1524,9 @@ const autofill = (() => {
         input.setAttribute("autocomplete", "off");
         items = found; sel = 0;
         render();
-    }, true);
+    };
 
-    document.addEventListener("keydown", e => {
+    const onKey = e => {
         if (!input || e.target !== input || !box?.classList.contains("show")) return;
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             sel = (sel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
@@ -1530,14 +1540,39 @@ const autofill = (() => {
             close();
         } else return;
         e.preventDefault(); e.stopPropagation();
-    }, true);
+    };
 
-    document.addEventListener("focusout", e => { if (e.target === input) close(); }, true);
-    window.addEventListener("resize", close);
-    // 이름칸이 들어 있는 영역이 스크롤될 때만 닫는다 (채팅 자동 스크롤 등은 무시)
-    document.addEventListener("scroll", e => { if (input && e.target.contains?.(input)) close(); }, true);
+    // 이름칸이 들어 있는 영역(또는 그 시트 iframe 을 품은 창)이 스크롤될 때만 닫는다 (채팅 자동 스크롤 등은 무시)
+    const onScroll = e => {
+        if (!input) return;
+        const fe = input.ownerDocument.defaultView?.frameElement;
+        if (e.target.contains?.(input) || (fe && e.target.contains?.(fe))) close();
+    };
 
-    return { close };
+    // 캐릭터 시트는 같은 출처의 srcdoc iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다
+    const hooked = new WeakSet();
+    const hook = doc => {
+        if (!doc || hooked.has(doc)) return;
+        hooked.add(doc);
+        doc.addEventListener("input", onInput, true);
+        doc.addEventListener("keydown", onKey, true);
+        doc.addEventListener("focusout", e => { if (e.target === input) close(); }, true);
+        doc.addEventListener("scroll", onScroll, true);
+        doc.defaultView?.addEventListener("resize", close);
+    };
+    hook(document);
+    const inject = () => {
+        document.querySelectorAll("iframe").forEach(f => {
+            if (!hooked.has(f)) {
+                hooked.add(f);
+                // srcdoc 이 다 읽히면 문서가 새로 바뀐다
+                f.addEventListener("load", () => { try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ } });
+            }
+            try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ }
+        });
+    };
+
+    return { close, inject };
 })();
 
 // ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
@@ -2877,7 +2912,7 @@ const sidePicker = (() => {
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
