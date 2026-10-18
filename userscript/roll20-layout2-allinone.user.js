@@ -1,8 +1,11 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.0.0
+// @version      1.1.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
+// 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
+// 데이터 파일을 고친 뒤에는 ?v= 숫자를 올려야 Tampermonkey가 새로 받아옵니다.
+// // @require    https://nire.ivyro.net/PATH/nire-ruledata.js?v=1
 // ==/UserScript==
 
 (function () {
@@ -31,7 +34,9 @@ const btnVisible = {
     desc:      localStorage.getItem("r20_show_desc")    !== "false",
     sadam:     localSadam,
     charsadam: localCharSadam,
-    journal:   localStorage.getItem("r20_show_journal") !== "false"
+    journal:   localStorage.getItem("r20_show_journal") !== "false",
+    autofill:  localStorage.getItem("r20_show_autofill") !== "false",
+    bgm:       localStorage.getItem("r20_show_bgm")     !== "false"
 };
 
 const sharedBtnStyle = `
@@ -472,6 +477,9 @@ function applyCocofoliaLayout() {
                     updateSadamButtonStyle(sBtn);
                 }
 
+                if (key === "bgm") bgmPreview.setEnabled(inp.checked);
+                if (!inp.checked && key === "autofill") autofill.close();
+
                 if (!inp.checked && key === "journal") {
                     const jp = document.getElementById("custom-journal-popup");
                     if (jp) jp.classList.remove("show");
@@ -491,6 +499,8 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("오너 사담", "sadam"));
         settingsPopup.appendChild(makeRow("캐릭터 사담", "charsadam"));
         settingsPopup.appendChild(makeRow("저널", "journal"));
+        settingsPopup.appendChild(makeRow("자동완성", "autofill"));
+        settingsPopup.appendChild(makeRow("BGM 미리듣기", "bgm"));
 
         // 커스텀 버튼 섹션
         const csCustomHeader = document.createElement("div");
@@ -1050,10 +1060,345 @@ document.addEventListener("mousedown", (e) => {
     }
 }, true);
 
+if (!document.getElementById("r20-addon-style")) {
+    const style = document.createElement("style");
+    style.id = "r20-addon-style";
+    style.innerHTML = `
+        #r20-ac-box { position:fixed; z-index:100000; min-width:220px; max-width:360px; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:12px; color:#333; display:none; }
+        #r20-ac-box.show { display:block; }
+        .r20-ac-item { display:flex; align-items:baseline; gap:6px; padding:4px 8px; cursor:pointer; border-bottom:1px solid #f0f0f0; white-space:nowrap; }
+        .r20-ac-item b { font-weight:700; overflow:hidden; text-overflow:ellipsis; }
+        .r20-ac-item small { color:#999; font-size:10px; overflow:hidden; text-overflow:ellipsis; }
+        .r20-ac-item.on, .r20-ac-item:hover { background:#e6f7ff; }
+        .r20-bgm-pv { cursor:pointer; margin-right:4px; font-size:12px; opacity:0.55; text-decoration:none !important; user-select:none; }
+        .r20-bgm-pv:hover, .r20-bgm-pv:focus-visible { opacity:1; }
+        .r20-bgm-pv.on { opacity:1; filter:drop-shadow(0 0 2px #1867c7); }
+        body.r20-bgm-off .r20-bgm-pv { display:none; }
+        #r20-bgm-bar { position:fixed; left:12px; bottom:12px; z-index:100000; width:300px; max-width:calc(100vw - 24px); box-sizing:border-box; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:11px; color:#333; display:none; flex-direction:column; gap:4px; padding:6px 8px; }
+        #r20-bgm-bar.show { display:flex; }
+        .r20-bgm-row { display:flex; align-items:center; gap:6px; min-width:0; }
+        .r20-bgm-title { flex:1; min-width:0; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .r20-bgm-time { color:#999; font-variant-numeric:tabular-nums; flex-shrink:0; }
+        .r20-bgm-seek { flex:1; min-width:0; margin:0; }
+        .r20-bgm-vol { width:60px; margin:0; flex-shrink:0; }
+        .r20-bgm-btn { background:#f5f5f5; border:1px solid #ddd; border-radius:3px; cursor:pointer; font-size:11px; color:#555; padding:1px 6px; line-height:1.4; flex-shrink:0; }
+        .r20-bgm-btn:hover { background:#ebebeb; color:#333; }
+    `;
+    document.head.appendChild(style);
+}
+
+// ───────── 자동완성: 시트 인법/마법 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
+// 데이터는 @require 한 파일이 넣어 둔다: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] }
+// 레코드 키: name, group(유파), type, skill, range, target, cost, charge, effect, flavor, recite
+// type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
+const autofill = (() => {
+    const MAX = 8;
+    // 시스템별 "레코드 키 → 시트 필드명(접두어 뒤)"
+    const FIELDS = {
+        insane:      { name: "Name", type: "Types", skill: "Assigned_Skill", effect: "Effect" },
+        shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect" },
+        magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" }
+    };
+    // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
+    const NAME_RE = /^attr_((?:Ninpo|Magic)_(?:\d+_)?)Name$/;
+
+    const norm = s => String(s ?? "").replace(/^\s*\d+\.\s*/, "").replace(/\s+/g, "").toLowerCase();
+    const normCache = new Map();
+    const getList = sys => {
+        const list = window.NIRE_RULEDATA?.[sys];
+        if (!Array.isArray(list)) return null;
+        if (!normCache.has(list)) normCache.set(list, list.map(r => norm(r.name)));
+        return list;
+    };
+
+    let box = null, input = null, items = [], sel = 0, filling = false;
+
+    const ensureBox = () => {
+        if (box) return box;
+        box = document.createElement("div");
+        box.id = "r20-ac-box";
+        box.setAttribute("role", "listbox");
+        // mousedown 기본동작을 막아 이름칸 포커스를 유지
+        box.addEventListener("mousedown", e => {
+            e.preventDefault();
+            const el = e.target.closest(".r20-ac-item");
+            if (el) apply(items[+el.dataset.i]);
+        });
+        document.body.appendChild(box);
+        return box;
+    };
+
+    const close = () => {
+        if (box) box.classList.remove("show");
+        input = null; items = [];
+    };
+
+    const ctx = el => {
+        const m = el.name?.match(NAME_RE);
+        if (!m || el.disabled) return null;
+        const base = m[1];
+        const row = el.closest(".repitem") || (() => {
+            let p = el.parentElement;
+            for (let i = 0; p && i < 6; i++, p = p.parentElement)
+                if (p.querySelector(`[name="attr_${base}Effect"]`)) return p;
+            return null;
+        })();
+        if (!row) return null;
+        const sys = base.startsWith("Magic") ? "magicalogia"
+            : row.querySelector(`[name="attr_${base}Clan"]`) ? "shinobigami" : "insane";
+        return { base, row, sys };
+    };
+
+    const search = (sys, q) => {
+        const list = getList(sys);
+        if (!list || !q) return [];
+        const names = normCache.get(list);
+        const head = [], mid = [];
+        for (let i = 0; i < list.length && head.length < MAX; i++) {
+            const n = names[i];
+            if (n.startsWith(q)) head.push(list[i]);
+            else if (mid.length < MAX && n.includes(q)) mid.push(list[i]);
+        }
+        return head.concat(mid).slice(0, MAX);
+    };
+
+    const render = () => {
+        ensureBox().innerHTML = "";
+        items.forEach((r, i) => {
+            const it = document.createElement("div");
+            it.className = "r20-ac-item" + (i === sel ? " on" : "");
+            it.dataset.i = i;
+            it.setAttribute("role", "option");
+            const b = document.createElement("b");
+            b.textContent = r.name;
+            const s = document.createElement("small");
+            s.textContent = [r.group, r.type, r.skill].filter(Boolean).join(" · ");
+            it.append(b, s);
+            box.appendChild(it);
+        });
+        const rc = input.getBoundingClientRect();
+        box.style.left = Math.min(rc.left, window.innerWidth - 230) + "px";
+        box.style.minWidth = Math.max(220, rc.width) + "px";
+        // 아래 공간이 부족하면 위로 띄운다
+        const below = window.innerHeight - rc.bottom;
+        box.style.top = below > 270 ? (rc.bottom + 2) + "px" : "auto";
+        box.style.bottom = below > 270 ? "auto" : (window.innerHeight - rc.top + 2) + "px";
+        box.classList.add("show");
+        box.children[sel]?.scrollIntoView({ block: "nearest" });
+    };
+
+    const pickOption = (select, label) => {
+        const want = norm(label);
+        if (!want) return null;
+        const opts = [...select.options];
+        return opts.find(o => norm(o.textContent) === want)
+            || opts.find(o => norm(o.value) === want || norm(o.value) === `@{${want}}`)
+            || null;
+    };
+
+    const setField = (el, value) => {
+        if (el.tagName === "SELECT") {
+            const opt = pickOption(el, value);
+            if (!opt) { console.warn("[자동완성] 드롭다운에 없는 값:", value, el.name); return; }
+            el.value = opt.value;
+        } else {
+            el.value = value;
+        }
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+
+    const apply = rec => {
+        const c = rec && input && ctx(input);
+        if (!c) return close();
+        const map = FIELDS[c.sys];
+        const data = { ...rec };
+        // 플레이버 칸이 없는 시트는 효과 뒤에 붙인다
+        if (data.flavor && !map.flavor) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
+        filling = true;
+        for (const [key, field] of Object.entries(map)) {
+            if (data[key] == null || data[key] === "") continue;
+            // 같은 name 의 표시용 <span> 이 앞에 있는 시트가 있어 입력 요소만 고른다
+            const el = c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
+            if (el) setField(el, String(data[key]));
+        }
+        filling = false;
+        close();
+    };
+
+    document.addEventListener("input", e => {
+        if (!btnVisible.autofill || filling) return;
+        const c = ctx(e.target);
+        if (!c) return;
+        const found = search(c.sys, norm(e.target.value));
+        if (!found.length) return close();
+        input = e.target;
+        input.setAttribute("autocomplete", "off");
+        items = found; sel = 0;
+        render();
+    }, true);
+
+    document.addEventListener("keydown", e => {
+        if (!input || e.target !== input || !box?.classList.contains("show")) return;
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            sel = (sel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+            render();
+        } else if (e.key === "Tab") {
+            apply(items[sel]);   // 포커스 이동은 그대로 둔다
+            return;
+        } else if (e.key === "Enter") {
+            apply(items[sel]);
+        } else if (e.key === "Escape") {
+            close();
+        } else return;
+        e.preventDefault(); e.stopPropagation();
+    }, true);
+
+    document.addEventListener("focusout", e => { if (e.target === input) close(); }, true);
+    window.addEventListener("resize", close);
+    // 이름칸이 들어 있는 영역이 스크롤될 때만 닫는다 (채팅 자동 스크롤 등은 무시)
+    document.addEventListener("scroll", e => { if (input && e.target.contains?.(input)) close(); }, true);
+
+    return { close };
+})();
+
+// ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
+// 브라우저 Audio 로 재생하므로 Roll20 동기화(참가자 재생)와 무관하다.
+const bgmPreview = (() => {
+    let audio = null, curId = null, bar = null, ui = null;
+    const getVol = () => { const v = parseFloat(localStorage.getItem("r20_bgm_vol")); return isNaN(v) ? 0.5 : v; };
+    const fmt = t => isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}` : "-:--";
+
+    // My Audio 트랙 주소는 vtt.bundle 의 재생 주소 형식을 따른다 (track_id 앞부분 = 오디오 ID)
+    const trackUrl = track => {
+        const tid = String(track.get("track_id") || "");
+        if (/^https?:\/\//.test(tid)) return tid;
+        if (track.get("source") !== "My Audio" || !tid) return null;
+        return `${window.IS_EMBEDDED ? "/.proxy" : ""}/audio_library/play/${window.campaign_id}/${tid.split(/[-#]/)[0]}`;
+    };
+
+    const ensureBar = () => {
+        if (bar) return;
+        bar = document.createElement("div");
+        bar.id = "r20-bgm-bar";
+        bar.setAttribute("role", "region");
+        bar.setAttribute("aria-label", "BGM 미리듣기");
+        bar.innerHTML = `
+            <div class="r20-bgm-row"><span aria-hidden="true">🎧</span><span class="r20-bgm-title"></span><span class="r20-bgm-time">-:-- / -:--</span></div>
+            <div class="r20-bgm-row">
+                <input type="range" class="r20-bgm-seek" min="0" max="1000" value="0" aria-label="재생 위치">
+                <span aria-hidden="true">🔈</span><input type="range" class="r20-bgm-vol" min="0" max="1" step="0.05" aria-label="미리듣기 음량">
+                <button type="button" class="r20-bgm-btn" aria-label="미리듣기 정지">■ 정지</button>
+            </div>`;
+        ui = {
+            title: bar.querySelector(".r20-bgm-title"),
+            time: bar.querySelector(".r20-bgm-time"),
+            seek: bar.querySelector(".r20-bgm-seek"),
+            vol: bar.querySelector(".r20-bgm-vol")
+        };
+        ui.vol.value = getVol();
+        ui.vol.addEventListener("input", () => {
+            localStorage.setItem("r20_bgm_vol", ui.vol.value);
+            if (audio) audio.volume = +ui.vol.value;
+        });
+        ui.seek.addEventListener("input", () => {
+            if (audio && isFinite(audio.duration)) audio.currentTime = audio.duration * ui.seek.value / 1000;
+        });
+        bar.querySelector(".r20-bgm-btn").onclick = stop;
+        // 슬라이더 방향키가 Roll20 단축키(토큰 이동 등)로 새지 않게
+        bar.addEventListener("keydown", e => e.stopPropagation());
+        document.body.appendChild(bar);
+    };
+
+    // 주크박스 목록은 Roll20이 자주 다시 그리므로 요소 대신 트랙 ID로 찾는다
+    const markBtn = on => {
+        if (!curId) return;
+        document.querySelectorAll(`li.jukeboxitem[data-itemid="${CSS.escape(curId)}"] .r20-bgm-pv`)
+            .forEach(b => b.classList.toggle("on", on));
+    };
+
+    function stop() {
+        if (audio) { audio.pause(); audio.removeAttribute("src"); audio.load(); audio = null; }
+        markBtn(false);
+        curId = null;
+        bar?.classList.remove("show");
+    }
+
+    const play = id => {
+        const track = window.Jukebox?.playlist?.get(id);
+        if (!track) { console.warn("[BGM 미리듣기] 트랙을 찾지 못함:", id); return; }
+        const url = trackUrl(track);
+        ensureBar();
+        stop();
+        curId = id;
+        ui.title.textContent = track.get("title") || "(제목 없음)";
+        ui.seek.value = 0;
+        bar.classList.add("show");
+        if (!url) { ui.time.textContent = "지원하지 않는 음원"; return; }
+
+        const a = audio = new Audio(url);
+        a.volume = getVol();
+        // 정지된 이전 Audio 의 늦은 이벤트는 무시
+        a.addEventListener("timeupdate", () => {
+            if (a !== audio) return;
+            ui.time.textContent = `${fmt(a.currentTime)} / ${fmt(a.duration)}`;
+            if (isFinite(a.duration)) ui.seek.value = Math.round(a.currentTime / a.duration * 1000);
+        });
+        a.addEventListener("ended", () => { if (a === audio) stop(); });
+        a.addEventListener("error", () => {
+            if (a !== audio) return;
+            console.warn("[BGM 미리듣기] 재생 실패:", url, track.attributes);
+            ui.time.textContent = "재생 실패 (콘솔 확인)";
+            markBtn(false);
+        });
+        a.play().catch(() => {});
+        markBtn(true);
+    };
+
+    const inject = () => {
+        if (!btnVisible.bgm) return;
+        document.querySelectorAll("li.jukeboxitem .playbackcontrol:not(:has(> .r20-bgm-pv))").forEach(pc => {
+            const a = document.createElement("a");
+            a.className = "r20-bgm-pv";
+            a.textContent = "🎧";
+            a.title = "미리듣기 (나만 듣기)";
+            a.setAttribute("role", "button");
+            a.tabIndex = 0;
+            pc.insertBefore(a, pc.querySelector("a.play"));
+            if (audio && pc.closest("li.jukeboxitem")?.dataset.itemid === curId) a.classList.add("on");
+        });
+    };
+
+    const onToggle = e => {
+        const btn = e.target.closest?.(".r20-bgm-pv");
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        const li = btn.closest("li.jukeboxitem");
+        if (!li) return;
+        if (audio && curId === li.dataset.itemid) stop();
+        else play(li.dataset.itemid);
+    };
+    document.addEventListener("click", e => {
+        // Roll20 전체 재생을 누르면 미리듣기는 끈다
+        if (audio && e.target.closest?.("li.jukeboxitem a.play")) stop();
+        onToggle(e);
+    }, true);
+    document.addEventListener("mousedown", e => { if (e.target.closest?.(".r20-bgm-pv")) e.stopPropagation(); }, true);
+    document.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") onToggle(e); }, true);
+
+    const setEnabled = on => {
+        document.body.classList.toggle("r20-bgm-off", !on);
+        if (on) inject(); else stop();
+    };
+    setEnabled(btnVisible.bgm);
+
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(applyCocofoliaLayout, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); bgmPreview.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
