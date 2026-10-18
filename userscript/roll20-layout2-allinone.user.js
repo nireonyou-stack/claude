@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.4.1
+// @version      1.5.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -21,7 +21,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.4.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.5.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -139,18 +139,21 @@ if (!document.getElementById("custom-journal-style")) {
         .cj-header { display:flex; align-items:center; justify-content:space-between; padding:4px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; cursor:move; user-select:none; }
         .cj-close-btn { background:none; border:none; cursor:pointer; font-size:13px; color:#999; padding:0 2px; line-height:1; }
         .cj-close-btn:hover { color:#333; }
+        .cj-zoom { display:flex; gap:2px; margin-left:auto; margin-right:6px; }
+        .cj-zoom button { width:20px; height:18px; padding:0; border:1px solid #ddd; border-radius:3px; background:#fff; color:#666; font-size:12px; line-height:1; cursor:pointer; }
+        .cj-zoom button:hover { background:#ebebeb; color:#333; }
         .cj-item.cj-drag-over-left { box-shadow:inset 3px 0 0 #1867c7 !important; }
         .cj-item.cj-drag-over-right { box-shadow:inset -3px 0 0 #1867c7 !important; }
         .cj-search-container { padding:5px 6px; border-bottom:1px solid #eeeeee; background:#f9f9f9; flex-shrink:0; }
         .cj-search-input { width:100%; box-sizing:border-box; padding:4px 6px; border:1px solid #cccccc; border-radius:3px; outline:none; font-size:12px; }
         /* 아이콘 격자: 이름은 마우스를 올리면 툴팁으로 */
-        .cj-list-container { overflow-y:auto; flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(54px, 1fr)); gap:4px; padding:6px; align-content:start; }
+        .cj-list-container { overflow-y:auto; flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(calc(var(--cj-size, 50px) + 4px), 1fr)); gap:4px; padding:6px; align-content:start; }
         .cj-resize-handle { height:8px; cursor:se-resize; background:linear-gradient(135deg, transparent 40%, #ccc 40%, #ccc 50%, transparent 50%, transparent 60%, #ccc 60%, #ccc 70%, transparent 70%); background-size:8px 8px; background-position:bottom right; background-repeat:no-repeat; flex-shrink:0; }
         .cj-item { display:flex; align-items:center; justify-content:center; aspect-ratio:1; padding:2px; border-radius:10px; cursor:pointer; transition:background-color 0.1s ease; user-select:none; }
         .cj-item:hover { background-color:#e6f7ff; }
         .cj-item.cj-selected { background-color:#dcebfb; box-shadow:inset 0 0 0 2px #1867c7; }
-        .cj-avatar { width:50px; height:50px; min-width:50px; border-radius:8px; object-fit:cover; background-color:#eeeeee; pointer-events:none; }
-        .cj-avatar.cj-initial { display:flex; justify-content:center; align-items:center; font-size:16px; font-weight:700; color:#888; }
+        .cj-avatar { width:var(--cj-size, 50px); height:var(--cj-size, 50px); min-width:var(--cj-size, 50px); border-radius:8px; object-fit:cover; background-color:#eeeeee; pointer-events:none; }
+        .cj-avatar.cj-initial { display:flex; justify-content:center; align-items:center; font-size:calc(var(--cj-size, 50px) * 0.32); font-weight:700; color:#888; }
         #custom-settings-popup { position:fixed; width:190px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
         #custom-settings-popup.show { display:flex !important; }
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
@@ -710,12 +713,28 @@ function applyCocofoliaLayout() {
             journalBtn.style.setProperty("background-color", CONFIG.inactiveBg, "important");   // 이거 없으면 롤20이 자꾸 덮어씌우네요…….
             journalBtn.style.setProperty("color", CONFIG.inactiveText, "important");
         };
+        // 아이콘 크기 −/+ (기억해 둔다)
+        let cjSize = parseInt(localStorage.getItem("r20_cj_size"), 10) || 50;
+        const applyCjSize = () => { popup.style.setProperty("--cj-size", cjSize + "px"); localStorage.setItem("r20_cj_size", cjSize); };
+        const zoom = document.createElement("span");
+        zoom.className = "cj-zoom";
+        [["−", -10, "아이콘 작게"], ["+", 10, "아이콘 크게"]].forEach(([label, d, title]) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.textContent = label;
+            b.title = title;
+            b.setAttribute("aria-label", title);
+            b.onclick = (e) => { e.stopPropagation(); cjSize = Math.max(30, Math.min(120, cjSize + d)); applyCjSize(); };
+            zoom.appendChild(b);
+        });
+        applyCjSize();
         header.appendChild(titleSpan);
+        header.appendChild(zoom);
         header.appendChild(closeBtn);
         popup.appendChild(header);
 
         header.addEventListener("mousedown", (e) => {
-            if (e.target.classList.contains("cj-close-btn")) return;
+            if (e.target.closest(".cj-close-btn, .cj-zoom")) return;
             e.preventDefault();
             const r = popup.getBoundingClientRect();
             popup.style.left = r.left + "px"; popup.style.top = r.top + "px";
@@ -1205,6 +1224,30 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-prev .chg { color:#1867c7; font-weight:700; }
         #r20be .r20be-prev .same { color:#8a8a8a; }
         #r20be .r20be-acts { display:flex; gap:8px; }
+        /* 굴림표 */
+        #r20be .r20be-trow { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
+        #r20be .r20be-trow .r20be-fld { width:240px; }
+        #r20be .r20be-trow .r20be-chk { height:28px; }
+        #r20be .r20be-add { display:flex; gap:8px; align-items:flex-start; }
+        #r20be .r20be-add textarea { flex:1; height:72px; padding:6px 8px; resize:vertical; }
+        #r20be .r20be-tbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 10px; border:1px solid #dbe7f6; border-radius:6px; background:#eef5fd; font-size:12px; }
+        #r20be .r20be-tbar .prev { color:#1867c7; font-weight:700; }
+        #r20be .r20be-sepv { width:1px; height:18px; background:#c9d9ee; }
+        #r20be .r20be-tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; }
+        #r20be .r20be-tgrid > .r20be-empty { grid-column:1 / -1; }
+        #r20be .r20be-card { position:relative; display:flex; flex-direction:column; gap:4px; padding:5px; border:1px solid #e3e3e3; border-radius:8px; background:#fff; }
+        #r20be .r20be-card.chk { border-color:#1867c7; background:#f1f7fe; }
+        #r20be .r20be-card.dirty { box-shadow:inset 0 0 0 1px #f0b27a; }
+        #r20be .r20be-thumb { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; padding:0; border:0; border-radius:6px; background:#f2f2f2; color:#888; font-size:11px; overflow:hidden; cursor:pointer; }
+        #r20be .r20be-thumb img { width:100%; height:100%; object-fit:cover; }
+        #r20be .r20be-thumb.none { border:1px dashed #d4d4d4; background:#fafafa; }
+        #r20be .r20be-cb2 { position:absolute; left:9px; top:9px; display:flex; align-items:center; justify-content:center; width:18px; height:18px; padding:0; border:1px solid #b8b8b8; border-radius:4px; background:#fff; color:#fff; cursor:pointer; }
+        #r20be .r20be-cb2 svg { visibility:hidden; }
+        #r20be .r20be-cb2.on { background:#1867c7; border-color:#1867c7; }
+        #r20be .r20be-cb2.on svg { visibility:visible; }
+        #r20be .r20be-mini { height:24px; padding:0 6px; font-size:11px; }
+        #r20be .r20be-wl { display:flex; align-items:center; gap:4px; margin:0; color:#6b6b6b; font-size:10px; font-weight:normal; }
+        #r20be .r20be-wl input { width:52px; }
         #r20be .r20be-foot { display:flex; align-items:center; min-height:26px; padding:3px 10px; border-top:1px solid #e6e6e6; background:#f7f7f7; color:#555; font-size:11px; flex-shrink:0; }
         #r20be .r20be-foot.ok { color:#15803d; font-weight:700; }
         #r20be .r20be-foot.err { color:#b91c1c; font-weight:700; }
@@ -1215,7 +1258,10 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         }
         /* 주크박스 한 줄 보기: Roll20 요소는 그대로 두고 배치·크기만 바꾼다 (.playbackcontrol 을 풀어 한 줄 flex 로) */
         body.r20jb-on #jukebox .instructions { display:none !important; }
-        body.r20jb-on #jukebox .secondarycontrols { margin:2px 0 6px !important; }
+        body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
+        .r20jb-step { display:none; }
+        body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
+        body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
         /* 재생목록 머리줄: 폴더째 재생 버튼만 */
@@ -1589,6 +1635,7 @@ const bulkEditor = (() => {
         handout: SVG('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', ' style="color:#4b5563"'),
         char:    SVG('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', ' style="color:#1867c7"'),
         track:   SVG('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>', ' style="color:#0f766e"'),
+        rtable:  SVG('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="15.5" cy="15.5" r="1.2"/>', ' style="color:#8a6d2b"'),
         down:    SVG('<path d="m6 9 6 6 6-6"/>'),
         right:   SVG('<path d="m9 6 6 6-6 6"/>'),
         check:   SVG('<path d="m5 12 5 5 9-10"/>', ' style="stroke-width:3.2"'),
@@ -1597,7 +1644,7 @@ const bulkEditor = (() => {
         pen:     SVG('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
         phones:  SVG('<path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/>')
     };
-    const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙" };
+    const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표" };
     const CONTENT = ["notes", "gm"];
     // 편집칸 [내용, GM 노트] → Roll20 blob 이름
     const BLOBS = { handout: ["notes", "gmnotes"], char: ["bio", "gmnotes"] };
@@ -1648,7 +1695,7 @@ const bulkEditor = (() => {
     });
 
     // ── 작업용 트리 ──
-    const S = { tab: "journal", journal: null, bgm: null };
+    const S = { tab: "journal", journal: null, bgm: null, tables: null };
     let ui = null, dragId = null, saving = false;
     const cur = () => S[S.tab];
 
@@ -1679,7 +1726,31 @@ const bulkEditor = (() => {
         return out;
     };
 
+    // 굴림표: 표 하나 = 목록 한 줄, 항목(이름·가중치·이미지)은 n.items 에 둔다
+    const tablesColl = () => window.Campaign?.rollabletables || window.d20?.Campaign?.rollabletables || null;
+    const itemNode = (m, attrs) => {
+        const a = m ? { name: m.get("name") || "", weight: Number(m.get("weight")) || 0, avatar: m.get("avatar") || "" } : attrs;
+        return { id: m ? m.id : "new:" + uid(), model: m, orig: { ...a }, cur: { ...a }, changed: new Set(), isNew: !m, deleted: false };
+    };
+    const setItem = (it, k, v) => {
+        it.cur[k] = v;
+        if (!it.isNew && v === it.orig[k]) it.changed.delete(k); else it.changed.add(k);
+    };
+    const itemDirty = it => it.isNew || it.deleted || it.changed.size > 0;
+    const buildTables = () => {
+        const roots = (tablesColl()?.models || []).map(m => {
+            const n = mkNode(m.id, "rtable", m, { name: m.get("name") || "", show: !!m.get("showplayers") });
+            n.items = (m.tableitems?.models || []).map(it => itemNode(it));
+            n.checkedItems = new Set();
+            return n;
+        });
+        return { which: "tables", roots, sel: null, checked: new Set(), collapsed: new Set(), lastCheck: null, visible: [],
+            structDirty: false, removed: 0, q: "", filter: "all", ctab: "notes", bulk: { find: "", rep: "", move: "" },
+            tbulk: { pattern: "{n}", start: 1, w: 1 }, adding: false };
+    };
+
     const buildTab = which => {
+        if (which === "tables") return buildTables();
         const C = window.Campaign, isJ = which === "journal";
         const colls = isJ ? [["handout", C.handouts], ["char", C.characters]] : [["track", window.Jukebox.playlist]];
         const lookup = id => { for (const [kind, c] of colls) { const m = c.get(id); if (m) return [kind, m]; } return null; };
@@ -1738,10 +1809,15 @@ const bulkEditor = (() => {
         if (!n.isNew && v === origOf(n, k)) n.changed.delete(k); else n.changed.add(k);
     };
     const toHtml = (n, k) => n.htmlMode[k] ? n.cur[k] : textToHtml(n.cur[k]);
-    const isDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
-    const builtTabs = () => [S.journal, S.bgm].filter(Boolean);
-    const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + allNodes(t).filter(isDirty).length, 0);
-    const needStruct = t => t.structDirty || t.removed > 0 || allNodes(t).some(n => n.kids && (n.isNew || n.changed.has("name")));
+    const nodeDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
+    const isDirty = n => nodeDirty(n) || !!n.items?.some(itemDirty);       // 목록의 주황 점
+    const builtTabs = () => [S.journal, S.bgm, S.tables].filter(Boolean);
+    const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + allNodes(t).reduce((c, n) =>
+        c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
+    const needStruct = t => t.which !== "tables"
+        && (t.structDirty || t.removed > 0 || allNodes(t).some(n => n.kids && (n.isNew || n.changed.has("name"))));
+    // 굴림표 이름에는 공백을 쓸 수 없다
+    const cleanName = (n, v) => n.kind === "rtable" ? v.replace(/\s+/g, "") : v;
 
     const moveNode = (t, n, parent, before) => {
         if (parent && (parent === n || isAncestor(n, parent) || !parent.kids)) return false;
@@ -1769,6 +1845,7 @@ const bulkEditor = (() => {
     // ── 목록 ──
     const meta = n => {
         if (n.kids) return `${n.kids.length}개`;
+        if (n.kind === "rtable") return `${n.items.filter(it => !it.deleted).length}개`;
         if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}`;
         const s = n.cur.share;
         return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM");
@@ -1776,6 +1853,8 @@ const bulkEditor = (() => {
     const visibleRows = t => {
         const q = t.q.trim().toLowerCase(), filtering = !!q || t.filter !== "all";
         const hit = n => !q || n.cur.name.toLowerCase().includes(q);
+        // 핸드아웃·캐릭터만 볼 때는 폴더 없이 한 줄로 모은다 (어느 폴더인지는 오른쪽에 표시)
+        if (isFlat(t)) return allNodes(t).filter(n => !n.kids && n.kind === t.filter && hit(n)).map(n => ({ n, depth: 0, flat: true }));
         const walk = (list, depth) => list.flatMap(n => {
             if (!n.kids) return (t.filter === "all" || n.kind === t.filter) && hit(n) ? [{ n, depth }] : [];
             const inner = walk(n.kids, depth + 1);
@@ -1785,7 +1864,8 @@ const bulkEditor = (() => {
         });
         return walk(t.roots, 0);
     };
-    const rowHtml = ({ n, depth }) => {
+    const isFlat = t => t.which === "journal" && t.filter !== "all";
+    const rowHtml = ({ n, depth, flat }) => {
         const t = cur(), sel = t.sel === n.id, chk = t.checked.has(n.id), shut = t.collapsed.has(n.id);
         const cls = ["r20be-row", sel && "sel", chk && "chk", n.deleted && "del"].filter(Boolean).join(" ");
         return `<div class="${cls}" data-id="${esc(n.id)}" role="treeitem" aria-level="${depth + 1}" aria-selected="${sel}"`
@@ -1794,7 +1874,7 @@ const bulkEditor = (() => {
             + `<button type="button" class="r20be-cb${chk ? " on" : ""}" data-act="check" aria-label="선택" aria-pressed="${chk}">${ICON.check}</button>`
             + `<button type="button" class="r20be-nm" data-act="pick" title="더블클릭: 이름 바꾸기">${ICON[n.kind]}<span>${esc(n.cur.name || "(이름 없음)")}</span></button>`
             + (isDirty(n) ? `<span class="r20be-dot" title="저장 안 한 변경"></span>` : "")
-            + `<span class="r20be-meta">${esc(meta(n))}</span></div>`;
+            + `<span class="r20be-meta">${esc((flat && n.parent ? n.parent.cur.name + " · " : "") + meta(n))}</span></div>`;
     };
     const rowEl = id => ui.tree.querySelector(`.r20be-row[data-id="${CSS.escape(id)}"]`);
     const renderTree = () => {
@@ -1804,7 +1884,11 @@ const bulkEditor = (() => {
             : `<p class="r20be-empty">${t.q || t.filter !== "all" ? "검색 결과가 없습니다" : "항목이 없습니다"}</p>`;
         updateBar();
     };
-    const refreshRow = n => { const r = rowEl(n.id); if (r) r.outerHTML = rowHtml({ n, depth: depthOf(n) }); updateBar(); };
+    const refreshRow = n => {
+        const r = rowEl(n.id), flat = isFlat(cur());
+        if (r) r.outerHTML = rowHtml({ n, depth: flat ? 0 : depthOf(n), flat });
+        updateBar();
+    };
     const updateBar = () => {
         const c = dirtyCount();
         ui.badge.hidden = !c;
@@ -1834,7 +1918,8 @@ const bulkEditor = (() => {
         const finish = ok => {
             if (done) return;
             done = true;
-            if (ok && inp.value.trim()) setField(n, "name", inp.value.trim());
+            const v = cleanName(n, inp.value.trim());
+            if (ok && v) setField(n, "name", v);
             renderTree(); renderPane();
         };
         inp.addEventListener("keydown", e => { if (e.key === "Enter") finish(true); else if (e.key === "Escape") finish(false); });
@@ -1843,7 +1928,12 @@ const bulkEditor = (() => {
 
     // ── 오른쪽 편집칸 ──
     const field = (label, control) => el("label", { class: "r20be-fld" }, el("span", { class: "r20be-lb" }, label), control);
-    const nameInput = n => el("input", { class: "r20be-in", value: n.cur.name, oninput: e => { setField(n, "name", e.target.value); refreshRow(n); } });
+    const nameInput = n => el("input", { class: "r20be-in", value: n.cur.name, oninput: e => {
+        const v = cleanName(n, e.target.value);
+        if (v !== e.target.value) e.target.value = v;
+        setField(n, "name", v);
+        refreshRow(n);
+    } });
     const shareOptions = v => {
         const players = (window.Campaign.players?.models || []).map(p => ({ v: p.id, label: p.get("displayname") || p.id }));
         const opts = [{ v: "", label: "GM만" }, { v: "all", label: "모든 플레이어" }, ...players];
@@ -1855,7 +1945,7 @@ const bulkEditor = (() => {
         n.deleted ? el("span", { class: "r20be-tag del" }, "삭제 예정")
             : n.isNew ? el("span", { class: "r20be-tag new" }, n.dupOf ? "복제 예정" : "새 항목") : null,
         el("span", { class: "r20be-flex" }),
-        !n.kids && !n.isNew && !n.deleted ? el("button", { type: "button", class: "r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
+        !n.kids && n.kind !== "rtable" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
         el("button", { type: "button", class: "r20be-sec" + (n.deleted ? "" : " danger"), onclick: () => toggleDelete(n) },
             n.deleted ? "삭제 취소" : n.kids ? `${KIND_NAME[n.kind]} 삭제` : "삭제"));
 
@@ -1994,7 +2084,7 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-grid" },
                 field("찾을 말", el("input", { class: "r20be-in", value: st.find, oninput: e => { st.find = e.target.value; draw(); } })),
                 field("바꿀 말", el("input", { class: "r20be-in", value: st.rep, oninput: e => { st.rep = e.target.value; draw(); } }))),
-            field(t.which === "journal" ? "폴더로 이동" : "플레이리스트로 이동",
+            t.which === "tables" ? null : field(t.which === "journal" ? "폴더로 이동" : "플레이리스트로 이동",
                 el("select", { class: "r20be-in", onchange: e => { st.move = e.target.value; draw(); } },
                     el("option", { value: "", selected: !st.move }, "이동 안 함"),
                     el("option", { value: "_root", selected: st.move === "_root" }, "맨 위 (폴더 밖)"),
@@ -2006,6 +2096,105 @@ const bulkEditor = (() => {
         return box;
     };
 
+    // 굴림표 편집칸: 항목 카드 격자 + 고른 항목 일괄 바꾸기 + 줄 단위로 항목 추가
+    const tablePane = n => {
+        const t = cur(), tb = t.tbulk;
+        const live = () => n.items.filter(it => !it.deleted);
+        const picked = () => live().filter(it => n.checkedItems.has(it.id));
+        const fmt = k => tb.pattern.split("{n}").join(String(tb.start + k));
+        const grid = el("div", { class: "r20be-tgrid" });
+        const bar = el("div", { class: "r20be-tbar", hidden: true });
+        const changed = () => { refreshRow(n); updateBar(); };
+        const card = it => {
+            const on = n.checkedItems.has(it.id);
+            const c = el("div", { class: "r20be-card" + (on ? " chk" : "") + (itemDirty(it) ? " dirty" : "") });
+            const cb = el("button", { type: "button", class: "r20be-cb2" + (on ? " on" : ""), "aria-label": "선택", html: ICON.check });
+            const toggle = () => {
+                if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id);
+                c.classList.toggle("chk"); cb.classList.toggle("on");
+                drawBar();
+            };
+            cb.onclick = toggle;
+            const thumb = it.cur.avatar
+                ? el("button", { type: "button", class: "r20be-thumb", title: it.cur.name, onclick: toggle }, el("img", { src: it.cur.avatar, loading: "lazy", alt: "" }))
+                : el("button", { type: "button", class: "r20be-thumb none", onclick: toggle }, "이미지 없음");
+            const mark = () => { c.classList.toggle("dirty", itemDirty(it)); changed(); };
+            c.append(thumb, cb,
+                el("input", { class: "r20be-in r20be-mini", value: it.cur.name, "aria-label": "항목 이름",
+                    oninput: e => { setItem(it, "name", e.target.value); mark(); } }),
+                el("label", { class: "r20be-wl" }, "가중치",
+                    el("input", { class: "r20be-in r20be-mini", type: "number", min: "0", value: String(it.cur.weight),
+                        oninput: e => { setItem(it, "weight", Math.max(0, parseInt(e.target.value, 10) || 0)); mark(); } })));
+            return c;
+        };
+        const drawGrid = () => {
+            grid.textContent = "";
+            const list = live();
+            if (!list.length) grid.append(el("p", { class: "r20be-empty" }, "항목이 없습니다 · [+ 항목 추가]로 넣어 주세요"));
+            list.forEach(it => grid.append(card(it)));
+        };
+        const drawBar = () => {
+            const sel = picked();
+            bar.hidden = !sel.length;
+            if (!sel.length) return;
+            const prev = el("span", { class: "prev" });
+            const showPrev = () => { prev.textContent = "→ " + sel.slice(0, 3).map((_, k) => fmt(k)).join(", ") + (sel.length > 3 ? " …" : ""); };
+            showPrev();
+            bar.textContent = "";
+            bar.append(
+                el("strong", {}, `${sel.length}개 선택`),
+                el("span", { class: "r20be-note" }, "이름"),
+                el("input", { class: "r20be-in r20be-mini", value: tb.pattern, "aria-label": "이름 규칙 ({n} = 번호)", style: "width:120px",
+                    oninput: e => { tb.pattern = e.target.value; showPrev(); } }),
+                el("span", { class: "r20be-note" }, "시작"),
+                el("input", { class: "r20be-in r20be-mini", type: "number", value: String(tb.start), "aria-label": "시작 번호", style: "width:56px",
+                    oninput: e => { tb.start = parseInt(e.target.value, 10) || 1; showPrev(); } }),
+                prev,
+                el("button", { type: "button", class: "r20be-pri", onclick: () => {
+                    sel.forEach((it, k) => setItem(it, "name", fmt(k)));
+                    drawGrid(); changed();
+                    setStatus(`${sel.length}개 이름을 바꿨습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "이름 적용"),
+                el("span", { class: "r20be-sepv" }),
+                el("span", { class: "r20be-note" }, "가중치"),
+                el("input", { class: "r20be-in r20be-mini", type: "number", min: "0", value: String(tb.w), "aria-label": "가중치", style: "width:56px",
+                    oninput: e => { tb.w = Math.max(0, parseInt(e.target.value, 10) || 0); } }),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => { sel.forEach(it => setItem(it, "weight", tb.w)); drawGrid(); changed(); } }, "적용"),
+                el("button", { type: "button", class: "r20be-sec danger", onclick: () => {
+                    sel.forEach(it => { if (it.isNew) n.items.splice(n.items.indexOf(it), 1); else it.deleted = true; });
+                    n.checkedItems.clear();
+                    drawGrid(); drawBar(); changed();
+                    setStatus(`${sel.length}개를 지웠습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "삭제"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => { n.checkedItems.clear(); drawGrid(); drawBar(); } }, "선택 해제"));
+        };
+        // 한 줄에 하나: "이미지 주소" 또는 "이름 | 이미지 주소" 또는 이름만(글자 표)
+        const addBox = el("div", { class: "r20be-add", hidden: !t.adding });
+        const ta = el("textarea", { class: "r20be-in", "aria-label": "새 항목", placeholder: "한 줄에 하나씩 · 이미지 주소만 / 이름 | 이미지 주소 / 이름만" });
+        addBox.append(ta, el("button", { type: "button", class: "r20be-pri", onclick: () => {
+            const lines = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+            lines.forEach(l => {
+                const [a, b] = l.split("|").map(x => x.trim());
+                const attrs = b !== undefined ? { name: a, avatar: b } : /^https?:\/\//.test(a) ? { name: "", avatar: a } : { name: a, avatar: "" };
+                n.items.push(itemNode(null, { ...attrs, weight: 1 }));
+            });
+            ta.value = "";
+            drawGrid(); changed();
+            setStatus(`항목 ${lines.length}개를 추가했습니다 (저장해야 Roll20에 반영)`, "ok");
+        } }, "추가"));
+        drawGrid(); drawBar();
+        return el("div", { class: "r20be-pane-in" }, paneHead(n),
+            el("div", { class: "r20be-trow" },
+                field("굴림표 이름 (공백 불가)", nameInput(n)),
+                el("label", { class: "r20be-chk" },
+                    el("input", { type: "checkbox", checked: !!n.cur.show, onchange: e => { setField(n, "show", e.target.checked); changed(); } }),
+                    "플레이어의 목록 뽑기 허용"),
+                el("span", { class: "r20be-flex" }),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => { live().forEach(it => n.checkedItems.add(it.id)); drawGrid(); drawBar(); } }, "모두 선택"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "항목 추가")),
+            addBox, bar, grid);
+    };
+
     const renderPane = () => {
         const t = cur();
         ui.pane.textContent = "";
@@ -2013,7 +2202,7 @@ const bulkEditor = (() => {
         const n = t.sel && find(t, t.sel);
         ui.pane.append(checked.length >= 2 ? bulkPane(checked)
             : !n ? el("p", { class: "r20be-empty" }, "왼쪽에서 항목을 고르세요")
-            : n.kids ? groupPane(n) : n.kind === "track" ? trackPane(n) : docPane(n));
+            : n.kids ? groupPane(n) : n.kind === "rtable" ? tablePane(n) : n.kind === "track" ? trackPane(n) : docPane(n));
         ui.pane.querySelectorAll(".r20be-ta").forEach(autosize);
     };
 
@@ -2021,10 +2210,10 @@ const bulkEditor = (() => {
     const createNode = kind => {
         const t = cur(), sel = t.sel && find(t, t.sel);
         // 고른 게 폴더면 그 안, 항목이면 같은 폴더, 없으면 맨 위. 주크박스 플레이리스트는 겹치지 않음
-        const parent = kind === "group" || !sel ? null : sel.kids ? sel : sel.parent;
+        const parent = kind === "group" || kind === "rtable" || !sel ? null : sel.kids ? sel : sel.parent;
         // 폴더는 구조에만 있으므로 바로 쓸 ID, 항목은 저장 때 Roll20 ID로 바뀌는 임시 ID
-        const n = kind === "folder" || kind === "group"
-            ? mkNode(uid(), kind, null, { name: `새 ${KIND_NAME[kind]}` })
+        const n = kind === "folder" || kind === "group" ? mkNode(uid(), kind, null, { name: `새 ${KIND_NAME[kind]}` })
+            : kind === "rtable" ? Object.assign(mkNode("new:" + uid(), kind, null, { name: "새굴림표", show: false }), { items: [], checkedItems: new Set() })
             : mkNode("new:" + uid(), kind, null, { name: `새 ${KIND_NAME[kind]}`, share: "" });
         n.isNew = true; n.loaded = true; n.parent = parent;
         CONTENT.forEach(k => { n.raw[k] = ""; n.origText[k] = ""; n.cur[k] = ""; });
@@ -2032,7 +2221,9 @@ const bulkEditor = (() => {
         if (kind === "group") n.extra = { ...(allNodes(t).find(x => x.kids)?.extra || {}) };
         listOf(t, parent).push(n);
         if (parent) t.collapsed.delete(parent.id);
-        t.structDirty = true; t.sel = n.id; t.filter = "all"; t.q = "";
+        if (kind !== "rtable") t.structDirty = true;
+        t.sel = n.id; t.q = "";
+        if (t.filter !== "all" && t.filter !== kind) t.filter = "all";      // 모아보기 중이면 그 종류는 그대로 둔다
         render();
         const row = rowEl(n.id);
         if (row) { row.scrollIntoView({ block: "nearest" }); startRename(row, n); }
@@ -2132,17 +2323,61 @@ const bulkEditor = (() => {
         n.changed.clear();
     };
 
+    const saveTables = async (t, attempt) => {
+        const coll = tablesColl();
+        for (const n of [...t.roots]) {
+            if (n.deleted) {
+                if (!n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
+                else removeNode(t, n);
+                continue;
+            }
+            if (n.isNew) await attempt(n.cur.name, async () => {
+                n.model = coll.create({ name: n.cur.name, showplayers: !!n.cur.show });
+                if (!n.model?.id) throw new Error("생성 실패");
+                const old = n.id;
+                n.id = n.model.id; n.isNew = false; n.orig = { ...n.cur }; n.changed.clear();
+                if (t.sel === old) t.sel = n.id;
+            });
+            else if (n.changed.size) await attempt(n.cur.name, async () => {
+                const a = {};
+                if (n.changed.has("name")) a.name = n.cur.name;
+                if (n.changed.has("show")) a.showplayers = !!n.cur.show;
+                n.model.save(a);
+                n.orig = { ...n.cur }; n.changed.clear();
+            });
+            if (n.isNew || !n.model?.tableitems) continue;      // 표를 못 만들었으면 항목도 건너뛴다
+            for (const it of [...n.items]) {
+                const label = `${n.cur.name} · ${it.cur.name || "항목"}`;
+                if (it.deleted) await attempt(label, async () => { if (!it.isNew) it.model.destroy(); n.items.splice(n.items.indexOf(it), 1); });
+                else if (it.isNew) await attempt(label, async () => {
+                    it.model = n.model.tableitems.create({ name: it.cur.name, avatar: it.cur.avatar, weight: it.cur.weight });
+                    if (!it.model?.id) throw new Error("생성 실패");
+                    it.id = it.model.id; it.isNew = false; it.orig = { ...it.cur };
+                });
+                else if (it.changed.size) await attempt(label, async () => {
+                    const a = {};
+                    it.changed.forEach(k => { a[k] = it.cur[k]; });
+                    it.model.save(a);
+                    it.orig = { ...it.cur }; it.changed.clear();
+                });
+            }
+        }
+    };
+
     const save = async () => {
         if (saving || !dirtyCount()) return;
-        const dels = builtTabs().flatMap(t => allNodes(t).filter(n => n.deleted && !n.isNew));
+        const dels = builtTabs().flatMap(t => allNodes(t).flatMap(n => [
+            ...(n.deleted && !n.isNew ? [n.cur.name] : []),
+            ...(n.items || []).filter(it => it.deleted && !it.isNew).map(it => `${n.cur.name} · ${it.cur.name || "항목"}`)]));
         if (dels.length && !confirm(`${dels.length}개 항목을 Roll20에서 삭제합니다. 되돌릴 수 없습니다.\n\n`
-            + dels.slice(0, 10).map(n => "· " + n.cur.name).join("\n") + (dels.length > 10 ? "\n…" : "") + "\n\n계속할까요?")) return;
+            + dels.slice(0, 10).map(name => "· " + name).join("\n") + (dels.length > 10 ? "\n…" : "") + "\n\n계속할까요?")) return;
         saving = true; updateBar(); setStatus("저장 중…");
         const total = dirtyCount(), errs = [];
         const attempt = async (label, fn) => {
             try { await fn(); } catch (e) { console.warn("[일괄 편집기] 저장 실패:", label, e); errs.push(label); }
         };
         for (const t of builtTabs()) {
+            if (t.which === "tables") { await saveTables(t, attempt); continue; }
             const nodes = allNodes(t);
             for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
             // 고친 내용을 먼저 저장해야 복제본이 고친 내용으로 만들어진다
@@ -2172,8 +2407,8 @@ const bulkEditor = (() => {
 
     // ── 창 ──
     const reload = () => {
-        const keep = ["journal", "bgm"].map(k => S[k] && { k, sel: S[k].sel, collapsed: S[k].collapsed, filter: S[k].filter, q: S[k].q, ctab: S[k].ctab });
-        S.journal = S.bgm = null;
+        const keep = ["journal", "bgm", "tables"].map(k => S[k] && { k, sel: S[k].sel, collapsed: S[k].collapsed, filter: S[k].filter, q: S[k].q, ctab: S[k].ctab });
+        S.journal = S.bgm = S.tables = null;
         keep.forEach(o => {
             if (!o) return;
             const t = S[o.k] = buildTab(o.k);
@@ -2191,9 +2426,12 @@ const bulkEditor = (() => {
         const t = cur();
         ui.segJ.classList.toggle("on", S.tab === "journal");
         ui.segB.classList.toggle("on", S.tab === "bgm");
+        ui.segT.classList.toggle("on", S.tab === "tables");
         ui.search.value = t.q;
-        const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃"], ["char", "캐릭터"]]
-            : [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]];
+        ui.search.placeholder = t.which === "tables" ? "굴림표 이름 검색" : "이름 검색";
+        ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : t.which === "tables" ? "새 굴림표" : "새로 만들기";
+        const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
+            : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]] : [];
         ui.chips.textContent = "";
         defs.forEach(([k, label]) => ui.chips.append(el("button", { type: "button", class: "r20be-chip" + (t.filter === k ? " on" : ""),
             "aria-pressed": String(t.filter === k), onclick: () => { t.filter = k; render(); } }, label)));
@@ -2201,6 +2439,7 @@ const bulkEditor = (() => {
     };
     const switchTab = tab => {
         if (tab === "bgm" && !window.Jukebox?.playlist) { setStatus("주크박스를 아직 불러오지 못했습니다", "err"); return; }
+        if (tab === "tables" && !tablesColl()) { setStatus("굴림표를 아직 불러오지 못했습니다", "err"); return; }
         S.tab = tab;
         if (!S[tab]) S[tab] = buildTab(tab);
         ui.menu.hidden = true;
@@ -2209,6 +2448,9 @@ const bulkEditor = (() => {
     const toggleMenu = () => {
         if (!ui.menu.hidden) { ui.menu.hidden = true; return; }
         const t = cur(), hasGroup = allNodes(t).some(n => n.kids);
+        // 핸드아웃·캐릭터 모아보기 중이거나 굴림표 탭이면 메뉴 없이 바로 만든다
+        if (isFlat(t)) return createNode(t.filter);
+        if (t.which === "tables") return createNode("rtable");
         const items = t.which === "journal" ? [["handout", "핸드아웃"], ["char", "캐릭터"], ["folder", "폴더"]] : [["group", "플레이리스트"]];
         ui.menu.textContent = "";
         items.forEach(([kind, label]) => ui.menu.append(el("button", { type: "button", disabled: kind === "group" && !hasGroup,
@@ -2256,7 +2498,7 @@ const bulkEditor = (() => {
         const clearDrop = () => tr.querySelectorAll(".drop-in,.drop-before").forEach(r => r.classList.remove("drop-in", "drop-before"));
         tr.addEventListener("dragstart", e => {
             const row = e.target.closest?.(".r20be-row");
-            if (!row) return;
+            if (!row || cur().which === "tables") { e.preventDefault(); return; }
             dragId = row.dataset.id;
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", dragId);
@@ -2368,16 +2610,18 @@ const bulkEditor = (() => {
         ui = {};
         ui.segJ = el("button", { type: "button", onclick: () => switchTab("journal") }, "저널");
         ui.segB = el("button", { type: "button", onclick: () => switchTab("bgm") }, "배경음악");
+        ui.segT = el("button", { type: "button", onclick: () => switchTab("tables") }, "굴림표");
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segT),
             el("span", { class: "r20be-flex" }),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
         ui.search = el("input", { class: "r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
             oninput: debounce(() => { cur().q = ui.search.value; renderTree(); }, 150) });
         ui.chips = el("div", { class: "r20be-chips" });
-        ui.newBtn = el("button", { type: "button", class: "r20be-sec", "aria-haspopup": "true", onclick: toggleMenu }, ico("plus"), "새로 만들기");
+        ui.newLabel = el("span", {}, "새로 만들기");
+        ui.newBtn = el("button", { type: "button", class: "r20be-sec", "aria-haspopup": "true", onclick: toggleMenu }, ico("plus"), ui.newLabel);
         ui.menu = el("div", { class: "r20be-menu", hidden: true });
         ui.badge = el("span", { class: "r20be-badge", hidden: true });
         ui.revert = el("button", { type: "button", class: "r20be-sec", onclick: revert }, "되돌리기");
@@ -2397,7 +2641,7 @@ const bulkEditor = (() => {
     const open = tab => {
         if (!window.Campaign?.handouts) { alert("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요."); return; }
         ensureUi();
-        if (!dirtyCount()) S.journal = S.bgm = null;     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
+        if (!dirtyCount()) S.journal = S.bgm = S.tables = null;     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
         ui.root.classList.add("r20be-show");
         setStatus();
         switchTab(tab || S.tab);
@@ -2434,8 +2678,9 @@ const jukeboxRow = (() => {
     const trackOf = li => window.Jukebox?.playlist?.get(li.dataset.itemid);
     const volOf = li => Number(trackOf(li)?.get("volume") ?? li.querySelector(".volume input.slider")?.value ?? 0);
 
-    // ◂ ▸ 로 5% 단위 조절 (수동 페이드용): Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
-    const STEP = 5;
+    // ◂ ▸ 조절 단위(%)는 주크박스 위 칸에서 그때그때 바꾼다 (수동 페이드용)
+    let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
+    // Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
     const step = (li, dir) => {
         const now = volOf(li);
         const v = Math.max(0, Math.min(100, dir > 0 ? Math.floor(now / STEP) * STEP + STEP : Math.ceil(now / STEP) * STEP - STEP));
@@ -2455,14 +2700,33 @@ const jukeboxRow = (() => {
         document.querySelectorAll("#jukebox li.jukeboxitem .volume:not(:has(> .r20jb-vol))").forEach(vol => {
             const box = document.createElement("span");
             box.className = "r20jb-vol";
-            box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 5% 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 5% 올리기">▸</button>';
+            box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 올리기">▸</button>';
             box.querySelector("span").textContent = Math.round(volOf(vol.closest("li.jukeboxitem")));
             vol.appendChild(box);
         });
     };
+    const addStepControl = () => {
+        const host = document.querySelector("#jukebox .secondarycontrols");
+        if (!host || host.querySelector(".r20jb-step")) return;
+        const wrap = document.createElement("label");
+        wrap.className = "r20jb-step";
+        wrap.title = "◂ ▸ 를 누를 때 바뀌는 볼륨 크기";
+        wrap.append("볼륨 ±");
+        const inp = document.createElement("input");
+        inp.type = "number"; inp.min = "1"; inp.max = "50"; inp.value = STEP;
+        inp.setAttribute("aria-label", "볼륨 조절 단위(%)");
+        inp.addEventListener("input", () => {
+            const v = parseInt(inp.value, 10);
+            if (v >= 1 && v <= 50) { STEP = v; localStorage.setItem("r20jb_step", v); }
+        });
+        inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
+        wrap.append(inp, "%");
+        host.appendChild(wrap);
+    };
     let watched = null;
     const inject = () => {
         if (!btnVisible.jbrow) return;
+        addStepControl();
         // Roll20 이 곡 줄을 다시 그리면 화면에 그려지기 전에 바로 다시 붙인다 (슬라이더·버튼 깜빡임 방지)
         const jb = document.getElementById("jukebox");
         if (jb && watched !== jb) {
