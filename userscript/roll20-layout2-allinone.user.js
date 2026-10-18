@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.2.0
+// @version      1.2.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -1079,15 +1079,6 @@ if (!document.getElementById("r20-addon-style")) {
         .r20-bgm-pv:hover, .r20-bgm-pv:focus-visible { opacity:1; }
         .r20-bgm-pv.on { opacity:1; filter:drop-shadow(0 0 2px #1867c7); }
         body.r20-bgm-off .r20-bgm-pv { display:none; }
-        #r20-bgm-bar { position:fixed; left:12px; bottom:12px; z-index:100000; width:300px; max-width:calc(100vw - 24px); box-sizing:border-box; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:11px; color:#333; display:none; flex-direction:column; gap:4px; padding:6px 8px; }
-        #r20-bgm-bar.show { display:flex; }
-        .r20-bgm-row { display:flex; align-items:center; gap:6px; min-width:0; }
-        .r20-bgm-title { flex:1; min-width:0; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .r20-bgm-time { color:#999; font-variant-numeric:tabular-nums; flex-shrink:0; }
-        .r20-bgm-seek { flex:1; min-width:0; margin:0; }
-        .r20-bgm-vol { width:60px; margin:0; flex-shrink:0; }
-        .r20-bgm-btn { background:#f5f5f5; border:1px solid #ddd; border-radius:3px; cursor:pointer; font-size:11px; color:#555; padding:1px 6px; line-height:1.4; flex-shrink:0; }
-        .r20-bgm-btn:hover { background:#ebebeb; color:#333; }
 
         #r20be { position:fixed; z-index:10005; display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); background:#fff; border:1px solid #b5b5b5; border-radius:4px; box-shadow:0 8px 24px rgba(0,0,0,0.22); font-family:sans-serif; font-size:12px; color:#333; resize:both; overflow:hidden; box-sizing:border-box; }
         #r20be.show { display:flex; }
@@ -1368,8 +1359,11 @@ const autofill = (() => {
 // ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
 // 브라우저 Audio 로 재생하므로 Roll20 동기화(참가자 재생)와 무관하다.
 const bgmPreview = (() => {
-    let audio = null, curId = null, bar = null, ui = null;
-    const getVol = () => { const v = parseFloat(localStorage.getItem("r20_bgm_vol")); return isNaN(v) ? 0.5 : v; };
+    let audio = null, curId = null, failedId = null;
+    const listeners = new Set();
+    const notify = () => listeners.forEach(fn => fn());
+    // 참가자가 듣게 될 크기 그대로: 트랙 볼륨(0~100)을 따른다
+    const trackVol = track => { const v = Number(track.get("volume")); return isFinite(v) ? Math.min(1, Math.max(0, v / 100)) : 0.5; };
     const fmt = t => isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}` : "-:--";
 
     // My Audio 트랙 주소는 vtt.bundle 의 재생 주소 형식을 따른다 (track_id 앞부분 = 오디오 ID)
@@ -1378,39 +1372,6 @@ const bgmPreview = (() => {
         if (/^https?:\/\//.test(tid)) return tid;
         if (track.get("source") !== "My Audio" || !tid) return null;
         return `${window.IS_EMBEDDED ? "/.proxy" : ""}/audio_library/play/${window.campaign_id}/${tid.split(/[-#]/)[0]}`;
-    };
-
-    const ensureBar = () => {
-        if (bar) return;
-        bar = document.createElement("div");
-        bar.id = "r20-bgm-bar";
-        bar.setAttribute("role", "region");
-        bar.setAttribute("aria-label", "BGM 미리듣기");
-        bar.innerHTML = `
-            <div class="r20-bgm-row"><span aria-hidden="true">🎧</span><span class="r20-bgm-title"></span><span class="r20-bgm-time">-:-- / -:--</span></div>
-            <div class="r20-bgm-row">
-                <input type="range" class="r20-bgm-seek" min="0" max="1000" value="0" aria-label="재생 위치">
-                <span aria-hidden="true">🔈</span><input type="range" class="r20-bgm-vol" min="0" max="1" step="0.05" aria-label="미리듣기 음량">
-                <button type="button" class="r20-bgm-btn" aria-label="미리듣기 정지">■ 정지</button>
-            </div>`;
-        ui = {
-            title: bar.querySelector(".r20-bgm-title"),
-            time: bar.querySelector(".r20-bgm-time"),
-            seek: bar.querySelector(".r20-bgm-seek"),
-            vol: bar.querySelector(".r20-bgm-vol")
-        };
-        ui.vol.value = getVol();
-        ui.vol.addEventListener("input", () => {
-            localStorage.setItem("r20_bgm_vol", ui.vol.value);
-            if (audio) audio.volume = +ui.vol.value;
-        });
-        ui.seek.addEventListener("input", () => {
-            if (audio && isFinite(audio.duration)) audio.currentTime = audio.duration * ui.seek.value / 1000;
-        });
-        bar.querySelector(".r20-bgm-btn").onclick = stop;
-        // 슬라이더 방향키가 Roll20 단축키(토큰 이동 등)로 새지 않게
-        bar.addEventListener("keydown", e => e.stopPropagation());
-        document.body.appendChild(bar);
     };
 
     // 주크박스 목록은 Roll20이 자주 다시 그리므로 요소 대신 트랙 ID로 찾는다
@@ -1424,39 +1385,36 @@ const bgmPreview = (() => {
         if (audio) { audio.pause(); audio.removeAttribute("src"); audio.load(); audio = null; }
         markBtn(false);
         curId = null;
-        bar?.classList.remove("show");
+        notify();
     }
 
-    const play = id => {
+    // vol(0~1)을 주면 그 크기로, 없으면 트랙 볼륨으로 재생
+    const play = (id, vol) => {
         const track = window.Jukebox?.playlist?.get(id);
         if (!track) { console.warn("[BGM 미리듣기] 트랙을 찾지 못함:", id); return; }
-        const url = trackUrl(track);
-        ensureBar();
         stop();
+        failedId = null;
+        const url = trackUrl(track);
+        if (!url) { console.warn("[BGM 미리듣기] 지원하지 않는 음원:", track.attributes); failedId = id; notify(); return; }
         curId = id;
-        ui.title.textContent = track.get("title") || "(제목 없음)";
-        ui.seek.value = 0;
-        bar.classList.add("show");
-        if (!url) { ui.time.textContent = "지원하지 않는 음원"; return; }
-
         const a = audio = new Audio(url);
-        a.volume = getVol();
+        a.volume = vol ?? trackVol(track);
         // 정지된 이전 Audio 의 늦은 이벤트는 무시
-        a.addEventListener("timeupdate", () => {
-            if (a !== audio) return;
-            ui.time.textContent = `${fmt(a.currentTime)} / ${fmt(a.duration)}`;
-            if (isFinite(a.duration)) ui.seek.value = Math.round(a.currentTime / a.duration * 1000);
-        });
+        a.addEventListener("timeupdate", () => { if (a === audio) notify(); });
         a.addEventListener("ended", () => { if (a === audio) stop(); });
         a.addEventListener("error", () => {
             if (a !== audio) return;
             console.warn("[BGM 미리듣기] 재생 실패:", url, track.attributes);
-            ui.time.textContent = "재생 실패 (콘솔 확인)";
-            markBtn(false);
+            failedId = id;
+            stop();
         });
         a.play().catch(() => {});
         markBtn(true);
+        notify();
     };
+    // 편집기에 보여줄 상태 글자
+    const status = id => audio && curId === id ? `재생 중 ${fmt(audio.currentTime)} / ${fmt(audio.duration)}`
+        : failedId === id ? "재생 실패 (콘솔 확인)" : "";
 
     const inject = () => {
         if (!btnVisible.bgm) return;
@@ -1495,7 +1453,12 @@ const bgmPreview = (() => {
     };
     setEnabled(btnVisible.bgm);
 
-    return { inject, setEnabled, play, stop, current: () => audio ? curId : null };
+    return {
+        inject, setEnabled, play, stop, status,
+        current: () => audio ? curId : null,
+        setVolume: (id, v) => { if (audio && curId === id) audio.volume = v; },
+        onChange: fn => listeners.add(fn)
+    };
 })();
 
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
@@ -1553,6 +1516,12 @@ const bulkEditor = (() => {
         return doc.body.textContent.replace(/ /g, " ").replace(/\n{3,}/g, "\n\n").trim();
     };
     const textToHtml = text => String(text).split("\n").map(l => `<p>${esc(l) || "<br>"}</p>`).join("");
+    // 일부 내용은 escape() 형식(%3C…, %uB9D1…)으로 저장돼 있다 → 풀어서 보여주고, 저장할 때 같은 형식으로 되돌린다
+    const decodeBlob = s => {
+        s = String(s || "");
+        if (/[<>]/.test(s) || !/%(?:[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4})/.test(s)) return { html: s, enc: false };
+        try { return { html: unescape(s), enc: true }; } catch (e) { return { html: s, enc: false }; }
+    };
 
     const getBlob = (m, name, ms = 8000) => new Promise((ok, no) => {
         const t = setTimeout(() => no(new Error("blob timeout: " + name)), ms);
@@ -1568,7 +1537,7 @@ const bulkEditor = (() => {
     const mkNode = (id, kind, model, attrs) => ({
         id, kind, model, parent: null, kids: kind === "folder" || kind === "group" ? [] : null, extra: {},
         orig: { ...attrs }, cur: { ...attrs }, changed: new Set(),
-        raw: {}, origText: {}, rich: {}, htmlMode: {}, loaded: false, loading: false, loadError: false,
+        raw: {}, origText: {}, rich: {}, htmlMode: {}, enc: {}, loaded: false, loading: false, loadError: false,
         isNew: false, deleted: false, moved: false, orphan: false, dupOf: null
     });
     const leaf = (kind, m) => mkNode(m.id, kind, m, kind === "track"
@@ -1780,9 +1749,11 @@ const bulkEditor = (() => {
     const loadContent = async n => {
         n.loading = true;
         try {
-            const [a, b] = await Promise.all(BLOBS[n.kind].map(name => getBlob(n.model, name)));
-            n.raw = { notes: a || "", gm: b || "" };
-            CONTENT.forEach(k => {
+            const blobs = await Promise.all(BLOBS[n.kind].map(name => getBlob(n.model, name)));
+            CONTENT.forEach((k, i) => {
+                const d = decodeBlob(blobs[i]);
+                n.raw[k] = d.html;
+                n.enc[k] = d.enc;
                 n.origText[k] = htmlToText(n.raw[k]);
                 n.rich[k] = RICH_RE.test(n.raw[k]);
                 n.htmlMode[k] = false;
@@ -1824,8 +1795,26 @@ const bulkEditor = (() => {
             ed);
     };
 
+    // 미리듣기 칸: 재생 상태가 바뀔 때마다 _sync 로 글자만 갱신 (버튼 포커스 유지)
+    const pvBlock = n => {
+        const label = el("span", {}), note = el("span", { class: "r20be-note" });
+        const btn = el("button", { type: "button", class: "r20be-sec", onclick: () => {
+            if (bgmPreview.current() === n.id) bgmPreview.stop(); else bgmPreview.play(n.id, n.cur.vol / 100);
+        } }, ico("phones"), label);
+        const box = el("div", { class: "r20be-pv" }, btn, note);
+        box._sync = () => {
+            const on = bgmPreview.current() === n.id;
+            btn.classList.toggle("on", on);
+            label.textContent = on ? "미리듣기 정지" : "미리듣기 (나만)";
+            note.textContent = bgmPreview.status(n.id) || "참가자에게는 들리지 않음";
+        };
+        box._sync();
+        return box;
+    };
+    bgmPreview.onChange(() => ui?.pane.querySelector(".r20be-pv")?._sync?.());
+
     const trackPane = n => {
-        const t = cur(), playing = bgmPreview.current() === n.id;
+        const t = cur();
         const volLb = el("span", { class: "r20be-lb" }, `볼륨 ${n.cur.vol}%`);
         const here = n.parent ? n.parent.id : "";
         return el("div", { class: "r20be-pane-in" }, paneHead(n),
@@ -1835,14 +1824,15 @@ const bulkEditor = (() => {
                 groupList(t).map(g => el("option", { value: g.n.id, selected: g.n.id === here }, g.label)))),
             el("label", { class: "r20be-fld" }, volLb,
                 el("input", { type: "range", class: "r20be-range", min: "0", max: "100", value: String(n.cur.vol),
-                    oninput: e => { setField(n, "vol", Number(e.target.value)); volLb.textContent = `볼륨 ${e.target.value}%`; refreshRow(n); } })),
+                    oninput: e => {
+                        setField(n, "vol", Number(e.target.value));
+                        volLb.textContent = `볼륨 ${e.target.value}%`;
+                        bgmPreview.setVolume(n.id, e.target.value / 100);      // 미리듣기 중이면 바로 반영
+                        refreshRow(n);
+                    } })),
             el("label", { class: "r20be-chk" },
                 el("input", { type: "checkbox", checked: n.cur.loop, onchange: e => { setField(n, "loop", e.target.checked); refreshRow(n); } }), "반복 재생"),
-            n.isNew ? null : el("div", { class: "r20be-pv" },
-                el("button", { type: "button", class: "r20be-sec" + (playing ? " on" : ""),
-                    onclick: () => { if (playing) bgmPreview.stop(); else bgmPreview.play(n.id); renderPane(); } },
-                    ico("phones"), playing ? "미리듣기 정지" : "미리듣기 (나만)"),
-                el("span", { class: "r20be-note" }, "참가자에게는 들리지 않음")));
+            n.isNew ? null : pvBlock(n));
     };
 
     const groupPane = n => {
@@ -2008,11 +1998,16 @@ const bulkEditor = (() => {
         if (n.changed.has("share")) a.inplayerjournals = n.cur.share;
         if (n.changed.has("vol")) a.volume = n.cur.vol;
         if (n.changed.has("loop")) a.loop = n.cur.loop;
-        CONTENT.forEach((k, i) => { if (n.changed.has(k)) blobs[BLOBS[n.kind][i]] = toHtml(n, k); });
+        const html = {};
+        CONTENT.forEach((k, i) => {
+            if (!n.changed.has(k)) return;
+            html[k] = toHtml(n, k);
+            blobs[BLOBS[n.kind][i]] = n.enc[k] ? escape(html[k]) : html[k];     // 불러온 형식 그대로
+        });
         if (Object.keys(blobs).length) n.model.updateBlobs(blobs);
         n.model.save(a);
         // 저장한 값을 새 기준으로
-        CONTENT.forEach((k, i) => { if (n.changed.has(k)) { n.raw[k] = blobs[BLOBS[n.kind][i]]; n.origText[k] = htmlToText(n.raw[k]); } });
+        CONTENT.forEach(k => { if (k in html) { n.raw[k] = html[k]; n.origText[k] = htmlToText(html[k]); } });
         n.orig = { ...n.orig, ...n.cur };
         n.changed.clear();
     };
@@ -2186,6 +2181,19 @@ const bulkEditor = (() => {
         });
         p.addEventListener("mouseup", keep);    // 모서리로 크기를 바꾼 뒤 기억
         p.addEventListener("keydown", e => e.stopPropagation());    // Roll20 단축키(토큰 삭제 등)로 새지 않게
+        // Roll20이 휠·터치패드 스크롤을 맵 확대/이동용으로 가로채므로 창 안의 스크롤은 직접 처리한다
+        p.addEventListener("wheel", e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+            for (let n = e.target; n && n !== p; n = n.parentElement) {
+                if (n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) {
+                    const before = n.scrollTop;
+                    n.scrollTop += dy;
+                    if (n.scrollTop !== before) return;     // 끝까지 갔으면 바깥 영역으로 넘긴다
+                }
+            }
+        }, { passive: false });
         // 창이 열려 있으면 Ctrl+S 는 브라우저 "페이지 저장" 대신 편집기 저장 (채팅 등 다른 입력칸에 있을 때는 제외)
         document.addEventListener("keydown", e => {
             if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s" || !p.classList.contains("show")) return;
