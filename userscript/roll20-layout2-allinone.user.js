@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.2.1
+// @version      1.2.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -1114,9 +1114,18 @@ if (!document.getElementById("r20-addon-style")) {
         #r20be .r20be-menu button { padding:6px 12px; border:0; background:transparent; color:#333; font-size:12px; text-align:left; cursor:pointer; }
         #r20be .r20be-menu button:hover { background:#eef6ff; }
         #r20be .r20be-menu button:disabled { background:transparent; color:#aaa; cursor:default; }
-        #r20be .r20be-body { flex:1; min-height:0; display:flex; }
-        #r20be .r20be-tree { flex:0 0 300px; min-width:200px; overflow-y:auto; border-right:1px solid #e6e6e6; }
-        #r20be .r20be-pane { flex:1; min-width:0; overflow-y:auto; padding:14px 16px; }
+        #r20be .r20be-body { flex:1 1 0; min-height:0; display:flex; overflow:hidden; }
+        #r20be .r20be-col { position:relative; min-height:0; display:flex; }
+        #r20be .r20be-col.tree { flex:0 0 300px; min-width:200px; border-right:1px solid #e6e6e6; }
+        #r20be .r20be-col.pane { flex:1; min-width:0; }
+        /* 기본 스크롤바 대신 직접 만든 스크롤바(.r20be-sb)를 쓴다 */
+        #r20be .r20be-tree, #r20be .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:none; }
+        #r20be .r20be-tree::-webkit-scrollbar, #r20be .r20be-pane::-webkit-scrollbar { display:none; }
+        #r20be .r20be-tree { padding-right:14px; }
+        #r20be .r20be-pane { padding:14px 26px 14px 16px; }
+        #r20be .r20be-sb { position:absolute; top:3px; right:3px; bottom:3px; width:10px; border-radius:5px; background:#ededed; cursor:pointer; }
+        #r20be .r20be-sb-th { position:absolute; top:0; left:1px; right:1px; min-height:24px; border-radius:4px; background:#b0b0b0; cursor:grab; }
+        #r20be .r20be-sb-th:hover, #r20be .r20be-sb-th.drag { background:#888; }
         #r20be .r20be-row { display:flex; align-items:center; gap:3px; min-height:28px; padding-right:6px; border-bottom:1px solid #f2f2f2; }
         #r20be .r20be-row:hover { background:#f3f8fe; }
         #r20be .r20be-row.chk { background:#eef5fd; }
@@ -1144,11 +1153,11 @@ if (!document.getElementById("r20-addon-style")) {
         #r20be .r20be-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
         #r20be .r20be-fld { display:block; margin:0; font-weight:normal; }
         #r20be .r20be-lb { display:block; margin-bottom:4px; color:#555; font-size:11px; font-weight:700; }
-        #r20be .r20be-ed { flex:1; min-height:240px; display:flex; flex-direction:column; border:1px solid #ccc; border-radius:4px; overflow:hidden; }
+        #r20be .r20be-ed { flex:1 0 auto; min-height:240px; display:flex; flex-direction:column; border:1px solid #ccc; border-radius:4px; overflow:hidden; }
         #r20be .r20be-ctabs { display:flex; padding:0 4px; border-bottom:1px solid #e6e6e6; flex-shrink:0; }
         #r20be .r20be-ctab { height:28px; padding:0 10px; border:0; border-bottom:2px solid transparent; background:transparent; color:#6b6b6b; font-size:12px; font-weight:700; cursor:pointer; }
         #r20be .r20be-ctab.on { border-bottom-color:#1867c7; color:#1867c7; }
-        #r20be .r20be-ta { flex:1; width:100%; min-height:200px; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
+        #r20be .r20be-ta { flex:1 0 auto; width:100%; min-height:200px; overflow:hidden; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
         #r20be .r20be-ta.mono { font-family:Consolas, monospace; font-size:12px; }
         #r20be .r20be-warn { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:6px 10px; border-bottom:1px solid #fde4c8; background:#fff7ed; color:#92400e; font-size:11px; }
         #r20be .r20be-note, #r20be .r20be-empty { margin:0; color:#6b6b6b; font-size:12px; }
@@ -1169,7 +1178,7 @@ if (!document.getElementById("r20-addon-style")) {
         #r20be .r20be-foot.err { color:#b91c1c; font-weight:700; }
         @media (max-width: 640px) {
             #r20be .r20be-body { flex-direction:column; }
-            #r20be .r20be-tree { flex:0 0 40%; border-right:0; border-bottom:1px solid #e6e6e6; }
+            #r20be .r20be-col.tree { flex:0 0 40%; border-right:0; border-bottom:1px solid #e6e6e6; }
             #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
         }
         body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
@@ -1702,6 +1711,7 @@ const bulkEditor = (() => {
         const r = rowEl(id);
         if (r) { r.classList.add("sel"); r.setAttribute("aria-selected", "true"); }
         renderPane();
+        ui.pane.scrollTop = 0;
     };
 
     const startRename = (row, n) => {
@@ -1785,7 +1795,7 @@ const bulkEditor = (() => {
                     el("input", { type: "checkbox", checked: !!n.htmlMode[k], onchange: e => { setMode(n, k, e.target.checked); renderPane(); } }), "HTML로 편집")));
             ed.append(el("textarea", { class: "r20be-ta" + (n.htmlMode[k] ? " mono" : ""), value: n.cur[k] ?? "", spellcheck: "false",
                 "aria-label": k === "gm" ? "GM 노트" : n.kind === "char" ? "소개" : "내용",
-                oninput: e => { setField(n, k, e.target.value); refreshRow(n); } }));
+                oninput: e => { setField(n, k, e.target.value); autosize(e.target); refreshRow(n); } }));
         }
         return el("div", { class: "r20be-pane-in" }, paneHead(n),
             el("div", { class: "r20be-grid" },
@@ -1895,6 +1905,7 @@ const bulkEditor = (() => {
         ui.pane.append(checked.length >= 2 ? bulkPane(checked)
             : !n ? el("p", { class: "r20be-empty" }, "왼쪽에서 항목을 고르세요")
             : n.kids ? groupPane(n) : n.kind === "track" ? trackPane(n) : docPane(n));
+        ui.pane.querySelectorAll(".r20be-ta").forEach(autosize);
     };
 
     // ── 만들기 · 복제 · 삭제 (모두 저장할 때 반영) ──
@@ -2182,9 +2193,11 @@ const bulkEditor = (() => {
         p.addEventListener("mouseup", keep);    // 모서리로 크기를 바꾼 뒤 기억
         p.addEventListener("keydown", e => e.stopPropagation());    // Roll20 단축키(토큰 삭제 등)로 새지 않게
         // Roll20이 휠·터치패드 스크롤을 맵 확대/이동용으로 가로채므로 창 안의 스크롤은 직접 처리한다
-        p.addEventListener("wheel", e => {
+        // (Roll20 처리기보다 먼저 받도록 window 캡처 단계에서)
+        window.addEventListener("wheel", e => {
+            if (!p.classList.contains("show") || !p.contains(e.target)) return;
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
             for (let n = e.target; n && n !== p; n = n.parentElement) {
                 if (n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) {
@@ -2193,7 +2206,7 @@ const bulkEditor = (() => {
                     if (n.scrollTop !== before) return;     // 끝까지 갔으면 바깥 영역으로 넘긴다
                 }
             }
-        }, { passive: false });
+        }, { capture: true, passive: false });
         // 창이 열려 있으면 Ctrl+S 는 브라우저 "페이지 저장" 대신 편집기 저장 (채팅 등 다른 입력칸에 있을 때는 제외)
         document.addEventListener("keydown", e => {
             if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s" || !p.classList.contains("show")) return;
@@ -2204,6 +2217,43 @@ const bulkEditor = (() => {
         document.addEventListener("click", e => {
             if (!ui.menu.hidden && !ui.menu.contains(e.target) && !ui.newBtn.contains(e.target)) ui.menu.hidden = true;
         });
+    };
+    // 내용칸은 글 길이만큼 늘리고, 스크롤은 오른쪽 칸 전체가 맡는다
+    const autosize = ta => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
+    // 마우스로 끌 수 있는 스크롤바 (Roll20이 휠을 막거나 기본 스크롤바를 숨겨도 동작)
+    const scrollCol = (area, kind) => {
+        const thumb = el("div", { class: "r20be-sb-th" });
+        const track = el("div", { class: "r20be-sb", "aria-hidden": "true" }, thumb);
+        const sync = () => {
+            const sh = area.scrollHeight, ch = area.clientHeight;
+            track.hidden = sh <= ch + 1;
+            if (track.hidden) return;
+            const th = Math.max(24, track.clientHeight * ch / sh);
+            thumb.style.height = th + "px";
+            thumb.style.transform = `translateY(${(track.clientHeight - th) * area.scrollTop / (sh - ch)}px)`;
+        };
+        let raf = 0;
+        const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); };
+        area.addEventListener("scroll", sync);
+        new ResizeObserver(later).observe(area);
+        new MutationObserver(later).observe(area, { childList: true, subtree: true, characterData: true });
+        thumb.addEventListener("mousedown", e => {
+            e.preventDefault(); e.stopPropagation();
+            const sy = e.clientY, st = area.scrollTop;
+            const ratio = (area.scrollHeight - area.clientHeight) / Math.max(1, track.clientHeight - thumb.offsetHeight);
+            thumb.classList.add("drag");
+            const mv = ev => { area.scrollTop = st + (ev.clientY - sy) * ratio; };
+            const up = () => { thumb.classList.remove("drag"); window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); };
+            window.addEventListener("mousemove", mv);
+            window.addEventListener("mouseup", up);
+        });
+        // 막대 빈 곳을 누르면 한 화면씩 이동
+        track.addEventListener("mousedown", e => {
+            if (e.target === thumb) return;
+            e.preventDefault();
+            area.scrollTop += (e.clientY < thumb.getBoundingClientRect().top ? -1 : 1) * area.clientHeight * 0.9;
+        });
+        return el("div", { class: "r20be-col " + kind }, area, track);
     };
     const ensureUi = () => {
         if (ui) return;
@@ -2228,7 +2278,7 @@ const bulkEditor = (() => {
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
             el("div", { class: "r20be-tools" }, ui.search, ui.chips, el("span", { class: "r20be-flex" }), ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
-            el("div", { class: "r20be-body" }, ui.tree, ui.pane),
+            el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
         bindPanel(head);
