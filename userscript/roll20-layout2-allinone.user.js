@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.3.1
+// @version      1.3.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -21,7 +21,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = typeof GM_info !== "undefined" ? GM_info.script.version : "";
+const SCRIPT_VER = "1.3.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1100,7 +1100,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20-bgm-off .r20-bgm-pv { display:none; }
 
         #r20be { position:fixed; z-index:10005; display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); background:#fff; border:1px solid #b5b5b5; border-radius:4px; box-shadow:0 8px 24px rgba(0,0,0,0.22); font-family:sans-serif; font-size:12px; color:#333; resize:both; overflow:hidden; box-sizing:border-box; }
-        #r20be.show { display:flex; }
+        /* Roll20(Bootstrap)의 .show { display:block !important } 와 겹치지 않게 전용 클래스를 쓴다 */
+        #r20be.r20be-show { display:flex !important; }
         #r20be *, #r20be *::before, #r20be *::after { box-sizing:border-box; }
         #r20be [hidden] { display:none !important; }
         #r20be button:focus-visible, #r20be input:focus-visible, #r20be select:focus-visible, #r20be textarea:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
@@ -1205,7 +1206,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox .instructions { display:none !important; }
         body.r20jb-on #jukebox .secondarycontrols { margin:2px 0 6px !important; }
         body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
-        body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { padding-left:12px !important; }
+        body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
         /* 재생목록 머리줄: 폴더째 재생 버튼만 */
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:28px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:700 !important; line-height:28px !important; }
@@ -1218,9 +1219,12 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
         /* 곡 줄 */
         body.r20jb-on #jukebox li.jukeboxitem { position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:12px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; overflow:hidden !important; text-indent:-9999px !important; cursor:grab; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle:hover { background:rgba(128,128,128,0.15) !important; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:1px; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
+        /* 끌기 손잡이(☰)는 곡 줄 바로 왼쪽에 붙이고, 줄에 마우스를 올렸을 때만 보인다 */
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:12px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; transform:none !important; overflow:hidden !important; text-indent:0 !important; font-size:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:grab; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { content:"☰" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:#999 !important; opacity:0; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::after { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem:hover > .dd-handle::before { opacity:1; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:1px; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
         body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 4px !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
@@ -1839,7 +1843,7 @@ const bulkEditor = (() => {
             n.loadError = true;
         }
         n.loading = false;
-        if (ui.root.classList.contains("show") && cur().sel === n.id) renderPane();
+        if (ui.root.classList.contains("r20be-show") && cur().sel === n.id) renderPane();
     };
 
     const docPane = n => {
@@ -2259,7 +2263,7 @@ const bulkEditor = (() => {
         // Roll20이 휠·터치패드 스크롤을 맵 확대/이동용으로 가로채므로 창 안의 스크롤은 직접 처리한다
         // (Roll20 처리기보다 먼저 받도록 window 캡처 단계에서)
         window.addEventListener("wheel", e => {
-            if (!p.classList.contains("show") || !p.contains(e.target)) return;
+            if (!p.classList.contains("r20be-show") || !p.contains(e.target)) return;
             e.preventDefault();
             e.stopImmediatePropagation();
             const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
@@ -2273,7 +2277,7 @@ const bulkEditor = (() => {
         }, { capture: true, passive: false });
         // 창이 열려 있으면 Ctrl+S 는 브라우저 "페이지 저장" 대신 편집기 저장 (채팅 등 다른 입력칸에 있을 때는 제외)
         document.addEventListener("keydown", e => {
-            if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s" || !p.classList.contains("show")) return;
+            if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s" || !p.classList.contains("r20be-show")) return;
             if (!p.contains(e.target) && e.target !== document.body) return;
             e.preventDefault();
             save();
@@ -2353,11 +2357,11 @@ const bulkEditor = (() => {
         if (!window.Campaign?.handouts) { alert("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요."); return; }
         ensureUi();
         if (!dirtyCount()) S.journal = S.bgm = null;     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
-        ui.root.classList.add("show");
+        ui.root.classList.add("r20be-show");
         setStatus();
         switchTab(tab || S.tab);
     };
-    function close() { ui.root.classList.remove("show"); ui.menu.hidden = true; }
+    function close() { ui.root.classList.remove("r20be-show"); ui.menu.hidden = true; }
 
     // 저널 · 주크박스 탭 위쪽에 여는 버튼
     const inject = () => {
