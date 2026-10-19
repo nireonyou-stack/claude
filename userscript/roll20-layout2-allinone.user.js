@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.9.0
+// @version      1.10.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.9.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.10.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -51,7 +51,8 @@ const btnVisible = {
     jbrow:     localStorage.getItem("r20_show_jbrow")   !== "false",
     sidepick:  localStorage.getItem("r20_show_sidepick") !== "false",
     qpick:     localStorage.getItem("r20_show_qpick")   !== "false",
-    tokmenu:   localStorage.getItem("r20_show_tokmenu") !== "false"
+    tokmenu:   localStorage.getItem("r20_show_tokmenu") !== "false",
+    pageslim:  localStorage.getItem("r20_show_pageslim") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -500,6 +501,7 @@ function applyCocofoliaLayout() {
                 if (key === "bgm") bgmPreview.setEnabled(inp.checked);
                 if (key === "bulk") bulkEditor.setEnabled(inp.checked);
                 if (key === "jbrow") jukeboxRow.setEnabled(inp.checked);
+                if (key === "pageslim") pagePanel.setEnabled(inp.checked);
                 if (!inp.checked && key === "autofill") autofill.close();
 
                 if (!inp.checked && key === "journal") {
@@ -544,6 +546,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널·모음)", "jbrow"));
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
         settingsPopup.appendChild(makeRow("토큰 메뉴 이전·다음 면", "tokmenu"));
+        settingsPopup.appendChild(makeRow("페이지 창 슬림", "pageslim"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1398,6 +1401,63 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #journalfolderroot li.journalitem .playerdots { flex-shrink:0; margin:0 !important; font-size:12px !important; line-height:1 !important; }
         body.r20jb-on #journalfolderroot li.journalitem .sourcefooter:empty { display:none !important; }
         /* 재생 중인 곡 */
+        /* 페이지 창 슬림 (body.r20pg-on) — Roll20 Vue 스타일 위에 덮어쓴다 */
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header { padding:0 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header > .horizontal-wrapper:first-child { min-height:0 !important; height:46px !important; padding:0 10px 0 14px !important; border-bottom:1px solid #efeff2; align-items:center !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page-wrapper { display:flex !important; align-items:center !important; gap:10px !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page { display:flex !important; align-items:center !important; gap:8px !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page__thumbnail { width:auto !important; height:24px !important; max-width:40px; border-radius:4px !important; object-fit:cover; }
+        body.r20pg-on .vtt-page-card-menu .current-page__title { font-size:14px !important; font-weight:700 !important; color:#222 !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page-settings { display:inline-flex !important; align-items:center !important; gap:5px !important; height:28px !important; padding:0 10px !important; border-radius:6px !important; color:#555 !important; font-size:12px !important; cursor:pointer; }
+        body.r20pg-on .vtt-page-card-menu .current-page-settings:hover { background:#f1f1f3 !important; color:#222 !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page-settings__text { font-size:12px !important; font-weight:400 !important; color:inherit !important; }
+        body.r20pg-on .vtt-page-card-menu .party-box-outer { min-height:0 !important; height:32px !important; padding:0 8px !important; border:0 !important; border-radius:7px !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .party-box-outer:hover { background:#f1f1f3 !important; }
+        body.r20pg-on .vtt-page-card-menu .party-ribbon img { height:20px !important; width:auto !important; }
+        body.r20pg-on .vtt-page-card-menu .player-icon { width:22px !important; height:22px !important; min-width:0 !important; border-width:2px !important; }
+        body.r20pg-on .vtt-page-card-menu .party-page-name { font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .party-page-members { font-size:10px !important; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header .btn-cancel { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#666 !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header .btn-cancel:hover { background:#f1f1f3 !important; color:#222 !important; }
+        body.r20pg-on .vtt-page-card-menu .input-row { min-height:0 !important; height:44px !important; gap:8px !important; padding:0 14px !important; margin:0 !important; align-items:center !important; }
+        body.r20pg-on .vtt-page-card-menu .folder__add { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#555 !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .folder__add:hover { background:#f1f1f3 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-search-input .el-input__wrapper { height:30px !important; min-height:0 !important; padding:0 10px !important; border-radius:7px !important; background:#f4f4f6 !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .page-search-input .el-input__inner { height:28px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .page-search-input .grimoire__roll20-icon { --v7353a950:14px !important; color:#888 !important; }
+        body.r20pg-on .vtt-page-card-menu .create-page button { height:28px !important; min-height:0 !important; padding:0 10px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .create-page__label { font-size:12px !important; font-weight:700 !important; }
+        body.r20pg-on .vtt-page-card-menu .r20pg-zoom { display:flex; gap:2px; flex-shrink:0; }
+        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button { width:24px; height:24px; margin:0; padding:0; border:1px solid #e1e1e5; border-radius:5px; background:#fff; color:#666; font-size:13px; line-height:1; cursor:pointer; }
+        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button:hover { background:#f4f4f6; color:#222; }
+        body.r20pg-on .vtt-page-card-menu .breadcrumb-wrapper { min-height:0 !important; height:32px !important; font-size:12px !important; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .breadcrumb-item { font-size:12px !important; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .breadcrumb-item:last-of-type { color:#333 !important; font-weight:700 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-tree-view-collapse-title { font-size:10px !important; font-weight:700 !important; letter-spacing:0.04em; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .all-btn { height:28px !important; padding:0 8px !important; border-radius:6px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node { min-height:0 !important; height:28px !important; margin:0 !important; padding:0 4px !important; border:0 !important; border-radius:6px !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node:hover { background:#f4f4f6 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node.active { background:#fbe9f1 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-button { height:28px !important; min-height:0 !important; padding:0 4px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-icon .grimoire__roll20-icon { --v7353a950:14px !important; font-size:14px !important; color:#9a9aa3 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node.active .node-icon .grimoire__roll20-icon { color:#b8215f !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-name { font-size:12px !important; font-weight:400 !important; color:#333 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node.active .node-name { font-weight:700 !important; color:#8f1849 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-children-count { min-width:0 !important; padding:0 !important; border:0 !important; background:none !important; color:#9a9aa0 !important; font-size:11px !important; font-weight:400 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-container { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--r20pg-size, 150px), 1fr)) !important; gap:12px 10px !important; padding:4px 16px 16px !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card-wrapper.page-card { width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card { position:relative !important; width:auto !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .card-thumbnail-container { position:relative !important; width:100% !important; height:auto !important; aspect-ratio:16/10; border-radius:6px !important; overflow:hidden !important; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06); }
+        body.r20pg-on .vtt-page-card-menu .card-thumbnail { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; border-radius:0 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .card-thumbnail-container { box-shadow:0 0 0 2px #e7b3c9 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container { box-shadow:0 0 0 2px #b8215f !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container::before { content:"현재"; position:absolute; left:5px; top:5px; z-index:3; padding:0 6px; border-radius:8px; background:#b8215f; color:#fff; font-size:9px; font-weight:700; line-height:15px; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-title { min-height:0 !important; height:auto !important; margin:0 !important; padding:5px 1px 0 !important; text-align:left !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-title .el-text { font-size:11px !important; font-weight:400 !important; color:#333 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-controls { position:absolute !important; top:4px !important; right:4px !important; left:auto !important; bottom:auto !important; z-index:3; display:flex !important; gap:2px; width:auto !important; height:auto !important; margin:0 !important; padding:1px 3px !important; border-radius:5px; background:rgba(255,255,255,0.92) !important; opacity:0; transition:opacity 0.12s; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-controls > span:first-child { display:none !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .vtt-page-controls, body.r20pg-on .vtt-page-card-menu .vtt-page-card:focus-within .vtt-page-controls { opacity:1; }
+
         /* 모음 탭(매크로 · 덱 · 목록에서 뽑기): 저널처럼 한 줄씩 가늘게 */
         body.r20jb-on #deckstables .content > p { display:none !important; }
         body.r20jb-on #deckstables .content > .clear { height:6px !important; }
@@ -3822,10 +3882,44 @@ const queryPicker = (() => {
     return { inject };
 })();
 
+// ───────── 페이지 창 슬림: Roll20 페이지 창(.vtt-page-card-menu)의 겉모양만 가늘고 가볍게 (body.r20pg-on) ─────────
+// 누르기 · 끌기 · 메뉴 등 동작은 Roll20 그대로. 카드 크기만 −/+ 단추로 바꾼다
+const pagePanel = (() => {
+    let size = Math.max(90, Math.min(260, parseInt(localStorage.getItem("r20_pg_size"), 10) || 150));
+    const apply = menu => menu.style.setProperty("--r20pg-size", size + "px");
+    const inject = () => {
+        if (!btnVisible.pageslim) return;
+        document.querySelectorAll(".vtt-page-card-menu").forEach(menu => {
+            apply(menu);
+            const row = menu.querySelector(".input-row");
+            if (!row || row.querySelector(".r20pg-zoom")) return;       // Vue 가 다시 그리면 다시 단다
+            const z = document.createElement("span");
+            z.className = "r20pg-zoom";
+            z.innerHTML = '<button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button>';
+            z.addEventListener("click", e => {
+                const b = e.target.closest("button[data-d]");
+                if (!b) return;
+                size = Math.max(90, Math.min(260, size + Number(b.dataset.d) * 30));
+                localStorage.setItem("r20_pg_size", size);
+                document.querySelectorAll(".vtt-page-card-menu").forEach(apply);
+            });
+            const create = [...row.children].find(c => c.querySelector(".create-page"));
+            row.insertBefore(z, create || null);
+        });
+    };
+    const setEnabled = on => {
+        document.body.classList.toggle("r20pg-on", on);
+        if (!on) document.querySelectorAll(".r20pg-zoom").forEach(z => z.remove());
+        else inject();
+    };
+    setEnabled(btnVisible.pageslim);
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
