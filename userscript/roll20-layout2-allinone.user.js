@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.8.1
+// @version      1.8.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.8.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.8.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1419,7 +1419,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
         .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
         .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
-        .ui-dialog.r20cs .sidechoice img, .ui-dialog.r20cs .sidechoice video { display:block !important; width:100% !important; height:100% !important; max-width:none !important; object-fit:cover; pointer-events:none; }
+        .ui-dialog.r20cs .sidechoice img, .ui-dialog.r20cs .sidechoice video { position:absolute !important; inset:0 !important; display:block !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; object-fit:contain !important; pointer-events:none; }
         .ui-dialog.r20cs .sidechoice::after { content:counter(side); position:absolute; left:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:10px; font-weight:700; line-height:15px; }
         .ui-dialog.r20cs .sidechoice:hover { outline:2px solid #9cc1ea; outline-offset:-2px; }
         .ui-dialog.r20cs .sidechoice[data-selected="true"] { outline:3px solid #1867c7; outline-offset:-3px; }
