@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.10.2
+// @version      1.11.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.10.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.11.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -52,7 +52,8 @@ const btnVisible = {
     sidepick:  localStorage.getItem("r20_show_sidepick") !== "false",
     qpick:     localStorage.getItem("r20_show_qpick")   !== "false",
     tokmenu:   localStorage.getItem("r20_show_tokmenu") !== "false",
-    pageslim:  localStorage.getItem("r20_show_pageslim") !== "false"
+    pageslim:  localStorage.getItem("r20_show_pageslim") !== "false",
+    artroom:   localStorage.getItem("r20_show_artroom") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -502,6 +503,7 @@ function applyCocofoliaLayout() {
                 if (key === "bulk") bulkEditor.setEnabled(inp.checked);
                 if (key === "jbrow") jukeboxRow.setEnabled(inp.checked);
                 if (key === "pageslim") pagePanel.setEnabled(inp.checked);
+                if (key === "artroom") roomImages.setEnabled(inp.checked);
                 if (!inp.checked && key === "autofill") autofill.close();
 
                 if (!inp.checked && key === "journal") {
@@ -547,6 +549,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
         settingsPopup.appendChild(makeRow("토큰 메뉴 이전·다음 면", "tokmenu"));
         settingsPopup.appendChild(makeRow("페이지 창·설정 슬림", "pageslim"));
+        settingsPopup.appendChild(makeRow("그림 라이브러리 · 이 방의 이미지", "artroom"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1569,6 +1572,57 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
         .r20be-mini:hover { background:#ebebeb; color:#333; }
+        #imagedialog .r20ri { display:flex; flex-direction:column; color:#333; font-size:12px; }
+        #imagedialog .r20ri button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
+        #imagedialog .r20ri-seg { display:flex; flex-shrink:0; gap:2px; margin:4px 0 6px; padding:2px; border-radius:7px; background:#efeff2; }
+        #imagedialog .r20ri-seg button { flex:1; height:26px; padding:0; border:0; border-radius:5px; background:transparent; font-size:12px; color:#555; }
+        #imagedialog .r20ri-seg button[aria-pressed="true"] { background:#fff; color:#222; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,0.12); }
+        #imagedialog .r20ri-body { display:none; }
+        #imagedialog.r20ri-room { overflow:hidden !important; }
+        #imagedialog.r20ri-room > :not(.r20ri) { display:none !important; }
+        #imagedialog.r20ri-room .r20ri-body { position:relative; display:flex; flex-direction:column; flex:1; min-height:0; }
+        #imagedialog .r20ri-bar { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+        #imagedialog .r20ri-q { flex:1; display:flex; align-items:center; gap:6px; height:28px; margin:0; padding:0 8px; border-radius:6px; background:#f4f4f6; }
+        #imagedialog .r20ri-q input { flex:1; min-width:0; width:auto; height:26px; margin:0; padding:0; border:0 !important; background:transparent; box-shadow:none !important; font-size:12px; outline:none; }
+        #imagedialog .r20ri-zoom { display:flex; gap:2px; }
+        #imagedialog .r20ri-zoom button { width:24px; height:24px; padding:0; border:1px solid #e1e1e5; border-radius:5px; background:#fff; color:#666; font-size:13px; }
+        #imagedialog .r20ri-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+        #imagedialog .r20ri-chips button, #imagedialog .r20ri-foot button, #imagedialog .r20ri-note button { height:24px; padding:0 9px; border:1px solid #e1e1e5; border-radius:12px; background:#fff; font-size:11px; color:#555; white-space:nowrap; }
+        #imagedialog .r20ri-chips button[aria-pressed="true"] { background:#b8215f; border-color:#b8215f; color:#fff; font-weight:700; }
+        #imagedialog .r20ri-note { display:flex; align-items:center; gap:6px; margin-bottom:6px; padding:5px 8px; border-radius:6px; background:#fbf2f6; color:#7a1a42; font-size:11px; }
+        #imagedialog .r20ri-note[hidden] { display:none; }
+        #imagedialog .r20ri-note span { flex:1; }
+        #imagedialog .r20ri-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+        #imagedialog .r20ri-gh { display:flex; align-items:center; gap:6px; padding:8px 2px 4px; font-size:11px; font-weight:700; color:#555; }
+        #imagedialog .r20ri-gh small { font-weight:400; color:#8a8a90; }
+        #imagedialog .r20ri-gh::after { content:""; flex:1; height:1px; background:#eee; }
+        #imagedialog .r20ri-empty { margin:20px 0; color:#8a8a90; text-align:center; }
+        #imagedialog ul.r20ri-grid { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--ri-size, 72px), 1fr)); gap:6px; margin:0 !important; padding:0 2px 2px !important; list-style:none; }
+        li.r20ri-tile { position:relative; float:none !important; display:block !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border:0 !important; border-radius:6px; overflow:hidden; background:#f1f1f1 !important; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06); list-style:none; cursor:grab; }
+        li.r20ri-tile:hover { box-shadow:0 0 0 2px #e7b3c9; }
+        li.r20ri-tile.on { box-shadow:0 0 0 2px #b8215f; }
+        li.r20ri-tile:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        li.r20ri-tile .token { position:absolute !important; inset:0; float:none !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; }
+        li.r20ri-tile .token img { display:block; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; object-fit:contain; }
+        li.r20ri-tile .token img.r20ri-broken { visibility:hidden; }
+        li.r20ri-tile .namecontainer { display:none !important; }
+        li.r20ri-tile .r20ri-cnt { position:absolute; right:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
+        li.r20ri-tile.ui-draggable-dragging { width:64px !important; height:64px !important; z-index:100000 !important; box-shadow:0 4px 12px rgba(0,0,0,0.3); opacity:0.9; cursor:grabbing; }
+        li.r20ri-tile.ui-draggable-dragging .r20ri-cnt { display:none; }
+        #imagedialog .r20ri-pop { position:absolute; left:0; right:0; bottom:40px; z-index:5; max-height:70%; overflow-y:auto; padding:6px 0; border:1px solid #e6e6ea; border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.15); }
+        #imagedialog .r20ri-ph { display:flex; align-items:center; gap:8px; padding:2px 6px 8px 10px; border-bottom:1px solid #f0f0f3; }
+        #imagedialog .r20ri-ph img { flex-shrink:0; width:44px; height:44px; border-radius:6px; background:#f1f1f1; object-fit:contain; }
+        #imagedialog .r20ri-ph div { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:11px; color:#6b6b70; }
+        #imagedialog .r20ri-ph strong { overflow:hidden; font-size:12px; color:#222; white-space:nowrap; text-overflow:ellipsis; }
+        #imagedialog .r20ri-ph .r20ri-x { width:24px; height:24px; padding:0; border:0; border-radius:5px; background:transparent; color:#777; }
+        #imagedialog .r20ri-mi { display:block; width:100%; height:28px; padding:0 10px; border:0; background:transparent; font-size:12px; color:#333; text-align:left; }
+        #imagedialog .r20ri-mi:hover, #imagedialog .r20ri-ph .r20ri-x:hover { background:#f4f4f6; }
+        #imagedialog .r20ri-uses { display:flex; flex-direction:column; align-items:flex-start; gap:3px; margin-top:4px; padding:6px 10px 2px; border-top:1px solid #f0f0f3; font-size:11px; color:#555; }
+        #imagedialog .r20ri-uses > small { color:#8a8a90; }
+        #imagedialog .r20ri-uses button { height:auto; padding:0; border:0; background:none; color:#b8215f; font-size:11px; text-align:left; }
+        #imagedialog .r20ri-uses button:hover { text-decoration:underline; }
+        #imagedialog .r20ri-foot { display:flex; flex-shrink:0; align-items:center; gap:6px; height:34px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
+        #imagedialog .r20ri-sum { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     `;
     document.head.appendChild(style);
 }
@@ -1935,6 +1989,14 @@ const bgmPreview = (() => {
 
 // Roll20 은 예전 S3 그림 주소(s3.amazonaws.com/files.d20.io/…)를 files.d20.io 로 바꿔 보여 준다 → 미리보기도 같게
 const r20img = u => String(u || "").replace(/^(?:https?:)?\/\/s3\.amazonaws\.com\/files\.d20\.io\//i, "https://files.d20.io/");
+const copyText = async text => {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.cssText = "position:fixed;left:-9999px";
+        document.body.append(ta); ta.select();
+        const ok = document.execCommand("copy"); ta.remove(); return ok;
+    }
+};
 
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
@@ -2952,13 +3014,6 @@ const bulkEditor = (() => {
         if (tables.length === 1 && lines.length === 1) return `[[1t[${split(lines[0])[1]}]]]`;
         return `[[1t[?{${qEsc(question)}|` + lines.map(l => DIVIDER.test(l) ? "------------------------------" : split(l).map(qEsc).join(",")).join("|") + "}]]]";
     };
-    const copyText = async text => {
-        try { await navigator.clipboard.writeText(text); return true; } catch (e) {
-            const ta = el("textarea", { value: text, style: "position:fixed;left:-9999px" });
-            document.body.append(ta); ta.select();
-            const ok = document.execCommand("copy"); ta.remove(); return ok;
-        }
-    };
     const openRollMacro = list => {
         const t = cur(), tables = t.roots.filter(x => list.includes(x) && !x.deleted);       // 목록 순서대로
         const nameIn = el("input", { class: "r20be-in", value: "표굴림", "aria-label": "매크로 이름" });
@@ -3974,10 +4029,306 @@ const pagePanel = (() => {
     return { inject, setEnabled };
 })();
 
+// ───────── 그림 라이브러리 · 이 방의 이미지: 페이지·캐릭터·핸드아웃·굴림표·덱에 쓰인 그림을 한곳에서 본다 ─────────
+// 맵에 놓기는 Roll20 라이브러리 항목과 같은 모양(.draggableresult + data-fullsizeurl)으로 만들어 Roll20 드롭을 그대로 쓴다
+// → 계정 라이브러리에는 아무것도 추가되지 않는다. (보는 동안 라이브러리 정리 영역은 숨겨 실수로 넣는 일도 막는다)
+const roomImages = (() => {
+    const KINDS = [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]];
+    const SEARCH_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다 → 크기 부분을 뺀 주소로 같은 그림을 묶는다
+    const VAR = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
+    const sized = (u, s) => VAR.test(u) ? u.replace(VAR, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
+    const keyOf = u => r20img(u).replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
+
+    let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
+    let mode = localStorage.getItem("r20_ri_mode") === "room" ? "room" : "lib";
+    let src = "all", q = "", groups = [], items = new Map(), unread = 0, shown = 0;
+    let loading = null, root = null, ro = null, wasVisible = false, dragBase = null;
+
+    // ── 모으기: 불러온 페이지의 토큰(여러 면 포함) · 캐릭터 아바타/기본 토큰 · 핸드아웃 · 굴림표 항목 · 덱 카드 ──
+    const collect = () => {
+        const C = window.Campaign;
+        items = new Map(); groups = []; unread = 0;
+        if (!C) return;
+        const group = (kind, name) => { const g = { kind, name, list: [] }; groups.push(g); return g; };
+        const add = (g, url, name, use) => {
+            if (typeof url !== "string" || !/^(?:https?:)?\/\//i.test(url)) return;
+            const k = keyOf(url);
+            let it = items.get(k);
+            if (!it) items.set(k, it = { k, url, name: "", img: "", uses: [] });
+            if (!it.name && name) it.name = name;
+            if (use.kind === "page" && !it.img) it.img = url;       // 토큰의 imgsrc 는 그대로 다시 쓸 수 있다
+            if (!it.uses.some(u => u.kind === use.kind && u.id === use.id)) it.uses.push(use);
+            if (!g.list.includes(it)) g.list.push(it);
+        };
+        const pages = C.pages?.models || [], act = typeof C.activePage === "function" ? C.activePage() : null;
+        [act, ...pages.filter(p => p !== act)].forEach(p => {
+            if (!p) return;
+            if (!p.thegraphics) { unread++; return; }
+            const name = p.get("name") || "(이름 없는 페이지)";
+            const g = group("page", (p === act ? "지금 페이지 · " : "페이지 · ") + name), use = { kind: "page", id: p.id, label: "페이지 · " + name };
+            p.thegraphics.models.forEach(m => {
+                const nm = m.get("name") || "";
+                add(g, m.get("imgsrc"), nm, use);
+                String(m.get("sides") || "").split("|").forEach(s => { try { if (s) add(g, decodeURIComponent(s), nm, use); } catch (e) {} });
+            });
+        });
+        const chars = group("char", "캐릭터");
+        (C.characters?.models || []).forEach(m => {
+            const name = m.get("name") || "", use = { kind: "char", id: m.id, label: "캐릭터 · " + name };
+            add(chars, m.get("avatar"), name, use);
+            try { add(chars, JSON.parse(m.get("defaulttoken") || "null")?.imgsrc, name, use); } catch (e) {}
+        });
+        const hos = group("handout", "핸드아웃");
+        (C.handouts?.models || []).forEach(m => {
+            const name = m.get("name") || "";
+            add(hos, m.get("avatar"), name, { kind: "handout", id: m.id, label: "핸드아웃 · " + name });
+        });
+        (C.rollabletables?.models || []).forEach(t => {
+            const name = t.get("name") || "", g = group("table", "굴림표 · " + name), use = { kind: "table", id: t.id, label: "굴림표 · " + name };
+            (t.tableitems?.models || []).forEach(m => add(g, m.get("avatar"), m.get("name") || name, use));
+        });
+        (C.decks?.models || []).forEach(d => {
+            const name = d.get("name") || "", g = group("deck", "덱 · " + name), use = { kind: "deck", id: d.id, label: "덱 · " + name };
+            add(g, d.get("avatar"), name + " 뒷면", use);
+            (d.cards?.models || []).forEach(m => { add(g, m.get("avatar"), m.get("name") || name, use); add(g, m.get("card_back"), name + " 뒷면", use); });
+        });
+        groups = groups.filter(g => g.list.length);
+    };
+
+    // ── 그리기 ──
+    const tileHtml = it => {
+        const orig = sized(it.url, "thumb"), th = r20img(orig);
+        const tip = (it.name || "이름 없음") + "\n" + it.uses.map(u => u.label).join("\n");
+        return `<li class="draggableresult r20ri-tile" tabindex="0" role="button" data-k="${esc(it.k)}" data-fullsizeurl="${esc(r20img(sized(it.url, "max")))}" data-grid-width="null" data-grid-height="null" title="${esc(tip)}">`
+            + `<div class="token"><img src="${esc(th)}"${th !== orig ? ` data-orig="${esc(orig)}"` : ""} loading="lazy" draggable="false" alt=""></div>`
+            + `<div class="namecontainer">${esc(it.name)}</div>`
+            + (it.uses.length > 1 ? `<span class="r20ri-cnt">×${it.uses.length}</span>` : "") + "</li>";
+    };
+    const foot = () => {
+        if (!root) return;
+        root.querySelector(".r20ri-sum").textContent = `총 ${shown}장 · 끌어서 맵에 놓기`;
+        const note = root.querySelector(".r20ri-note");
+        note.hidden = !unread && !loading;
+        note.querySelector("span").textContent = loading ? `페이지 읽는 중 ${loading.done}/${loading.total}` : `아직 안 읽은 페이지 ${unread}개`;
+        note.querySelector("button").textContent = loading ? "멈추기" : "모두 읽기";
+    };
+    const render = () => {
+        if (!root) return;
+        closePop();
+        const v = norm(q), seen = new Set();
+        let html = "";
+        groups.forEach(g => {
+            if (src !== "all" && g.kind !== src) return;
+            const its = v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list;
+            if (!its.length) return;
+            its.forEach(it => seen.add(it));
+            html += `<section><div class="r20ri-gh">${esc(g.name)} <small>${its.length}장</small></div><ul class="r20ri-grid">${its.map(tileHtml).join("")}</ul></section>`;
+        });
+        root.querySelector(".r20ri-list").innerHTML = html || `<p class="r20ri-empty">${groups.length ? "찾는 그림이 없어요" : "그림이 없어요"}</p>`;
+        shown = seen.size;
+        foot();
+    };
+    const refresh = () => { collect(); render(); };
+
+    // 안 읽은 페이지: Roll20 이 페이지 복제 때 쓰는 fullyLoadPage() 로 하나씩 불러온다 (누르면 멈춤)
+    const loadPages = async () => {
+        if (loading) { loading.stop = true; return; }
+        const todo = (window.Campaign?.pages?.models || []).filter(p => !p.thegraphics && typeof p.fullyLoadPage === "function");
+        if (!todo.length) return;
+        loading = { done: 0, total: todo.length, stop: false };
+        foot();
+        for (const p of todo) {
+            if (loading.stop) break;
+            try { await Promise.race([p.fullyLoadPage(), sleep(15000)]); } catch (e) { console.warn("[이 방의 이미지] 페이지 읽기 실패:", p.get?.("name"), e); }
+            loading.done++;
+            if (loading.done % 5 === 0) refresh(); else foot();
+        }
+        loading = null;
+        refresh();
+    };
+
+    // ── 끌어 놓기: 처음 마우스를 올릴 때 jQuery UI draggable 을 단다 (그림이 많아도 가볍게) ──
+    const initDrag = tile => {
+        const $ = window.jQuery;
+        if (!$?.fn?.draggable || tile.classList.contains("ui-draggable")) return;
+        if (!dragBase) {
+            // Roll20 라이브러리 항목의 start/stop(externaldrag 표시)을 그대로 빌려 쓴다
+            const ref = [...document.querySelectorAll(".draggableresult.ui-draggable")].find(e => !e.classList.contains("r20ri-tile"));
+            try { if (ref) dragBase = { ...$(ref).draggable("option") }; } catch (e) {}
+        }
+        $(tile).draggable({ ...(dragBase || {}), disabled: false, handle: false, cancel: "", helper: "clone", appendTo: "body",
+            revert: true, revertDuration: 0, distance: 3, cursorAt: { left: 32, top: 32 }, scroll: false, zIndex: 100000 });
+    };
+
+    // ── 그림 메뉴 ──
+    const say = (btn, msg) => {
+        const old = btn.dataset.label || (btn.dataset.label = btn.textContent);
+        btn.textContent = msg;
+        setTimeout(() => { if (btn.isConnected) btn.textContent = old; }, 1400);
+    };
+    const ratioOf = u => new Promise(res => {
+        const im = new Image();
+        im.onload = () => res(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 1);
+        im.onerror = () => res(1);
+        im.src = u;
+    });
+    // 지금 페이지에 바로 놓기: 토큰 층은 가운데에 긴 변 2칸(140px), 맵 층은 페이지에 맞춰 가운데
+    const place = async (it, layer, btn) => {
+        const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null;
+        if (!pg?.thegraphics) return say(btn, "지금 페이지를 못 찾았어요");
+        const W = (parseFloat(pg.get("width")) || 25) * 70, H = (parseFloat(pg.get("height")) || 25) * 70;
+        const r = await ratioOf(r20img(sized(it.url, "thumb")));
+        let w, h;
+        if (layer === "map") { if (W / H > r) { h = H; w = H * r; } else { w = W; h = W / r; } }
+        else if (r >= 1) { w = 140; h = 140 / r; } else { h = 140; w = 140 * r; }
+        try {
+            pg.thegraphics.create({ imgsrc: it.img || r20img(sized(it.url, "max")), left: Math.round(W / 2), top: Math.round(H / 2),
+                width: Math.round(w), height: Math.round(h), layer, page_id: pg.id });
+            say(btn, "놓았어요");
+        } catch (e) { console.warn("[이 방의 이미지] 놓기 실패:", e); say(btn, "놓지 못했어요"); }
+    };
+    const openJournal = u => {
+        const m = (u.kind === "char" ? window.Campaign?.characters : window.Campaign?.handouts)?.get?.(u.id);
+        if (typeof m?.view?.showDialog === "function") return m.view.showDialog();
+        const li = document.querySelector(`li.journalitem[data-itemid="${CSS.escape(u.id)}"]`);
+        if (li) { if (window.jQuery) window.jQuery(li).trigger("click"); else li.click(); }
+    };
+    const closePop = () => {
+        root?.querySelector(".r20ri-pop")?.remove();
+        root?.querySelectorAll(".r20ri-tile.on").forEach(t => t.classList.remove("on"));
+    };
+    const openPop = (tile, kb) => {
+        const it = items.get(tile.dataset.k);
+        if (!it) return;
+        closePop();
+        const pop = document.createElement("div");
+        pop.className = "r20ri-pop";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "그림 메뉴");
+        pop.innerHTML = `<div class="r20ri-ph"><img src="${esc(tile.querySelector("img")?.src || "")}" alt=""><div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
+            + `<button type="button" class="r20ri-x" data-a="close" aria-label="닫기">✕</button></div>`
+            + `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
+            + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
+            + `<button type="button" class="r20ri-mi" data-a="copy">이미지 주소 복사</button>`
+            + `<div class="r20ri-uses"><small>사용처</small>` + it.uses.map((u, i) => u.kind === "char" || u.kind === "handout"
+                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>";
+        pop._it = it;
+        root.querySelector(".r20ri-body").appendChild(pop);
+        tile.classList.add("on");
+        if (kb) pop.querySelector(".r20ri-mi").focus();
+    };
+    const onPop = (pop, b) => {
+        const it = pop._it, a = b.dataset.a;
+        if (a === "close") closePop();
+        else if (a === "objects" || a === "map") place(it, a, b);
+        else if (a === "copy") copyText(r20img(sized(it.url, "max"))).then(ok => say(b, ok ? "복사했어요" : "복사하지 못했어요"));
+        else if (a === "open") openJournal(it.uses[+b.dataset.i]);
+    };
+
+    // ── 틀 ──
+    const fit = () => {
+        if (!root || mode !== "room" || !root.offsetParent) { if (root && mode !== "room") root.style.height = ""; return; }
+        root.style.height = Math.max(240, window.innerHeight - root.getBoundingClientRect().top - 8) + "px";
+    };
+    const setMode = m => {
+        mode = m;
+        localStorage.setItem("r20_ri_mode", m);
+        const dlg = root?.parentNode;
+        dlg?.classList.toggle("r20ri-room", m === "room");
+        root?.querySelectorAll(".r20ri-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === m)));
+        if (m === "room") { if (dlg) dlg.scrollTop = 0; refresh(); } else closePop();
+        fit();
+    };
+    const build = () => {
+        const r = document.createElement("div");
+        r.className = "r20ri";
+        r.style.setProperty("--ri-size", size + "px");
+        r.innerHTML = `<div class="r20ri-seg" role="group" aria-label="그림 보기">`
+            + `<button type="button" data-m="lib" aria-pressed="${mode === "lib"}">내 라이브러리</button>`
+            + `<button type="button" data-m="room" aria-pressed="${mode === "room"}">이 방의 이미지</button></div>`
+            + `<div class="r20ri-body">`
+            + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="이름·사용처 검색" aria-label="이미지 검색"></label>`
+            + `<span class="r20ri-zoom"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
+            + `<div class="r20ri-chips">${KINDS.map(([k, l]) => `<button type="button" data-src="${k}" aria-pressed="${src === k}">${l}</button>`).join("")}</div>`
+            + `<div class="r20ri-note" hidden><span></span><button type="button" data-a="load"></button></div>`
+            + `<div class="r20ri-list"></div>`
+            + `<div class="r20ri-foot"><span class="r20ri-sum" title="같은 그림은 하나로 셉니다"></span><button type="button" data-a="reload">다시 읽기</button></div></div>`;
+        const input = r.querySelector(".r20ri-q input"), list = r.querySelector(".r20ri-list");
+        let qt = null;
+        input.addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(() => { q = input.value; render(); }, 150); });
+        r.addEventListener("keydown", e => {
+            e.stopPropagation();                 // Roll20 단축키 막기
+            if (e.key === "Escape") closePop();
+            const t = e.target.closest?.(".r20ri-tile");
+            if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPop(t, true); }
+        });
+        r.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            const pop = e.target.closest(".r20ri-pop");
+            if (pop) { if (b?.dataset.a) onPop(pop, b); return; }
+            const t = e.target.closest(".r20ri-tile");
+            if (t) return t.classList.contains("on") ? closePop() : openPop(t);
+            if (!b) return closePop();
+            if (b.dataset.m) setMode(b.dataset.m);
+            else if (b.dataset.src) {
+                src = b.dataset.src;
+                r.querySelectorAll(".r20ri-chips button").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+                render();
+            } else if (b.dataset.d) {
+                size = Math.max(48, Math.min(160, size + Number(b.dataset.d) * 16));
+                localStorage.setItem("r20_ri_size", size);
+                r.style.setProperty("--ri-size", size + "px");
+            } else if (b.dataset.a === "load") loadPages();
+            else if (b.dataset.a === "reload") refresh();
+        });
+        list.addEventListener("mouseover", e => { const t = e.target.closest(".r20ri-tile"); if (t) initDrag(t); });
+        // 안 열리는 그림: 원래 주소로 한 번 더 → 그래도 안 되면 빈 칸 (error 는 버블링되지 않아 캡처로 받는다)
+        list.addEventListener("error", e => {
+            const img = e.target;
+            if (img.tagName !== "IMG") return;
+            if (img.dataset.orig && !img.dataset.retried) { img.dataset.retried = "1"; img.src = img.dataset.orig; }
+            else img.classList.add("r20ri-broken");
+        }, true);
+        return r;
+    };
+    // 탭이 보이게 될 때마다 새로 모은다 (다른 탭에서 토큰·카드를 바꿨을 수 있다)
+    const onResize = () => {
+        const vis = !!root?.offsetParent;
+        if (vis && !wasVisible && mode === "room") refresh();
+        wasVisible = vis;
+        fit();
+    };
+    const inject = () => {
+        if (!btnVisible.artroom) return;
+        const dlg = document.getElementById("imagedialog");
+        if (!dlg || root?.parentNode === dlg) return;
+        root = build();
+        dlg.prepend(root);
+        dlg.classList.toggle("r20ri-room", mode === "room");
+        ro?.disconnect();
+        ro = new ResizeObserver(onResize);
+        ro.observe(dlg);
+        wasVisible = false;
+        onResize();
+    };
+    const setEnabled = on => {
+        if (on) return inject();
+        ro?.disconnect(); ro = null;
+        root?.parentNode?.classList.remove("r20ri-room");
+        root?.remove(); root = null;
+    };
+    window.addEventListener("resize", fit);
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
