@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.7.0
+// @version      1.7.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.7.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.7.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -540,7 +540,7 @@ function applyCocofoliaLayout() {
         const bulkRow = makeRow("일괄 편집기", "bulk");
         bulkRow.firstChild.after(bulkEditor.openButton());
         settingsPopup.appendChild(bulkRow);
-        settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널)", "jbrow"));
+        settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널·모음)", "jbrow"));
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
@@ -1386,6 +1386,25 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #journalfolderroot li.journalitem .playerdots { flex-shrink:0; margin:0 !important; font-size:12px !important; line-height:1 !important; }
         body.r20jb-on #journalfolderroot li.journalitem .sourcefooter:empty { display:none !important; }
         /* 재생 중인 곡 */
+        /* 모음 탭(매크로 · 덱 · 목록에서 뽑기): 저널처럼 한 줄씩 가늘게 */
+        body.r20jb-on #deckstables .content > p { display:none !important; }
+        body.r20jb-on #deckstables .content > .clear { height:6px !important; }
+        body.r20jb-on #deckstables .content > hr { margin:4px 0 !important; }
+        body.r20jb-on #deckstables .content > h3 { margin:6px 0 4px !important; font-size:13px !important; line-height:24px !important; }
+        body.r20jb-on #deckstables .content > button.btn { height:auto !important; margin:6px 0 0 !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
+        body.r20jb-on #deckstables .content > label { font-size:11px !important; font-weight:normal !important; }
+        body.r20jb-on #deckstables table.table { width:100% !important; margin:0 !important; border-collapse:collapse !important; }
+        body.r20jb-on #deckstables table.table thead { display:none !important; }
+        body.r20jb-on #deckstables table.table td { height:26px; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none !important; font-size:12px !important; line-height:26px !important; vertical-align:middle !important; white-space:nowrap; }
+        body.r20jb-on #deckstables table.table tr:hover td { background:rgba(24,103,199,0.06) !important; }
+        body.r20jb-on #deckstables table.table td.name { width:100%; max-width:0; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        body.r20jb-on #deckstables td.name a.rollmacro { display:inline-block; width:16px; margin:0 2px 0 0 !important; color:#999 !important; font-size:12px !important; text-align:center; text-decoration:none !important; }
+        body.r20jb-on #deckstables td.name a.rollmacro:hover { color:#222 !important; }
+        body.r20jb-on #deckstables td.bartoggle label { display:inline-flex !important; align-items:center; gap:2px; margin:0 !important; font-size:10px !important; font-weight:normal !important; color:#999 !important; line-height:26px !important; }
+        body.r20jb-on #deckstables td.bartoggle input { margin:0 !important; }
+        body.r20jb-on #deckstables tr.deck > td:nth-child(2), body.r20jb-on #deckstables tr.rollabletable > td:nth-child(2) { color:#999 !important; font-size:10px !important; text-align:right; }
+        body.r20jb-on #deckstables td.actions { text-align:right !important; }
+        body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:20px !important; vertical-align:middle; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
         body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
