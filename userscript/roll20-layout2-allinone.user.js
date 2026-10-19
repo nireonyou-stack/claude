@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.8.2
+// @version      1.8.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.8.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.8.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2062,7 +2062,11 @@ const bulkEditor = (() => {
         if (parent) t.collapsed.delete(parent.id);
         return true;
     };
-    const removeNode = (t, n) => { const l = listOf(t, n.parent); l.splice(l.indexOf(n), 1); t.checked.delete(n.id); if (t.sel === n.id) t.sel = null; };
+    const removeNode = (t, n) => {
+        const l = listOf(t, n.parent); l.splice(l.indexOf(n), 1); t.checked.delete(n.id); if (t.sel === n.id) t.sel = null;
+        // 저장 전 복제본을 지우면 '복제 후 원본 삭제'로 지우려던 원본은 되살린다
+        if (n.isNew && n.copyOf?.movedTo === n) { n.copyOf.deleted = false; n.copyOf.movedTo = null; }
+    };
     // 폴더 · 플레이리스트를 지우면 안의 항목은 한 단계 위로 옮긴다
     const removeGroup = (t, g, ask = true) => {
         if (ask && !confirm(`'${g.cur.name}' ${KIND_NAME[g.kind]}를 지울까요?\n안에 든 항목 ${g.kids.length}개는 한 단계 위로 옮겨집니다. (저장해야 반영)`)) return;
@@ -2232,6 +2236,9 @@ const bulkEditor = (() => {
             : n.isNew ? el("span", { class: "r20be-tag new" }, n.dupOf ? "복제 예정" : "새 항목") : null,
         el("span", { class: "r20be-flex" }),
         !n.kids && n.kind !== "rtable" && n.kind !== "deck" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
+        (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "r20be-sec", onclick: () => dupMany([n], false) }, "복제") : null,
+        (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "r20be-sec", title: "복제본이 목록 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
+            onclick: () => dupMany([n], true) }, "복제 후 원본 삭제") : null,
         el("button", { type: "button", class: "r20be-sec" + (n.deleted ? "" : " danger"), onclick: () => toggleDelete(n) },
             n.deleted ? "삭제 취소" : n.kids ? `${KIND_NAME[n.kind]} 삭제` : "삭제"));
 
@@ -2375,6 +2382,10 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-grid" },
                 field("찾을 말", el("input", { class: "r20be-in", value: st.find, oninput: e => { st.find = e.target.value; draw(); } })),
                 field("바꿀 말", el("input", { class: "r20be-in", value: st.rep, oninput: e => { st.rep = e.target.value; draw(); } }))),
+            t.which === "tables" || t.which === "decks" ? el("div", { class: "r20be-acts" },
+                el("button", { type: "button", class: "r20be-sec", onclick: () => dupMany(list, false) }, "선택 항목 복제"),
+                el("button", { type: "button", class: "r20be-sec", title: "목록 순서대로 복제본이 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
+                    onclick: () => dupMany(list, true) }, "복제 후 원본 삭제")) : null,
             t.which === "macros" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(true) }, "토큰 액션 켜기"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(false) }, "토큰 액션 끄기")) : null,
@@ -2700,6 +2711,44 @@ const bulkEditor = (() => {
         t.structDirty = true; t.sel = d.id;
         renderTree(); renderPane();
     };
+    // 굴림표 · 덱 복제: 항목(카드)과 설정까지 새로 만든다. Roll20 은 만든 순서로 보여 주므로 복제본은 맨 뒤에 생긴다
+    // → '복제 후 원본 삭제'를 원하는 순서로 하면 목록 순서를 정리할 수 있다
+    const NO_COPY = new Set(["id", "name", "cards", "tableitems", "currentDeck", "currentIndex", "currentCardShown", "discardPile", "removedcards"]);
+    const copyAttrsOf = m => Object.fromEntries(Object.entries(m.attributes || {}).filter(([k, v]) => !NO_COPY.has(k) && (v === null || typeof v !== "object")));
+    const dupCollection = (t, n, moveOrig) => {
+        const deck = n.kind === "deck";
+        const name = moveOrig ? n.cur.name : deck ? `${n.cur.name} 사본` : `${n.cur.name}-사본`;
+        const d = Object.assign(mkNode("new:" + uid(), n.kind, null, { ...n.cur, name }), {
+            items: n.items.filter(it => !it.deleted).map(it => deck ? cardNode(null, { ...it.cur }) : itemNode(null, { ...it.cur })),
+            checkedItems: new Set(), copyAttrs: n.model ? copyAttrsOf(n.model) : n.copyAttrs, copyOf: n });
+        d.isNew = true; d.dupOf = n.model;
+        t.roots.push(d);
+        if (moveOrig) { if (n.isNew) removeNode(t, n); else { n.deleted = true; n.movedTo = d; } }
+        return d;
+    };
+    const dupMany = (list, moveOrig) => {
+        const t = cur(), ordered = t.roots.filter(x => list.includes(x) && !x.deleted);       // 목록 순서대로
+        let last = null;
+        ordered.forEach(n => { last = dupCollection(t, n, moveOrig); });
+        t.checked.clear();
+        if (last) t.sel = last.id;
+        renderTree(); renderPane();
+        setStatus(`${ordered.length}개 ${moveOrig ? "복제 후 원본 삭제 — 저장하면 복제본이 맨 뒤에 생기고 원본은 지워집니다" : "복제 — 저장하면 맨 뒤에 생깁니다"}`
+            + (moveOrig && t.which === "decks" ? " (게임판·손에 꺼내 둔 원본 덱 카드는 함께 사라질 수 있어요)" : ""), "ok");
+    };
+    // 지우기는 만들기 · 고치기가 다 끝난 뒤에. '복제 후 원본 삭제'의 복제본이 다 만들어지지 않았으면 원본을 남긴다
+    const deleteRoots = async (t, attempt) => {
+        for (const n of [...t.roots]) {
+            if (!n.deleted) continue;
+            if (n.isNew) { removeNode(t, n); continue; }
+            const copy = n.movedTo;
+            if (copy && (copy.isNew || copy.items.some(it => it.isNew))) {
+                await attempt(n.cur.name, async () => { throw new Error("복제본을 다 만들지 못해 원본을 남김"); });
+                continue;
+            }
+            await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
+        }
+    };
     const toggleDelete = n => {
         const t = cur();
         if (n.kids) removeGroup(t, n);
@@ -2789,13 +2838,9 @@ const bulkEditor = (() => {
     const saveTables = async (t, attempt) => {
         const coll = tablesColl();
         for (const n of [...t.roots]) {
-            if (n.deleted) {
-                if (!n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
-                else removeNode(t, n);
-                continue;
-            }
+            if (n.deleted) continue;        // 지우기는 deleteRoots 에서 마지막에
             if (n.isNew) await attempt(n.cur.name, async () => {
-                n.model = coll.create({ name: n.cur.name, showplayers: !!n.cur.show });
+                n.model = coll.create({ ...(n.copyAttrs || {}), name: n.cur.name, showplayers: !!n.cur.show });
                 if (!n.model?.id) throw new Error("생성 실패");
                 const old = n.id;
                 n.id = n.model.id; n.isNew = false; n.orig = { ...n.cur }; n.changed.clear();
@@ -2857,13 +2902,9 @@ const bulkEditor = (() => {
     const saveDecks = async (t, attempt) => {
         const coll = decksColl();
         for (const n of [...t.roots]) {
-            if (n.deleted) {
-                if (!n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
-                else removeNode(t, n);
-                continue;
-            }
+            if (n.deleted) continue;        // 지우기는 deleteRoots 에서 마지막에
             if (n.isNew) await attempt(n.cur.name, async () => {
-                n.model = coll.create({ name: n.cur.name, avatar: n.cur.back });
+                n.model = coll.create({ ...(n.copyAttrs || {}), name: n.cur.name, avatar: n.cur.back });
                 if (!n.model?.id) throw new Error("생성 실패");
                 const old = n.id;
                 n.id = n.model.id; n.isNew = false; n.orig = { ...n.cur }; n.changed.clear();
@@ -2927,8 +2968,8 @@ const bulkEditor = (() => {
             try { await fn(); } catch (e) { console.warn("[일괄 편집기] 저장 실패:", label, e); errs.push(label); }
         };
         for (const t of builtTabs()) {
-            if (t.which === "tables") { await saveTables(t, attempt); continue; }
-            if (t.which === "decks") { await saveDecks(t, attempt); continue; }
+            if (t.which === "tables") { await saveTables(t, attempt); await deleteRoots(t, attempt); continue; }
+            if (t.which === "decks") { await saveDecks(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "macros") { await saveMacros(t, attempt); continue; }
             const nodes = allNodes(t);
             for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
