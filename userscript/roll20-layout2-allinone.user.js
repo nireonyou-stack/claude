@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.8.3
+// @version      1.9.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.8.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.9.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1297,6 +1297,15 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-mrow small { color:#6b6b6b; }
         #r20be .r20be-mrow:has(input:checked) { border-color:#1867c7; background:#eef5fd; }
         #r20be .r20be-msum { font-size:12px; font-weight:700; color:#1867c7; }
+        #r20be .r20be-dlg.wide { width:min(640px, calc(100% - 32px)); max-height:calc(100% - 32px); overflow-y:auto; }
+        #r20be .r20be-tsplit { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; }
+        #r20be .r20be-tprev { height:220px; overflow-y:auto; border:1px solid #e6e6e6; border-radius:4px; }
+        #r20be .r20be-tprev > div { display:grid; grid-template-columns:minmax(0, 1fr) 52px 48px; gap:6px; align-items:center; height:24px; padding:0 8px; border-bottom:1px solid #f0f0f0; font-size:11px; }
+        #r20be .r20be-tprev > div > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-tprev > div > span:not(:first-child) { color:#6b6b6b; text-align:right; }
+        #r20be .r20be-tsplit textarea { height:196px; padding:6px 8px; resize:none; }
+        #r20be .r20be-dlg textarea.mono { height:180px; padding:6px 8px; font-family:ui-monospace, Consolas, monospace; resize:vertical; }
+        #r20be .r20be-mprev { max-height:96px; overflow-y:auto; padding:8px; border:1px solid #e6e6e6; border-radius:4px; background:#fafafa; font-family:ui-monospace, Consolas, monospace; font-size:11px; line-height:1.5; word-break:break-all; user-select:text; }
         #r20be .r20be-cb2 { position:absolute; left:9px; top:9px; display:flex; align-items:center; justify-content:center; width:18px; height:18px; padding:0; border:1px solid #b8b8b8; border-radius:4px; background:#fff; color:#fff; cursor:pointer; }
         #r20be .r20be-cb2 svg { visibility:hidden; }
         #r20be .r20be-cb2.on { background:#1867c7; border-color:#1867c7; }
@@ -2385,7 +2394,8 @@ const bulkEditor = (() => {
             t.which === "tables" || t.which === "decks" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "r20be-sec", onclick: () => dupMany(list, false) }, "선택 항목 복제"),
                 el("button", { type: "button", class: "r20be-sec", title: "목록 순서대로 복제본이 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
-                    onclick: () => dupMany(list, true) }, "복제 후 원본 삭제")) : null,
+                    onclick: () => dupMany(list, true) }, "복제 후 원본 삭제"),
+                t.which === "tables" ? el("button", { type: "button", class: "r20be-sec", onclick: () => openRollMacro(list) }, "굴림 매크로 만들기") : null) : null,
             t.which === "macros" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(true) }, "토큰 액션 켜기"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(false) }, "토큰 액션 끄기")) : null,
@@ -2501,6 +2511,7 @@ const bulkEditor = (() => {
                     drawGrid(); drawBar();
                 } }, "선택 반전"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => openMerge(n) }, "합치기…"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => openRollMacro([n]) }, "굴림 매크로"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "항목 추가")),
             addBox, bar, grid);
     };
@@ -2736,6 +2747,135 @@ const bulkEditor = (() => {
         setStatus(`${ordered.length}개 ${moveOrig ? "복제 후 원본 삭제 — 저장하면 복제본이 맨 뒤에 생기고 원본은 지워집니다" : "복제 — 저장하면 맨 뒤에 생깁니다"}`
             + (moveOrig && t.which === "decks" ? " (게임판·손에 꺼내 둔 원본 덱 카드는 함께 사라질 수 있어요)" : ""), "ok");
     };
+    // ── 새 굴림표 템플릿: 주사위 꼴에 맞춰 번호·비중을 미리 채운다 ──
+    const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+    const TABLE_TPL = [
+        ["blank", "빈 표", "항목 없이 만듭니다 · 오른쪽에 내용을 넣으면 한 줄이 한 항목 (비중 1)", () => []],
+        ["1d6", "1d6", "1~6 · 모두 같은 확률", () => range(1, 6).map(i => [String(i), 1])],
+        ["2d6", "2d6", "2~12 · 비중 1·2·3·4·5·6·5·4·3·2·1 (36분의 몇)", () => range(2, 12).map(i => [String(i), 6 - Math.abs(7 - i)])],
+        ["1d10", "1d10", "1~10 · 모두 같은 확률", () => range(1, 10).map(i => [String(i), 1])],
+        ["d66", "D66", "작은 눈이 십의 자리 (11~16, 22~26 … 66) · 같은 눈 비중 1, 나머지 2", () =>
+            range(1, 6).flatMap(a => range(a, 6).map(b => [String(a * 10 + b), a === b ? 1 : 2]))]
+    ];
+    // 편집기 위에 뜨는 작은 창: body(close) 가 내용 요소 목록을 돌려준다
+    const openDialog = (title, body) => {
+        const ov = el("div", { class: "r20be-ov" });
+        const close = () => ov.remove();
+        ov.append(el("div", { class: "r20be-dlg wide", role: "dialog", "aria-label": title }, el("strong", {}, title), ...body(close)));
+        ov.addEventListener("click", e => { if (e.target === ov) close(); });
+        ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+        ui.root.append(ov);
+        ov.querySelector("input, textarea")?.focus();
+        return close;
+    };
+    const openTableTemplate = () => {
+        const t = cur();
+        let tpl = "2d6";
+        const nameIn = el("input", { class: "r20be-in", value: "새굴림표", "aria-label": "굴림표 이름" });
+        const chips = el("div", { class: "r20be-chips" }), desc = el("span", { class: "r20be-note" });
+        const prev = el("div", { class: "r20be-tprev" }), count = el("span", {});
+        const ta = el("textarea", { class: "r20be-in", "aria-label": "항목 내용", placeholder: "한 줄에 하나씩 — 위에서부터 번호 순서대로 채웁니다. 비우면 번호만." });
+        const numCb = el("input", { type: "checkbox", checked: true });
+        // 템플릿 + 붙여 넣은 내용 → [이름, 비중] 목록
+        const rows = () => {
+            const lines = ta.value.split("\n").map(l => l.trim());
+            while (lines.length && !lines[lines.length - 1]) lines.pop();
+            const base = TABLE_TPL.find(x => x[0] === tpl)[3]();
+            const list = tpl === "blank" ? lines.filter(Boolean).map((_, i) => [String(i + 1), 1]) : base;
+            const filled = tpl === "blank" ? lines.filter(Boolean) : lines;
+            return list.map(([label, w], i) => {
+                const line = filled[i] || "";
+                return [line ? (numCb.checked ? `${label} ${line}` : line) : label, w, label];
+            });
+        };
+        const draw = () => {
+            chips.textContent = "";
+            TABLE_TPL.forEach(([k, label]) => chips.append(el("button", { type: "button", class: "r20be-chip" + (tpl === k ? " on" : ""), "aria-pressed": String(tpl === k),
+                onclick: () => { tpl = k; draw(); } }, label)));
+            desc.textContent = TABLE_TPL.find(x => x[0] === tpl)[2];
+            const list = rows(), total = list.reduce((a, r) => a + r[1], 0) || 1;
+            count.textContent = `항목 ${list.length}칸`;
+            prev.textContent = "";
+            list.forEach(([name, w]) => prev.append(el("div", {}, el("span", {}, name), el("span", {}, `비중 ${w}`), el("span", {}, `${(w / total * 100).toFixed(1)}%`))));
+            if (!list.length) prev.append(el("p", { class: "r20be-empty" }, "항목 없음"));
+        };
+        ta.addEventListener("input", draw);
+        numCb.addEventListener("change", draw);
+        openDialog("새 굴림표", close => [
+            field("이름 (공백 불가)", nameIn),
+            el("div", { class: "r20be-fld" }, el("span", { class: "r20be-lb" }, "템플릿"), chips, desc),
+            el("div", { class: "r20be-tsplit" },
+                el("div", { class: "r20be-fld" }, el("span", { class: "r20be-lb" }, "미리보기 · ", count), prev),
+                el("div", { class: "r20be-fld" }, el("span", { class: "r20be-lb" }, "항목 내용 (선택)"), ta,
+                    el("label", { class: "r20be-chk" }, numCb, "앞에 번호 붙이기 (예: 2 ○○○)"))),
+            el("div", { class: "r20be-acts" }, el("span", { class: "r20be-note" }, "만든 뒤에도 편집칸에서 고칠 수 있어요 · 저장해야 Roll20에 반영"),
+                el("span", { class: "r20be-flex" }),
+                el("button", { type: "button", class: "r20be-sec", onclick: close }, "취소"),
+                el("button", { type: "button", class: "r20be-pri", onclick: () => {
+                    const n = Object.assign(mkNode("new:" + uid(), "rtable", null, { name: nameIn.value.replace(/\s+/g, "") || "새굴림표", show: false }), {
+                        items: rows().map(([name, weight]) => itemNode(null, { name, weight, avatar: "" })), checkedItems: new Set() });
+                    n.isNew = true; n.loaded = true;
+                    t.roots.push(n);
+                    t.sel = n.id; t.q = "";
+                    close(); render();
+                    rowEl(n.id)?.scrollIntoView({ block: "nearest" });
+                    setStatus(`굴림표 '${n.cur.name}'(${n.items.length}칸)을 만들었습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "만들기"))]);
+        draw();
+    };
+
+    // ── 굴림표 → 굴림 매크로: [[1t[?{질문|보이는 이름,표 이름|…}]]] ──
+    const qEsc = v => String(v).replace(/\|/g, "&#124;").replace(/,/g, "&#44;").replace(/}/g, "&#125;");
+    const DIVIDER = /^-{3,}$/;
+    const buildRollMacro = (question, text) => {
+        const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+        const split = l => { const i = l.lastIndexOf(","); return i < 0 ? [l, l] : [l.slice(0, i).trim(), l.slice(i + 1).trim()]; };
+        const tables = lines.filter(l => !DIVIDER.test(l));
+        if (tables.length === 1 && lines.length === 1) return `[[1t[${split(lines[0])[1]}]]]`;
+        return `[[1t[?{${qEsc(question)}|` + lines.map(l => DIVIDER.test(l) ? "------------------------------" : split(l).map(qEsc).join(",")).join("|") + "}]]]";
+    };
+    const copyText = async text => {
+        try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+            const ta = el("textarea", { value: text, style: "position:fixed;left:-9999px" });
+            document.body.append(ta); ta.select();
+            const ok = document.execCommand("copy"); ta.remove(); return ok;
+        }
+    };
+    const openRollMacro = list => {
+        const t = cur(), tables = t.roots.filter(x => list.includes(x) && !x.deleted);       // 목록 순서대로
+        const nameIn = el("input", { class: "r20be-in", value: "표굴림", "aria-label": "매크로 이름" });
+        const qIn = el("input", { class: "r20be-in", value: "표 선택", "aria-label": "질문 문구" });
+        const ta = el("textarea", { class: "r20be-in mono", "aria-label": "목록", value: tables.map(x => `${x.cur.name}, ${x.cur.name}`).join("\n") });
+        const tokCb = el("input", { type: "checkbox" });
+        const prev = el("div", { class: "r20be-mprev" });
+        const draw = () => { prev.textContent = buildRollMacro(qIn.value, ta.value); };
+        [qIn, ta].forEach(x => x.addEventListener("input", draw));
+        openDialog("굴림 매크로 만들기", close => [
+            el("span", { class: "r20be-note" }, `고른 굴림표 ${tables.length}개 · 한 줄에 '보이는 이름, 표 이름' · 줄 순서 = 메뉴 순서 · '---' 줄은 구분선`),
+            el("div", { class: "r20be-grid" }, field("매크로 이름", nameIn), field("질문 문구", qIn)),
+            field("목록", ta),
+            el("div", { class: "r20be-fld" }, el("span", { class: "r20be-lb" }, "미리보기"), prev),
+            el("div", { class: "r20be-acts" },
+                el("label", { class: "r20be-chk" }, tokCb, "토큰 액션으로 보이기"),
+                el("span", { class: "r20be-flex" }),
+                el("button", { type: "button", class: "r20be-sec", onclick: close }, "취소"),
+                el("button", { type: "button", class: "r20be-sec", onclick: async () => {
+                    const ok = await copyText(prev.textContent);
+                    setStatus(ok ? "매크로 내용을 복사했습니다" : "복사하지 못했습니다 — 미리보기를 직접 복사해 주세요", ok ? "ok" : "err");
+                } }, "복사만"),
+                el("button", { type: "button", class: "r20be-pri", onclick: () => {
+                    if (!macrosColl()) { setStatus("매크로를 아직 불러오지 못했습니다 — [복사만]을 써 주세요", "err"); return; }
+                    if (!S.macros) S.macros = buildTab("macros");
+                    const m = mkNode("new:" + uid(), "macro", null, { name: nameIn.value.trim() || "표굴림", action: prev.textContent, share: "", token: tokCb.checked });
+                    m.isNew = true; m.loaded = true;
+                    S.macros.roots.push(m);
+                    S.macros.sel = m.id;
+                    close(); updateBar();
+                    setStatus(`매크로 탭에 '${m.cur.name}'을 만들었습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "매크로로 만들기"))]);
+        draw();
+    };
+
     // 지우기는 만들기 · 고치기가 다 끝난 뒤에. '복제 후 원본 삭제'의 복제본이 다 만들어지지 않았으면 원본을 남긴다
     const deleteRoots = async (t, attempt) => {
         for (const n of [...t.roots]) {
@@ -3051,7 +3191,7 @@ const bulkEditor = (() => {
         const t = cur(), hasGroup = allNodes(t).some(n => n.kids);
         // 핸드아웃·캐릭터 모아보기 중이거나 굴림표 탭이면 메뉴 없이 바로 만든다
         if (isFlat(t)) return createNode(t.filter);
-        if (t.which === "tables") return createNode("rtable");
+        if (t.which === "tables") return openTableTemplate();
         if (t.which === "macros") return createNode("macro");
         if (t.which === "decks") return createNode("deck");
         const items = t.which === "journal" ? [["handout", "핸드아웃"], ["char", "캐릭터"], ["folder", "폴더"]] : [["group", "플레이리스트"]];
