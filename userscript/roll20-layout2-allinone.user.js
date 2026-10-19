@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.7.2
+// @version      1.8.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.7.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.8.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -50,7 +50,8 @@ const btnVisible = {
     bulk:      localStorage.getItem("r20_show_bulk")    !== "false",
     jbrow:     localStorage.getItem("r20_show_jbrow")   !== "false",
     sidepick:  localStorage.getItem("r20_show_sidepick") !== "false",
-    qpick:     localStorage.getItem("r20_show_qpick")   !== "false"
+    qpick:     localStorage.getItem("r20_show_qpick")   !== "false",
+    tokmenu:   localStorage.getItem("r20_show_tokmenu") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -542,6 +543,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(bulkRow);
         settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널·모음)", "jbrow"));
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
+        settingsPopup.appendChild(makeRow("토큰 메뉴 이전·다음 면", "tokmenu"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1411,6 +1413,9 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
         /* 면 선택(Choose Side): 슬라이더 대신 썸네일 격자, 번호는 CSS counter 로 붙인다 */
         .ui-dialog.r20cs .sideslider { display:none !important; }
+        .ui-dialog.r20cs-drive .sideslider { display:block !important; position:fixed !important; left:0 !important; top:0 !important; width:1000px !important; height:10px !important; visibility:hidden !important; }
+        body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
+        .context-menu button.r20tm-hide { display:none !important; }
         .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
         .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
         .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
@@ -3344,6 +3349,8 @@ const sidePicker = (() => {
         const list = choicesOf(dlg);
         if (idx < 0 || idx >= list.length) return;
         const $ = window.jQuery, sl = dlg.querySelector(".sideslider");
+        let done = false;
+        // window.jQuery 가 슬라이더를 만든 Roll20 의 jQuery 와 같으면 바로 값을 넣는다
         if ($ && sl) {
             try {
                 const min = $(sl).slider("option", "min"), max = $(sl).slider("option", "max");
@@ -3352,7 +3359,19 @@ const sidePicker = (() => {
                 // Roll20 이 slide 이벤트로 선택을 바꾸는 경우도 맞춘다
                 const slide = $(sl).slider("option", "slide");
                 if (typeof slide === "function") slide.call(sl, $.Event("slide"), { value: v, handle: sl.querySelector(".ui-slider-handle") });
-            } catch (e) { console.warn("[면 선택] 슬라이더 연동 실패", e); }
+                done = $(sl).slider("value") === v;
+            } catch (e) { /* 다른 jQuery → 아래 마우스 방식 */ }
+        }
+        // 아니면 슬라이더 막대를 그 자리에서 누른 것처럼 마우스 이벤트를 보내 Roll20 처리기를 그대로 태운다
+        // (숨겨 둔 슬라이더는 잠깐 보이지 않게 펼쳐 위치를 잰다 · 값 범위는 0 ~ 면 수-1)
+        if (!done && sl && list.length > 1) {
+            dlg.classList.add("r20cs-drive");
+            try {
+                const r = sl.getBoundingClientRect();
+                const o = { bubbles: true, cancelable: true, view: window, button: 0, clientX: r.left + (idx / (list.length - 1)) * r.width, clientY: r.top + r.height / 2 };
+                sl.dispatchEvent(new MouseEvent("mousedown", { ...o, buttons: 1 }));
+                sl.dispatchEvent(new MouseEvent("mouseup", o));
+            } finally { dlg.classList.remove("r20cs-drive"); }
         }
         list.forEach((c, i) => c.setAttribute("data-selected", String(i === idx)));
         const bar = dlg.querySelector(".r20cs-bar");
@@ -3401,7 +3420,30 @@ const sidePicker = (() => {
         list[cur]?.scrollIntoView({ block: "center" });
     };
 
+    // 토큰 메뉴에서 이전·다음·처음·마지막 면을 고르면: Roll20 의 면 선택 창이 뜨는 대로 보이지 않게 골라 적용한다
+    let auto = null, autoTimer = null;
+    const endAuto = () => {
+        auto = null; clearTimeout(autoTimer);
+        setTimeout(() => document.body.classList.remove("r20cs-auto"), 300);      // 닫히는 창이 번쩍이지 않게
+    };
+    const startAuto = act => {
+        auto = act;
+        document.body.classList.add("r20cs-auto");
+        clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => { if (auto) { console.warn("[토큰 메뉴] 면 선택 창이 뜨지 않음"); endAuto(); } }, 3000);
+    };
+    const runAuto = () => {
+        const dlg = [...document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)")].find(d => getComputedStyle(d).display !== "none");
+        if (!dlg) return;
+        const list = choicesOf(dlg), n = list.length, cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
+        const to = { prev: (cur - 1 + n) % n, next: (cur + 1) % n, first: 0, last: n - 1 }[auto];
+        endAuto();
+        select(dlg, to);
+        choose(dlg);
+    };
+
     const inject = () => {
+        if (auto) return runAuto();
         if (!btnVisible.sidepick) return;
         document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)").forEach(dlg => {
             const first = dlg.querySelector(".sidechoices > .sidechoice");
@@ -3423,6 +3465,59 @@ const sidePicker = (() => {
     };
     document.addEventListener("click", e => pick(e, false), true);
     document.addEventListener("dblclick", e => pick(e, true), true);
+    return { inject, startAuto };
+})();
+
+// ───────── 토큰 메뉴: 여러 면 토큰에 면 선택 · 이전 면 · 다음 면, '여러 면' 안에 처음 면 · 마지막 면 ─────────
+// 토큰 선택(d20 엔진)에 손댈 수 없어서, 새 단추는 Roll20 의 원래 '면 선택'을 대신 눌러 창을 열고 sidePicker 가 보이지 않게 고른다
+const tokenMenu = (() => {
+    const RE = { multi: /^(여러 면|Multi-?Sided)$/i, choose: /^(면 선택|Choose Side)$/i, random: /^(무작위 면|Random Side)$/i };
+    const labelEl = b => b.querySelector(":scope > .submenu-button-outer span[style*='text-align']");
+    const label = b => labelEl(b)?.textContent.trim() || "";
+    const multiOf = menu => [...menu.querySelectorAll(":scope > button")].find(b => RE.multi.test(label(b)));
+    const origChoose = multi => [...multi.querySelectorAll(":scope > .submenu > button:not([data-r20tm])")].find(b => RE.choose.test(label(b)));
+    // Roll20 단추를 본떠(같은 스타일) 새 단추를 만든다
+    const makeBtn = (tpl, text, act) => {
+        const b = tpl.cloneNode(true);
+        b.querySelector(":scope > .submenu")?.replaceChildren();
+        b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
+        labelEl(b).textContent = text;
+        b.classList.remove("disabled", "r20tm-hide");
+        b.dataset.r20tm = act;
+        return b;
+    };
+    const inject = () => {
+        document.querySelectorAll(".context-menu").forEach(menu => {
+            const multi = btnVisible.tokmenu && multiOf(menu);
+            // 여러 면 토큰이 아니게 다시 그려졌으면 붙였던 단추를 걷는다
+            if (!multi) { menu.querySelectorAll("button[data-r20tm]").forEach(b => b.remove()); menu.querySelectorAll(".r20tm-hide").forEach(b => b.classList.remove("r20tm-hide")); return; }
+            const sub = [...multi.querySelectorAll(":scope > .submenu > button:not([data-r20tm])")];
+            const choose = sub.find(b => RE.choose.test(label(b))), random = sub.find(b => RE.random.test(label(b)));
+            const tpl = random || choose;
+            if (!tpl) return;
+            if (!menu.querySelector(":scope > button[data-r20tm]"))
+                multi.before(makeBtn(tpl, "면 선택", "choose"), makeBtn(tpl, "이전 면", "prev"), makeBtn(tpl, "다음 면", "next"));
+            if (!multi.querySelector(":scope > .submenu > button[data-r20tm]"))
+                tpl.after(makeBtn(tpl, "처음 면", "first"), makeBtn(tpl, "마지막 면", "last"));
+            choose?.classList.add("r20tm-hide");       // 원래 '면 선택'은 위로 올렸으므로 숨긴다 (누르는 데는 쓴다)
+        });
+    };
+    document.addEventListener("click", async e => {
+        const b = e.target.closest?.("button[data-r20tm]");
+        if (!b) return;
+        e.preventDefault(); e.stopPropagation();
+        const multi = multiOf(b.closest(".context-menu"));
+        let orig = multi && origChoose(multi);
+        if (!orig && multi) {
+            // 하위 메뉴가 아직 안 그려졌으면 '여러 면'에 마우스를 올린 것처럼 해서 그리게 한다
+            ["mouseenter", "mouseover"].forEach(t => multi.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
+            await new Promise(r => setTimeout(r, 80));
+            orig = origChoose(multi);
+        }
+        if (!orig) { console.warn("[토큰 메뉴] '면 선택'을 찾지 못함"); return; }
+        if (b.dataset.r20tm !== "choose") sidePicker.startAuto(b.dataset.r20tm);
+        orig.click();
+    }, true);
     return { inject };
 })();
 
@@ -3548,7 +3643,7 @@ const queryPicker = (() => {
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); queryPicker.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
