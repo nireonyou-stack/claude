@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.6.0
+// @version      1.6.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.6.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.6.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2040,7 +2040,23 @@ const bulkEditor = (() => {
     };
     // ── 아이콘 보기: 포트레이트 + 이름, 폴더별로 묶는다 (이름 바꾸기는 오른쪽 편집칸에서) ──
     const iconMode = t => !!t && isFlat(t) && VIEW.icons;
-    const avatarOf = n => (n.model || n.dupOf)?.get?.("avatar") || "";
+    // 저널 목록에 Roll20 이 그려 둔 썸네일을 먼저 쓴다 (빠른 저널과 같은 방식 — 모델의 avatar 주소는 안 열리는 것이 있다)
+    const journalThumb = id => {
+        const img = document.querySelector(`li.journalitem[data-itemid="${CSS.escape(id)}"] img`);
+        return [img?.getAttribute("src"), img?.getAttribute("data-src")]
+            .find(src => src && !src.includes("images/character.png") && !src.includes("default")) || "";
+    };
+    const avatarOf = n => {
+        const m = n.model || n.dupOf;
+        return m ? journalThumb(m.id) || m.get?.("avatar") || "" : "";
+    };
+    // 그래도 안 열리는 그림은 이름 첫 글자로 바꾼다 (error 는 버블링되지 않아 캡처로 받는다)
+    const picFallback = e => {
+        const img = e.target;
+        if (!img.matches?.("img.r20be-pic")) return;
+        const name = img.closest(".r20be-tile")?.querySelector(".r20be-tn")?.textContent || "";
+        img.replaceWith(el("span", { class: "r20be-pic" }, name.trim().charAt(0) || "?"));
+    };
     const folderPath = n => {
         const names = [];
         for (let p = n.parent; p; p = p.parent) names.unshift(p.cur.name);
@@ -2672,6 +2688,7 @@ const bulkEditor = (() => {
     };
     const bindTree = () => {
         const tr = ui.tree;
+        tr.addEventListener("error", picFallback, true);
         tr.addEventListener("click", e => {
             const b = e.target.closest("[data-act]"), row = e.target.closest(".r20be-row");
             if (!b || !row) return;
