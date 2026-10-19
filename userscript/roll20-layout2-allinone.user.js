@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.5.4
+// @version      1.6.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.5.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.6.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -49,7 +49,8 @@ const btnVisible = {
     bgm:       localStorage.getItem("r20_show_bgm")     !== "false",
     bulk:      localStorage.getItem("r20_show_bulk")    !== "false",
     jbrow:     localStorage.getItem("r20_show_jbrow")   !== "false",
-    sidepick:  localStorage.getItem("r20_show_sidepick") !== "false"
+    sidepick:  localStorage.getItem("r20_show_sidepick") !== "false",
+    qpick:     localStorage.getItem("r20_show_qpick")   !== "false"
 };
 
 const sharedBtnStyle = `
@@ -541,6 +542,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(bulkRow);
         settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널)", "jbrow"));
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
+        settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
         const csCustomHeader = document.createElement("div");
@@ -1211,6 +1213,27 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-nm svg { flex-shrink:0; }
         #r20be .r20be-dot { width:7px; height:7px; border-radius:50%; background:#c2410c; flex-shrink:0; }
         #r20be .r20be-meta { color:#6b6b6b; font-size:10px; white-space:nowrap; flex-shrink:0; }
+        #r20be .r20be-vw { display:flex; gap:2px; padding:2px; background:#ececec; border-radius:4px; }
+        #r20be .r20be-vw button { display:flex; align-items:center; justify-content:center; width:26px; height:22px; padding:0; border:0; border-radius:3px; background:transparent; color:#555; cursor:pointer; }
+        #r20be .r20be-vw button.on { background:#fff; color:#1867c7; box-shadow:0 0 0 1px #c9d9ee; }
+        #r20be .r20be-zm { display:flex; gap:2px; }
+        #r20be .r20be-zm button { width:22px; height:22px; padding:0; border:1px solid #d4d4d4; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
+        #r20be .r20be-zm button:hover { background:#f2f2f2; color:#222; }
+        #r20be .r20be-tree.r20be-icons { padding:2px 10px 12px; }
+        #r20be .r20be-igh { display:flex; align-items:center; gap:6px; padding:10px 4px 4px; font-size:11px; font-weight:700; color:#555; }
+        #r20be .r20be-igh span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-igh small { font-weight:400; color:#6b6b6b; }
+        #r20be .r20be-igh::after { content:""; flex:1; height:1px; background:#eee; }
+        #r20be .r20be-igrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:4px; }
+        #r20be .r20be-row.r20be-tile { position:relative; display:block; min-height:0; padding:0; border:0; border-radius:8px; }
+        #r20be .r20be-tile.sel { box-shadow:inset 0 0 0 2px #1867c7; }
+        #r20be .r20be-tl { display:flex; flex-direction:column; align-items:center; gap:5px; width:100%; padding:6px 4px 8px; border:0; border-radius:8px; background:transparent; cursor:pointer; }
+        #r20be .r20be-pic { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; background:#e9e9e9; color:#888; font-size:calc(var(--be-icon, 84px) * 0.32); font-weight:700; }
+        #r20be .r20be-tn { width:100%; font-size:11px; line-height:1.35; color:#222; text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; overflow-wrap:anywhere; }
+        #r20be .r20be-tile .r20be-cb { position:absolute; left:9px; top:9px; width:18px; height:18px; border-radius:4px; }
+        #r20be .r20be-tile .r20be-dot { position:absolute; right:9px; top:9px; box-shadow:0 0 0 2px #fff; }
+        #r20be .r20be-tile.del .r20be-tn { color:#999; text-decoration:line-through; }
+        #r20be .r20be-tile.del .r20be-pic { opacity:0.4; }
         #r20be .r20be-inl { flex:1; min-width:0; height:24px; }
         #r20be .r20be-pane-in { display:flex; flex-direction:column; gap:12px; min-height:100%; }
         #r20be .r20be-ph { display:flex; align-items:center; gap:8px; }
@@ -1373,6 +1396,22 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .r20cs-zoom button:hover { background:#ebebeb; color:#222; }
         body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
         body button.r20be-open:hover { background:#f2f2f2; }
+        .ui-dialog.r20qp .r20qp-bar { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
+        .ui-dialog.r20qp .r20qp-bar input { flex:1; min-width:0; height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid #ccc; border-radius:4px; font-size:12px !important; box-sizing:border-box; }
+        .ui-dialog.r20qp .r20qp-zoom { display:flex; gap:2px; }
+        .ui-dialog.r20qp .r20qp-zoom button { width:26px; height:26px; margin:0; padding:0; border:1px solid #ccc; border-radius:4px; background:#fff; color:#555; font-size:14px; line-height:1; cursor:pointer; }
+        .ui-dialog.r20qp .r20qp-zoom button:hover { background:#f2f2f2; color:#222; }
+        .ui-dialog.r20qp .r20qp-grid { max-height:min(55vh, 480px); overflow-y:auto; padding:2px; }
+        .ui-dialog.r20qp .r20qp-sec { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--qp-size, 140px), 1fr)); gap:4px; }
+        .ui-dialog.r20qp .r20qp-sec + .r20qp-sec { margin-top:8px; padding-top:8px; border-top:1px solid #e2e2e2; }
+        .ui-dialog.r20qp .r20qp-grid.searching .r20qp-sec + .r20qp-sec { margin-top:4px; padding-top:0; border-top:0; }
+        .ui-dialog.r20qp .r20qp-tile { display:flex; flex-direction:column; gap:4px; min-width:0; height:auto; margin:0; padding:4px; border:0; border-radius:6px; background:transparent; box-shadow:none; color:#222; text-align:left; cursor:pointer; }
+        .ui-dialog.r20qp .r20qp-tile:hover { background:#f6eef3; }
+        .ui-dialog.r20qp .r20qp-tile.on { background:#fbe7f0; box-shadow:inset 0 0 0 2px #b8215f; }
+        .ui-dialog.r20qp .r20qp-tile[hidden], .ui-dialog.r20qp .r20qp-sec[hidden] { display:none !important; }
+        .ui-dialog.r20qp .r20qp-img { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:16/9; padding:4px; border-radius:4px; background:#2b2f36; color:#fff; font-size:11px; text-align:center; overflow:hidden; box-sizing:border-box; object-fit:contain; pointer-events:none; }
+        .ui-dialog.r20qp img.r20qp-img { padding:0; }
+        .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
         .r20be-mini:hover { background:#ebebeb; color:#333; }
@@ -1757,7 +1796,9 @@ const bulkEditor = (() => {
         plus:    SVG('<path d="M12 5v14M5 12h14"/>'),
         x:       SVG('<path d="M18 6 6 18M6 6l12 12"/>'),
         pen:     SVG('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
-        phones:  SVG('<path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/>')
+        phones:  SVG('<path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/>'),
+        list:    SVG('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+        grid:    SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')
     };
     const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표" };
     const CONTENT = ["notes", "gm"];
@@ -1766,6 +1807,7 @@ const bulkEditor = (() => {
     // p · br · div · span 외의 태그가 있으면 서식 있는 내용으로 본다
     const RICH_RE = /<(?!\/?(?:p|br|div|span)\b)[a-z]/i;
     const HINT = "더블클릭: 이름 바꾸기 · 체크(Shift: 범위)로 여러 개 한꺼번에 · 끌어서 폴더 이동 · Ctrl+S: 저장";
+    const HINT_ICON = "아이콘을 누르면 오른쪽에서 편집 · 왼쪽 위 네모(Shift: 범위)로 여러 개 골라 폴더 이동·삭제 · −/+ 아이콘 크기 · Ctrl+S: 저장";
 
     const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1811,6 +1853,11 @@ const bulkEditor = (() => {
 
     // ── 작업용 트리 ──
     const S = { tab: "journal", journal: null, bgm: null, tables: null };
+    // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
+    const VIEW = {
+        icons: localStorage.getItem("r20be_icons") !== "0",
+        size: Math.max(56, Math.min(140, parseInt(localStorage.getItem("r20be_icon_size"), 10) || 84))
+    };
     let ui = null, dragId = null, saving = false;
     const cur = () => S[S.tab];
 
@@ -1991,17 +2038,46 @@ const bulkEditor = (() => {
             + (isDirty(n) ? `<span class="r20be-dot" title="저장 안 한 변경"></span>` : "")
             + `<span class="r20be-meta">${esc((flat && n.parent ? n.parent.cur.name + " · " : "") + meta(n))}</span></div>`;
     };
+    // ── 아이콘 보기: 포트레이트 + 이름, 폴더별로 묶는다 (이름 바꾸기는 오른쪽 편집칸에서) ──
+    const iconMode = t => !!t && isFlat(t) && VIEW.icons;
+    const avatarOf = n => (n.model || n.dupOf)?.get?.("avatar") || "";
+    const folderPath = n => {
+        const names = [];
+        for (let p = n.parent; p; p = p.parent) names.unshift(p.cur.name);
+        return names.length ? names.join(" › ") : "폴더 밖";
+    };
+    const tileHtml = n => {
+        const t = cur(), sel = t.sel === n.id, chk = t.checked.has(n.id);
+        const cls = ["r20be-row r20be-tile", sel && "sel", chk && "chk", n.deleted && "del"].filter(Boolean).join(" ");
+        const name = n.cur.name || "(이름 없음)", src = avatarOf(n);
+        return `<div class="${cls}" data-id="${esc(n.id)}" role="treeitem" aria-selected="${sel}">`
+            + `<button type="button" class="r20be-tl" data-act="pick" title="${esc(name + " · " + folderPath(n))}">`
+            + (src ? `<img class="r20be-pic" src="${esc(src)}" alt="" loading="lazy" draggable="false">`
+                   : `<span class="r20be-pic">${esc(name.trim().charAt(0) || "?")}</span>`)
+            + `<span class="r20be-tn">${esc(name)}</span></button>`
+            + `<button type="button" class="r20be-cb${chk ? " on" : ""}" data-act="check" aria-label="${esc(name)} 선택" aria-pressed="${chk}">${ICON.check}</button>`
+            + (isDirty(n) ? `<span class="r20be-dot" title="저장 안 한 변경"></span>` : "") + `</div>`;
+    };
     const rowEl = id => ui.tree.querySelector(`.r20be-row[data-id="${CSS.escape(id)}"]`);
     const renderTree = () => {
-        const t = cur(), rows = visibleRows(t);
+        const t = cur(), rows = visibleRows(t), icons = iconMode(t);
         t.visible = rows.map(r => r.n.id);
-        ui.tree.innerHTML = rows.length ? rows.map(rowHtml).join("")
-            : `<p class="r20be-empty">${t.q || t.filter !== "all" ? "검색 결과가 없습니다" : "항목이 없습니다"}</p>`;
+        ui.tree.classList.toggle("r20be-icons", icons);
+        ui.tree.style.setProperty("--be-icon", VIEW.size + "px");
+        if (!rows.length) ui.tree.innerHTML = `<p class="r20be-empty">${t.q || t.filter !== "all" ? "검색 결과가 없습니다" : "항목이 없습니다"}</p>`;
+        else if (icons) {
+            const groups = new Map();       // 부모 폴더 → 항목 (저널 순서 그대로)
+            rows.forEach(({ n }) => { const k = n.parent ? n.parent.id : ""; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(n); });
+            t.visible = [...groups.values()].flat().map(n => n.id);       // Shift 범위 선택도 보이는 순서대로
+            ui.tree.innerHTML = [...groups.values()].map(list =>
+                `<div class="r20be-igh">${ICON.folder}<span>${esc(folderPath(list[0]))}</span><small>${list.length}</small></div>`
+                + `<div class="r20be-igrid" role="group">${list.map(tileHtml).join("")}</div>`).join("");
+        } else ui.tree.innerHTML = rows.map(rowHtml).join("");
         updateBar();
     };
     const refreshRow = n => {
-        const r = rowEl(n.id), flat = isFlat(cur());
-        if (r) r.outerHTML = rowHtml({ n, depth: flat ? 0 : depthOf(n), flat });
+        const r = rowEl(n.id), t = cur(), flat = isFlat(t);
+        if (r) r.outerHTML = iconMode(t) ? tileHtml(n) : rowHtml({ n, depth: flat ? 0 : depthOf(n), flat });
         updateBar();
     };
     const updateBar = () => {
@@ -2011,7 +2087,7 @@ const bulkEditor = (() => {
         ui.save.disabled = !c || saving;
         ui.revert.disabled = !c || saving;
     };
-    const setStatus = (msg, kind) => { ui.foot.textContent = msg || HINT; ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
+    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
 
     const select = id => {
         cur().sel = id;
@@ -2341,7 +2417,11 @@ const bulkEditor = (() => {
         if (t.filter !== "all" && t.filter !== kind) t.filter = "all";      // 모아보기 중이면 그 종류는 그대로 둔다
         render();
         const row = rowEl(n.id);
-        if (row) { row.scrollIntoView({ block: "nearest" }); startRename(row, n); }
+        if (!row) return;
+        row.scrollIntoView({ block: "nearest" });
+        // 아이콘 보기에는 칸 안 이름 입력이 없어 오른쪽 이름칸으로 바로 간다
+        if (iconMode(t)) { if (!t.checked.size) { const inp = ui.pane.querySelector("input.r20be-in"); inp?.focus(); inp?.select(); } }
+        else startRename(row, n);
     };
     const duplicate = n => {
         const t = cur();
@@ -2550,6 +2630,10 @@ const bulkEditor = (() => {
         ui.chips.textContent = "";
         defs.forEach(([k, label]) => ui.chips.append(el("button", { type: "button", class: "r20be-chip" + (t.filter === k ? " on" : ""),
             "aria-pressed": String(t.filter === k), onclick: () => { t.filter = k; render(); } }, label)));
+        ui.view.hidden = !isFlat(t);
+        ui.zoom.hidden = !iconMode(t);
+        [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+        if (ui.foot.className === "r20be-foot") setStatus();      // 안내문만 보기 방식에 맞춘다 (알림 문구는 그대로)
         renderTree(); renderPane();
     };
     const switchTab = tab => {
@@ -2739,13 +2823,25 @@ const bulkEditor = (() => {
         ui.newBtn = el("button", { type: "button", class: "r20be-sec", "aria-haspopup": "true", onclick: toggleMenu }, ico("plus"), ui.newLabel);
         ui.menu = el("div", { class: "r20be-menu", hidden: true });
         ui.badge = el("span", { class: "r20be-badge", hidden: true });
+        const setView = icons => { VIEW.icons = icons; localStorage.setItem("r20be_icons", icons ? "1" : "0"); render(); };
+        const zoom = d => {
+            VIEW.size = Math.max(56, Math.min(140, VIEW.size + d * 14));
+            localStorage.setItem("r20be_icon_size", VIEW.size);
+            ui.tree.style.setProperty("--be-icon", VIEW.size + "px");
+        };
+        ui.vList = el("button", { type: "button", "aria-label": "목록으로 보기", title: "목록", html: ICON.list, onclick: () => setView(false) });
+        ui.vGrid = el("button", { type: "button", "aria-label": "아이콘으로 보기", title: "아이콘", html: ICON.grid, onclick: () => setView(true) });
+        ui.view = el("span", { class: "r20be-vw", role: "group", "aria-label": "보기 방식", hidden: true }, ui.vList, ui.vGrid);
+        ui.zoom = el("span", { class: "r20be-zm", hidden: true },
+            el("button", { type: "button", "aria-label": "아이콘 작게", onclick: () => zoom(-1) }, "−"),
+            el("button", { type: "button", "aria-label": "아이콘 크게", onclick: () => zoom(1) }, "+"));
         ui.revert = el("button", { type: "button", class: "r20be-sec", onclick: revert }, "되돌리기");
         ui.save = el("button", { type: "button", class: "r20be-pri", onclick: save }, "저장");
         ui.tree = el("div", { class: "r20be-tree", role: "tree", "aria-label": "항목 목록" });
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, el("span", { class: "r20be-flex" }), ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, el("span", { class: "r20be-flex" }), ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
@@ -2969,10 +3065,123 @@ const sidePicker = (() => {
     return { inject };
 })();
 
+// ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
+// 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
+const queryPicker = (() => {
+    let size = Math.max(80, Math.min(260, parseInt(localStorage.getItem("r20_qp_size"), 10) || 140));
+    const isUrl = v => /^https?:\/\/\S+$/i.test(v);
+    const labelOf = o => o.textContent.trim();
+    // '—————' 같은 항목은 묶음 구분선으로
+    const isDivider = o => !isUrl(o.value) && /^[\s—–\-─━=_~·.]{3,}$/.test(o.textContent);
+    // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
+    const thumbOf = url => {
+        const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
+        return m ? `https://i.imgur.com/${m[1]}m${m[2] || ".png"}` : url;
+    };
+    const choose = dlg => {
+        const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
+        (btns.find(b => /submit/i.test(b.textContent)) || btns[0])?.click();
+    };
+    const mark = (dlg, sel) => dlg.querySelectorAll(".r20qp-tile").forEach(b => {
+        const on = +b.dataset.i === sel.selectedIndex;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+    });
+
+    const textPic = o => {
+        const sp = document.createElement("span");
+        sp.className = "r20qp-img";
+        sp.textContent = labelOf(o);
+        return sp;
+    };
+    const tile = (o, i) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "r20qp-tile"; b.dataset.i = i; b.title = labelOf(o);
+        let pic;
+        if (isUrl(o.value)) {
+            pic = document.createElement("img");
+            pic.className = "r20qp-img";
+            pic.alt = ""; pic.loading = "lazy"; pic.draggable = false;
+            const thumb = thumbOf(o.value);
+            let retried = thumb === o.value;
+            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 이름 칸으로
+            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = o.value; } else pic.replaceWith(textPic(o)); });
+            pic.src = thumb;
+        } else pic = textPic(o);
+        const lb = document.createElement("span");
+        lb.className = "r20qp-lb"; lb.textContent = labelOf(o);
+        b.append(pic, lb);
+        return b;
+    };
+
+    const enhance = (dlg, sel) => {
+        dlg.classList.add("r20qp");
+        dlg._r20qpSel = sel;
+        dlg.style.setProperty("--qp-size", size + "px");
+        const box = document.createElement("div");
+        box.className = "r20qp-box";
+        box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
+            + '<span class="r20qp-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
+            + '<div class="r20qp-grid"></div>';
+        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input");
+        let sec = null;
+        const newSec = () => { sec = document.createElement("div"); sec.className = "r20qp-sec"; grid.appendChild(sec); };
+        newSec();
+        [...sel.options].forEach((o, i) => {
+            if (isDivider(o)) { if (sec.childElementCount) newSec(); return; }
+            sec.appendChild(tile(o, i));
+        });
+        if (!sec.childElementCount) sec.remove();
+        (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
+
+        grid.addEventListener("click", e => {
+            const b = e.target.closest(".r20qp-tile");
+            if (!b) return;
+            sel.selectedIndex = +b.dataset.i;
+            sel.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        grid.addEventListener("dblclick", e => { if (e.target.closest(".r20qp-tile")) choose(dlg); });
+        sel.addEventListener("change", () => mark(dlg, sel));
+        q.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키·Enter 제출 막기
+        q.addEventListener("input", () => {
+            const v = q.value.replace(/\s+/g, "").toLowerCase();
+            grid.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = !!v && !b.title.replace(/\s+/g, "").toLowerCase().includes(v); });
+            grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.children].some(b => !b.hidden); });
+            grid.classList.toggle("searching", !!v);
+        });
+        box.querySelectorAll(".r20qp-zoom button").forEach(b => b.addEventListener("click", () => {
+            size = Math.max(80, Math.min(260, size + Number(b.dataset.d) * 30));
+            localStorage.setItem("r20_qp_size", size);
+            dlg.style.setProperty("--qp-size", size + "px");
+        }));
+        mark(dlg, sel);
+        // 창을 키워서 화면 가운데로
+        const w = Math.min(720, window.innerWidth - 40);
+        dlg.style.width = w + "px";
+        dlg.style.left = Math.max(10, (window.innerWidth - w) / 2) + "px";
+        dlg.style.top = Math.max(10, (window.innerHeight - dlg.offsetHeight) / 2) + "px";
+        grid.querySelector(".r20qp-tile.on")?.scrollIntoView({ block: "nearest" });
+    };
+
+    const inject = () => {
+        if (!btnVisible.qpick) return;
+        document.querySelectorAll(".ui-dialog").forEach(dlg => {
+            if (!dlg.classList.contains("vtt-macro-selection-ui-dialog")
+                && dlg.querySelector(".ui-dialog-title")?.textContent.trim() !== "Macro Options") return;
+            const sel = dlg.querySelector(".ui-dialog-content select");
+            if (!sel || dlg._r20qpSel === sel) return;
+            if ([...sel.options].filter(o => isUrl(o.value)).length < 2) return;     // 이미지 고르기가 아닌 질문은 그대로
+            dlg.querySelector(".r20qp-box")?.remove();      // Roll20 이 창을 다른 질문에 다시 쓴 경우
+            enhance(dlg, sel);
+        });
+    };
+    return { inject };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); queryPicker.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
