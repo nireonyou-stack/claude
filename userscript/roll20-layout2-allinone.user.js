@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.7.1
+// @version      1.7.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.7.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.7.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1284,6 +1284,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-card .r20be-thumb { position:relative; }
         #r20be .r20be-thumb img.r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
         #r20be .r20be-tbar.idle { border-color:#eee; background:#fafafa; }
+        #r20be img.r20be-broken { visibility:hidden; }
         #r20be .r20be-ov { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(30,30,30,0.35); }
         #r20be .r20be-dlg { width:min(440px, calc(100% - 32px)); display:flex; flex-direction:column; gap:10px; padding:16px; background:#fff; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
         #r20be .r20be-dlg > strong { font-size:14px; }
@@ -1441,7 +1442,9 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .ui-dialog.r20qp .r20qp-tile:hover { background:#f6eef3; }
         .ui-dialog.r20qp .r20qp-tile.on { background:#fbe7f0; box-shadow:inset 0 0 0 2px #b8215f; }
         .ui-dialog.r20qp .r20qp-tile[hidden], .ui-dialog.r20qp .r20qp-sec[hidden] { display:none !important; }
-        .ui-dialog.r20qp .r20qp-img { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:16/9; padding:4px; border-radius:4px; background:#2b2f36; color:#fff; font-size:11px; text-align:center; overflow:hidden; box-sizing:border-box; object-fit:contain; pointer-events:none; }
+        .ui-dialog.r20qp .r20qp-img { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:16/9; padding:4px; border-radius:4px; background:#f1f1f1; color:#555; font-size:11px; text-align:center; overflow:hidden; box-sizing:border-box; object-fit:contain; pointer-events:none; }
+        .ui-dialog.r20qp .ui-dialog-content > p { display:flex; align-items:center; gap:6px; margin:0 0 2px !important; font-size:12px !important; color:#555; }
+        .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid #ddd !important; border-radius:3px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         .ui-dialog.r20qp img.r20qp-img { padding:0; }
         .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         body.r20be-off button.r20be-open { display:none; }
@@ -1811,6 +1814,9 @@ const bgmPreview = (() => {
     };
 })();
 
+// Roll20 은 예전 S3 그림 주소(s3.amazonaws.com/files.d20.io/…)를 files.d20.io 로 바꿔 보여 준다 → 미리보기도 같게
+const r20img = u => String(u || "").replace(/^(?:https?:)?\/\/s3\.amazonaws\.com\/files\.d20\.io\//i, "https://files.d20.io/");
+
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
 const bulkEditor = (() => {
@@ -2112,12 +2118,18 @@ const bulkEditor = (() => {
         const m = n.model || n.dupOf;
         return m ? journalThumb(m.id) || m.get?.("avatar") || "" : "";
     };
-    // 그래도 안 열리는 그림은 이름 첫 글자로 바꾼다 (error 는 버블링되지 않아 캡처로 받는다)
-    const picFallback = e => {
+    // 그림: 바꾼 주소(r20img)로 먼저 열고 원래 주소는 data-orig 에 둔다
+    const imgEl = (u, props = {}) => { const src = r20img(u); return el("img", { ...props, src, "data-orig": src !== u ? u : null, loading: "lazy", alt: "" }); };
+    // 안 열리는 그림: 원래 주소로 한 번 더 → 그래도 안 되면 아이콘은 이름 첫 글자, 카드·항목은 빈 칸
+    // (error 는 버블링되지 않아 창 전체에서 캡처로 받는다)
+    const onImgError = e => {
         const img = e.target;
-        if (!img.matches?.("img.r20be-pic")) return;
-        const name = img.closest(".r20be-tile")?.querySelector(".r20be-tn")?.textContent || "";
-        img.replaceWith(el("span", { class: "r20be-pic" }, name.trim().charAt(0) || "?"));
+        if (img.tagName !== "IMG") return;
+        if (img.dataset.orig && !img.dataset.retried) { img.dataset.retried = "1"; img.src = img.dataset.orig; return; }
+        if (img.matches(".r20be-pic")) {
+            const name = img.closest(".r20be-tile")?.querySelector(".r20be-tn")?.textContent || "";
+            img.replaceWith(el("span", { class: "r20be-pic" }, name.trim().charAt(0) || "?"));
+        } else img.classList.add("r20be-broken");
     };
     const folderPath = n => {
         const names = [];
@@ -2130,7 +2142,7 @@ const bulkEditor = (() => {
         const name = n.cur.name || "(이름 없음)", src = avatarOf(n);
         return `<div class="${cls}" data-id="${esc(n.id)}" role="treeitem" aria-selected="${sel}">`
             + `<button type="button" class="r20be-tl" data-act="pick" title="${esc(name + " · " + folderPath(n))}">`
-            + (src ? `<img class="r20be-pic" src="${esc(src)}" alt="" loading="lazy" draggable="false">`
+            + (src ? `<img class="r20be-pic" src="${esc(r20img(src))}"${r20img(src) !== src ? ` data-orig="${esc(src)}"` : ""} alt="" loading="lazy" draggable="false">`
                    : `<span class="r20be-pic">${esc(name.trim().charAt(0) || "?")}</span>`)
             + `<span class="r20be-tn">${esc(name)}</span></button>`
             + `<button type="button" class="r20be-cb${chk ? " on" : ""}" data-act="check" aria-label="${esc(name)} 선택" aria-pressed="${chk}">${ICON.check}</button>`
@@ -2393,7 +2405,7 @@ const bulkEditor = (() => {
             };
             cb.onclick = toggle;
             const thumb = it.cur.avatar
-                ? el("button", { type: "button", class: "r20be-thumb", title: it.cur.name, onclick: toggle }, el("img", { src: it.cur.avatar, loading: "lazy", alt: "" }))
+                ? el("button", { type: "button", class: "r20be-thumb", title: it.cur.name, onclick: toggle }, imgEl(it.cur.avatar))
                 : el("button", { type: "button", class: "r20be-thumb none", onclick: toggle }, "이미지 없음");
             const mark = () => { c.classList.toggle("dirty", itemDirty(it)); changed(); };
             c.append(thumb, cb,
@@ -2498,8 +2510,8 @@ const bulkEditor = (() => {
             cb.onclick = toggle;
             const back = it.cur.card_back || n.cur.back;      // 카드 뒷면이 없으면 덱 기본 뒷면
             const thumb = el("button", { type: "button", class: "r20be-thumb" + (it.cur.avatar ? "" : " none"), title: it.cur.name, onclick: toggle },
-                it.cur.avatar ? el("img", { src: it.cur.avatar, loading: "lazy", alt: "" }) : "앞면 없음",
-                back ? el("img", { class: "r20be-back", src: back, loading: "lazy", alt: "" }) : null);
+                it.cur.avatar ? imgEl(it.cur.avatar) : "앞면 없음",
+                back ? imgEl(back, { class: "r20be-back" }) : null);
             c.append(thumb, cb,
                 el("input", { class: "r20be-in r20be-mini", value: it.cur.name, "aria-label": "카드 이름",
                     oninput: e => { setItem(it, "name", e.target.value); c.classList.toggle("dirty", itemDirty(it)); changed(); } }));
@@ -3018,7 +3030,7 @@ const bulkEditor = (() => {
     };
     const bindTree = () => {
         const tr = ui.tree;
-        tr.addEventListener("error", picFallback, true);
+        ui.root.addEventListener("error", onImgError, true);
         tr.addEventListener("click", e => {
             const b = e.target.closest("[data-act]"), row = e.target.closest(".r20be-row");
             if (!b || !row) return;
@@ -3428,7 +3440,7 @@ const queryPicker = (() => {
     // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
     const thumbOf = url => {
         const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
-        return m ? `https://i.imgur.com/${m[1]}m${m[2] || ".png"}` : url;
+        return m ? `https://i.imgur.com/${m[1]}m${m[2] || ".png"}` : r20img(url);
     };
     const choose = dlg => {
         const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
