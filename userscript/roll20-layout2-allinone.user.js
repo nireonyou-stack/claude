@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.8.0
+// @version      1.8.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.8.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.8.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3348,19 +3348,20 @@ const sidePicker = (() => {
     const select = (dlg, idx) => {
         const list = choicesOf(dlg);
         if (idx < 0 || idx >= list.length) return;
-        const $ = window.jQuery, sl = dlg.querySelector(".sideslider");
+        const $ = window.$ || window.jQuery, sl = dlg.querySelector(".sideslider");
         let done = false;
-        // window.jQuery 가 슬라이더를 만든 Roll20 의 jQuery 와 같으면 바로 값을 넣는다
+        // Roll20 의 [Choose] 는 setTokenSide(tt) — tt 는 창에 걸린 'slide' 이벤트 처리기만 바꾼다.
+        // 그래서 값만 넣지 않고, 끌었을 때처럼 slide 이벤트를 보내 그 처리기를 태운다
         if ($ && sl) {
             try {
                 const min = $(sl).slider("option", "min"), max = $(sl).slider("option", "max");
-                const v = max - min === list.length - 1 ? min + idx : Math.round(min + idx * (max - min) / Math.max(1, list.length - 1));
-                $(sl).slider("value", v);
-                // Roll20 이 slide 이벤트로 선택을 바꾸는 경우도 맞춘다
-                const slide = $(sl).slider("option", "slide");
-                if (typeof slide === "function") slide.call(sl, $.Event("slide"), { value: v, handle: sl.querySelector(".ui-slider-handle") });
-                done = $(sl).slider("value") === v;
-            } catch (e) { /* 다른 jQuery → 아래 마우스 방식 */ }
+                if (typeof min === "number" && typeof max === "number") {
+                    const v = max - min === list.length - 1 ? min + idx : Math.round(min + idx * (max - min) / Math.max(1, list.length - 1));
+                    $(sl).slider("value", v);
+                    $(sl).trigger("slide", { value: v, handle: sl.querySelector(".ui-slider-handle") });
+                    done = $(sl).slider("value") === v;
+                }
+            } catch (e) { /* 슬라이더를 만든 jQuery 가 아님 → 아래 마우스 방식 */ }
         }
         // 아니면 슬라이더 막대를 그 자리에서 누른 것처럼 마우스 이벤트를 보내 Roll20 처리기를 그대로 태운다
         // (숨겨 둔 슬라이더는 잠깐 보이지 않게 펼쳐 위치를 잰다 · 값 범위는 0 ~ 면 수-1)
