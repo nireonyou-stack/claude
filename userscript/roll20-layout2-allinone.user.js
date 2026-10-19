@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.5.2
+// @version      1.5.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
@@ -21,7 +21,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.5.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.5.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1549,28 +1549,36 @@ const autofill = (() => {
         if (e.target.contains?.(input) || (fe && e.target.contains?.(fe))) close();
     };
 
-    // 캐릭터 시트는 같은 출처의 srcdoc iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다
-    const hooked = new WeakSet();
+    const onFocusOut = e => { if (e.target === input) close(); };
+
+    // 캐릭터 시트는 같은 출처의 iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다.
+    // document.write 로 다시 그려지면 문서는 그대로인데 리스너만 지워지므로, 기록해 두지 않고 매번 다시 건다
+    // (같은 함수를 다시 addEventListener 하면 중복되지 않는다)
     const hook = doc => {
-        if (!doc || hooked.has(doc)) return;
-        hooked.add(doc);
+        if (!doc) return;
         doc.addEventListener("input", onInput, true);
         doc.addEventListener("keydown", onKey, true);
-        doc.addEventListener("focusout", e => { if (e.target === input) close(); }, true);
+        doc.addEventListener("focusout", onFocusOut, true);
         doc.addEventListener("scroll", onScroll, true);
         doc.defaultView?.addEventListener("resize", close);
     };
+    const hookFrame = f => { try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ } };
     hook(document);
+    const framesSeen = new WeakSet();
     const inject = () => {
         document.querySelectorAll("iframe").forEach(f => {
-            if (!hooked.has(f)) {
-                hooked.add(f);
-                // srcdoc 이 다 읽히면 문서가 새로 바뀐다
-                f.addEventListener("load", () => { try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ } });
+            if (!framesSeen.has(f)) {
+                framesSeen.add(f);
+                f.addEventListener("load", () => hookFrame(f));
             }
-            try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ }
+            hookFrame(f);
         });
     };
+    // 시트 칸을 누르면 맨 위 창이 포커스를 잃는다 → 그 순간 그 iframe 에 다시 건다
+    window.addEventListener("blur", () => setTimeout(() => {
+        const a = document.activeElement;
+        if (a?.tagName === "IFRAME") hookFrame(a);
+    }, 0));
 
     return { close, inject };
 })();
