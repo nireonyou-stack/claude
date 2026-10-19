@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.10.1
+// @version      1.10.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.10.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.10.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2464,13 +2464,16 @@ const bulkEditor = (() => {
     const bulkPane = list => {
         const t = cur(), st = t.bulk;
         const prev = el("div", { class: "r20be-prev" });
+        // 공개 범위(저널에 표시 · 매크로 보이는 사람): "_keep" 이면 바꾸지 않음
+        const shareOn = () => (t.which === "journal" || t.which === "macros") && st.share != null && st.share !== "_keep";
         const apply = el("button", { type: "button", class: "r20be-pri", onclick: () => {
             if (st.find) list.forEach(n => { const v = n.cur.name.split(st.find).join(st.rep); if (v !== n.cur.name) setField(n, "name", v); });
+            if (shareOn()) list.forEach(n => { if (!n.kids && n.cur.share !== st.share) setField(n, "share", st.share); });
             if (st.move) {
                 const p = st.move === "_root" ? null : find(t, st.move);
                 list.forEach(n => { if (!(t.which === "bgm" && n.kids)) moveNode(t, n, p, null); });
             }
-            t.bulk = { find: "", rep: "", move: "" };
+            t.bulk = { find: "", rep: "", move: "", share: "_keep" };
             renderTree(); renderPane();
             setStatus(`${list.length}개에 적용했습니다 (저장해야 Roll20에 반영)`, "ok");
         } }, `${list.length}개에 적용`);
@@ -2483,7 +2486,13 @@ const bulkEditor = (() => {
                     el("span", { class: after !== n.cur.name ? "chg" : "same" }, after !== n.cur.name ? after : "(변경 없음)")));
             });
             if (list.length > 50) prev.append(el("div", {}, el("span", { class: "same" }, `외 ${list.length - 50}개`), el("span", {})));
-            apply.disabled = !st.find && !st.move;
+            if (shareOn()) {
+                const leaves = list.filter(n => !n.kids), changing = leaves.filter(n => n.cur.share !== st.share).length;
+                const label = shareOptions(st.share).find(o => o.v === st.share)?.label || st.share;
+                prev.append(el("div", {}, el("span", { class: "same" }, t.which === "journal" ? "저널에 표시" : "보이는 사람"),
+                    el("span", { class: changing ? "chg" : "same" }, changing ? `${changing}개 → ${t.which === "macros" && !st.share ? "나만" : label}` : "(변경 없음)")));
+            }
+            apply.disabled = !st.find && !st.move && !shareOn();
         };
         const setTok = on => {
             list.forEach(n => { if (n.cur.token !== on) setField(n, "token", on); });
@@ -2501,6 +2510,10 @@ const bulkEditor = (() => {
                 el("button", { type: "button", class: "r20be-sec", title: "목록 순서대로 복제본이 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
                     onclick: () => dupMany(list, true) }, "복제 후 원본 삭제"),
                 t.which === "tables" ? el("button", { type: "button", class: "r20be-sec", onclick: () => openRollMacro(list) }, "굴림 매크로 만들기") : null) : null,
+            t.which === "journal" || t.which === "macros" ? field(t.which === "journal" ? "저널에 표시 (폴더는 빼고)" : "보이는 사람",
+                el("select", { class: "r20be-in", onchange: e => { st.share = e.target.value; draw(); } },
+                    el("option", { value: "_keep", selected: !shareOn() }, "바꾸지 않음"),
+                    shareOptions("").map(o => el("option", { value: o.v, selected: shareOn() && st.share === o.v }, t.which === "macros" && !o.v ? "나만" : o.label)))) : null,
             t.which === "macros" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(true) }, "토큰 액션 켜기"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(false) }, "토큰 액션 끄기")) : null,
