@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.10.0
+// @version      1.10.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.10.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.10.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -546,7 +546,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널·모음)", "jbrow"));
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
         settingsPopup.appendChild(makeRow("토큰 메뉴 이전·다음 면", "tokmenu"));
-        settingsPopup.appendChild(makeRow("페이지 창 슬림", "pageslim"));
+        settingsPopup.appendChild(makeRow("페이지 창·설정 슬림", "pageslim"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1457,6 +1457,51 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20pg-on .vtt-page-card-menu .vtt-page-controls { position:absolute !important; top:4px !important; right:4px !important; left:auto !important; bottom:auto !important; z-index:3; display:flex !important; gap:2px; width:auto !important; height:auto !important; margin:0 !important; padding:1px 3px !important; border-radius:5px; background:rgba(255,255,255,0.92) !important; opacity:0; transition:opacity 0.12s; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-controls > span:first-child { display:none !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .vtt-page-controls, body.r20pg-on .vtt-page-card-menu .vtt-page-card:focus-within .vtt-page-controls { opacity:1; }
+
+        /* 페이지 설정 창(세부 정보): Roll20 공용 .block-submenu 중 페이지 설정 칸이 든 창에만 */
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) { border-radius:10px !important; box-shadow:0 6px 24px rgba(0,0,0,0.18) !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header { min-height:0 !important; height:42px !important; padding:0 8px 0 14px !important; border-bottom:1px solid #efeff2 !important; align-items:center !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .title { margin:0 !important; font-size:13px !important; font-weight:700 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .buttons-container button { width:28px !important; height:28px !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#666 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .buttons-container button:hover { background:#f1f1f3 !important; color:#222 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-body { padding:0 14px 10px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .section.tabs { min-height:0 !important; margin:0 0 4px !important; padding:6px 0 0 !important; border-bottom:1px solid #efeff2; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__button { height:auto !important; padding:4px 0 7px !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__label { font-size:12px !important; font-weight:700 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .section { padding-top:6px !important; padding-bottom:6px !important; margin:0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .title-wrapper { min-height:0 !important; margin:0 0 4px !important; padding:0 !important; gap:4px !important; align-items:center !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) h4.title, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .large-title { margin:6px 0 4px !important; font-size:12px !important; font-weight:700 !important; color:#333 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) h5, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .title.subheader, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .smallerTitle { margin:0 !important; font-size:11px !important; font-weight:400 !important; color:#6b6b70 !important; line-height:1.4 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .info-icon { --v7353a950:12px !important; color:#b0b0b6 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer { min-height:0 !important; height:auto !important; gap:4px !important; padding-top:0 !important; align-items:center !important; flex-wrap:nowrap !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top { display:grid !important; grid-template-columns:minmax(0, 1.3fr) minmax(0, 1fr) !important; gap:8px !important; padding:6px 0 4px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top > div { width:auto !important; min-width:0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top .el-input, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top .el-select { width:100% !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-input__wrapper, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-select__wrapper { min-height:0 !important; height:28px !important; padding:0 8px !important; border-radius:6px !important; box-shadow:0 0 0 1px #e1e1e5 inset !important; background:#fff !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-input__inner, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-select__selected-item { height:26px !important; font-size:12px !important; line-height:26px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper { flex:1 1 0 !important; min-width:0 !important; width:auto !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper.disabled { flex:0.8 1 0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper .__container, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper .label { width:100% !important; min-width:0 !important; margin:0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox { display:flex !important; align-items:center !important; width:100% !important; min-width:0 !important; height:28px !important; margin:0 !important; padding:0 !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; overflow:hidden; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox.disabled { background:#f6f6f8 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox .__box { flex:1 1 auto !important; width:100% !important; min-width:0 !important; height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; background:transparent !important; font-size:12px !important; text-align:right !important; box-shadow:none !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox.disabled .__box { color:#9a9aa0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox .append { flex-shrink:0 !important; height:auto !important; margin:0 !important; padding:0 7px 0 2px !important; border:0 !important; background:transparent !important; color:#8a8a90 !important; font-size:10px !important; white-space:nowrap; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer > .el-button.is-link { border:0 !important; background:transparent !important; box-shadow:none !important; flex:0 0 14px !important; width:14px !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; opacity:0.45; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer > .el-button.is-link img { width:12px !important; height:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-divider, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .divider-svg { margin:8px 0 !important; border-color:#f0f0f3 !important; background:#f0f0f3; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .hug-edges { width:100% !important; min-height:0 !important; margin:0 !important; padding-top:4px !important; padding-bottom:4px !important; align-items:center !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .text-tool-color { display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; gap:8px !important; width:100% !important; margin:0 !important; padding:2px 0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .text-tool-color h5 { font-size:12px !important; color:#333 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .color-picker-trigger { width:22px !important; height:22px !important; border-radius:5px !important; box-shadow:0 0 0 1px #e1e1e5 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .switch-label h5 { font-size:12px !important; color:#333 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-switch { height:22px !important; transform:scale(0.8); transform-origin:right center; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .vtt-button, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .button--delete-archive { height:28px !important; min-height:0 !important; padding:0 10px !important; border-radius:6px !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-labels, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-input-units { font-size:10px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-input-box { height:26px !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer { min-height:0 !important; height:48px !important; padding:0 12px !important; border-top:1px solid #efeff2 !important; background:#fafafb !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer-content { gap:6px !important; align-items:center !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer .grimoire__button { height:28px !important; min-height:0 !important; padding:0 14px !important; border-radius:6px !important; font-size:12px !important; }
 
         /* 모음 탭(매크로 · 덱 · 목록에서 뽑기): 저널처럼 한 줄씩 가늘게 */
         body.r20jb-on #deckstables .content > p { display:none !important; }
