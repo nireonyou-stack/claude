@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.6.1
+// @version      1.6.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.6.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.6.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3086,10 +3086,13 @@ const sidePicker = (() => {
 // 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
 const queryPicker = (() => {
     let size = Math.max(80, Math.min(260, parseInt(localStorage.getItem("r20_qp_size"), 10) || 140));
-    const isUrl = v => /^https?:\/\/\S+$/i.test(v);
+    // 값 → 그림 주소: 전체 주소이거나, imgur 그림 ID 만 고르는 꼴(https://imgur.com/?{…|이름,oTmvLxD|…}.png)
+    // ID 판별: 5~8자 영문·숫자 섞임 — 'Attack' 같은 보통 낱말·숫자만은 뺀다
+    const imgurId = v => /^[A-Za-z0-9]{5,8}$/.test(v) && /[A-Za-z]/.test(v) && !/^[A-Z]?[a-z]+$|^[A-Z]+$/.test(v);
+    const imgOf = v => /^https?:\/\/\S+$/i.test(v) ? v : imgurId(v) ? `https://i.imgur.com/${v}.png` : "";
     const labelOf = o => o.textContent.trim();
     // '—————' 같은 항목은 묶음 구분선으로
-    const isDivider = o => !isUrl(o.value) && /^[\s—–\-─━=_~·.]{3,}$/.test(o.textContent);
+    const isDivider = o => !imgOf(o.value) && /^[\s—–\-─━=_~·.]{3,}$/.test(o.textContent);
     // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
     const thumbOf = url => {
         const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
@@ -3115,14 +3118,15 @@ const queryPicker = (() => {
         const b = document.createElement("button");
         b.type = "button"; b.className = "r20qp-tile"; b.dataset.i = i; b.title = labelOf(o);
         let pic;
-        if (isUrl(o.value)) {
+        const url = imgOf(o.value);
+        if (url) {
             pic = document.createElement("img");
             pic.className = "r20qp-img";
             pic.alt = ""; pic.loading = "lazy"; pic.draggable = false;
-            const thumb = thumbOf(o.value);
-            let retried = thumb === o.value;
+            const thumb = thumbOf(url);
+            let retried = thumb === url;
             // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 이름 칸으로
-            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = o.value; } else pic.replaceWith(textPic(o)); });
+            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = url; } else pic.replaceWith(textPic(o)); });
             pic.src = thumb;
         } else pic = textPic(o);
         const lb = document.createElement("span");
@@ -3187,7 +3191,9 @@ const queryPicker = (() => {
                 && dlg.querySelector(".ui-dialog-title")?.textContent.trim() !== "Macro Options") return;
             const sel = dlg.querySelector(".ui-dialog-content select");
             if (!sel || dlg._r20qpSel === sel) return;
-            if ([...sel.options].filter(o => isUrl(o.value)).length < 2) return;     // 이미지 고르기가 아닌 질문은 그대로
+            // 이미지 고르기가 아닌 질문은 그대로: 그림 항목이 2개 이상이고 (구분선 빼고) 절반 이상일 때만
+            const opts = [...sel.options].filter(o => !isDivider(o)), imgs = opts.filter(o => imgOf(o.value)).length;
+            if (imgs < 2 || imgs * 2 < opts.length) return;
             dlg.querySelector(".r20qp-box")?.remove();      // Roll20 이 창을 다른 질문에 다시 쓴 경우
             enhance(dlg, sel);
         });
