@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.6.2
+// @version      1.7.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.6.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.7.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1281,6 +1281,19 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-thumb { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; padding:0; border:0; border-radius:6px; background:#f2f2f2; color:#888; font-size:11px; overflow:hidden; cursor:pointer; }
         #r20be .r20be-thumb img { width:100%; height:100%; object-fit:cover; }
         #r20be .r20be-thumb.none { border:1px dashed #d4d4d4; background:#fafafa; }
+        #r20be .r20be-card .r20be-thumb { position:relative; }
+        #r20be .r20be-thumb img.r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+        #r20be .r20be-tbar.idle { border-color:#eee; background:#fafafa; }
+        #r20be .r20be-ov { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(30,30,30,0.35); }
+        #r20be .r20be-dlg { width:min(440px, calc(100% - 32px)); display:flex; flex-direction:column; gap:10px; padding:16px; background:#fff; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
+        #r20be .r20be-dlg > strong { font-size:14px; }
+        #r20be .r20be-mlist { display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; }
+        #r20be .r20be-mrow { display:flex; align-items:center; gap:8px; margin:0; padding:6px 8px; border:1px solid #e6e6e6; border-radius:4px; font-size:12px; font-weight:normal; cursor:pointer; }
+        #r20be .r20be-mrow input { margin:0; }
+        #r20be .r20be-mrow span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-mrow small { color:#6b6b6b; }
+        #r20be .r20be-mrow:has(input:checked) { border-color:#1867c7; background:#eef5fd; }
+        #r20be .r20be-msum { font-size:12px; font-weight:700; color:#1867c7; }
         #r20be .r20be-cb2 { position:absolute; left:9px; top:9px; display:flex; align-items:center; justify-content:center; width:18px; height:18px; padding:0; border:1px solid #b8b8b8; border-radius:4px; background:#fff; color:#fff; cursor:pointer; }
         #r20be .r20be-cb2 svg { visibility:hidden; }
         #r20be .r20be-cb2.on { background:#1867c7; border-color:#1867c7; }
@@ -1798,9 +1811,11 @@ const bulkEditor = (() => {
         pen:     SVG('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
         phones:  SVG('<path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/>'),
         list:    SVG('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+        macro:   SVG('<path d="m7 8-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"/>', ' style="color:#be185d"'),
+        deck:    SVG('<rect x="4" y="3" width="12" height="16" rx="2"/><path d="M8 21h10a2 2 0 0 0 2-2V7"/>', ' style="color:#7c3a7c"'),
         grid:    SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')
     };
-    const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표" };
+    const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표", macro: "매크로", deck: "덱" };
     const CONTENT = ["notes", "gm"];
     // 편집칸 [내용, GM 노트] → Roll20 blob 이름
     const BLOBS = { handout: ["notes", "gmnotes"], char: ["bio", "gmnotes"] };
@@ -1852,7 +1867,8 @@ const bulkEditor = (() => {
     });
 
     // ── 작업용 트리 ──
-    const S = { tab: "journal", journal: null, bgm: null, tables: null };
+    const TABS = ["journal", "bgm", "macros", "decks", "tables"];
+    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null };
     // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
     const VIEW = {
         icons: localStorage.getItem("r20be_icons") !== "0",
@@ -1911,8 +1927,33 @@ const bulkEditor = (() => {
             tbulk: { pattern: "{n}", start: 1, w: 1 }, adding: false };
     };
 
+    // 굴림표 · 매크로 · 덱 탭이 함께 쓰는 탭 상태
+    const flatTab = (which, roots) => ({ which, roots, sel: null, checked: new Set(), collapsed: new Set(), lastCheck: null, visible: [],
+        structDirty: false, removed: 0, q: "", filter: "all", ctab: "notes", bulk: { find: "", rep: "", move: "" },
+        tbulk: { pattern: "{n}", start: 1, w: 1 }, adding: false });
+    // 매크로: GM 본인의 매크로 (보이는 사람·토큰 액션·내용)
+    const macrosColl = () => window.currentPlayer?.macros || null;
+    const buildMacros = () => flatTab("macros", (macrosColl()?.models || []).map(m => {
+        const tok = m.get("istokenaction");
+        return mkNode(m.id, "macro", m, { name: m.get("name") || "", action: m.get("action") || "", share: m.get("visibleto") || "", token: tok === true || tok === "true" });
+    }));
+    // 덱: 덱 하나 = 목록 한 줄, 카드(이름·앞면·뒷면)는 n.items 에 둔다
+    const decksColl = () => window.Campaign?.decks || null;
+    const cardNode = (m, attrs) => {
+        const a = m ? { name: m.get("name") || "", avatar: m.get("avatar") || "", card_back: m.get("card_back") || "", tooltip: m.get("tooltip") || "" } : attrs;
+        return { id: m ? m.id : "new:" + uid(), model: m, orig: { ...a }, cur: { ...a }, changed: new Set(), isNew: !m, deleted: false };
+    };
+    const buildDecks = () => flatTab("decks", (decksColl()?.models || []).map(m => {
+        const n = mkNode(m.id, "deck", m, { name: m.get("name") || "", back: m.get("avatar") || "" });
+        n.items = (m.cards?.models || []).map(c => cardNode(c));
+        n.checkedItems = new Set();
+        return n;
+    }));
+
     const buildTab = which => {
         if (which === "tables") return buildTables();
+        if (which === "macros") return buildMacros();
+        if (which === "decks") return buildDecks();
         const C = window.Campaign, isJ = which === "journal";
         const colls = isJ ? [["handout", C.handouts], ["char", C.characters]] : [["track", window.Jukebox.playlist]];
         const lookup = id => { for (const [kind, c] of colls) { const m = c.get(id); if (m) return [kind, m]; } return null; };
@@ -1973,10 +2014,10 @@ const bulkEditor = (() => {
     const toHtml = (n, k) => n.htmlMode[k] ? n.cur[k] : textToHtml(n.cur[k]);
     const nodeDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
     const isDirty = n => nodeDirty(n) || !!n.items?.some(itemDirty);       // 목록의 주황 점
-    const builtTabs = () => [S.journal, S.bgm, S.tables].filter(Boolean);
+    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables].filter(Boolean);
     const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + allNodes(t).reduce((c, n) =>
         c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
-    const needStruct = t => t.which !== "tables"
+    const needStruct = t => (t.which === "journal" || t.which === "bgm")
         && (t.structDirty || t.removed > 0 || allNodes(t).some(n => n.kids && (n.isNew || n.changed.has("name"))));
     // 굴림표 이름에는 공백을 쓸 수 없다
     const cleanName = (n, v) => n.kind === "rtable" ? v.replace(/\s+/g, "") : v;
@@ -2008,13 +2049,15 @@ const bulkEditor = (() => {
     const meta = n => {
         if (n.kids) return `${n.kids.length}개`;
         if (n.kind === "rtable") return `${n.items.filter(it => !it.deleted).length}개`;
+        if (n.kind === "deck") return `${n.items.filter(it => !it.deleted).length}장`;
+        if (n.kind === "macro") return n.cur.token ? "토큰" : "";
         if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}`;
         const s = n.cur.share;
         return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM");
     };
     const visibleRows = t => {
         const q = t.q.trim().toLowerCase(), filtering = !!q || t.filter !== "all";
-        const hit = n => !q || n.cur.name.toLowerCase().includes(q);
+        const hit = n => !q || n.cur.name.toLowerCase().includes(q) || (n.kind === "macro" && n.cur.action.toLowerCase().includes(q));
         // 핸드아웃·캐릭터만 볼 때는 폴더 없이 한 줄로 모은다 (어느 폴더인지는 오른쪽에 표시)
         if (isFlat(t)) return allNodes(t).filter(n => !n.kids && n.kind === t.filter && hit(n)).map(n => ({ n, depth: 0, flat: true }));
         const walk = (list, depth) => list.flatMap(n => {
@@ -2152,7 +2195,7 @@ const bulkEditor = (() => {
         n.deleted ? el("span", { class: "r20be-tag del" }, "삭제 예정")
             : n.isNew ? el("span", { class: "r20be-tag new" }, n.dupOf ? "복제 예정" : "새 항목") : null,
         el("span", { class: "r20be-flex" }),
-        !n.kids && n.kind !== "rtable" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
+        !n.kids && n.kind !== "rtable" && n.kind !== "deck" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
         el("button", { type: "button", class: "r20be-sec" + (n.deleted ? "" : " danger"), onclick: () => toggleDelete(n) },
             n.deleted ? "삭제 취소" : n.kids ? `${KIND_NAME[n.kind]} 삭제` : "삭제"));
 
@@ -2285,13 +2328,21 @@ const bulkEditor = (() => {
             if (list.length > 50) prev.append(el("div", {}, el("span", { class: "same" }, `외 ${list.length - 50}개`), el("span", {})));
             apply.disabled = !st.find && !st.move;
         };
+        const setTok = on => {
+            list.forEach(n => { if (n.cur.token !== on) setField(n, "token", on); });
+            renderTree(); renderPane();
+            setStatus(`${list.length}개의 토큰 액션을 ${on ? "켰" : "껐"}습니다 (저장해야 Roll20에 반영)`, "ok");
+        };
         const box = el("div", { class: "r20be-pane-in" },
             el("div", { class: "r20be-ph" }, el("strong", {}, `${list.length}개 선택됨`), el("span", { class: "r20be-flex" }),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { t.checked.clear(); renderTree(); renderPane(); } }, "선택 해제")),
             el("div", { class: "r20be-grid" },
                 field("찾을 말", el("input", { class: "r20be-in", value: st.find, oninput: e => { st.find = e.target.value; draw(); } })),
                 field("바꿀 말", el("input", { class: "r20be-in", value: st.rep, oninput: e => { st.rep = e.target.value; draw(); } }))),
-            t.which === "tables" ? null : field(t.which === "journal" ? "폴더로 이동" : "플레이리스트로 이동",
+            t.which === "macros" ? el("div", { class: "r20be-acts" },
+                el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(true) }, "토큰 액션 켜기"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(false) }, "토큰 액션 끄기")) : null,
+            !(t.which === "journal" || t.which === "bgm") ? null : field(t.which === "journal" ? "폴더로 이동" : "플레이리스트로 이동",
                 el("select", { class: "r20be-in", onchange: e => { st.move = e.target.value; draw(); } },
                     el("option", { value: "", selected: !st.move }, "이동 안 함"),
                     el("option", { value: "_root", selected: st.move === "_root" }, "맨 위 (폴더 밖)"),
@@ -2398,8 +2449,170 @@ const bulkEditor = (() => {
                     "플레이어의 목록 뽑기 허용"),
                 el("span", { class: "r20be-flex" }),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { live().forEach(it => n.checkedItems.add(it.id)); drawGrid(); drawBar(); } }, "모두 선택"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => {
+                    live().forEach(it => { if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id); });
+                    drawGrid(); drawBar();
+                } }, "선택 반전"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => openMerge(n) }, "합치기…"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "항목 추가")),
             addBox, bar, grid);
+    };
+
+    // 덱 편집칸: 카드 격자(앞면 + 뒷면 작게) · 전체/반전/해제 선택 → 이름·뒷면·삭제 한꺼번에 · 줄 단위로 카드 추가
+    const deckPane = n => {
+        const t = cur(), tb = t.tbulk;
+        const live = () => n.items.filter(it => !it.deleted);
+        const picked = () => live().filter(it => n.checkedItems.has(it.id));
+        const fmt = k => tb.pattern.split("{n}").join(String(tb.start + k));
+        const grid = el("div", { class: "r20be-tgrid" });
+        const bar = el("div", { class: "r20be-tbar" });
+        const changed = () => { refreshRow(n); updateBar(); };
+        const card = it => {
+            const on = n.checkedItems.has(it.id);
+            const c = el("div", { class: "r20be-card" + (on ? " chk" : "") + (itemDirty(it) ? " dirty" : "") });
+            const cb = el("button", { type: "button", class: "r20be-cb2" + (on ? " on" : ""), "aria-label": "선택", html: ICON.check });
+            const toggle = () => {
+                if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id);
+                c.classList.toggle("chk"); cb.classList.toggle("on");
+                drawBar();
+            };
+            cb.onclick = toggle;
+            const back = it.cur.card_back || n.cur.back;      // 카드 뒷면이 없으면 덱 기본 뒷면
+            const thumb = el("button", { type: "button", class: "r20be-thumb" + (it.cur.avatar ? "" : " none"), title: it.cur.name, onclick: toggle },
+                it.cur.avatar ? el("img", { src: it.cur.avatar, loading: "lazy", alt: "" }) : "앞면 없음",
+                back ? el("img", { class: "r20be-back", src: back, loading: "lazy", alt: "" }) : null);
+            c.append(thumb, cb,
+                el("input", { class: "r20be-in r20be-mini", value: it.cur.name, "aria-label": "카드 이름",
+                    oninput: e => { setItem(it, "name", e.target.value); c.classList.toggle("dirty", itemDirty(it)); changed(); } }));
+            return c;
+        };
+        const drawGrid = () => {
+            grid.textContent = "";
+            const list = live();
+            if (!list.length) grid.append(el("p", { class: "r20be-empty" }, "카드가 없습니다 · [+ 카드 추가]로 넣어 주세요"));
+            list.forEach(it => grid.append(card(it)));
+        };
+        const drawBar = () => {
+            const sel = picked();
+            const pick = (label, fn) => el("button", { type: "button", class: "r20be-sec", onclick: () => { fn(); drawGrid(); drawBar(); } }, label);
+            bar.textContent = "";
+            bar.classList.toggle("idle", !sel.length);
+            bar.append(
+                pick("전체 선택", () => live().forEach(it => n.checkedItems.add(it.id))),
+                pick("선택 반전", () => live().forEach(it => { if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id); })),
+                pick("선택 해제", () => n.checkedItems.clear()),
+                el("strong", {}, `${sel.length}장 선택`));
+            if (!sel.length) return;
+            const prev = el("span", { class: "prev" });
+            const showPrev = () => { prev.textContent = "→ " + sel.slice(0, 3).map((_, k) => fmt(k)).join(", ") + (sel.length > 3 ? " …" : ""); };
+            showPrev();
+            const backIn = el("input", { class: "r20be-in r20be-mini", placeholder: "뒷면 이미지 주소", "aria-label": "뒷면 이미지 주소", style: "width:170px" });
+            bar.append(
+                el("span", { class: "r20be-sepv" }),
+                el("input", { class: "r20be-in r20be-mini", value: tb.pattern, "aria-label": "이름 규칙 ({n} = 번호)", style: "width:110px",
+                    oninput: e => { tb.pattern = e.target.value; showPrev(); } }),
+                el("input", { class: "r20be-in r20be-mini", type: "number", value: String(tb.start), "aria-label": "시작 번호", style: "width:52px",
+                    oninput: e => { tb.start = parseInt(e.target.value, 10) || 1; showPrev(); } }),
+                prev,
+                el("button", { type: "button", class: "r20be-pri", onclick: () => {
+                    sel.forEach((it, k) => setItem(it, "name", fmt(k)));
+                    drawGrid(); changed();
+                    setStatus(`${sel.length}장 이름을 바꿨습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "이름 적용"),
+                el("span", { class: "r20be-sepv" }),
+                backIn,
+                el("button", { type: "button", class: "r20be-sec", onclick: () => {
+                    const v = backIn.value.trim();
+                    sel.forEach(it => setItem(it, "card_back", v));
+                    drawGrid(); changed();
+                    setStatus(`${sel.length}장 뒷면을 ${v ? "바꿨" : "덱 기본으로 돌렸"}습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "뒷면 적용"),
+                el("button", { type: "button", class: "r20be-sec danger", onclick: () => {
+                    sel.forEach(it => { if (it.isNew) n.items.splice(n.items.indexOf(it), 1); else it.deleted = true; });
+                    n.checkedItems.clear();
+                    drawGrid(); drawBar(); changed();
+                    setStatus(`${sel.length}장을 지웠습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "선택 삭제"));
+        };
+        // 한 줄에 하나: "앞면 주소" 또는 "이름 | 앞면" 또는 "이름 | 앞면 | 뒷면"
+        const addBox = el("div", { class: "r20be-add", hidden: !t.adding });
+        const ta = el("textarea", { class: "r20be-in", "aria-label": "새 카드", placeholder: "한 줄에 한 장씩 · 앞면 주소만 / 이름 | 앞면 / 이름 | 앞면 | 뒷면" });
+        addBox.append(ta, el("button", { type: "button", class: "r20be-pri", onclick: () => {
+            const lines = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+            lines.forEach(l => {
+                const p = l.split("|").map(x => x.trim());
+                const [name, avatar, back] = p.length > 1 ? [p[0], p[1], p[2] || ""] : /^https?:\/\//.test(p[0]) ? ["", p[0], ""] : [p[0], "", ""];
+                n.items.push(cardNode(null, { name, avatar, card_back: back, tooltip: "" }));
+            });
+            ta.value = "";
+            drawGrid(); changed();
+            setStatus(`카드 ${lines.length}장을 추가했습니다 (저장해야 Roll20에 반영)`, "ok");
+        } }, "추가"));
+        drawGrid(); drawBar();
+        return el("div", { class: "r20be-pane-in" }, paneHead(n),
+            el("div", { class: "r20be-trow" },
+                field("덱 이름", nameInput(n)),
+                field("기본 뒷면 (이미지 주소)", el("input", { class: "r20be-in", value: n.cur.back,
+                    oninput: e => { setField(n, "back", e.target.value.trim()); changed(); } })),
+                el("span", { class: "r20be-flex" }),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => openMerge(n) }, "합치기…"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "카드 추가")),
+            el("p", { class: "r20be-note" }, "게임 중인 덱은 카드를 모두 회수(Recall)한 뒤 편집하세요 · 새 카드는 덱을 섞은 뒤부터 뽑힙니다"),
+            addBox, bar, grid);
+    };
+
+    // 매크로 편집칸
+    const macroPane = n => el("div", { class: "r20be-pane-in" }, paneHead(n),
+        el("div", { class: "r20be-grid" },
+            field("매크로 이름 (#이름으로 부를 때 공백은 안 됨)", nameInput(n)),
+            field("보이는 사람", el("select", { class: "r20be-in", onchange: e => { setField(n, "share", e.target.value); refreshRow(n); } },
+                shareOptions(n.cur.share).map(o => el("option", { value: o.v, selected: o.v === n.cur.share }, o.v ? o.label : "나만"))))),
+        el("label", { class: "r20be-chk" },
+            el("input", { type: "checkbox", checked: n.cur.token, onchange: e => { setField(n, "token", e.target.checked); refreshRow(n); } }), "토큰 액션으로 보이기"),
+        field("내용", el("textarea", { class: "r20be-ta mono", value: n.cur.action, spellcheck: "false", "aria-label": "매크로 내용",
+            oninput: e => { setField(n, "action", e.target.value); autosize(e.target); refreshRow(n); } })));
+
+    // 합치기: 같은 탭의 다른 굴림표·덱 항목을 이 표 끝에 복사 (저장할 때 반영)
+    const openMerge = n => {
+        const t = cur(), deck = n.kind === "deck", unit = deck ? "장" : "개";
+        const others = t.roots.filter(x => x !== n && !x.deleted);
+        const live = x => x.items.filter(it => !it.deleted);
+        const picks = new Set();
+        let delSrc = false;
+        const sum = el("span", { class: "r20be-msum" });
+        const go = el("button", { type: "button", class: "r20be-pri", disabled: true }, "합치기");
+        const draw = () => {
+            const add = others.filter(x => picks.has(x.id)).reduce((a, x) => a + live(x).length, 0);
+            sum.textContent = picks.size ? `${picks.size}개 · ${add}${unit} 추가 → 합치면 ${live(n).length + add}${unit}` : "합칠 것을 고르세요";
+            go.disabled = !picks.size;
+        };
+        const list = el("div", { class: "r20be-mlist" }, others.length ? others.map(x => el("label", { class: "r20be-mrow" },
+            el("input", { type: "checkbox", onchange: e => { if (e.target.checked) picks.add(x.id); else picks.delete(x.id); draw(); } }),
+            el("span", {}, x.cur.name || "(이름 없음)"), el("small", {}, `${live(x).length}${unit}`)))
+            : el("p", { class: "r20be-empty" }, "합칠 수 있는 것이 없습니다"));
+        const ov = el("div", { class: "r20be-ov" });
+        const close = () => ov.remove();
+        go.onclick = () => {
+            const src = others.filter(x => picks.has(x.id));
+            let added = 0;
+            src.forEach(x => live(x).forEach(it => { n.items.push(deck ? cardNode(null, { ...it.cur }) : itemNode(null, { ...it.cur })); added++; }));
+            if (delSrc) src.forEach(x => { if (x.isNew) removeNode(t, x); else x.deleted = true; });
+            close();
+            renderTree(); renderPane();
+            setStatus(`${added}${unit}을 합쳤습니다${delSrc ? " · 고른 것은 저장할 때 삭제" : ""} (저장해야 Roll20에 반영)`, "ok");
+        };
+        ov.append(el("div", { class: "r20be-dlg", role: "dialog", "aria-label": "합치기" },
+            el("strong", {}, `‘${n.cur.name}’에 합치기`),
+            el("span", { class: "r20be-note" }, deck ? "고른 덱의 카드(이름·앞면·뒷면)를 이 덱 끝에 복사합니다." : "고른 굴림표의 항목(이름·가중치·이미지)을 이 표 끝에 복사합니다."),
+            list,
+            el("label", { class: "r20be-chk" }, el("input", { type: "checkbox", onchange: e => { delSrc = e.target.checked; } }), "합친 뒤 고른 것은 삭제"),
+            el("div", { class: "r20be-acts" }, sum, el("span", { class: "r20be-flex" }),
+                el("button", { type: "button", class: "r20be-sec", onclick: close }, "취소"), go)));
+        ov.addEventListener("click", e => { if (e.target === ov) close(); });
+        ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+        ui.root.append(ov);
+        draw();
+        ov.querySelector("input")?.focus();
     };
 
     const renderPane = () => {
@@ -2409,7 +2622,8 @@ const bulkEditor = (() => {
         const n = t.sel && find(t, t.sel);
         ui.pane.append(checked.length >= 2 ? bulkPane(checked)
             : !n ? el("p", { class: "r20be-empty" }, "왼쪽에서 항목을 고르세요")
-            : n.kids ? groupPane(n) : n.kind === "rtable" ? tablePane(n) : n.kind === "track" ? trackPane(n) : docPane(n));
+            : n.kids ? groupPane(n) : n.kind === "rtable" ? tablePane(n) : n.kind === "deck" ? deckPane(n) : n.kind === "macro" ? macroPane(n)
+            : n.kind === "track" ? trackPane(n) : docPane(n));
         ui.pane.querySelectorAll(".r20be-ta").forEach(autosize);
     };
 
@@ -2417,10 +2631,12 @@ const bulkEditor = (() => {
     const createNode = kind => {
         const t = cur(), sel = t.sel && find(t, t.sel);
         // 고른 게 폴더면 그 안, 항목이면 같은 폴더, 없으면 맨 위. 주크박스 플레이리스트는 겹치지 않음
-        const parent = kind === "group" || kind === "rtable" || !sel ? null : sel.kids ? sel : sel.parent;
+        const parent = ["group", "rtable", "macro", "deck"].includes(kind) || !sel ? null : sel.kids ? sel : sel.parent;
         // 폴더는 구조에만 있으므로 바로 쓸 ID, 항목은 저장 때 Roll20 ID로 바뀌는 임시 ID
         const n = kind === "folder" || kind === "group" ? mkNode(uid(), kind, null, { name: `새 ${KIND_NAME[kind]}` })
             : kind === "rtable" ? Object.assign(mkNode("new:" + uid(), kind, null, { name: "새굴림표", show: false }), { items: [], checkedItems: new Set() })
+            : kind === "deck" ? Object.assign(mkNode("new:" + uid(), kind, null, { name: "새 덱", back: "" }), { items: [], checkedItems: new Set() })
+            : kind === "macro" ? mkNode("new:" + uid(), kind, null, { name: "새매크로", action: "", share: "", token: false })
             : mkNode("new:" + uid(), kind, null, { name: `새 ${KIND_NAME[kind]}`, share: "" });
         n.isNew = true; n.loaded = true; n.parent = parent;
         CONTENT.forEach(k => { n.raw[k] = ""; n.origText[k] = ""; n.cur[k] = ""; });
@@ -2575,6 +2791,93 @@ const bulkEditor = (() => {
         }
     };
 
+    // 매크로: 편집칸 키 → Roll20 속성
+    const MACRO_ATTR = { name: "name", action: "action", share: "visibleto", token: "istokenaction" };
+    const saveMacros = async (t, attempt) => {
+        const coll = macrosColl();
+        for (const n of [...t.roots]) {
+            if (n.deleted) {
+                if (!n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
+                else removeNode(t, n);
+                continue;
+            }
+            if (n.isNew) await attempt(n.cur.name, async () => {
+                const a = {};
+                Object.entries(MACRO_ATTR).forEach(([k, r]) => { a[r] = n.cur[k]; });
+                n.model = coll.create(a);
+                if (!n.model?.id) throw new Error("생성 실패");
+                const old = n.id;
+                n.id = n.model.id; n.isNew = false; n.dupOf = null; n.orig = { ...n.cur }; n.changed.clear();
+                if (t.sel === old) t.sel = n.id;
+            });
+            else if (n.changed.size) await attempt(n.cur.name, async () => {
+                const a = {};
+                n.changed.forEach(k => { if (MACRO_ATTR[k]) a[MACRO_ATTR[k]] = n.cur[k]; });
+                n.model.save(a);
+                n.orig = { ...n.cur }; n.changed.clear();
+            });
+        }
+    };
+    const saveDecks = async (t, attempt) => {
+        const coll = decksColl();
+        for (const n of [...t.roots]) {
+            if (n.deleted) {
+                if (!n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
+                else removeNode(t, n);
+                continue;
+            }
+            if (n.isNew) await attempt(n.cur.name, async () => {
+                n.model = coll.create({ name: n.cur.name, avatar: n.cur.back });
+                if (!n.model?.id) throw new Error("생성 실패");
+                const old = n.id;
+                n.id = n.model.id; n.isNew = false; n.orig = { ...n.cur }; n.changed.clear();
+                if (t.sel === old) t.sel = n.id;
+            });
+            else if (n.changed.size) await attempt(n.cur.name, async () => {
+                const a = {};
+                if (n.changed.has("name")) a.name = n.cur.name;
+                if (n.changed.has("back")) a.avatar = n.cur.back;
+                n.model.save(a);
+                n.orig = { ...n.cur }; n.changed.clear();
+            });
+            if (n.isNew) continue;      // 덱을 못 만들었으면 카드도 건너뛴다
+            if (!n.model?.cards) {
+                // 카드 목록이 아직 없으면 실패로 남겨 다시 저장할 수 있게 한다
+                if (n.items.some(itemDirty)) await attempt(`${n.cur.name} · 카드`, async () => { throw new Error("덱의 카드 목록을 찾지 못함"); });
+                continue;
+            }
+            const gone = new Set();
+            for (const it of [...n.items]) {
+                const label = `${n.cur.name} · ${it.cur.name || "카드"}`;
+                if (it.deleted) await attempt(label, async () => {
+                    if (!it.isNew) { gone.add(it.model.id); it.model.destroy(); }
+                    n.items.splice(n.items.indexOf(it), 1);
+                });
+                else if (it.isNew) await attempt(label, async () => {
+                    it.model = n.model.cards.create({ name: it.cur.name, avatar: it.cur.avatar, card_back: it.cur.card_back, tooltip: it.cur.tooltip });
+                    if (!it.model?.id) throw new Error("생성 실패");
+                    it.id = it.model.id; it.isNew = false; it.orig = { ...it.cur };
+                });
+                else if (it.changed.size) await attempt(label, async () => {
+                    const a = {};
+                    it.changed.forEach(k => { a[k] = it.cur[k]; });
+                    it.model.save(a);
+                    it.orig = { ...it.cur }; it.changed.clear();
+                });
+            }
+            // 지운 카드가 뽑을 순서·버린 더미 목록에 남아 있지 않게
+            if (gone.size) await attempt(`${n.cur.name} · 덱 순서`, async () => {
+                const a = {};
+                ["currentDeck", "discardPile"].forEach(k => {
+                    const v = n.model.get(k);
+                    if (Array.isArray(v)) { const nv = v.filter(id => !gone.has(id)); if (nv.length !== v.length) a[k] = nv; }
+                    else if (typeof v === "string" && v) { const nv = v.split(",").filter(id => id && !gone.has(id)).join(","); if (nv !== v) a[k] = nv; }
+                });
+                if (Object.keys(a).length) n.model.save(a);
+            });
+        }
+    };
+
     const save = async () => {
         if (saving || !dirtyCount()) return;
         const dels = builtTabs().flatMap(t => allNodes(t).flatMap(n => [
@@ -2589,6 +2892,8 @@ const bulkEditor = (() => {
         };
         for (const t of builtTabs()) {
             if (t.which === "tables") { await saveTables(t, attempt); continue; }
+            if (t.which === "decks") { await saveDecks(t, attempt); continue; }
+            if (t.which === "macros") { await saveMacros(t, attempt); continue; }
             const nodes = allNodes(t);
             for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
             // 고친 내용을 먼저 저장해야 복제본이 고친 내용으로 만들어진다
@@ -2618,8 +2923,8 @@ const bulkEditor = (() => {
 
     // ── 창 ──
     const reload = () => {
-        const keep = ["journal", "bgm", "tables"].map(k => S[k] && { k, sel: S[k].sel, collapsed: S[k].collapsed, filter: S[k].filter, q: S[k].q, ctab: S[k].ctab });
-        S.journal = S.bgm = S.tables = null;
+        const keep = TABS.map(k => S[k] && { k, sel: S[k].sel, collapsed: S[k].collapsed, filter: S[k].filter, q: S[k].q, ctab: S[k].ctab });
+        TABS.forEach(k => { S[k] = null; });
         keep.forEach(o => {
             if (!o) return;
             const t = S[o.k] = buildTab(o.k);
@@ -2638,9 +2943,11 @@ const bulkEditor = (() => {
         ui.segJ.classList.toggle("on", S.tab === "journal");
         ui.segB.classList.toggle("on", S.tab === "bgm");
         ui.segT.classList.toggle("on", S.tab === "tables");
+        ui.segM.classList.toggle("on", S.tab === "macros");
+        ui.segD.classList.toggle("on", S.tab === "decks");
         ui.search.value = t.q;
-        ui.search.placeholder = t.which === "tables" ? "굴림표 이름 검색" : "이름 검색";
-        ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : t.which === "tables" ? "새 굴림표" : "새로 만들기";
+        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색" }[t.which] || "이름 검색";
+        ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱" }[t.which] || "새로 만들기";
         const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
             : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]] : [];
         ui.chips.textContent = "";
@@ -2655,6 +2962,8 @@ const bulkEditor = (() => {
     const switchTab = tab => {
         if (tab === "bgm" && !window.Jukebox?.playlist) { setStatus("주크박스를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "tables" && !tablesColl()) { setStatus("굴림표를 아직 불러오지 못했습니다", "err"); return; }
+        if (tab === "macros" && !macrosColl()) { setStatus("매크로를 아직 불러오지 못했습니다", "err"); return; }
+        if (tab === "decks" && !decksColl()) { setStatus("덱을 아직 불러오지 못했습니다", "err"); return; }
         S.tab = tab;
         if (!S[tab]) S[tab] = buildTab(tab);
         ui.menu.hidden = true;
@@ -2666,6 +2975,8 @@ const bulkEditor = (() => {
         // 핸드아웃·캐릭터 모아보기 중이거나 굴림표 탭이면 메뉴 없이 바로 만든다
         if (isFlat(t)) return createNode(t.filter);
         if (t.which === "tables") return createNode("rtable");
+        if (t.which === "macros") return createNode("macro");
+        if (t.which === "decks") return createNode("deck");
         const items = t.which === "journal" ? [["handout", "핸드아웃"], ["char", "캐릭터"], ["folder", "폴더"]] : [["group", "플레이리스트"]];
         ui.menu.textContent = "";
         items.forEach(([kind, label]) => ui.menu.append(el("button", { type: "button", disabled: kind === "group" && !hasGroup,
@@ -2714,7 +3025,7 @@ const bulkEditor = (() => {
         const clearDrop = () => tr.querySelectorAll(".drop-in,.drop-before").forEach(r => r.classList.remove("drop-in", "drop-before"));
         tr.addEventListener("dragstart", e => {
             const row = e.target.closest?.(".r20be-row");
-            if (!row || cur().which === "tables") { e.preventDefault(); return; }
+            if (!row || !["journal", "bgm"].includes(cur().which)) { e.preventDefault(); return; }
             dragId = row.dataset.id;
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", dragId);
@@ -2827,10 +3138,12 @@ const bulkEditor = (() => {
         ui.segJ = el("button", { type: "button", onclick: () => switchTab("journal") }, "저널");
         ui.segB = el("button", { type: "button", onclick: () => switchTab("bgm") }, "배경음악");
         ui.segT = el("button", { type: "button", onclick: () => switchTab("tables") }, "굴림표");
+        ui.segM = el("button", { type: "button", onclick: () => switchTab("macros") }, "매크로");
+        ui.segD = el("button", { type: "button", onclick: () => switchTab("decks") }, "덱");
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segT),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT),
             el("span", { class: "r20be-flex" }),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
         ui.search = el("input", { class: "r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
@@ -2869,7 +3182,7 @@ const bulkEditor = (() => {
     const open = tab => {
         if (!window.Campaign?.handouts) { alert("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요."); return; }
         ensureUi();
-        if (!dirtyCount()) S.journal = S.bgm = S.tables = null;     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
+        if (!dirtyCount()) TABS.forEach(k => { S[k] = null; });     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
         ui.root.classList.add("r20be-show");
         setStatus();
         switchTab(tab || S.tab);
