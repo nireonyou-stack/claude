@@ -1,11 +1,9 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.5.3
+// @version      1.5.4
 // @match        https://app.roll20.net/editor*
 // @grant        none
-// 자동완성 데이터: 아래 줄의 주소를 홈페이지 데이터 파일로 바꾸고 맨 앞 "// "를 지우면 활성화됩니다.
-// 데이터 파일을 고친 뒤에는 ?v= 숫자를 올려야 Tampermonkey가 새로 받아옵니다.
-// // @require    https://nire.ivyro.net/PATH/nire-ruledata.js?v=1
+// 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
 // ==/UserScript==
 
 (function () {
@@ -21,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.5.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.5.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -159,6 +157,8 @@ if (!document.getElementById("custom-journal-style")) {
         #custom-settings-popup.show { display:flex !important; }
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
+        .cs-row.cs-rd { padding:0 10px 6px; }
+        .cs-rd input { flex:1; min-width:0; height:22px !important; margin:0 !important; padding:0 6px !important; border:1px solid #ccc; border-radius:3px; font-size:11px !important; box-sizing:border-box; }
         .cs-switch { position:relative; width:32px; height:18px; display:inline-block; cursor:pointer; }
         .cs-switch input { opacity:0; width:0; height:0; }
         .cs-slider { position:absolute; inset:0; background:#cccccc; border-radius:18px; transition:0.2s; }
@@ -519,9 +519,22 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("오너 사담", "sadam"));
         settingsPopup.appendChild(makeRow("캐릭터 사담", "charsadam"));
         settingsPopup.appendChild(makeRow("저널", "journal"));
-        // @require 데이터가 들어왔는지 바로 보이게 개수를 붙인다
-        const rdCount = Object.values(window.NIRE_RULEDATA || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0);
-        settingsPopup.appendChild(makeRow(`자동완성 (${rdCount ? rdCount + "개" : "데이터 없음"})`, "autofill"));
+        // 자동완성: 데이터 상태(개수 · 불러오는 중 · 실패)를 이름 옆에 보이고, 아래 칸에 데이터 주소를 넣는다
+        const afRow = makeRow("자동완성", "autofill");
+        const showRd = () => { afRow.firstChild.textContent = `자동완성 (${autofill.statusText()})`; };
+        showRd();
+        document.addEventListener("r20-ruledata", showRd);
+        settingsPopup.appendChild(afRow);
+        const rdRow = document.createElement("div");
+        rdRow.className = "cs-row cs-rd";
+        const rdInp = document.createElement("input");
+        rdInp.type = "text";
+        rdInp.placeholder = "데이터 주소 붙여넣기";
+        rdInp.setAttribute("aria-label", "자동완성 데이터 주소");
+        rdInp.value = autofill.getUrl();
+        rdInp.addEventListener("change", () => { rdInp.value = autofill.setUrl(rdInp.value); });
+        rdRow.appendChild(rdInp);
+        settingsPopup.appendChild(rdRow);
         settingsPopup.appendChild(makeRow("BGM 미리듣기", "bgm"));
         const bulkRow = makeRow("일괄 편집기", "bulk");
         bulkRow.firstChild.after(bulkEditor.openButton());
@@ -1368,7 +1381,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
 }
 
 // ───────── 자동완성: 시트 인법/마법 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
-// 데이터는 @require 한 파일이 넣어 둔다: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] }
+// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] } — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
 // 레코드 키: name, group(유파), type, skill, range, target, cost, charge, effect, flavor, recite
 // type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
 const autofill = (() => {
@@ -1390,6 +1403,45 @@ const autofill = (() => {
         if (!normCache.has(list)) normCache.set(list, list.map(r => norm(r.name)));
         return list;
     };
+
+    // Roll20 CSP 가 외부 <script> 는 막지만 fetch 는 허락한다 → 주소에서 글로 받아 JSON 부분만 읽는다.
+    // 홈페이지 PHP 가 Access-Control-Allow-Origin: https://app.roll20.net 을 내야 한다.
+    const URL_KEY = "r20_ruledata_url";
+    let status = window.NIRE_RULEDATA ? "ok" : "none";     // none · loading · ok · badkey · fail
+    const getUrl = () => localStorage.getItem(URL_KEY) || "";
+    const statusText = () => {
+        if (status === "ok") return Object.values(window.NIRE_RULEDATA || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0) + "개";
+        return { loading: "불러오는 중…", badkey: "열쇠가 맞지 않음", fail: "불러오기 실패" }[status] || "데이터 없음";
+    };
+    const setStatus = st => { status = st; document.dispatchEvent(new CustomEvent("r20-ruledata")); };
+    const load = async () => {
+        const url = getUrl();
+        if (!url) return;
+        setStatus("loading");
+        try {
+            const res = await fetch(url, { cache: "no-cache" });
+            const text = await res.text();
+            const at = text.indexOf("window.NIRE_RULEDATA");
+            if (!res.ok || at < 0) {
+                console.warn("[자동완성] 데이터가 아닌 응답:", res.status, text.slice(0, 200));
+                return setStatus(/열쇠/.test(text) ? "badkey" : "fail");
+            }
+            window.NIRE_RULEDATA = JSON.parse(text.slice(text.indexOf("=", at) + 1).trim().replace(/;\s*$/, ""));
+            normCache.clear();
+            setStatus("ok");
+        } catch (e) {
+            console.warn("[자동완성] 데이터 불러오기 실패 — 홈페이지 PHP 의 Access-Control-Allow-Origin 헤더를 확인하세요.", e);
+            setStatus("fail");
+        }
+    };
+    // '// @require  https://…' 줄을 통째로 붙여 넣어도 주소만 쓴다
+    const setUrl = v => {
+        const url = (String(v).match(/https?:\/\/\S+/) || [""])[0];
+        if (url) { localStorage.setItem(URL_KEY, url); load(); }
+        else { localStorage.removeItem(URL_KEY); setStatus(window.NIRE_RULEDATA ? "ok" : "none"); }
+        return url;
+    };
+    if (!window.NIRE_RULEDATA) load();
 
     let box = null, input = null, items = [], sel = 0, filling = false;
 
@@ -1580,7 +1632,7 @@ const autofill = (() => {
         if (a?.tagName === "IFRAME") hookFrame(a);
     }, 0));
 
-    return { close, inject };
+    return { close, inject, getUrl, setUrl, statusText };
 })();
 
 // ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
