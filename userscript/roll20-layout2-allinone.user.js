@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.11.0
+// @version      1.11.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.11.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.11.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4034,6 +4034,7 @@ const pagePanel = (() => {
 // → 계정 라이브러리에는 아무것도 추가되지 않는다. (보는 동안 라이브러리 정리 영역은 숨겨 실수로 넣는 일도 막는다)
 const roomImages = (() => {
     const KINDS = [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]];
+    const OWN = { table: 0, deck: 1, char: 2, handout: 3, page: 4 };
     const SEARCH_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
     const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
@@ -4041,7 +4042,7 @@ const roomImages = (() => {
     // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다 → 크기 부분을 뺀 주소로 같은 그림을 묶는다
     const VAR = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
     const sized = (u, s) => VAR.test(u) ? u.replace(VAR, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
-    const keyOf = u => r20img(u).replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
+    const keyOf = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
 
     let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
     let mode = localStorage.getItem("r20_ri_mode") === "room" ? "room" : "lib";
@@ -4053,7 +4054,7 @@ const roomImages = (() => {
         const C = window.Campaign;
         items = new Map(); groups = []; unread = 0;
         if (!C) return;
-        const group = (kind, name) => { const g = { kind, name, list: [] }; groups.push(g); return g; };
+        const group = (kind, name) => { const g = { kind, name, list: [], has: new Set() }; groups.push(g); return g; };
         const add = (g, url, name, use) => {
             if (typeof url !== "string" || !/^(?:https?:)?\/\//i.test(url)) return;
             const k = keyOf(url);
@@ -4062,7 +4063,7 @@ const roomImages = (() => {
             if (!it.name && name) it.name = name;
             if (use.kind === "page" && !it.img) it.img = url;       // 토큰의 imgsrc 는 그대로 다시 쓸 수 있다
             if (!it.uses.some(u => u.kind === use.kind && u.id === use.id)) it.uses.push(use);
-            if (!g.list.includes(it)) g.list.push(it);
+            if (!g.has.has(it)) { g.has.add(it); g.list.push(it); }
         };
         const pages = C.pages?.models || [], act = typeof C.activePage === "function" ? C.activePage() : null;
         [act, ...pages.filter(p => p !== act)].forEach(p => {
@@ -4120,10 +4121,15 @@ const roomImages = (() => {
         if (!root) return;
         closePop();
         const v = norm(q), seen = new Set();
+        const vis = groups.filter(g => src === "all" || g.kind === src).map(g => ({ g,
+            its: v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list }));
+        // 같은 그림은 한 곳에만: 굴림표 → 덱 → 캐릭터 → 핸드아웃 → 페이지 순으로 먼저 나온 묶음에 둔다
+        // (굴림표 토큰을 여러 페이지에 복사해도 그림은 굴림표 묶음에만 보이고, 페이지 묶음엔 그 페이지에만 있는 그림이 남는다)
+        const owner = new Map();
+        vis.slice().sort((a, b) => OWN[a.g.kind] - OWN[b.g.kind]).forEach(x => x.its.forEach(it => { if (!owner.has(it)) owner.set(it, x.g); }));
         let html = "";
-        groups.forEach(g => {
-            if (src !== "all" && g.kind !== src) return;
-            const its = v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list;
+        vis.forEach(({ g, its }) => {
+            its = its.filter(it => owner.get(it) === g);
             if (!its.length) return;
             its.forEach(it => seen.add(it));
             html += `<section><div class="r20ri-gh">${esc(g.name)} <small>${its.length}장</small></div><ul class="r20ri-grid">${its.map(tileHtml).join("")}</ul></section>`;
