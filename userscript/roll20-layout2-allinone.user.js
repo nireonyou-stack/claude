@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.12.1
+// @version      1.13.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.12.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.13.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1292,6 +1292,15 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-card .r20be-thumb { position:relative; }
         #r20be .r20be-thumb img.r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
         #r20be .r20be-tbar.idle { border-color:#eee; background:#fafafa; }
+        #r20be .r20be-tgrid.r20be-imgs { grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:6px; }
+        #r20be .r20be-imgs .r20be-card { gap:3px; padding:4px; }
+        #r20be .r20be-ithumb { background:#f1f1f1; }
+        #r20be .r20be-ithumb img { object-fit:contain; }
+        #r20be .r20be-inm { overflow:hidden; padding:0 2px; color:#333; font-size:11px; white-space:nowrap; text-overflow:ellipsis; }
+        #r20be .r20be-icnt { position:absolute; right:8px; top:8px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
+        #r20be .r20be-isend { display:flex; flex-direction:column; gap:8px; }
+        #r20be .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
+        #r20be .r20be-isend .r20be-chk[hidden] { display:none; }
         #r20be img.r20be-broken { visibility:hidden; }
         #r20be .r20be-ov { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(30,30,30,0.35); }
         #r20be .r20be-dlg { width:min(440px, calc(100% - 32px)); display:flex; flex-direction:column; gap:10px; padding:16px; background:#fff; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
@@ -2036,6 +2045,7 @@ const bulkEditor = (() => {
     // p · br · div · span 외의 태그가 있으면 서식 있는 내용으로 본다
     const RICH_RE = /<(?!\/?(?:p|br|div|span)\b)[a-z]/i;
     const HINT = "더블클릭: 이름 바꾸기 · 체크(Shift: 범위)로 여러 개 한꺼번에 · 끌어서 폴더 이동 · Ctrl+S: 저장";
+    const HINT_IMG = "그림을 눌러 고르기 (Shift: 범위) · 고른 그림을 덱 카드 · 굴림표 항목으로 넣거나 주소를 따서 매크로에 쓰기 · 같은 그림은 한 번만";
     const HINT_ICON = "아이콘을 누르면 오른쪽에서 편집 · 왼쪽 위 네모(Shift: 범위)로 여러 개 골라 폴더 이동·삭제 · −/+ 아이콘 크기 · Ctrl+S: 저장";
 
     const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -2081,8 +2091,8 @@ const bulkEditor = (() => {
     });
 
     // ── 작업용 트리 ──
-    const TABS = ["journal", "bgm", "macros", "decks", "tables"];
-    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null };
+    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images"];
+    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null };
     // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
     const VIEW = {
         icons: localStorage.getItem("r20be_icons") !== "0",
@@ -2164,7 +2174,10 @@ const bulkEditor = (() => {
         return n;
     }));
 
+    // 방 이미지: '이 방의 이미지'와 같은 모음 (편집 대상이 아니라 덱·굴림표 탭으로 보내는 곳)
+    const buildImages = () => ({ ...flatTab("images", []), data: roomImages.gather(), gsel: "" });
     const buildTab = which => {
+        if (which === "images") return buildImages();
         if (which === "tables") return buildTables();
         if (which === "macros") return buildMacros();
         if (which === "decks") return buildDecks();
@@ -2343,6 +2356,7 @@ const bulkEditor = (() => {
     };
     const rowEl = id => ui.tree.querySelector(`.r20be-row[data-id="${CSS.escape(id)}"]`);
     const renderTree = () => {
+        if (cur().which === "images") return renderImgTree();
         const t = cur(), rows = visibleRows(t), icons = iconMode(t);
         t.visible = rows.map(r => r.n.id);
         ui.tree.classList.toggle("r20be-icons", icons);
@@ -2370,7 +2384,7 @@ const bulkEditor = (() => {
         ui.save.disabled = !c || saving;
         ui.revert.disabled = !c || saving;
     };
-    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
+    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (cur()?.which === "images" ? HINT_IMG : iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
 
     const select = id => {
         cur().sel = id;
@@ -2861,9 +2875,180 @@ const bulkEditor = (() => {
         ov.querySelector("input")?.focus();
     };
 
+    // ── 방 이미지 탭: 왼쪽 묶음 목록, 오른쪽 그림 격자 → 덱에 넣기 · 굴림표에 넣기 · 주소 따기 ──
+    const normQ = v => String(v || "").replace(/\s+/g, "").toLowerCase();
+    const imgGroups = t => {
+        const q = normQ(t.q), hit = it => normQ(it.name + it.uses.map(u => u.label).join("")).includes(q);
+        return t.data.groups.filter(g => t.filter === "all" || g.kind === t.filter)
+            .map(g => ({ g, its: q && !normQ(g.name).includes(q) ? g.list.filter(hit) : g.list })).filter(x => x.its.length);
+    };
+    // '전체'는 같은 그림을 한 번만 (주인 묶음 순서대로), 묶음을 고르면 그 묶음에서 쓰는 그림 전부
+    const imgAll = vis => { const own = roomImages.ownerMap(vis); return vis.flatMap(({ g, its }) => its.filter(it => own.get(it) === g)); };
+    const imgList = t => { const vis = imgGroups(t), x = vis.find(v => v.g.key === t.gsel); return x ? x.its : imgAll(vis); };
+    const IMG_ICON = { page: "grid", char: "char", handout: "handout", table: "rtable", deck: "deck" };
+    const renderImgTree = () => {
+        const t = cur(), vis = imgGroups(t);
+        if (t.gsel && !vis.some(v => v.g.key === t.gsel)) t.gsel = "";
+        const row = (key, icon, name, n) => `<div class="r20be-row${t.gsel === key ? " sel" : ""}" data-g="${esc(key)}" role="treeitem" aria-selected="${t.gsel === key}">`
+            + `<button type="button" class="r20be-nm">${ICON[icon]}<span>${esc(name)}</span></button><span class="r20be-meta">${n}장</span></div>`;
+        t.visible = [];
+        ui.tree.classList.remove("r20be-icons");
+        ui.tree.innerHTML = vis.length ? row("", "grid", "전체 (같은 그림은 한 번만)", imgAll(vis).length) + vis.map(v => row(v.g.key, IMG_ICON[v.g.kind], v.g.name, v.its.length)).join("")
+            : `<p class="r20be-empty">${t.q ? "검색 결과가 없습니다" : "그림이 없습니다"}</p>`;
+        updateBar();
+    };
+    const drawPagesBtn = () => {
+        const l = roomImages.loadingNow(), t = S.images;
+        ui.pagesBtn.hidden = S.tab !== "images" || (!l && !t?.data.unread);
+        ui.pagesBtn.textContent = l ? `페이지 읽는 중 ${l.done}/${l.total} · 멈추기` : `안 읽은 페이지 ${t?.data.unread || 0}개 읽기`;
+    };
+    const imagePane = t => {
+        const list = imgList(t);
+        const picked = () => list.filter(it => t.checked.has(it.k));
+        const bar = el("div", { class: "r20be-tbar" });
+        const grid = el("div", { class: "r20be-tgrid r20be-imgs", role: "group", "aria-label": "그림" });
+        grid.style.setProperty("--be-icon", VIEW.size + "px");
+        grid.innerHTML = list.length ? list.map((it, i) => {
+            const nm = it.name || "(이름 없음)", orig = roomImages.sized(it.url, "thumb"), th = r20img(orig);
+            return `<div class="r20be-card" data-i="${i}" title="${esc(nm + "\n" + it.uses.map(u => u.label).join("\n"))}">`
+                + `<button type="button" class="r20be-thumb r20be-ithumb" aria-label="${esc(nm)} 선택"><img src="${esc(th)}"${th !== orig ? ` data-orig="${esc(orig)}"` : ""} alt="" loading="lazy" draggable="false"></button>`
+                + `<button type="button" class="r20be-cb2" aria-label="선택" aria-pressed="false">${ICON.check}</button>`
+                + `<span class="r20be-inm">${esc(nm)}</span>${it.uses.length > 1 ? `<span class="r20be-icnt">×${it.uses.length}</span>` : ""}</div>`;
+        }).join("") : `<p class="r20be-empty">그림이 없습니다</p>`;
+        const sync = () => {
+            grid.querySelectorAll(".r20be-card").forEach(c => {
+                const on = t.checked.has(list[+c.dataset.i].k), cb = c.querySelector(".r20be-cb2");
+                c.classList.toggle("chk", on); cb.classList.toggle("on", on); cb.setAttribute("aria-pressed", String(on));
+            });
+            drawBar();
+        };
+        grid.addEventListener("click", e => {
+            const c = e.target.closest(".r20be-card");
+            if (!c || !e.target.closest("button")) return;
+            const z = +c.dataset.i, it = list[z], a = list.findIndex(x => x.k === t.lastCheck);
+            if (e.shiftKey && a >= 0) list.slice(Math.min(a, z), Math.max(a, z) + 1).forEach(x => t.checked.add(x.k));
+            else if (t.checked.has(it.k)) t.checked.delete(it.k); else t.checked.add(it.k);
+            t.lastCheck = it.k;
+            sync();
+        });
+        const drawBar = () => {
+            const sel = picked();
+            const pick = (label, fn) => el("button", { type: "button", class: "r20be-sec", onclick: () => { fn(); sync(); } }, label);
+            bar.textContent = "";
+            bar.classList.toggle("idle", !sel.length);
+            bar.append(
+                pick("전체 선택", () => list.forEach(it => t.checked.add(it.k))),
+                pick("선택 반전", () => list.forEach(it => { if (t.checked.has(it.k)) t.checked.delete(it.k); else t.checked.add(it.k); })),
+                pick("선택 해제", () => t.checked.clear()),
+                el("strong", {}, `${sel.length}장 선택`),
+                el("span", { class: "r20be-flex" }),
+                ...[["deck", "덱에 넣기…"], ["table", "굴림표에 넣기…"], ["url", "주소 따기…"]].map(([k, label]) =>
+                    el("button", { type: "button", class: "r20be-sec", disabled: !sel.length, onclick: () => openImgSend(k, picked()) }, label)));
+        };
+        sync();
+        return el("div", { class: "r20be-pane-in" }, bar, grid);
+    };
+    // 고른 그림 보내기: 덱 카드 · 굴림표 항목은 그 탭에 '저장 안 한 변경'으로 넣는다 (기존 편집과 같이 [저장] 때 반영)
+    const openImgSend = (mode, sel) => {
+        const full = it => r20img(roomImages.sized(it.url, "max"));
+        const ensure = which => {
+            if (!S[which]) { if (which === "decks" ? !decksColl() : !tablesColl()) return null; S[which] = buildTab(which); }
+            return S[which];
+        };
+        const tabsBox = el("div", { class: "r20be-chips" }), body = el("div", { class: "r20be-isend" });
+        const note = el("span", { class: "r20be-note" }), applyBtn = el("button", { type: "button", class: "r20be-pri" });
+        let apply = () => {};
+        // 기존 것 / 새로 만들기 고르기 (덱 · 굴림표 공통)
+        const target = (which, label, newName) => {
+            const t = ensure(which), list = t ? t.roots.filter(n => !n.deleted) : [];
+            const oldRb = el("input", { type: "radio", name: "r20be-isend", checked: list.length > 0, disabled: !list.length });
+            const newRb = el("input", { type: "radio", name: "r20be-isend", checked: !list.length });
+            const pickSel = el("select", { class: "r20be-in", "aria-label": `기존 ${label}`, disabled: !list.length, onfocus: () => { oldRb.checked = true; } },
+                ...list.map(n => el("option", { value: n.id }, `${n.cur.name || "(이름 없음)"} (${n.items.filter(x => !x.deleted).length}${which === "decks" ? "장" : "항목"})`)));
+            const nameIn = el("input", { class: "r20be-in", value: newName, "aria-label": `새 ${label} 이름`, onfocus: () => { newRb.checked = true; } });
+            body.append(el("label", { class: "r20be-chk" }, oldRb, `기존 ${label}`, pickSel), el("label", { class: "r20be-chk" }, newRb, `새 ${label}`, nameIn));
+            return { t, node: () => oldRb.checked ? list.find(n => n.id === pickSel.value) : null, name: () => nameIn.value.trim() };
+        };
+        const done = (msg, close) => {
+            S.images.checked.clear();
+            close(); renderPane(); updateBar();
+            setStatus(msg, "ok");
+        };
+        const draw = close => {
+            tabsBox.textContent = ""; body.textContent = "";
+            [["deck", "덱에 넣기"], ["table", "굴림표에 넣기"], ["url", "주소 따기"]].forEach(([k, label]) => tabsBox.append(el("button", { type: "button",
+                class: "r20be-chip" + (mode === k ? " on" : ""), "aria-pressed": String(mode === k), onclick: () => { mode = k; draw(close); } }, label)));
+            if (mode === "deck") {
+                const tg = target("decks", "덱", "새 덱");
+                if (!tg.t) { note.textContent = "덱을 아직 불러오지 못했습니다"; applyBtn.disabled = true; return; }
+                note.textContent = `카드 ${sel.length}장 · 카드 이름 = 그림 이름 · 뒷면 = 덱 기본 뒷면 · 덱 탭에서 고친 뒤 [저장]`;
+                applyBtn.textContent = "넣기"; applyBtn.disabled = false;
+                apply = () => {
+                    let n = tg.node();
+                    if (!n) {
+                        n = Object.assign(mkNode("new:" + uid(), "deck", null, { name: tg.name() || "새 덱", back: "" }), { items: [], checkedItems: new Set() });
+                        n.isNew = true; n.loaded = true;
+                        tg.t.roots.push(n);
+                    }
+                    sel.forEach(it => n.items.push(cardNode(null, { name: it.name || "", avatar: full(it), card_back: "", tooltip: "" })));
+                    done(`덱 '${n.cur.name}'에 카드 ${sel.length}장을 넣었습니다 · 덱 탭에서 확인 후 [저장]`, close);
+                };
+            } else if (mode === "table") {
+                const tg = target("tables", "굴림표", "새굴림표");
+                if (!tg.t) { note.textContent = "굴림표를 아직 불러오지 못했습니다"; applyBtn.disabled = true; return; }
+                const wIn = el("input", { class: "r20be-in", type: "number", min: "0", value: "1", "aria-label": "항목 비중", style: "width:70px" });
+                body.append(el("label", { class: "r20be-chk" }, "항목 비중", wIn));
+                note.textContent = `항목 ${sel.length}개 · 항목 이름 = 그림 이름 · 굴림표 탭에서 고친 뒤 [저장]`;
+                applyBtn.textContent = "넣기"; applyBtn.disabled = false;
+                apply = () => {
+                    let n = tg.node();
+                    const w = Math.max(0, parseInt(wIn.value, 10) || 0);
+                    if (!n) {
+                        n = Object.assign(mkNode("new:" + uid(), "rtable", null, { name: tg.name().replace(/\s+/g, "") || "새굴림표", show: false }), { items: [], checkedItems: new Set() });
+                        n.isNew = true; n.loaded = true;
+                        tg.t.roots.push(n);
+                    }
+                    sel.forEach(it => n.items.push(itemNode(null, { name: it.name || "그림", weight: w, avatar: full(it) })));
+                    done(`굴림표 '${n.cur.name}'에 항목 ${sel.length}개를 넣었습니다 · 굴림표 탭에서 확인 후 [저장]`, close);
+                };
+            } else {
+                const fmt = el("select", { class: "r20be-in", "aria-label": "모양" },
+                    el("option", { value: "url" }, "주소만 (한 줄에 하나)"), el("option", { value: "q" }, "매크로 질문 ?{…|이름,주소}"));
+                const size = el("select", { class: "r20be-in", "aria-label": "크기" },
+                    el("option", { value: "max" }, "원본 (max)"), el("option", { value: "med" }, "중간 (med)"), el("option", { value: "thumb" }, "작게 (thumb)"));
+                const qIn = el("input", { class: "r20be-in", value: "그림 선택", "aria-label": "질문 문구" });
+                const out = el("textarea", { class: "r20be-in mono", readOnly: true, "aria-label": "결과", style: "height:120px" });
+                const qRow = el("label", { class: "r20be-chk" }, "질문 문구", qIn);
+                const make = () => {
+                    const urls = sel.map(it => r20img(roomImages.sized(it.url, size.value)));
+                    qRow.hidden = fmt.value !== "q";
+                    out.value = fmt.value === "q" ? `?{${qEsc(qIn.value)}|` + sel.map((it, i) => `${qEsc(it.name || "그림 " + (i + 1))},${urls[i]}`).join("|") + "}" : urls.join("\n");
+                };
+                [fmt, size].forEach(x => x.addEventListener("change", make));
+                qIn.addEventListener("input", make);
+                body.append(el("div", { class: "r20be-grid" }, field("모양", fmt), field("크기", size)), qRow, out);
+                make();
+                note.textContent = `주소 ${sel.length}개 · 질문 모양은 매크로 썸네일 선택 창에서 그림으로 보여요`;
+                applyBtn.textContent = "복사"; applyBtn.disabled = false;
+                apply = async () => {
+                    const ok = await copyText(out.value);
+                    if (ok) done(`주소 ${sel.length}개를 복사했습니다`, close);
+                    else setStatus("복사하지 못했습니다 — 결과 칸을 직접 복사해 주세요", "err");
+                };
+            }
+        };
+        applyBtn.onclick = () => apply();
+        openDialog(`고른 그림 ${sel.length}장`, close => {
+            draw(close);
+            return [tabsBox, body, el("div", { class: "r20be-acts" }, note, el("span", { class: "r20be-flex" }),
+                el("button", { type: "button", class: "r20be-sec", onclick: close }, "취소"), applyBtn)];
+        });
+    };
+
     const renderPane = () => {
         const t = cur();
         ui.pane.textContent = "";
+        if (t.which === "images") { ui.pane.append(imagePane(t)); return; }
         const checked = allNodes(t).filter(n => t.checked.has(n.id));
         const n = t.sel && find(t, t.sel);
         ui.pane.append(checked.length >= 2 ? bulkPane(checked)
@@ -3343,16 +3528,20 @@ const bulkEditor = (() => {
         ui.segT.classList.toggle("on", S.tab === "tables");
         ui.segM.classList.toggle("on", S.tab === "macros");
         ui.segD.classList.toggle("on", S.tab === "decks");
+        ui.segI.classList.toggle("on", S.tab === "images");
         ui.search.value = t.q;
-        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색" }[t.which] || "이름 검색";
+        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색" }[t.which] || "이름 검색";
+        ui.newBtn.hidden = t.which === "images";
+        drawPagesBtn();
         ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱" }[t.which] || "새로 만들기";
         const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
-            : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]] : [];
+            : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]]
+            : t.which === "images" ? [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]] : [];
         ui.chips.textContent = "";
         defs.forEach(([k, label]) => ui.chips.append(el("button", { type: "button", class: "r20be-chip" + (t.filter === k ? " on" : ""),
             "aria-pressed": String(t.filter === k), onclick: () => { t.filter = k; render(); } }, label)));
         ui.view.hidden = !isFlat(t);
-        ui.zoom.hidden = !iconMode(t);
+        ui.zoom.hidden = !iconMode(t) && t.which !== "images";
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         if (ui.foot.className === "r20be-foot") setStatus();      // 안내문만 보기 방식에 맞춘다 (알림 문구는 그대로)
         renderTree(); renderPane();
@@ -3399,6 +3588,14 @@ const bulkEditor = (() => {
         const tr = ui.tree;
         ui.root.addEventListener("error", onImgError, true);
         tr.addEventListener("click", e => {
+            if (cur().which === "images") {
+                const r = e.target.closest(".r20be-row[data-g]");
+                if (!r) return;
+                const t = cur();
+                t.gsel = r.dataset.g; t.checked.clear(); t.lastCheck = null;
+                renderTree(); renderPane(); ui.pane.scrollTop = 0;
+                return;
+            }
             const b = e.target.closest("[data-act]"), row = e.target.closest(".r20be-row");
             if (!b || !row) return;
             const t = cur(), n = find(t, row.dataset.id);
@@ -3538,14 +3735,15 @@ const bulkEditor = (() => {
         ui.segT = el("button", { type: "button", onclick: () => switchTab("tables") }, "굴림표");
         ui.segM = el("button", { type: "button", onclick: () => switchTab("macros") }, "매크로");
         ui.segD = el("button", { type: "button", onclick: () => switchTab("decks") }, "덱");
+        ui.segI = el("button", { type: "button", onclick: () => switchTab("images") }, "방 이미지");
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI),
             el("span", { class: "r20be-flex" }),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
         ui.search = el("input", { class: "r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
-            oninput: debounce(() => { cur().q = ui.search.value; renderTree(); }, 150) });
+            oninput: debounce(() => { cur().q = ui.search.value; renderTree(); if (cur().which === "images") renderPane(); }, 150) });
         ui.chips = el("div", { class: "r20be-chips" });
         ui.newLabel = el("span", {}, "새로 만들기");
         ui.newBtn = el("button", { type: "button", class: "r20be-sec", "aria-haspopup": "true", onclick: toggleMenu }, ico("plus"), ui.newLabel);
@@ -3556,6 +3754,7 @@ const bulkEditor = (() => {
             VIEW.size = Math.max(56, Math.min(140, VIEW.size + d * 14));
             localStorage.setItem("r20be_icon_size", VIEW.size);
             ui.tree.style.setProperty("--be-icon", VIEW.size + "px");
+            ui.pane.querySelector(".r20be-imgs")?.style.setProperty("--be-icon", VIEW.size + "px");
         };
         ui.vList = el("button", { type: "button", "aria-label": "목록으로 보기", title: "목록", html: ICON.list, onclick: () => setView(false) });
         ui.vGrid = el("button", { type: "button", "aria-label": "아이콘으로 보기", title: "아이콘", html: ICON.grid, onclick: () => setView(true) });
@@ -3563,13 +3762,20 @@ const bulkEditor = (() => {
         ui.zoom = el("span", { class: "r20be-zm", hidden: true },
             el("button", { type: "button", "aria-label": "아이콘 작게", onclick: () => zoom(-1) }, "−"),
             el("button", { type: "button", "aria-label": "아이콘 크게", onclick: () => zoom(1) }, "+"));
+        ui.pagesBtn = el("button", { type: "button", class: "r20be-sec", hidden: true, onclick: () => roomImages.loadPages() });
+        // 페이지를 읽는 동안 묶음 목록을 늘리고, 다 읽으면 격자도 새로
+        roomImages.onPages(l => {
+            if (!ui.root.classList.contains("r20be-show") || S.tab !== "images" || !S.images) return;
+            if (!l || l.done % 5 === 0) { S.images.data = roomImages.gather(); renderTree(); if (!l) renderPane(); }
+            drawPagesBtn();
+        });
         ui.revert = el("button", { type: "button", class: "r20be-sec", onclick: revert }, "되돌리기");
         ui.save = el("button", { type: "button", class: "r20be-pri", onclick: save }, "저장");
         ui.tree = el("div", { class: "r20be-tree", role: "tree", "aria-label": "항목 목록" });
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, el("span", { class: "r20be-flex" }), ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
@@ -4142,11 +4348,11 @@ const roomImages = (() => {
     const opened = new Set();       // 펼친 묶음 이름 (기본은 모두 접힘, 검색 중엔 모두 펼침)
 
     // ── 모으기: 불러온 페이지의 토큰(여러 면 포함) · 캐릭터 아바타/기본 토큰 · 핸드아웃 · 굴림표 항목 · 덱 카드 ──
-    const collect = () => {
-        const C = window.Campaign;
-        items = new Map(); groups = []; unread = 0;
-        if (!C) return;
-        const group = (kind, name) => { const g = { kind, name, list: [], has: new Set() }; groups.push(g); return g; };
+    const gather = () => {
+        const C = window.Campaign, items = new Map();
+        let groups = [], unread = 0;
+        if (!C) return { items, groups, unread };
+        const group = (kind, name, key) => { const g = { kind, name, key, list: [], has: new Set() }; groups.push(g); return g; };
         const add = (g, url, name, use) => {
             if (typeof url !== "string" || !/^(?:https?:)?\/\//i.test(url)) return;
             const k = keyOf(url);
@@ -4162,34 +4368,42 @@ const roomImages = (() => {
             if (!p) return;
             if (!p.thegraphics) { unread++; return; }
             const name = p.get("name") || "(이름 없는 페이지)";
-            const g = group("page", (p === act ? "지금 페이지 · " : "페이지 · ") + name), use = { kind: "page", id: p.id, label: "페이지 · " + name };
+            const g = group("page", (p === act ? "지금 페이지 · " : "페이지 · ") + name, "page:" + p.id), use = { kind: "page", id: p.id, label: "페이지 · " + name };
             p.thegraphics.models.forEach(m => {
                 const nm = m.get("name") || "";
                 add(g, m.get("imgsrc"), nm, use);
                 String(m.get("sides") || "").split("|").forEach(s => { try { if (s) add(g, decodeURIComponent(s), nm, use); } catch (e) {} });
             });
         });
-        const chars = group("char", "캐릭터");
+        const chars = group("char", "캐릭터", "char");
         (C.characters?.models || []).forEach(m => {
             const name = m.get("name") || "", use = { kind: "char", id: m.id, label: "캐릭터 · " + name };
             add(chars, m.get("avatar"), name, use);
             try { add(chars, JSON.parse(m.get("defaulttoken") || "null")?.imgsrc, name, use); } catch (e) {}
         });
-        const hos = group("handout", "핸드아웃");
+        const hos = group("handout", "핸드아웃", "handout");
         (C.handouts?.models || []).forEach(m => {
             const name = m.get("name") || "";
             add(hos, m.get("avatar"), name, { kind: "handout", id: m.id, label: "핸드아웃 · " + name });
         });
         (C.rollabletables?.models || []).forEach(t => {
-            const name = t.get("name") || "", g = group("table", "굴림표 · " + name), use = { kind: "table", id: t.id, label: "굴림표 · " + name };
+            const name = t.get("name") || "", g = group("table", "굴림표 · " + name, "table:" + t.id), use = { kind: "table", id: t.id, label: "굴림표 · " + name };
             (t.tableitems?.models || []).forEach(m => add(g, m.get("avatar"), m.get("name") || name, use));
         });
         (C.decks?.models || []).forEach(d => {
-            const name = d.get("name") || "", g = group("deck", "덱 · " + name), use = { kind: "deck", id: d.id, label: "덱 · " + name };
+            const name = d.get("name") || "", g = group("deck", "덱 · " + name, "deck:" + d.id), use = { kind: "deck", id: d.id, label: "덱 · " + name };
             add(g, d.get("avatar"), name + " 뒷면", use);
             (d.cards?.models || []).forEach(m => { add(g, m.get("avatar"), m.get("name") || name, use); add(g, m.get("card_back"), name + " 뒷면", use); });
         });
-        groups = groups.filter(g => g.list.length);
+        return { items, groups: groups.filter(g => g.list.length), unread };
+    };
+    const collect = () => { ({ items, groups, unread } = gather()); };
+    // 같은 그림은 한 곳에만: 굴림표 → 덱 → 캐릭터 → 핸드아웃 → 페이지 순으로 먼저 나온 묶음이 주인
+    // (굴림표 토큰을 여러 페이지에 복사해도 그림은 굴림표 묶음에만 보이고, 페이지 묶음엔 그 페이지에만 있는 그림이 남는다)
+    const ownerMap = vis => {
+        const owner = new Map();
+        vis.slice().sort((a, b) => OWN[a.g.kind] - OWN[b.g.kind]).forEach(x => x.its.forEach(it => { if (!owner.has(it)) owner.set(it, x.g); }));
+        return owner;
     };
 
     // ── 그리기 ──
@@ -4215,10 +4429,7 @@ const roomImages = (() => {
         const v = norm(q), seen = new Set();
         const vis = groups.filter(g => src === "all" || g.kind === src).map(g => ({ g,
             its: v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list }));
-        // 같은 그림은 한 곳에만: 굴림표 → 덱 → 캐릭터 → 핸드아웃 → 페이지 순으로 먼저 나온 묶음에 둔다
-        // (굴림표 토큰을 여러 페이지에 복사해도 그림은 굴림표 묶음에만 보이고, 페이지 묶음엔 그 페이지에만 있는 그림이 남는다)
-        const owner = new Map();
-        vis.slice().sort((a, b) => OWN[a.g.kind] - OWN[b.g.kind]).forEach(x => x.its.forEach(it => { if (!owner.has(it)) owner.set(it, x.g); }));
+        const owner = ownerMap(vis);
         let html = "";
         vis.forEach(({ g, its }) => {
             its = its.filter(it => owner.get(it) === g);
@@ -4235,20 +4446,24 @@ const roomImages = (() => {
     const refresh = () => { collect(); render(); };
 
     // 안 읽은 페이지: Roll20 이 페이지 복제 때 쓰는 fullyLoadPage() 로 하나씩 불러온다 (누르면 멈춤)
+    // 진행 상황은 일괄 편집기 방 이미지 탭에도 알린다 (fn(loading) — 끝나면 null)
+    const hooks = new Set();
+    const tell = () => hooks.forEach(fn => { try { fn(loading); } catch (e) {} });
     const loadPages = async () => {
         if (loading) { loading.stop = true; return; }
         const todo = (window.Campaign?.pages?.models || []).filter(p => !p.thegraphics && typeof p.fullyLoadPage === "function");
         if (!todo.length) return;
         loading = { done: 0, total: todo.length, stop: false };
-        foot();
+        foot(); tell();
         for (const p of todo) {
             if (loading.stop) break;
             try { await Promise.race([p.fullyLoadPage(), sleep(15000)]); } catch (e) { console.warn("[이 방의 이미지] 페이지 읽기 실패:", p.get?.("name"), e); }
             loading.done++;
             if (loading.done % 5 === 0) refresh(); else foot();
+            tell();
         }
         loading = null;
-        refresh();
+        refresh(); tell();
     };
 
     // ── 끌어 놓기: 처음 마우스를 올릴 때 jQuery UI draggable 을 단다 (그림이 많아도 가볍게) ──
@@ -4449,7 +4664,7 @@ const roomImages = (() => {
         root?.remove(); root = null;
     };
     window.addEventListener("resize", fit);
-    return { inject, setEnabled };
+    return { inject, setEnabled, gather, ownerMap, sized, loadPages, onPages: fn => hooks.add(fn), loadingNow: () => loading };
 })();
 
 let _layoutTimer = null;
