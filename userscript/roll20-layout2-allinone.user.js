@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.13.3
+// @version      1.13.4
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.13.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.13.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1364,10 +1364,10 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 3px !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:14px; text-align:center; font-size:11px; filter:grayscale(1); opacity:0.4; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:12px; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:14px; color:#777 !important; text-decoration:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { font-size:12px !important; line-height:26px !important; }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { order:3; display:inline-flex !important; align-items:center; width:14px; justify-content:center; }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop { display:none !important; }
@@ -1379,13 +1379,13 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
         .r20jb-vol, .r20jb-loop { display:none; }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:3; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:16px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:3; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop.on { color:#3d7cc9; font-weight:700; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol { display:inline-flex; align-items:center; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button { width:11px; height:22px; margin:0; padding:0; border:0; background:none; color:#aaa; font-size:9px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button { width:8px; height:22px; margin:0; padding:0; border:0; background:none; color:#aaa; font-size:9px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button:hover { color:#222; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol span { width:20px; color:#777; font-size:10px; text-align:center; font-variant-numeric:tabular-nums; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol span { width:16px; color:#777; font-size:10px; text-align:center; font-variant-numeric:tabular-nums; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { -webkit-appearance:none !important; appearance:none !important; width:100% !important; height:14px !important; margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-webkit-slider-runnable-track { height:2px !important; border:0 !important; border-radius:1px; background:#d3dbe6 !important; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-webkit-slider-thumb { -webkit-appearance:none !important; width:8px !important; height:8px !important; margin-top:-3px !important; border:0 !important; border-radius:50% !important; background:#7d9fc9 !important; box-shadow:none !important; }
