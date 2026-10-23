@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.13.1
+// @version      1.13.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.13.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.13.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1341,7 +1341,6 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
         .r20jb-step { display:none; }
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
-        body.r20jb-on #jukebox .r20jb-step.r20jb-fade { margin-left:8px; }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
@@ -1625,6 +1624,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         li.r20ri-tile .r20ri-cnt { position:absolute; right:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
         li.r20ri-tile.ui-draggable-dragging { width:64px !important; height:64px !important; z-index:100000 !important; box-shadow:0 4px 12px rgba(0,0,0,0.3); opacity:0.9; cursor:grabbing; }
         li.r20ri-tile.ui-draggable-dragging .r20ri-cnt { display:none; }
+        .r20ri-drop.r20ri-dropin { outline:2px dashed #b8215f !important; outline-offset:-2px; }
         #imagedialog .r20ri-pop { position:absolute; left:0; right:0; bottom:40px; z-index:5; max-height:70%; overflow-y:auto; padding:6px 0; border:1px solid #e6e6ea; border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.15); }
         #imagedialog .r20ri-ph { display:flex; align-items:center; gap:8px; padding:2px 6px 8px 10px; border-bottom:1px solid #f0f0f3; }
         #imagedialog .r20ri-ph img { flex-shrink:0; width:44px; height:44px; border-radius:6px; background:#f1f1f1; object-fit:contain; }
@@ -3849,9 +3849,7 @@ const jukeboxRow = (() => {
     let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
     // Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
     const step = (li, dir) => {
-        const tm = trackOf(li);
-        let now = volOf(li);
-        if (tm && held.has(tm.id) && !fading.has(tm.id)) { now = held.get(tm.id); held.delete(tm.id); keepHeld(); }
+        const now = volOf(li);
         const v = Math.max(0, Math.min(100, dir > 0 ? Math.floor(now / STEP) * STEP + STEP : Math.ceil(now / STEP) * STEP - STEP));
         const slider = li.querySelector(".volume input.slider");
         if (slider) {
@@ -3870,8 +3868,7 @@ const jukeboxRow = (() => {
             const box = document.createElement("span");
             box.className = "r20jb-vol";
             box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 올리기">▸</button>';
-            const li = vol.closest("li.jukeboxitem"), m = trackOf(li);
-            box.querySelector("span").textContent = m ? shownVol(m) : Math.round(volOf(li));
+            box.querySelector("span").textContent = Math.round(volOf(vol.closest("li.jukeboxitem")));
             vol.appendChild(box);
         });
     };
@@ -3907,61 +3904,8 @@ const jukeboxRow = (() => {
         inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
         wrap.append(inp, "%");
         host.appendChild(wrap);
-        // 정지 페이드 시간 (0 이면 바로 멈춤)
-        const fw = document.createElement("label");
-        fw.className = "r20jb-step r20jb-fade";
-        fw.title = "재생 중인 곡의 ■ 를 누르면 이 시간 동안 소리를 줄인 뒤 멈춥니다 · 볼륨은 다음 재생 때 원래대로 (0: 바로 멈춤)";
-        fw.append("정지 페이드");
-        const fi = document.createElement("input");
-        fi.type = "number"; fi.min = "0"; fi.max = "3"; fi.step = "0.5"; fi.value = FADE;
-        fi.setAttribute("aria-label", "정지 페이드 시간(초)");
-        fi.addEventListener("input", () => {
-            const v = parseFloat(fi.value);
-            if (v >= 0 && v <= 3) { FADE = v; localStorage.setItem("r20jb_fade", v); }
-        });
-        fi.addEventListener("keydown", e => e.stopPropagation());
-        fw.append(fi, "초");
-        host.appendChild(fw);
     };
 
-    // 정지 페이드: 재생 중인 곡의 ■ 를 누르면 볼륨을 FADE 초 동안 거의 0 까지 줄인 뒤 Roll20 정지 단추를 대신 누른다.
-    // 원래 볼륨은 멈춘 직후가 아니라 '다음에 재생할 때' 되돌린다 — 멈춘 직후에 되돌리면 정지가 늦게 먹을 때 소리가 다시 커진다.
-    // 되돌릴 볼륨은 새로 고침해도 기억하고, 멈춰 있는 동안 볼륨을 직접 바꾸면 그 값을 따른다. 페이드 중 한 번 더 누르면 바로 멈춘다
-    let FADE = (() => { const v = parseFloat(localStorage.getItem("r20jb_fade")); return isNaN(v) ? 2.5 : Math.max(0, Math.min(3, v)); })();
-    const fading = new Map(), ours = new Map();         // ours: 이 기능이 마지막으로 넣은 볼륨 (사용자가 바꾼 것과 구별)
-    const held = (() => { try { return new Map(Object.entries(JSON.parse(localStorage.getItem("r20jb_faded") || "{}"))); } catch (e) { return new Map(); } })();
-    const keepHeld = () => localStorage.setItem("r20jb_faded", JSON.stringify(Object.fromEntries(held)));
-    const shownVol = m => Math.round(held.has(m.id) && !fading.has(m.id) ? held.get(m.id) : Number(m.get("volume")) || 0);
-    const setVol = (m, v) => { ours.set(m.id, v); m.save({ volume: v }); };
-    const restoreVol = m => {
-        if (!held.has(m.id) || fading.has(m.id)) return;
-        const v = held.get(m.id);
-        held.delete(m.id); keepHeld();
-        if (Number(m.get("volume")) !== v) m.save({ volume: v });
-    };
-    let passClick = false;
-    const playBtnOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"] a.play`);
-    const fadeStop = m => {
-        const v0 = held.has(m.id) ? held.get(m.id) : Number(m.get("volume")) || 0, steps = Math.max(1, Math.round(FADE * 5));
-        held.set(m.id, v0); keepHeld();
-        let i = 0;
-        const finish = () => {
-            clearInterval(timer);
-            fading.delete(m.id);
-            setVol(m, Math.min(1, v0));         // 0 은 '기본 볼륨'으로 읽힐 수 있어 1 로 둔다
-            if (m.get("playing")) {
-                const a = playBtnOf(m.id);          // 볼륨 변경으로 Roll20 이 줄을 다시 그렸을 수 있어 새로 찾는다
-                if (a) { passClick = true; try { a.click(); } finally { passClick = false; } }
-                else m.save({ playing: false });
-            }
-        };
-        const timer = setInterval(() => {
-            i++;
-            if (i >= steps || !m.get("playing")) return finish();
-            setVol(m, Math.max(1, Math.round(v0 * (1 - i / steps))));
-        }, FADE * 1000 / steps);
-        fading.set(m.id, finish);
-    };
     let watched = null;
     const inject = () => {
         if (!btnVisible.jbrow) return;
@@ -3980,13 +3924,19 @@ const jukeboxRow = (() => {
         // 다른 곳(일괄 편집기 등)에서 볼륨이 바뀌면 숫자도 맞춘다
         if (!bound && window.Jukebox?.playlist?.on) {
             bound = true;
+            // 없앤 '정지 페이드'(v1.12.1~1.13.1)가 볼륨을 1로 줄여 둔 곡이 있으면 한 번만 원래 볼륨으로 돌려놓고 기록을 지운다
+            try {
+                Object.entries(JSON.parse(localStorage.getItem("r20jb_faded") || "{}")).forEach(([id, v]) => {
+                    const m = window.Jukebox.playlist.get(id);
+                    if (m && Number(m.get("volume")) <= 1) m.save({ volume: v });
+                });
+            } catch (e) {}
+            localStorage.removeItem("r20jb_faded");
+            localStorage.removeItem("r20jb_fade");
             window.Jukebox.playlist.on("change:volume", m => {
-                if (held.has(m.id) && !fading.has(m.id) && Number(m.get("volume")) !== ours.get(m.id)) { held.delete(m.id); keepHeld(); }
                 const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
-                if (label) label.textContent = shownVol(m);
+                if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
             });
-            // 플레이리스트 재생 등 다른 길로 다시 틀어도 원래 볼륨으로
-            window.Jukebox.playlist.on("change:playing", m => { if (m.get("playing")) restoreVol(m); });
             window.Jukebox.playlist.on("change:loop", m => {
                 const b = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-loop`);
                 if (b) setLoop(b, !!m.get("loop"));
@@ -4004,18 +3954,6 @@ const jukeboxRow = (() => {
             const on = !m.get("loop");
             m.save({ loop: on });
             setLoop(lb, on);
-            return;
-        }
-        const pa = e.target.closest?.("#jukebox li.jukeboxitem a.play");
-        if (pa && !passClick && btnVisible.jbrow) {
-            const m = trackOf(pa.closest("li.jukeboxitem"));
-            if (m?.get("playing")) {
-                if (FADE > 0) {
-                    e.preventDefault(); e.stopImmediatePropagation();
-                    const f = fading.get(m.id);
-                    if (f) f(); else fadeStop(m);
-                }
-            } else if (m) restoreVol(m);        // 페이드로 줄여 둔 곡은 재생 직전에 원래 볼륨으로
             return;
         }
         const btn = e.target.closest?.(".r20jb-vol button");
@@ -4521,6 +4459,38 @@ const roomImages = (() => {
             revert: true, revertDuration: 0, distance: 3, cursorAt: { left: 32, top: 32 }, scroll: false, zIndex: 100000 });
     };
 
+    // ── 창의 글 편집칸(핸드아웃 내용·GM 메모, 캐릭터 소개 등)에 끌어 놓기: 놓은 자리에 <img> 를 넣는다 ──
+    // Roll20 라이브러리 그림도 함께 받는다 (둘 다 .draggableresult + data-fullsizeurl)
+    const insertImg = (box, url, ev, ui) => {
+        ui.helper?.css("visibility", "hidden");     // 끌고 있는 그림이 커서 바로 밑에 있어 놓을 자리 찾기를 가린다
+        const x = ev.clientX ?? ev.originalEvent?.clientX, y = ev.clientY ?? ev.originalEvent?.clientY;
+        let r = x != null && document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+        if (!r || !box.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(box); r.collapse(false); }
+        box.focus();
+        const sel = getSelection();
+        sel.removeAllRanges(); sel.addRange(r);
+        // 편집기가 바뀐 내용을 알아채도록 붙여넣기와 같은 길(insertHTML)로 넣는다
+        if (!document.execCommand("insertHTML", false, `<img src="${esc(url)}">`)) {
+            r.insertNode(Object.assign(document.createElement("img"), { src: url }));
+            box.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    };
+    const bindEditors = () => {
+        const $ = window.jQuery;
+        if (!$?.fn?.droppable) return;
+        document.querySelectorAll('.ui-dialog [contenteditable="true"]:not(.r20ri-drop)').forEach(box => {
+            box.classList.add("r20ri-drop");
+            $(box).droppable({ accept: ".draggableresult", tolerance: "pointer", hoverClass: "r20ri-dropin",
+                drop: (e, ui) => {
+                    // 뒤에 있는 맵에 토큰으로도 놓이지 않게 Roll20 에 '처리됨' 표시
+                    const oe = e.originalEvent;
+                    if (oe) { oe.dropHandled = true; if (oe.originalEvent) oe.originalEvent.dropHandled = true; }
+                    const u = ui.draggable.attr("data-fullsizeurl");
+                    if (u) insertImg(box, u, e, ui);
+                } });
+        });
+    };
+
     // ── 그림 메뉴 ──
     const say = (btn, msg) => {
         const old = btn.dataset.label || (btn.dataset.label = btn.textContent);
@@ -4688,6 +4658,7 @@ const roomImages = (() => {
     };
     const inject = () => {
         if (!btnVisible.artroom) return;
+        bindEditors();
         const dlg = document.getElementById("imagedialog");
         if (!dlg || root?.parentNode === dlg) return;
         root = build();
