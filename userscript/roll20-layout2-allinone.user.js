@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.13.4
+// @version      1.14.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.13.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.14.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -547,7 +547,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(bulkRow);
         settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널·모음)", "jbrow"));
         settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
-        settingsPopup.appendChild(makeRow("토큰 메뉴 이전·다음 면", "tokmenu"));
+        settingsPopup.appendChild(makeRow("토큰 메뉴 정리 (묶기·면 이동)", "tokmenu"));
         settingsPopup.appendChild(makeRow("페이지 창·설정 슬림", "pageslim"));
         settingsPopup.appendChild(makeRow("그림 라이브러리 · 이 방의 이미지", "artroom"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
@@ -1545,7 +1545,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .ui-dialog.r20cs .sideslider { display:none !important; }
         .ui-dialog.r20cs-drive .sideslider { display:block !important; position:fixed !important; left:0 !important; top:0 !important; width:1000px !important; height:10px !important; visibility:hidden !important; }
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
-        .context-menu button.r20tm-hide { display:none !important; }
+        .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
+        .context-menu .r20tm-sub { position:fixed !important; z-index:100001; flex-direction:column; min-width:170px; margin:0 !important; padding:4px 0 !important; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.2); }
         .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
         .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
         .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
@@ -4139,6 +4140,8 @@ const sidePicker = (() => {
 
 // ───────── 토큰 메뉴: 여러 면 토큰에 면 선택 · 이전 면 · 다음 면, '여러 면' 안에 처음 면 · 마지막 면 ─────────
 // 토큰 선택(d20 엔진)에 손댈 수 없어서, 새 단추는 Roll20 의 원래 '면 선택'을 대신 눌러 창을 열고 sidePicker 가 보이지 않게 고른다
+// + 메뉴 정리: 카드 메뉴 · 파티 · 레이어 · 편집 묶음(▸)과 순서. Roll20 항목은 옮기지 않고 숨기기만 하며(flex order 로 순서),
+//   묶음 안 단추는 숨겨 둔 원래 항목을 대신 누른다
 const tokenMenu = (() => {
     const RE = { multi: /^(여러 면|Multi-?Sided)$/i, choose: /^(면 선택|Choose Side)$/i, random: /^(무작위 면|Random Side)$/i };
     const labelEl = b => b.querySelector(":scope > .submenu-button-outer span[style*='text-align']");
@@ -4155,8 +4158,86 @@ const tokenMenu = (() => {
         b.dataset.r20tm = act;
         return b;
     };
+    // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]
+    const LAYOUT = [
+        { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
+        { one: "카드 뒤집기" },
+        { g: "파티", icon: "모두에게 핑", items: [["모두에게 핑"], ["시선 집중 핑"], ["파티 정의"], ["파티 배치"], ["핀 놓기"], ["턴 추가"]] },
+        { g: "레이어", icon: "레이어 변경", items: [["레이어 변경>토큰", "토큰 레이어로"], ["레이어 변경>GM", "GM 레이어로"], ["레이어 변경>맵", "맵 레이어로"],
+            ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"]] },
+        { faces: true },
+        { one: "여러 면" },
+        { one: "고급 변환" },
+        { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"]] }
+    ];
+    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP;
+    const leftIcon = b => b.querySelector(":scope > .submenu-button-outer .submenu-button-inner .grimoire__roll20-icon");
+    // 같은 이름이 먼저, 없으면 앞부분이 같은 것 ('위치 고정 해제' 같은 바뀐 이름)
+    const findIn = (menu, name) => {
+        const tops = [...menu.querySelectorAll(":scope > button")].filter(b => !ours(b));
+        return tops.find(b => label(b) === name) || tops.find(b => label(b).startsWith(name)) || null;
+    };
+    const hoverOpen = b => ["mouseenter", "mouseover"].forEach(t => b.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
+    // 묶음 안 단추: 원래 항목을 본떠 만들고(아이콘·꺼짐 그대로) 누르면 원래 것을 누른다
+    const proxyBtn = (src, path, text) => {
+        const b = src.cloneNode(true);
+        b.removeAttribute("data-r20tm-hide"); b.style.order = "";
+        b.querySelector(":scope > .submenu")?.replaceChildren();
+        b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
+        labelEl(b).textContent = text;
+        b.dataset.r20tmP = path;
+        return b;
+    };
+    // 묶음 머리: 하위 메뉴가 있는 Roll20 단추(화살표 포함)를 본뜨고, 아이콘은 대표 항목 것으로
+    const makeGroup = (menu, L, present, tpl) => {
+        const g = tpl.cloneNode(true);
+        g.removeAttribute("data-r20tm-hide"); g.classList.remove("disabled");
+        g.dataset.r20tmG = L.g;
+        labelEl(g).textContent = L.g;
+        const ic = leftIcon(findIn(menu, L.icon) || tpl), gi = leftIcon(g);
+        if (ic && gi) gi.replaceWith(ic.cloneNode(true));
+        const sub = g.querySelector(":scope > .submenu") || g.appendChild(document.createElement("div"));
+        sub.className = "submenu r20tm-sub";
+        sub.style.display = "none";
+        sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
+        // 메뉴가 스크롤로 잘리지 않게 fixed 로 머리 오른쪽(모자라면 왼쪽)에 띄운다
+        g.addEventListener("mouseenter", () => {
+            const r = g.getBoundingClientRect(), mcs = getComputedStyle(menu);
+            Object.assign(sub.style, { display: "flex", background: mcs.backgroundColor !== "rgba(0, 0, 0, 0)" ? mcs.backgroundColor : "#fff", left: "0px", top: "0px" });
+            const w = sub.offsetWidth, h = sub.offsetHeight;
+            const want = { x: r.right + w > innerWidth - 4 ? r.left - w : r.right, y: Math.max(4, Math.min(r.top - 4, innerHeight - h - 4)) };
+            const at = sub.getBoundingClientRect();         // 조상에 transform 이 있으면 기준점이 달라 한 번 보정
+            sub.style.left = (want.x - at.left) + "px";
+            sub.style.top = (want.y - at.top) + "px";
+        });
+        g.addEventListener("mouseleave", () => { sub.style.display = "none"; });
+        return g;
+    };
+    const arrange = menu => {
+        if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
+        const tpl = findIn(menu, "레이어 변경") || findIn(menu, "고급 변환") || findIn(menu, "여러 면");
+        const used = new Set();
+        LAYOUT.forEach((L, i) => {
+            const order = (i + 1) * 10;
+            if (L.one) { const b = findIn(menu, L.one); if (b) { b.style.order = order; used.add(b); } return; }
+            if (L.faces) { menu.querySelectorAll(":scope > button[data-r20tm]").forEach((b, k) => { b.style.order = order + k; }); return; }
+            const present = L.items.filter(([path]) => findIn(menu, path.split(">")[0]));
+            present.forEach(([path]) => { const b = findIn(menu, path.split(">")[0]); b.setAttribute("data-r20tm-hide", ""); used.add(b); });
+            let gb = menu.querySelector(`:scope > button[data-r20tm-g="${L.g}"]`);
+            if (!present.length) { gb?.remove(); return; }
+            if (!gb && tpl) gb = menu.appendChild(makeGroup(menu, L, present, tpl));
+            if (gb) gb.style.order = order;
+        });
+        menu.querySelectorAll(":scope > button").forEach(b => { if (!ours(b) && !used.has(b)) b.style.order = 900; });       // 목록에 없는 것은 맨 아래
+    };
     const inject = () => {
         document.querySelectorAll(".context-menu").forEach(menu => {
+            faces(menu);
+            if (btnVisible.tokmenu) arrange(menu);      // 면 단추를 붙인 뒤에 순서를 매긴다
+        });
+    };
+    const faces = menu => {
+        {   // (예전 inject 본문 — 들여쓰기 유지)
             const multi = btnVisible.tokmenu && multiOf(menu);
             // 여러 면 토큰이 아니게 다시 그려졌으면 붙였던 단추를 걷는다
             if (!multi) { menu.querySelectorAll("button[data-r20tm]").forEach(b => b.remove()); menu.querySelectorAll(".r20tm-hide").forEach(b => b.classList.remove("r20tm-hide")); return; }
@@ -4169,9 +4250,23 @@ const tokenMenu = (() => {
             if (!multi.querySelector(":scope > .submenu > button[data-r20tm]"))
                 tpl.after(makeBtn(tpl, "처음 면", "first"), makeBtn(tpl, "마지막 면", "last"));
             choose?.classList.add("r20tm-hide");       // 원래 '면 선택'은 위로 올렸으므로 숨긴다 (누르는 데는 쓴다)
-        });
+        }
     };
     document.addEventListener("click", async e => {
+        const p = e.target.closest?.("button[data-r20tm-p]");
+        if (!p && e.target.closest?.("button[data-r20tm-g]")) { e.preventDefault(); e.stopPropagation(); return; }
+        if (p) {
+            e.preventDefault(); e.stopPropagation();
+            if (p.classList.contains("disabled")) return;
+            const [parent, child] = p.dataset.r20tmP.split(">"), orig = findIn(p.closest(".context-menu"), parent);
+            if (!orig) return;
+            if (!child) { orig.click(); return; }
+            // 하위 메뉴 항목: 원래 묶음에 마우스를 올린 것처럼 해서 그리게 한 뒤 누른다
+            const item = () => [...orig.querySelectorAll(":scope > .submenu > button")].find(x => label(x) === child);
+            if (!item()) { hoverOpen(orig); await new Promise(r => setTimeout(r, 80)); }
+            item()?.click();
+            return;
+        }
         const b = e.target.closest?.("button[data-r20tm]");
         if (!b) return;
         e.preventDefault(); e.stopPropagation();
@@ -4187,6 +4282,9 @@ const tokenMenu = (() => {
         if (b.dataset.r20tm !== "choose") sidePicker.startAuto(b.dataset.r20tm);
         orig.click();
     }, true);
+    new MutationObserver(ms => {
+        if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.classList.contains("context-menu") || n.querySelector(".context-menu"))))) inject();
+    }).observe(document.body, { childList: true, subtree: true });
     return { inject };
 })();
 
