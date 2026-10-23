@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.12.0
+// @version      1.12.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.12.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.12.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1332,6 +1332,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
         .r20jb-step { display:none; }
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
+        body.r20jb-on #jukebox .r20jb-step.r20jb-fade { margin-left:8px; }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
@@ -1453,14 +1454,14 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20pg-on .vtt-page-card-menu .tree-view .node-children-count { min-width:0 !important; padding:0 !important; border:0 !important; background:none !important; color:#9a9aa0 !important; font-size:11px !important; font-weight:400 !important; }
         body.r20pg-on .vtt-page-card-menu .page-container { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--r20pg-size, 150px), 1fr)) !important; gap:12px 10px !important; padding:4px 16px 16px !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-card-wrapper.page-card { width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card { position:relative !important; width:auto !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card { position:relative !important; flex:1 1 auto !important; min-width:0 !important; width:100% !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
         body.r20pg-on .vtt-page-card-menu .card-thumbnail-container { position:relative !important; width:100% !important; height:auto !important; aspect-ratio:16/10; border-radius:6px !important; overflow:hidden !important; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06); }
         body.r20pg-on .vtt-page-card-menu .card-thumbnail { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; border-radius:0 !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .card-thumbnail-container { box-shadow:0 0 0 2px #e7b3c9 !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container { box-shadow:0 0 0 2px #b8215f !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container::before { content:"현재"; position:absolute; left:5px; top:5px; z-index:3; padding:0 6px; border-radius:8px; background:#b8215f; color:#fff; font-size:9px; font-weight:700; line-height:15px; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-title { min-height:0 !important; height:auto !important; margin:0 !important; padding:5px 1px 0 !important; text-align:left !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-title .el-text { font-size:11px !important; font-weight:400 !important; color:#333 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-title .el-text { font-size:16px !important; font-weight:400 !important; color:#333 !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-controls { position:absolute !important; top:4px !important; right:4px !important; left:auto !important; bottom:auto !important; z-index:3; display:flex !important; gap:2px; width:auto !important; height:auto !important; margin:0 !important; padding:1px 3px !important; border-radius:5px; background:rgba(255,255,255,0.92) !important; opacity:0; transition:opacity 0.12s; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-controls > span:first-child { display:none !important; }
         body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .vtt-page-controls, body.r20pg-on .vtt-page-card-menu .vtt-page-card:focus-within .vtt-page-controls { opacity:1; }
@@ -3675,6 +3676,48 @@ const jukeboxRow = (() => {
         inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
         wrap.append(inp, "%");
         host.appendChild(wrap);
+        // 정지 페이드 시간 (0 이면 바로 멈춤)
+        const fw = document.createElement("label");
+        fw.className = "r20jb-step r20jb-fade";
+        fw.title = "재생 중인 곡의 ■ 를 누르면 이 시간 동안 소리를 줄인 뒤 멈춥니다 (0: 바로 멈춤)";
+        fw.append("정지 페이드");
+        const fi = document.createElement("input");
+        fi.type = "number"; fi.min = "0"; fi.max = "3"; fi.step = "0.5"; fi.value = FADE;
+        fi.setAttribute("aria-label", "정지 페이드 시간(초)");
+        fi.addEventListener("input", () => {
+            const v = parseFloat(fi.value);
+            if (v >= 0 && v <= 3) { FADE = v; localStorage.setItem("r20jb_fade", v); }
+        });
+        fi.addEventListener("keydown", e => e.stopPropagation());
+        fw.append(fi, "초");
+        host.appendChild(fw);
+    };
+
+    // 정지 페이드: 재생 중인 곡의 ■ 를 누르면 볼륨을 FADE 초 동안 0 까지 줄인 뒤 Roll20 정지 단추를 대신 누르고,
+    // 곡 볼륨은 원래 값으로 돌려 둔다 (다음 재생은 원래 볼륨). 페이드 중 한 번 더 누르면 바로 멈춘다
+    let FADE = (() => { const v = parseFloat(localStorage.getItem("r20jb_fade")); return isNaN(v) ? 2.5 : Math.max(0, Math.min(3, v)); })();
+    const fading = new Map();
+    let passClick = false;
+    const playBtnOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"] a.play`);
+    const fadeStop = m => {
+        const v0 = Number(m.get("volume")) || 0, steps = Math.max(1, Math.round(FADE * 5));
+        let i = 0;
+        const finish = () => {
+            clearInterval(timer);
+            fading.delete(m.id);
+            if (m.get("playing")) {
+                const a = playBtnOf(m.id);          // 볼륨 변경으로 Roll20 이 줄을 다시 그렸을 수 있어 새로 찾는다
+                if (a) { passClick = true; try { a.click(); } finally { passClick = false; } }
+                else m.save({ playing: false });
+            }
+            setTimeout(() => m.save({ volume: v0 }), 300);
+        };
+        const timer = setInterval(() => {
+            i++;
+            if (i >= steps || !m.get("playing")) return finish();
+            m.save({ volume: Math.round(v0 * (1 - i / steps)) });
+        }, FADE * 1000 / steps);
+        fading.set(m.id, finish);
     };
     let watched = null;
     const inject = () => {
@@ -3715,6 +3758,16 @@ const jukeboxRow = (() => {
             const on = !m.get("loop");
             m.save({ loop: on });
             setLoop(lb, on);
+            return;
+        }
+        const pa = e.target.closest?.("#jukebox li.jukeboxitem a.play");
+        if (pa && !passClick && FADE > 0 && btnVisible.jbrow) {
+            const m = trackOf(pa.closest("li.jukeboxitem"));
+            if (m?.get("playing")) {
+                e.preventDefault(); e.stopImmediatePropagation();
+                const f = fading.get(m.id);
+                if (f) f(); else fadeStop(m);
+            }
             return;
         }
         const btn = e.target.closest?.(".r20jb-vol button");
@@ -4143,7 +4196,7 @@ const roomImages = (() => {
     const tileHtml = it => {
         const orig = sized(it.url, "thumb"), th = r20img(orig);
         const tip = (it.name || "이름 없음") + "\n" + it.uses.map(u => u.label).join("\n");
-        return `<li class="draggableresult r20ri-tile" tabindex="0" role="button" data-k="${esc(it.k)}" data-fullsizeurl="${esc(r20img(sized(it.url, "max")))}" data-grid-width="null" data-grid-height="null" title="${esc(tip)}">`
+        return `<li class="draggableresult library-item r20ri-tile" tabindex="0" role="button" data-k="${esc(it.k)}" data-fullsizeurl="${esc(r20img(sized(it.url, "max")))}" data-grid-width="null" data-grid-height="null" title="${esc(tip)}">`
             + `<div class="token"><img src="${esc(th)}"${th !== orig ? ` data-orig="${esc(orig)}"` : ""} loading="lazy" draggable="false" alt=""></div>`
             + `<div class="namecontainer">${esc(it.name)}</div>`
             + (it.uses.length > 1 ? `<span class="r20ri-cnt">×${it.uses.length}</span>` : "") + "</li>";
