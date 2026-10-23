@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.13.2
+// @version      1.13.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.13.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.13.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1287,21 +1287,21 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-card.chk { border-color:#1867c7; background:#f1f7fe; }
         #r20be .r20be-card.dirty { box-shadow:inset 0 0 0 1px #f0b27a; }
         #r20be .r20be-thumb { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; padding:0; border:0; border-radius:6px; background:#f2f2f2; color:#888; font-size:11px; overflow:hidden; cursor:pointer; }
-        #r20be .r20be-thumb img { width:100%; height:100%; object-fit:cover; }
+        #r20be .r20be-thumb img, #r20be .r20be-thumb video { width:100%; height:100%; object-fit:cover; }
         #r20be .r20be-thumb.none { border:1px dashed #d4d4d4; background:#fafafa; }
         #r20be .r20be-card .r20be-thumb { position:relative; }
-        #r20be .r20be-thumb img.r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+        #r20be .r20be-thumb .r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
         #r20be .r20be-tbar.idle { border-color:#eee; background:#fafafa; }
         #r20be .r20be-tgrid.r20be-imgs { grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:6px; }
         #r20be .r20be-imgs .r20be-card { gap:3px; padding:4px; }
         #r20be .r20be-ithumb { background:#f1f1f1; }
-        #r20be .r20be-ithumb img { object-fit:contain; }
+        #r20be .r20be-ithumb img, #r20be .r20be-ithumb video { object-fit:contain; }
         #r20be .r20be-inm { overflow:hidden; padding:0 2px; color:#333; font-size:11px; white-space:nowrap; text-overflow:ellipsis; }
         #r20be .r20be-icnt { position:absolute; right:8px; top:8px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
         #r20be .r20be-isend { display:flex; flex-direction:column; gap:8px; }
         #r20be .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
         #r20be .r20be-isend .r20be-chk[hidden] { display:none; }
-        #r20be img.r20be-broken { visibility:hidden; }
+        #r20be .r20be-broken { visibility:hidden; }
         #r20be .r20be-ov { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(30,30,30,0.35); }
         #r20be .r20be-dlg { width:min(440px, calc(100% - 32px)); display:flex; flex-direction:column; gap:10px; padding:16px; background:#fff; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
         #r20be .r20be-dlg > strong { font-size:14px; }
@@ -1618,8 +1618,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         li.r20ri-tile.on { box-shadow:0 0 0 2px #b8215f; }
         li.r20ri-tile:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
         li.r20ri-tile .token { position:absolute !important; inset:0; float:none !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; }
-        li.r20ri-tile .token img { display:block; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; object-fit:contain; }
-        li.r20ri-tile .token img.r20ri-broken { visibility:hidden; }
+        li.r20ri-tile .token img, li.r20ri-tile .token video { display:block; width:100% !important; height:100% !important; max-width:none !important; margin:0 !important; object-fit:contain; }
+        .r20ri-broken { visibility:hidden; }
         li.r20ri-tile .namecontainer { display:none !important; }
         li.r20ri-tile .r20ri-cnt { position:absolute; right:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
         li.r20ri-tile.ui-draggable-dragging { width:64px !important; height:64px !important; z-index:100000 !important; box-shadow:0 4px 12px rgba(0,0,0,0.3); opacity:0.9; cursor:grabbing; }
@@ -1627,7 +1627,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .r20ri-drop.r20ri-dropin { outline:2px dashed #b8215f !important; outline-offset:-2px; }
         #imagedialog .r20ri-pop { position:absolute; left:0; right:0; bottom:40px; z-index:5; max-height:70%; overflow-y:auto; padding:6px 0; border:1px solid #e6e6ea; border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.15); }
         #imagedialog .r20ri-ph { display:flex; align-items:center; gap:8px; padding:2px 6px 8px 10px; border-bottom:1px solid #f0f0f3; }
-        #imagedialog .r20ri-ph img { flex-shrink:0; width:44px; height:44px; border-radius:6px; background:#f1f1f1; object-fit:contain; }
+        #imagedialog .r20ri-ph img, #imagedialog .r20ri-ph video { flex-shrink:0; width:44px; height:44px; border-radius:6px; background:#f1f1f1; object-fit:contain; }
         #imagedialog .r20ri-ph div { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:11px; color:#6b6b70; }
         #imagedialog .r20ri-ph strong { overflow:hidden; font-size:12px; color:#222; white-space:nowrap; text-overflow:ellipsis; }
         #imagedialog .r20ri-ph .r20ri-x { width:24px; height:24px; padding:0; border:0; border-radius:5px; background:transparent; color:#777; }
@@ -2014,6 +2014,33 @@ const copyText = async text => {
         const ok = document.execCommand("copy"); ta.remove(); return ok;
     }
 };
+// ── 그림 미리보기 공통 (일괄 편집기 · 이 방의 이미지) ──
+// files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다
+const VARIANT = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
+const sizedUrl = (u, s) => VARIANT.test(u) ? u.replace(VARIANT, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
+const escAttr = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// 움직이는 그림 중 webm·mp4 는 <img> 로 그릴 수 없어 <video> 로 (Roll20 도 움직이는 그림은 med.webm 을 쓴다)
+const isAnimVideo = u => /\.(?:webm|mp4)(?:[?#]|$)/i.test(String(u || ""));
+// 미리보기 주소 후보: 앞에서부터 열어 보고 안 열리면 다음 것 (움직이는 png·gif 는 thumb 가 없는 경우가 있다)
+const previewAlts = (u, sizes = ["thumb", "med", "max"]) =>
+    [...new Set(sizes.flatMap(s => { const v = sizedUrl(u, s); return [r20img(v), v]; }).concat(r20img(u), u))].filter(Boolean);
+const previewHtml = (u, cls = "") => {
+    const vid = isAnimVideo(u), list = previewAlts(u, vid ? ["med", "max"] : undefined).map(x => vid ? x + "#t=0.1" : x);      // #t: 첫 장면을 보여 준다
+    const a = `src="${escAttr(list[0])}" data-alts="${escAttr(list.slice(1).join("\n"))}"`;
+    return vid ? `<video class="r20-anim ${cls}" ${a} muted loop playsinline preload="metadata"></video>`
+        : `<img class="${cls}" ${a} alt="" loading="lazy" draggable="false">`;
+};
+// 안 열린 미리보기: 다음 후보로 바꾼다 (더 없으면 false)
+const nextPreview = m => {
+    const alts = (m.dataset.alts || "").split("\n").filter(Boolean);
+    if (!alts.length) return false;
+    m.dataset.alts = alts.slice(1).join("\n");
+    m.src = alts[0];
+    return true;
+};
+// 움직이는 그림 미리보기는 마우스를 올린 동안만 재생 (여러 개가 한꺼번에 돌아 무거워지지 않게)
+document.addEventListener("mouseover", e => { if (e.target.matches?.("video.r20-anim")) e.target.play().catch(() => {}); });
+document.addEventListener("mouseout", e => { if (e.target.matches?.("video.r20-anim")) e.target.pause(); });
 
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
@@ -2324,13 +2351,23 @@ const bulkEditor = (() => {
         const m = n.model || n.dupOf;
         return m ? journalThumb(m.id) || m.get?.("avatar") || "" : "";
     };
-    // 그림: 바꾼 주소(r20img)로 먼저 열고 원래 주소는 data-orig 에 둔다
-    const imgEl = (u, props = {}) => { const src = r20img(u); return el("img", { ...props, src, "data-orig": src !== u ? u : null, loading: "lazy", alt: "" }); };
+    // 그림: 바꾼 주소(r20img)로 먼저 열고, 안 열리면 data-alts 의 다른 크기·원래 주소로
+    // 움직이는 webm·mp4 는 <video>, 그 밖에는 저장된 주소부터 열고 안 되면 다른 크기로
+    const imgEl = (u, props = {}) => {
+        if (isAnimVideo(u)) {
+            const list = previewAlts(u, ["med", "max"]).map(x => x + "#t=0.1");
+            return el("video", { ...props, class: ("r20-anim " + (props.class || "")).trim(), src: list[0], "data-alts": list.slice(1).join("\n"),
+                muted: true, loop: true, playsinline: "", preload: "metadata" });
+        }
+        const src = r20img(u);
+        return el("img", { ...props, src, "data-alts": previewAlts(u).filter(x => x !== src).join("\n"), loading: "lazy", alt: "" });
+    };
     // 안 열리는 그림: 원래 주소로 한 번 더 → 그래도 안 되면 아이콘은 이름 첫 글자, 카드·항목은 빈 칸
     // (error 는 버블링되지 않아 창 전체에서 캡처로 받는다)
     const onImgError = e => {
         const img = e.target;
-        if (img.tagName !== "IMG") return;
+        if (img.tagName !== "IMG" && img.tagName !== "VIDEO") return;
+        if (nextPreview(img)) return;
         if (img.dataset.orig && !img.dataset.retried) { img.dataset.retried = "1"; img.src = img.dataset.orig; return; }
         if (img.matches(".r20be-pic")) {
             const name = img.closest(".r20be-tile")?.querySelector(".r20be-tn")?.textContent || "";
@@ -2348,7 +2385,7 @@ const bulkEditor = (() => {
         const name = n.cur.name || "(이름 없음)", src = avatarOf(n);
         return `<div class="${cls}" data-id="${esc(n.id)}" role="treeitem" aria-selected="${sel}">`
             + `<button type="button" class="r20be-tl" data-act="pick" title="${esc(name + " · " + folderPath(n))}">`
-            + (src ? `<img class="r20be-pic" src="${esc(r20img(src))}"${r20img(src) !== src ? ` data-orig="${esc(src)}"` : ""} alt="" loading="lazy" draggable="false">`
+            + (src ? previewHtml(src, "r20be-pic")
                    : `<span class="r20be-pic">${esc(name.trim().charAt(0) || "?")}</span>`)
             + `<span class="r20be-tn">${esc(name)}</span></button>`
             + `<button type="button" class="r20be-cb${chk ? " on" : ""}" data-act="check" aria-label="${esc(name)} 선택" aria-pressed="${chk}">${ICON.check}</button>`
@@ -2909,9 +2946,9 @@ const bulkEditor = (() => {
         const grid = el("div", { class: "r20be-tgrid r20be-imgs", role: "group", "aria-label": "그림" });
         grid.style.setProperty("--be-icon", VIEW.size + "px");
         grid.innerHTML = list.length ? list.map((it, i) => {
-            const nm = it.name || "(이름 없음)", orig = roomImages.sized(it.url, "thumb"), th = r20img(orig);
+            const nm = it.name || "(이름 없음)";
             return `<div class="r20be-card" data-i="${i}" title="${esc(nm + "\n" + it.uses.map(u => u.label).join("\n"))}">`
-                + `<button type="button" class="r20be-thumb r20be-ithumb" aria-label="${esc(nm)} 선택"><img src="${esc(th)}"${th !== orig ? ` data-orig="${esc(orig)}"` : ""} alt="" loading="lazy" draggable="false"></button>`
+                + `<button type="button" class="r20be-thumb r20be-ithumb" aria-label="${esc(nm)} 선택">${previewHtml(it.url)}</button>`
                 + `<button type="button" class="r20be-cb2" aria-label="선택" aria-pressed="false">${ICON.check}</button>`
                 + `<span class="r20be-inm">${esc(nm)}</span>${it.uses.length > 1 ? `<span class="r20be-icnt">×${it.uses.length}</span>` : ""}</div>`;
         }).join("") : `<p class="r20be-empty">그림이 없습니다</p>`;
@@ -4317,8 +4354,7 @@ const roomImages = (() => {
     const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다 → 크기 부분을 뺀 주소로 같은 그림을 묶는다
-    const VAR = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
-    const sized = (u, s) => VAR.test(u) ? u.replace(VAR, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
+    const sized = sizedUrl;
     const keyOf = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
 
     let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
@@ -4388,10 +4424,9 @@ const roomImages = (() => {
 
     // ── 그리기 ──
     const tileHtml = it => {
-        const orig = sized(it.url, "thumb"), th = r20img(orig);
         const tip = (it.name || "이름 없음") + "\n" + it.uses.map(u => u.label).join("\n");
         return `<li class="draggableresult library-item r20ri-tile" tabindex="0" role="button" data-k="${esc(it.k)}" data-fullsizeurl="${esc(r20img(sized(it.url, "max")))}" data-grid-width="null" data-grid-height="null" title="${esc(tip)}">`
-            + `<div class="token"><img src="${esc(th)}"${th !== orig ? ` data-orig="${esc(orig)}"` : ""} loading="lazy" draggable="false" alt=""></div>`
+            + `<div class="token">${previewHtml(it.url)}</div>`
             + `<div class="namecontainer">${esc(it.name)}</div>`
             + (it.uses.length > 1 ? `<span class="r20ri-cnt">×${it.uses.length}</span>` : "") + "</li>";
     };
@@ -4554,7 +4589,7 @@ const roomImages = (() => {
         pop.className = "r20ri-pop";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "그림 메뉴");
-        pop.innerHTML = `<div class="r20ri-ph"><img src="${esc(tile.querySelector("img")?.src || "")}" alt=""><div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
+        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
             + `<button type="button" class="r20ri-x" data-a="close" aria-label="닫기">✕</button></div>`
             + `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
             + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
@@ -4640,12 +4675,10 @@ const roomImages = (() => {
             else if (b.dataset.a === "closeall") { opened.clear(); render(); }
         });
         list.addEventListener("mouseover", e => { const t = e.target.closest(".r20ri-tile"); if (t) initDrag(t); });
-        // 안 열리는 그림: 원래 주소로 한 번 더 → 그래도 안 되면 빈 칸 (error 는 버블링되지 않아 캡처로 받는다)
-        list.addEventListener("error", e => {
-            const img = e.target;
-            if (img.tagName !== "IMG") return;
-            if (img.dataset.orig && !img.dataset.retried) { img.dataset.retried = "1"; img.src = img.dataset.orig; }
-            else img.classList.add("r20ri-broken");
+        // 안 열리는 그림: 다른 크기·원래 주소로 → 그래도 안 되면 빈 칸 (error 는 버블링되지 않아 캡처로 받는다 · 메뉴 그림도 함께)
+        r.addEventListener("error", e => {
+            const m = e.target;
+            if ((m.tagName === "IMG" || m.tagName === "VIDEO") && !nextPreview(m)) m.classList.add("r20ri-broken");
         }, true);
         return r;
     };
