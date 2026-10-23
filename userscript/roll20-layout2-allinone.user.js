@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.13.0
+// @version      1.13.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.13.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.13.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2942,7 +2942,7 @@ const bulkEditor = (() => {
                 pick("선택 해제", () => t.checked.clear()),
                 el("strong", {}, `${sel.length}장 선택`),
                 el("span", { class: "r20be-flex" }),
-                ...[["deck", "덱에 넣기…"], ["table", "굴림표에 넣기…"], ["url", "주소 따기…"]].map(([k, label]) =>
+                ...[["deck", "덱에 넣기…"], ["table", "굴림표에 넣기…"], ["handout", "핸드아웃으로 만들기…"], ["url", "주소 따기…"]].map(([k, label]) =>
                     el("button", { type: "button", class: "r20be-sec", disabled: !sel.length, onclick: () => openImgSend(k, picked()) }, label)));
         };
         sync();
@@ -2976,7 +2976,7 @@ const bulkEditor = (() => {
         };
         const draw = close => {
             tabsBox.textContent = ""; body.textContent = "";
-            [["deck", "덱에 넣기"], ["table", "굴림표에 넣기"], ["url", "주소 따기"]].forEach(([k, label]) => tabsBox.append(el("button", { type: "button",
+            [["deck", "덱에 넣기"], ["table", "굴림표에 넣기"], ["handout", "핸드아웃으로 만들기"], ["url", "주소 따기"]].forEach(([k, label]) => tabsBox.append(el("button", { type: "button",
                 class: "r20be-chip" + (mode === k ? " on" : ""), "aria-pressed": String(mode === k), onclick: () => { mode = k; draw(close); } }, label)));
             if (mode === "deck") {
                 const tg = target("decks", "덱", "새 덱");
@@ -3010,6 +3010,28 @@ const bulkEditor = (() => {
                     }
                     sel.forEach(it => n.items.push(itemNode(null, { name: it.name || "그림", weight: w, avatar: full(it) })));
                     done(`굴림표 '${n.cur.name}'에 항목 ${sel.length}개를 넣었습니다 · 굴림표 탭에서 확인 후 [저장]`, close);
+                };
+            } else if (mode === "handout") {
+                // 그림 한 장 = 핸드아웃 하나 (이름 = 그림 이름, 핸드아웃 그림 = 그 그림) → 저널 탭에 저장 안 한 변경으로
+                const t = S.journal || (S.journal = buildTab("journal"));
+                const folderSel = el("select", { class: "r20be-in", "aria-label": "넣을 폴더" },
+                    el("option", { value: "" }, "맨 위 (폴더 밖)"), ...groupList(t).map(({ n, label }) => el("option", { value: n.id }, label)));
+                const shareSel = el("select", { class: "r20be-in", "aria-label": "보이는 사람" }, ...shareOptions("").map(o => el("option", { value: o.v }, o.label)));
+                body.append(el("div", { class: "r20be-grid" }, field("넣을 폴더", folderSel), field("보이는 사람", shareSel)));
+                note.textContent = `핸드아웃 ${sel.length}개 · 이름 = 그림 이름 · 저널 탭에서 고친 뒤 [저장]`;
+                applyBtn.textContent = "만들기"; applyBtn.disabled = false;
+                apply = () => {
+                    const parent = folderSel.value ? find(t, folderSel.value) : null;
+                    sel.forEach(it => {
+                        const n = mkNode("new:" + uid(), "handout", null, { name: it.name || "그림", share: shareSel.value });
+                        n.isNew = true; n.loaded = true; n.parent = parent;
+                        CONTENT.forEach(k => { n.raw[k] = ""; n.origText[k] = ""; n.cur[k] = ""; });
+                        n.copyAttrs = { avatar: full(it) };
+                        listOf(t, parent).push(n);
+                    });
+                    t.structDirty = true;
+                    if (parent) t.collapsed.delete(parent.id);
+                    done(`핸드아웃 ${sel.length}개를 만들었습니다 · 저널 탭에서 확인 후 [저장]`, close);
                 };
             } else {
                 const fmt = el("select", { class: "r20be-in", "aria-label": "모양" },
@@ -3294,7 +3316,7 @@ const bulkEditor = (() => {
                 if (n.cur.notes) blobs[bn] = toHtml(n, "notes");
                 if (n.cur.gm) blobs[bg] = toHtml(n, "gm");
             }
-            const base = n.dupOf ? n.dupOf.toJSON() : {};
+            const base = n.dupOf ? n.dupOf.toJSON() : { ...(n.copyAttrs || {}) };
             delete base.id;
             const coll = n.kind === "handout" ? window.Campaign.handouts : window.Campaign.characters;
             n.model = coll.create({ ...base, name: n.cur.name, inplayerjournals: n.cur.share });
@@ -3827,7 +3849,9 @@ const jukeboxRow = (() => {
     let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
     // Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
     const step = (li, dir) => {
-        const now = volOf(li);
+        const tm = trackOf(li);
+        let now = volOf(li);
+        if (tm && held.has(tm.id) && !fading.has(tm.id)) { now = held.get(tm.id); held.delete(tm.id); keepHeld(); }
         const v = Math.max(0, Math.min(100, dir > 0 ? Math.floor(now / STEP) * STEP + STEP : Math.ceil(now / STEP) * STEP - STEP));
         const slider = li.querySelector(".volume input.slider");
         if (slider) {
@@ -3846,7 +3870,8 @@ const jukeboxRow = (() => {
             const box = document.createElement("span");
             box.className = "r20jb-vol";
             box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 올리기">▸</button>';
-            box.querySelector("span").textContent = Math.round(volOf(vol.closest("li.jukeboxitem")));
+            const li = vol.closest("li.jukeboxitem"), m = trackOf(li);
+            box.querySelector("span").textContent = m ? shownVol(m) : Math.round(volOf(li));
             vol.appendChild(box);
         });
     };
@@ -3885,7 +3910,7 @@ const jukeboxRow = (() => {
         // 정지 페이드 시간 (0 이면 바로 멈춤)
         const fw = document.createElement("label");
         fw.className = "r20jb-step r20jb-fade";
-        fw.title = "재생 중인 곡의 ■ 를 누르면 이 시간 동안 소리를 줄인 뒤 멈춥니다 (0: 바로 멈춤)";
+        fw.title = "재생 중인 곡의 ■ 를 누르면 이 시간 동안 소리를 줄인 뒤 멈춥니다 · 볼륨은 다음 재생 때 원래대로 (0: 바로 멈춤)";
         fw.append("정지 페이드");
         const fi = document.createElement("input");
         fi.type = "number"; fi.min = "0"; fi.max = "3"; fi.step = "0.5"; fi.value = FADE;
@@ -3899,29 +3924,41 @@ const jukeboxRow = (() => {
         host.appendChild(fw);
     };
 
-    // 정지 페이드: 재생 중인 곡의 ■ 를 누르면 볼륨을 FADE 초 동안 0 까지 줄인 뒤 Roll20 정지 단추를 대신 누르고,
-    // 곡 볼륨은 원래 값으로 돌려 둔다 (다음 재생은 원래 볼륨). 페이드 중 한 번 더 누르면 바로 멈춘다
+    // 정지 페이드: 재생 중인 곡의 ■ 를 누르면 볼륨을 FADE 초 동안 거의 0 까지 줄인 뒤 Roll20 정지 단추를 대신 누른다.
+    // 원래 볼륨은 멈춘 직후가 아니라 '다음에 재생할 때' 되돌린다 — 멈춘 직후에 되돌리면 정지가 늦게 먹을 때 소리가 다시 커진다.
+    // 되돌릴 볼륨은 새로 고침해도 기억하고, 멈춰 있는 동안 볼륨을 직접 바꾸면 그 값을 따른다. 페이드 중 한 번 더 누르면 바로 멈춘다
     let FADE = (() => { const v = parseFloat(localStorage.getItem("r20jb_fade")); return isNaN(v) ? 2.5 : Math.max(0, Math.min(3, v)); })();
-    const fading = new Map();
+    const fading = new Map(), ours = new Map();         // ours: 이 기능이 마지막으로 넣은 볼륨 (사용자가 바꾼 것과 구별)
+    const held = (() => { try { return new Map(Object.entries(JSON.parse(localStorage.getItem("r20jb_faded") || "{}"))); } catch (e) { return new Map(); } })();
+    const keepHeld = () => localStorage.setItem("r20jb_faded", JSON.stringify(Object.fromEntries(held)));
+    const shownVol = m => Math.round(held.has(m.id) && !fading.has(m.id) ? held.get(m.id) : Number(m.get("volume")) || 0);
+    const setVol = (m, v) => { ours.set(m.id, v); m.save({ volume: v }); };
+    const restoreVol = m => {
+        if (!held.has(m.id) || fading.has(m.id)) return;
+        const v = held.get(m.id);
+        held.delete(m.id); keepHeld();
+        if (Number(m.get("volume")) !== v) m.save({ volume: v });
+    };
     let passClick = false;
     const playBtnOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"] a.play`);
     const fadeStop = m => {
-        const v0 = Number(m.get("volume")) || 0, steps = Math.max(1, Math.round(FADE * 5));
+        const v0 = held.has(m.id) ? held.get(m.id) : Number(m.get("volume")) || 0, steps = Math.max(1, Math.round(FADE * 5));
+        held.set(m.id, v0); keepHeld();
         let i = 0;
         const finish = () => {
             clearInterval(timer);
             fading.delete(m.id);
+            setVol(m, Math.min(1, v0));         // 0 은 '기본 볼륨'으로 읽힐 수 있어 1 로 둔다
             if (m.get("playing")) {
                 const a = playBtnOf(m.id);          // 볼륨 변경으로 Roll20 이 줄을 다시 그렸을 수 있어 새로 찾는다
                 if (a) { passClick = true; try { a.click(); } finally { passClick = false; } }
                 else m.save({ playing: false });
             }
-            setTimeout(() => m.save({ volume: v0 }), 300);
         };
         const timer = setInterval(() => {
             i++;
             if (i >= steps || !m.get("playing")) return finish();
-            m.save({ volume: Math.round(v0 * (1 - i / steps)) });
+            setVol(m, Math.max(1, Math.round(v0 * (1 - i / steps))));
         }, FADE * 1000 / steps);
         fading.set(m.id, finish);
     };
@@ -3944,9 +3981,12 @@ const jukeboxRow = (() => {
         if (!bound && window.Jukebox?.playlist?.on) {
             bound = true;
             window.Jukebox.playlist.on("change:volume", m => {
+                if (held.has(m.id) && !fading.has(m.id) && Number(m.get("volume")) !== ours.get(m.id)) { held.delete(m.id); keepHeld(); }
                 const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
-                if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
+                if (label) label.textContent = shownVol(m);
             });
+            // 플레이리스트 재생 등 다른 길로 다시 틀어도 원래 볼륨으로
+            window.Jukebox.playlist.on("change:playing", m => { if (m.get("playing")) restoreVol(m); });
             window.Jukebox.playlist.on("change:loop", m => {
                 const b = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-loop`);
                 if (b) setLoop(b, !!m.get("loop"));
@@ -3967,13 +4007,15 @@ const jukeboxRow = (() => {
             return;
         }
         const pa = e.target.closest?.("#jukebox li.jukeboxitem a.play");
-        if (pa && !passClick && FADE > 0 && btnVisible.jbrow) {
+        if (pa && !passClick && btnVisible.jbrow) {
             const m = trackOf(pa.closest("li.jukeboxitem"));
             if (m?.get("playing")) {
-                e.preventDefault(); e.stopImmediatePropagation();
-                const f = fading.get(m.id);
-                if (f) f(); else fadeStop(m);
-            }
+                if (FADE > 0) {
+                    e.preventDefault(); e.stopImmediatePropagation();
+                    const f = fading.get(m.id);
+                    if (f) f(); else fadeStop(m);
+                }
+            } else if (m) restoreVol(m);        // 페이드로 줄여 둔 곡은 재생 직전에 원래 볼륨으로
             return;
         }
         const btn = e.target.closest?.(".r20jb-vol button");
