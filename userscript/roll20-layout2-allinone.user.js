@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.14.3
+// @version      1.14.4
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.14.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.14.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4183,15 +4183,37 @@ const tokenMenu = (() => {
         return tops.find(b => label(b) === name) || tops.find(b => label(b).startsWith(name)) || null;
     };
     const hoverOpen = b => ["mouseenter", "mouseover"].forEach(t => b.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
-    // 묶음 안 단추: 원래 항목을 본떠 만들고(아이콘·꺼짐 그대로) 누르면 원래 것을 누른다
+    // 묶음 안 단추: Roll20 하위 메뉴 항목(고급 변환 안의 '그룹 생성'처럼 글자만 있는 단추)을 본떠 만들고,
+    // 누르면 숨겨 둔 원래 항목을 누른다. 꺼짐 상태는 원래 항목을 따른다
+    let ITEM = null;            // 본뜰 Roll20 하위 메뉴 항목 (하위 메뉴가 처음 그려질 때 잡아 둔다)
+    const grabItem = menu => {
+        const it = ITEM ? null : menu.querySelector(":scope > button > .submenu > button:not([data-r20tm]):not([data-r20tm-p])");
+        if (it && labelEl(it)) ITEM = it.cloneNode(true);
+    };
     const proxyBtn = (src, path, text) => {
-        const b = src.cloneNode(true);
+        const b = (ITEM || src).cloneNode(true);
         b.removeAttribute("data-r20tm-hide"); b.removeAttribute("data-r20tm-hov"); b.style.order = "";
         b.querySelector(":scope > .submenu")?.replaceChildren();
         b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
+        leftIcon(b)?.remove();
         labelEl(b).textContent = text;
+        b.classList.toggle("disabled", src.classList.contains("disabled"));
         b.dataset.r20tmP = path;
         return b;
+    };
+    // 마우스를 올리면 열고, 벗어나면 잠깐(0.3초) 기다렸다 닫는다 — 메뉴와 하위 메뉴 사이 틈을 지나가도 닫히지 않게.
+    // 다른 머리에 올리면 앞의 것은 바로 닫는다
+    let closeNow = null;
+    const hoverKeep = (el, open, close) => {
+        let t = 0;
+        const shut = () => { clearTimeout(t); if (closeNow === shut) closeNow = null; close(); };
+        el.addEventListener("mouseenter", () => {
+            clearTimeout(t);
+            if (closeNow && closeNow !== shut) closeNow();
+            closeNow = shut;
+            open();
+        });
+        el.addEventListener("mouseleave", () => { clearTimeout(t); t = setTimeout(shut, 300); });
     };
     // 묶음 머리: 하위 메뉴가 있는 Roll20 단추(화살표 포함)를 본뜨고, 아이콘은 대표 항목 것으로
     const makeGroup = (menu, L, present, tpl) => {
@@ -4204,23 +4226,31 @@ const tokenMenu = (() => {
         const sub = g.querySelector(":scope > .submenu") || g.appendChild(document.createElement("div"));
         sub.classList.add("submenu", "r20tm-sub");
         sub.style.display = "none";
-        sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
-        // 고급 변환 · 여러 면과 똑같이: 모양은 Roll20 이 열 때 넣는 style · class 를 따르고,
-        // 자리는 Roll20 이 머리 옆에 붙이는 간격(OFF)만큼 이 머리 옆에 계산해 둔다 (Roll20 은 좌표를 직접 계산해 넣는다)
-        g.addEventListener("mouseenter", () => {
+        const build = () => sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
+        build();
+        // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥, 이 줄 높이에 띄운다.
+        // Roll20 은 하위 메뉴 좌표를 계산해 넣으므로, 모양(style·class)만 따르고 자리는 같은 간격(OFF)으로 계산한다
+        hoverKeep(g, () => {
+            if (ITEM && !sub.dataset.real) { sub.dataset.real = "1"; build(); }       // 하위 메뉴 항목 모양을 잡았으면 그 모양으로
             OPEN?.cls.forEach(c => g.classList.add(c)); OPEN?.subCls.forEach(c => sub.classList.add(c));
             sub.setAttribute("style", (OPEN?.style || "").split(";").map(x => x.trim())
-                .filter(x => x && !/^(left|top|right|bottom|inset|transform|translate)\s*:/i.test(x)).join("; "));
+                .filter(x => x && !/^(position|left|top|right|bottom|inset|transform|translate|z-index)\s*:/i.test(x)).join("; "));
+            sub.style.setProperty("position", "fixed", "important");
+            sub.style.zIndex = "100001";
             if (getComputedStyle(sub).display === "none") sub.style.display = "flex";
-            if (!/^(fixed|absolute)$/.test(getComputedStyle(sub).position)) return;     // Roll20 CSS 가 흐름대로 놓는 경우는 그대로
-            const r = g.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight, dx = OFF.dx, dy = OFF.dy;
-            const want = { x: r.right + dx + w > innerWidth - 4 ? r.left - w - dx : r.right + dx, y: Math.max(4, Math.min(r.top + dy, innerHeight - h - 4)) };
+            sub.style.flexDirection = "column";
+            // Roll20 하위 메뉴 판 모양이 CSS 로 안 오면 메뉴 판 모양을 빌린다
+            const cs = getComputedStyle(sub), mcs = getComputedStyle(menu);
+            if (cs.backgroundColor === "rgba(0, 0, 0, 0)")
+                Object.assign(sub.style, { backgroundColor: mcs.backgroundColor, border: mcs.border, borderRadius: mcs.borderRadius, boxShadow: mcs.boxShadow, padding: mcs.padding });
+            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight;
+            const gap = OFF.gap, dy = OFF.dy ?? -(parseFloat(getComputedStyle(sub).paddingTop) || 0);
+            const want = { x: m.right + gap + w > innerWidth - 4 ? m.left - w - gap : m.right + gap, y: Math.max(4, Math.min(r.top + dy, innerHeight - h - 4)) };
             sub.style.left = "0px"; sub.style.top = "0px";
             const at = sub.getBoundingClientRect();         // 기준점(조상 transform 등)이 달라도 맞도록 한 번 보정
             sub.style.left = (want.x - at.left) + "px";
             sub.style.top = (want.y - at.top) + "px";
-        });
-        g.addEventListener("mouseleave", () => {
+        }, () => {
             sub.style.display = "none";
             OPEN?.cls.forEach(c => g.classList.remove(c)); OPEN?.subCls.forEach(c => sub.classList.remove(c));
         });
@@ -4232,14 +4262,15 @@ const tokenMenu = (() => {
     const toggleR20 = b => (b.querySelector(":scope > .submenu-button-outer") || b).click();
     // Roll20 하위 메뉴가 열릴 때 바뀌는 것(하위 메뉴 style, 머리·하위 메뉴 class)을 숨겨 둔 '레이어 변경'을 한 번 열어 보고 읽어 둔다
     let OPEN = null, learning = false;
-    let OFF = { dx: 0, dy: 0, seen: false };        // Roll20 하위 메뉴가 머리 오른쪽에서 떨어진 간격
+    let OFF = { gap: 4, dy: null, seen: false };       // Roll20 하위 메뉴가 메뉴 판 오른쪽에서 떨어진 간격 · 머리 줄과의 높이 차
     // 화면에 보이는 Roll20 하위 메뉴(고급 변환 · 여러 면)가 열린 자리에서 간격을 잰다
     const learnOff = b => {
-        const sb = subOf(b);
+        const sb = subOf(b), menu = b.closest(".context-menu");
+        grabItem(menu);
         if (OFF.seen || !sb || !isOpen(b)) return;
-        const sr = sb.getBoundingClientRect(), hr = b.getBoundingClientRect();
-        if (!sr.width || !hr.width || sr.left < hr.right - 20) return;        // 왼쪽으로 뒤집혀 열린 것은 쓰지 않는다
-        OFF = { dx: sr.left - hr.right, dy: sr.top - hr.top, seen: true };
+        const sr = sb.getBoundingClientRect(), hr = b.getBoundingClientRect(), mr = menu.getBoundingClientRect();
+        if (!sr.width || !hr.width || sr.left < mr.right - 30) return;        // 왼쪽으로 뒤집혀 열린 것은 쓰지 않는다
+        OFF = { gap: sr.left - mr.right, dy: sr.top - hr.top, seen: true };
     };
     const learnOpen = async menu => {
         if (OPEN || learning) return;
@@ -4252,18 +4283,19 @@ const tokenMenu = (() => {
         const sb = subOf(b);
         if (sb && sb.style.display !== "none") {
             OPEN = { style: sb.getAttribute("style") || "", cls: [...b.classList].filter(c => !hc.includes(c)), subCls: [...sb.classList].filter(c => !sc.includes(c)) };
+            grabItem(menu);
+            // 숨긴 머리는 높이가 0 이라 Roll20 이 넣은 top 이 곧 줄 높이 차, left 는 메뉴 판 오른쪽 + 간격 (실제로 재기 전 임시값)
             const num = k => parseFloat((new RegExp("(?:^|;)\\s*" + k + "\\s*:\\s*(-?[\\d.]+)px").exec(OPEN.style) || [])[1]);
-            const lx = num("left"), ty = num("top");
-            if (!OFF.seen && Math.abs(lx) < 40 && Math.abs(ty) < 40) OFF = { dx: lx, dy: ty, seen: false };
+            const gx = num("left") - menu.getBoundingClientRect().right, ty = num("top");
+            if (!OFF.seen && gx >= 0 && gx < 30 && Math.abs(ty) < 40) OFF = { gap: gx, dy: ty, seen: false };
+            toggleR20(b);           // 다시 닫는다
         }
-        if (sb && sb.style.display !== "none") toggleR20(b);        // 다시 닫는다
         learning = false;
     };
     const hoverR20 = menu => menu.querySelectorAll(":scope > button").forEach(b => {
         if (ours(b) || b.dataset.r20tmHov || !b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")) return;
         b.dataset.r20tmHov = "1";
-        b.addEventListener("mouseenter", () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnOff(b), 60); });
-        b.addEventListener("mouseleave", () => { if (isOpen(b)) toggleR20(b); });
+        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnOff(b), 60); }, () => { if (isOpen(b)) toggleR20(b); });
     });
     const arrange = menu => {
         if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
