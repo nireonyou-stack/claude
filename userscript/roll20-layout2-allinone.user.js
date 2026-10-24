@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.14.5
+// @version      1.14.6
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.14.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.14.6";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4243,6 +4243,8 @@ const tokenMenu = (() => {
                 .filter(x => x && !/^(position|left|top|right|bottom|inset|transform|translate|z-index|display)\s*:/i.test(x)).join("; "));
             Object.assign(sub.style, { display: "flex", flexDirection: "column", zIndex: "100001" });
             sub.style.setProperty("position", "fixed", "important");
+            // 미끄러지는 효과가 있으면 빠르게 오갈 때 자리 계산이 어긋난다 → 끈다
+            ["transition", "animation", "transform"].forEach(k => sub.style.setProperty(k, "none", "important"));
             const mcs = getComputedStyle(menu);
             if (PANEL) Object.assign(sub.style, PANEL);
             else if (getComputedStyle(sub).backgroundColor === "rgba(0, 0, 0, 0)")
@@ -4250,11 +4252,15 @@ const tokenMenu = (() => {
             const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight;
             const gap = OFF.gap, dy = OFF.dy ?? -(parseFloat(getComputedStyle(sub).paddingTop) || 0);
             const want = { x: m.right + gap + w > innerWidth - 4 ? m.left - w - gap : m.right + gap, y: Math.max(4, Math.min(r.top + dy, innerHeight - h - 4)) };
+            // fixed 의 기준점: 조상에 transform 등이 있으면 화면 (0,0)이 아니다 → 보이지 않는 점을 같은 곳에 놓아 잰다
+            const probe = document.createElement("div");
+            probe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;transition:none;animation:none";
+            menu.appendChild(probe);
+            const base = probe.getBoundingClientRect();
+            probe.remove();
             // Roll20 CSS 가 하위 메뉴 자리를 강제해도 이기도록 !important
-            const put = (x, y) => { sub.style.setProperty("left", x + "px", "important"); sub.style.setProperty("top", y + "px", "important"); };
-            put(0, 0);
-            const at = sub.getBoundingClientRect();         // 기준점(조상 transform 등)이 달라도 맞도록 한 번 보정
-            put(want.x - at.left, want.y - at.top);
+            sub.style.setProperty("left", (want.x - base.left) + "px", "important");
+            sub.style.setProperty("top", (want.y - base.top) + "px", "important");
         }, () => {
             sub.style.display = "none";
             OPEN?.subCls.forEach(c => sub.classList.remove(c));
