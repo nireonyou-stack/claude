@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.15.0
+// @version      1.15.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.15.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.15.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1559,8 +1559,16 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20sc-on #lighting-layer-button, body.r20sc-on #page-button { display:none !important; }
         body.r20sc-on .r20sc-page .icon-slot .grimoire__roll20-icon { display:inline-block; font-size:17px !important; line-height:17px; width:auto !important; height:17px !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { flex-direction:row !important; align-items:center !important; width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons:not(:hover) .parentContainer > :not(:last-child) { display:none !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer { display:grid !important; grid-template-columns:auto auto; justify-items:end; align-items:center; width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > .zoomButtonsInner { grid-column:1; grid-row:1; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > :last-child { grid-column:2; grid-row:1; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { grid-column:2; grid-row:2; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { flex-direction:row !important; align-items:center !important; width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:1; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .level { order:2; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .sliderSection { order:3; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .plus { order:4; }
+        body.r20sc-on #vm_zoom_buttons:not(:hover) .zoomButtonsInner { display:none !important; }
         /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
         .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
@@ -4294,13 +4302,25 @@ const tokenMenu = (() => {
     let OFF = { gap: 4, dy: null, seen: false };
     let PANEL = null;           // Roll20 하위 메뉴 판 모양 (배경·테두리·둥글기·그림자·여백·최소 폭)       // Roll20 하위 메뉴가 메뉴 판 오른쪽에서 떨어진 간격 · 머리 줄과의 높이 차
     // 화면에 보이는 Roll20 하위 메뉴(고급 변환 · 여러 면)가 열린 자리에서 간격을 잰다
-    const learnOff = b => {
+    // (Roll20 하위 메뉴는 미끄러지며 열린다 → 움직임이 멈춘 뒤 두 번 재서 같을 때만 쓴다)
+    const measure = (b, sb, menu) => {
+        const sr = sb.getBoundingClientRect(), hr = b.getBoundingClientRect(), mr = menu.getBoundingClientRect();
+        return sr.width && hr.width && sr.left >= mr.right - 30 ? { gap: sr.left - mr.right, dy: sr.top - hr.top } : null;   // 왼쪽으로 뒤집혀 열린 것은 쓰지 않는다
+    };
+    const learnOff = async b => {
         const sb = subOf(b), menu = b.closest(".context-menu");
         grabItem(menu);
         if (OFF.seen || !sb || !isOpen(b)) return;
-        const sr = sb.getBoundingClientRect(), hr = b.getBoundingClientRect(), mr = menu.getBoundingClientRect();
-        if (!sr.width || !hr.width || sr.left < mr.right - 30) return;        // 왼쪽으로 뒤집혀 열린 것은 쓰지 않는다
-        OFF = { gap: sr.left - mr.right, dy: sr.top - hr.top, seen: true };
+        // 연달아 잰 두 값이 같아질 때까지 (최대 1초쯤) 다시 잰다
+        let prev = measure(b, sb, menu);
+        for (let k = 0; k < 4; k++) {
+            await new Promise(r => setTimeout(r, 250));
+            if (!isOpen(b)) return;
+            const cur = measure(b, sb, menu);
+            if (prev && cur && Math.abs(prev.gap - cur.gap) < 0.5 && Math.abs(prev.dy - cur.dy) < 0.5) { OFF = { ...cur, seen: true }; break; }
+            prev = cur;
+        }
+        if (!OFF.seen) return;
         const cs = getComputedStyle(sb);
         if (cs.backgroundColor !== "rgba(0, 0, 0, 0)")
             PANEL = { backgroundColor: cs.backgroundColor, border: cs.border, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, padding: cs.padding, minWidth: cs.minWidth };
@@ -4328,7 +4348,7 @@ const tokenMenu = (() => {
     const hoverR20 = menu => menu.querySelectorAll(":scope > button").forEach(b => {
         if (ours(b) || b.dataset.r20tmHov || !b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")) return;
         b.dataset.r20tmHov = "1";
-        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnOff(b), 60); }, () => { if (isOpen(b)) toggleR20(b); });
+        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnOff(b), 300); }, () => { if (isOpen(b)) toggleR20(b); });
     });
     const arrange = menu => {
         if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
