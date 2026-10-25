@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.18.1
+// @version      1.18.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.18.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.18.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -174,7 +174,7 @@ if (!document.getElementById("custom-journal-style")) {
         #custom-settings-popup { position:fixed; width:270px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
         #custom-settings-popup.show { display:flex !important; }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
-        #textchat-input.layout-applied-v11 { padding:4px 6px !important; }
+        #textchat-input.layout-applied-v11 { padding:4px 6px !important; border-top:0 !important; }
         #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:12px !important; line-height:1.5 !important; }
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
@@ -1629,13 +1629,15 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
-        /* 덱 창: 덱마다 한 칸 — 왼쪽 링크(이름 + 돌리기·선택·회수·섞기·숨기기, 늘 보임) + 오른쪽 카드 더미. 덱이 많으면 세로 스크롤만 */
-        /* Roll20 은 링크 목록을 마우스를 올릴 때만, 40px 폭으로 보여 줘서 글자가 한 자씩 꺾였다 */
-        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(250,250,251,0.96) !important; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.3); box-sizing:border-box; scrollbar-width:thin; }
-        #showndecks.r20dk-on .adeck { position:relative; width:auto !important; height:auto !important; min-height:120px; margin:0 0 6px !important; padding:8px 8px 8px 112px !important; float:none !important; background:#fff; border:1px solid #ebe6ea; border-radius:8px; }
+        /* 덱 창: 반투명 판에 카드 더미만 (최대 100px). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
+        /* Roll20 은 메뉴를 판 안 40px 폭에 넣어서 글자가 한 자씩 꺾였다 → position:fixed 로 판 밖에 (자리는 deckView 가 잡는다) */
+        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:8px; box-sizing:border-box; scrollbar-width:thin; }
+        #showndecks.r20dk-on .adeck { width:auto !important; height:auto !important; margin:0 0 6px !important; padding:0 !important; float:none !important; }
         #showndecks.r20dk-on .adeck:last-child { margin-bottom:0 !important; }
         #showndecks.r20dk-on .deckstack { left:0 !important; margin:0 !important; }
-        #showndecks.r20dk-on .controls { display:block !important; visibility:visible !important; opacity:1 !important; left:auto !important; right:calc(100% + 8px) !important; top:0 !important; width:96px !important; height:auto !important; padding:0 !important; overflow:visible !important; background:none !important; }
+        #showndecks.r20dk-on .deckstack img { max-width:100px !important; max-height:100px !important; object-fit:contain; }
+        #showndecks.r20dk-on .controls { display:none !important; }
+        #showndecks.r20dk-on .adeck.r20dk-hov .controls { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; right:auto !important; z-index:20; width:96px !important; height:auto !important; padding:4px !important; overflow:visible !important; background:#fff !important; border:1px solid #e3dee2; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
         #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; line-height:20px; text-align:left !important; }
         #showndecks.r20dk-on .control:first-child { padding:0 6px; font-weight:700; color:#222; }
         #showndecks.r20dk-on .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
@@ -5465,8 +5467,31 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
-// ───────── 덱 창: 링크 다섯 개만, 늘 보이게 정돈 (#showndecks.r20dk-on — 모양은 CSS) ─────────
+// ───────── 덱 창: 반투명 판 · 카드 최대 100px · 메뉴는 마우스를 올릴 때 카드 왼쪽에 (#showndecks.r20dk-on — 모양은 CSS) ─────────
 const deckView = (() => {
+    let hov = null, t = 0;
+    const place = ad => {
+        const c = ad.querySelector(".controls"), st = ad.querySelector(".deckstack");
+        if (!c || !st) return;
+        const r = st.getBoundingClientRect(), w = c.offsetWidth, h = c.offsetHeight;
+        const x = r.left - w - 6 >= 4 ? r.left - w - 6 : r.right + 6;
+        c.style.setProperty("left", Math.round(x) + "px", "important");
+        c.style.setProperty("top", Math.round(Math.max(4, Math.min(r.top, innerHeight - h - 4))) + "px", "important");
+    };
+    const close = () => { clearTimeout(t); t = 0; hov?.classList.remove("r20dk-hov"); hov = null; };
+    // 카드 → 메뉴로 옮겨 가는 틈에서 닫히지 않게 조금 기다린다
+    document.addEventListener("mouseover", e => {
+        if (!btnVisible.deckview) return;
+        const ad = e.target.closest?.("#showndecks.r20dk-on .adeck");
+        if (!ad) { if (hov && !t) t = setTimeout(close, 250); return; }
+        clearTimeout(t); t = 0;
+        if (hov === ad) return;
+        close();
+        hov = ad;
+        ad.classList.add("r20dk-hov");
+        place(ad);
+    });
+    document.addEventListener("scroll", e => { if (hov && e.target.id === "showndecks") close(); }, true);
     const inject = () => {
         const sd = document.getElementById("showndecks");
         if (!sd) return;
