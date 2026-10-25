@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.19.0
+// @version      1.19.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.19.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.19.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -188,7 +188,7 @@ if (!document.getElementById("custom-journal-style")) {
         .cs-switch input:checked + .cs-slider { background:#1867c7; }
         .cs-switch input:checked + .cs-slider:before { transform:translateX(14px); }
         .cs-custom-row { display:flex; align-items:center; padding:5px 8px; border-bottom:1px solid #f5f5f5; gap:4px; }
-        .cs-custom-row > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; font-size:11px; }
+        .cs-custom-row > span { overflow:hidden; text-overflow:clip; white-space:nowrap; flex:1; font-size:11px; }
         .cs-custom-icon-btn { background:none; border:none; cursor:pointer; color:#bbb; font-size:11px; padding:2px 3px; flex-shrink:0; line-height:1; }
         .cs-custom-icon-btn:hover { color:#555; }
         .cs-custom-del:hover { color:#e55 !important; }
@@ -1230,8 +1230,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20-ac-box { position:fixed; z-index:100000; min-width:220px; max-width:360px; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:12px; color:#333; display:none; }
         #r20-ac-box.show { display:block; }
         .r20-ac-item { display:flex; align-items:baseline; gap:6px; padding:4px 8px; cursor:pointer; border-bottom:1px solid #f0f0f0; white-space:nowrap; }
-        .r20-ac-item b { font-weight:700; overflow:hidden; text-overflow:ellipsis; }
-        .r20-ac-item small { color:#999; font-size:10px; overflow:hidden; text-overflow:ellipsis; }
+        .r20-ac-item b { font-weight:700; overflow:hidden; text-overflow:clip; }
+        .r20-ac-item small { color:#999; font-size:10px; overflow:hidden; text-overflow:clip; }
         .r20-ac-item.on, .r20-ac-item:hover { background:#e6f7ff; }
         .r20-bgm-pv { cursor:pointer; margin-right:4px; font-size:12px; opacity:0.55; text-decoration:none !important; user-select:none; }
         .r20-bgm-pv:hover, .r20-bgm-pv:focus-visible { opacity:1; }
@@ -1301,7 +1301,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-cb.on { background:#1867c7; border-color:#1867c7; }
         #r20be .r20be-cb.on svg { visibility:visible; }
         #r20be .r20be-nm { flex:1; min-width:0; display:flex; align-items:center; gap:5px; height:26px; padding:0 4px; border:0; background:transparent; color:#222; font-size:12px; text-align:left; cursor:pointer; }
-        #r20be .r20be-nm span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-nm span { overflow:hidden; text-overflow:clip; white-space:nowrap; }
         #r20be .r20be-nm svg { flex-shrink:0; }
         #r20be .r20be-dot { width:7px; height:7px; border-radius:50%; background:#c2410c; flex-shrink:0; }
         #r20be .r20be-meta { color:#6b6b6b; font-size:10px; white-space:nowrap; flex-shrink:0; }
@@ -1313,7 +1313,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-zm button:hover { background:#f2f2f2; color:#222; }
         #r20be .r20be-tree.r20be-icons { padding:2px 10px 12px; }
         #r20be .r20be-igh { display:flex; align-items:center; gap:6px; padding:10px 4px 4px; font-size:11px; font-weight:700; color:#555; }
-        #r20be .r20be-igh span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-igh span { min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
         #r20be .r20be-igh small { font-weight:400; color:#6b6b6b; }
         #r20be .r20be-igh::after { content:""; flex:1; height:1px; background:#eee; }
         #r20be .r20be-igrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:4px; }
@@ -1352,7 +1352,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-prev { border:1px solid #e6e6e6; border-radius:4px; overflow:hidden; }
         #r20be .r20be-prev > div { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; padding:5px 10px; border-top:1px solid #f0f0f0; }
         #r20be .r20be-prev > div:first-child { border-top:0; background:#f6f6f6; color:#555; font-size:11px; font-weight:700; }
-        #r20be .r20be-prev span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-prev span { overflow:hidden; text-overflow:clip; white-space:nowrap; }
         #r20be .r20be-prev .chg { color:#1867c7; font-weight:700; }
         #r20be .r20be-prev .same { color:#8a8a8a; }
         #r20be .r20be-acts { display:flex; gap:8px; }
@@ -1380,7 +1380,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-imgs .r20be-card { gap:3px; padding:4px; }
         #r20be .r20be-ithumb { background:#f1f1f1; }
         #r20be .r20be-ithumb img, #r20be .r20be-ithumb video { object-fit:contain; }
-        #r20be .r20be-inm { overflow:hidden; padding:0 2px; color:#333; font-size:11px; white-space:nowrap; text-overflow:ellipsis; }
+        #r20be .r20be-inm { overflow:hidden; padding:0 2px; color:#333; font-size:11px; white-space:nowrap; text-overflow:clip; }
         #r20be .r20be-icnt { position:absolute; right:8px; top:8px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
         #r20be .r20be-isend { display:flex; flex-direction:column; gap:8px; }
         #r20be .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
@@ -1392,7 +1392,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-mlist { display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; }
         #r20be .r20be-mrow { display:flex; align-items:center; gap:8px; margin:0; padding:6px 8px; border:1px solid #e6e6e6; border-radius:4px; font-size:12px; font-weight:normal; cursor:pointer; }
         #r20be .r20be-mrow input { margin:0; }
-        #r20be .r20be-mrow span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-mrow span { flex:1; min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
         #r20be .r20be-mrow small { color:#6b6b6b; }
         #r20be .r20be-mrow:has(input:checked) { border-color:#1867c7; background:#eef5fd; }
         #r20be .r20be-msum { font-size:12px; font-weight:700; color:#1867c7; }
@@ -1400,7 +1400,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-tsplit { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; }
         #r20be .r20be-tprev { height:220px; overflow-y:auto; border:1px solid #e6e6e6; border-radius:4px; }
         #r20be .r20be-tprev > div { display:grid; grid-template-columns:minmax(0, 1fr) 52px 48px; gap:6px; align-items:center; height:24px; padding:0 8px; border-bottom:1px solid #f0f0f0; font-size:11px; }
-        #r20be .r20be-tprev > div > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-tprev > div > span:first-child { overflow:hidden; text-overflow:clip; white-space:nowrap; }
         #r20be .r20be-tprev > div > span:not(:first-child) { color:#6b6b6b; text-align:right; }
         #r20be .r20be-tsplit textarea { height:196px; padding:6px 8px; resize:none; }
         #r20be .r20be-dlg textarea.mono { height:180px; padding:6px 8px; font-family:ui-monospace, Consolas, monospace; resize:vertical; }
@@ -1431,12 +1431,15 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
         /* 재생목록 머리줄: 폴더째 재생 버튼만 */
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:28px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:700 !important; line-height:28px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:28px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.playstyle, body.r20jb-on #jukeboxfolderroot .playlistcontrols a.exportplaylist { display:none !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play { display:inline-flex !important; align-items:center; justify-content:center; width:22px; margin:0 !important; color:#777 !important; text-decoration:none !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:28px !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
+        /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
         /* 빈 재생목록의 자리표시(끌어 넣기용)는 남기되 높이만 줄인다 */
         body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
         /* 곡 줄 */
@@ -1449,7 +1452,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:12px; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
         body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
@@ -1491,7 +1494,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #journalfolderroot li.dd-folder { position:relative !important; }
         body.r20jb-on #journalfolderroot li.dd-folder > button[data-action] { position:absolute !important; left:0 !important; top:0 !important; float:none !important; width:16px !important; height:26px !important; margin:0 !important; line-height:26px !important; z-index:2; }
         body.r20jb-on #journalfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 16px !important; }
-        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
         /* 폴더 끌기 손잡이(투명)가 줄 높이를 늘리지 않게 흐름에서 뺀다 */
         body.r20jb-on #journalfolderroot li.dd-folder > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; float:none !important; height:26px !important; margin:0 !important; }
         body.r20jb-on #journalfolderroot li.dd-folder { min-height:0 !important; }
@@ -1501,7 +1504,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #journalfolderroot li.journalitem .token { float:none !important; position:static !important; flex:0 0 18px; width:18px !important; height:18px !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:50%; overflow:hidden; background:none !important; }
         body.r20jb-on #journalfolderroot li.journalitem .token img { width:18px !important; height:18px !important; max-width:none !important; margin:0 !important; border-radius:50%; object-fit:cover; }
         body.r20jb-on #journalfolderroot li.journalitem .name { flex:1 1 auto; min-width:0; display:flex !important; align-items:center; gap:4px; float:none !important; position:static !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20jb-on #journalfolderroot li.journalitem .namecontainer { flex:1 1 auto; min-width:0; float:none !important; position:static !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:ellipsis; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .namecontainer { flex:1 1 auto; min-width:0; float:none !important; position:static !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
         body.r20jb-on #journalfolderroot li.journalitem .playerdots { flex-shrink:0; margin:0 !important; font-size:12px !important; line-height:1 !important; }
         body.r20jb-on #journalfolderroot li.journalitem .sourcefooter:empty { display:none !important; }
         /* 재생 중인 곡 */
@@ -1618,7 +1621,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #deckstables table.table thead { display:none !important; }
         body.r20jb-on #deckstables table.table td { height:26px; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none !important; font-size:12px !important; line-height:26px !important; vertical-align:middle !important; white-space:nowrap; }
         body.r20jb-on #deckstables table.table tr:hover td { background:rgba(24,103,199,0.06) !important; }
-        body.r20jb-on #deckstables table.table td.name { width:100%; max-width:0; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        body.r20jb-on #deckstables table.table td.name { width:100%; max-width:0; overflow:hidden; text-overflow:clip; cursor:pointer; }
         body.r20jb-on #deckstables td.name a.rollmacro { display:inline-block; width:16px; margin:0 2px 0 0 !important; color:#999 !important; font-size:12px !important; text-align:center; text-decoration:none !important; }
         body.r20jb-on #deckstables td.name a.rollmacro:hover { color:#222 !important; }
         body.r20jb-on #deckstables td.bartoggle label { display:inline-flex !important; align-items:center; gap:2px; margin:0 !important; font-size:10px !important; font-weight:normal !important; color:#999 !important; line-height:26px !important; }
@@ -1645,7 +1648,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #showndecks.r20dk-on .deckstack img { display:block; width:70px !important; height:auto !important; max-width:none !important; max-height:none !important; }
         #showndecks.r20dk-on .controls { display:none !important; }
         #showndecks.r20dk-on .adeck.r20dk-hov .controls { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; right:auto !important; z-index:20; width:96px !important; height:auto !important; padding:4px !important; overflow:visible !important; background:#fff !important; border:1px solid #e3dee2; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
-        #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; line-height:20px; text-align:left !important; }
+        #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:clip; font-size:12px; line-height:20px; text-align:left !important; }
         #showndecks.r20dk-on .control:first-child { padding:0 6px; font-weight:700; color:#222; }
         #showndecks.r20dk-on .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
         #showndecks.r20dk-on .control a:hover { background:#eaf1fb; }
@@ -1655,7 +1658,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         /* flex 로 하면 jQuery UI 가 세로 목록으로 여겨 옆으로 끌어도 안 바뀐다 → inline-block 을 줄바꿈 */
         body.r20mb-on #macrobar_macros { display:block !important; width:auto !important; white-space:normal !important; padding:2px 0 0; }
         body.r20mb-on #macrobar_macros .macrobox { display:inline-block !important; vertical-align:top; width:auto !important; margin:0 4px 4px 0 !important; float:none !important; }
-        body.r20mb-on #macrobar_macros .macrobox > button { height:26px !important; max-width:180px; margin:0 !important; padding:0 10px !important; border-radius:13px !important; font-size:12px !important; line-height:24px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 1px 2px rgba(0,0,0,0.25); }
+        body.r20mb-on #macrobar_macros .macrobox > button { height:26px !important; max-width:180px; margin:0 !important; padding:0 10px !important; border-radius:13px !important; font-size:12px !important; line-height:24px !important; white-space:nowrap; overflow:hidden; text-overflow:clip; box-shadow:0 1px 2px rgba(0,0,0,0.25); }
         body.r20mb-on #macrobar_macros .macrobox > .handle { display:none !important; }     /* 단추 전체를 길게 눌러 끄니 손잡이는 필요 없다 */
         body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(184,33,95,0.55); }
         body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
@@ -1711,7 +1714,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
         .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
         .r20ta-pop .r20ta-h { padding:4px 10px 2px; color:#8a8a90; font-size:10px; font-weight:700; }
-        .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:clip; cursor:pointer; }
         .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
         /* 대화 캡처: 고르는 동안 메시지를 눌러 고르고, 고른 것은 왼쪽 막대 + 옅은 배경 */
         #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
@@ -1760,7 +1763,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .ui-dialog.r20qp .ui-dialog-content > p { display:flex; align-items:center; gap:6px; margin:0 0 2px !important; font-size:12px !important; color:#555; }
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid #ddd !important; border-radius:3px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         .ui-dialog.r20qp img.r20qp-img { padding:0; }
-        .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:clip; }
         body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
         .r20be-mini:hover { background:#ebebeb; color:#333; }
@@ -1808,7 +1811,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #imagedialog .r20ri-ph { display:flex; align-items:center; gap:8px; padding:2px 6px 8px 10px; border-bottom:1px solid #f0f0f3; }
         #imagedialog .r20ri-ph img, #imagedialog .r20ri-ph video { flex-shrink:0; width:44px; height:44px; border-radius:6px; background:#f1f1f1; object-fit:contain; }
         #imagedialog .r20ri-ph div { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:11px; color:#6b6b70; }
-        #imagedialog .r20ri-ph strong { overflow:hidden; font-size:12px; color:#222; white-space:nowrap; text-overflow:ellipsis; }
+        #imagedialog .r20ri-ph strong { overflow:hidden; font-size:12px; color:#222; white-space:nowrap; text-overflow:clip; }
         #imagedialog .r20ri-ph .r20ri-x { width:24px; height:24px; padding:0; border:0; border-radius:5px; background:transparent; color:#777; }
         #imagedialog .r20ri-mi { display:block; width:100%; height:28px; padding:0 10px; border:0; background:transparent; font-size:12px; color:#333; text-align:left; }
         #imagedialog .r20ri-mi:hover, #imagedialog .r20ri-ph .r20ri-x:hover { background:#f4f4f6; }
@@ -1818,7 +1821,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #imagedialog .r20ri-uses button:hover { text-decoration:underline; }
         #imagedialog .r20ri-foot { display:flex; flex-shrink:0; align-items:center; gap:6px; height:34px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
         #imagedialog .r20ri-foot button { padding:0 7px; }
-        #imagedialog .r20ri-sum { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #imagedialog .r20ri-sum { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; }
     `;
     document.head.appendChild(style);
 }
@@ -4182,6 +4185,24 @@ const jukeboxRow = (() => {
     });
     document.addEventListener("mouseout", e => { const ti = e.target.closest?.(TAGGED); if (ti && !ti.contains(e.relatedTarget)) tip?.remove(); });
     document.addEventListener("wheel", () => tip?.remove(), { capture: true, passive: true });
+    // 트랙이 없는 재생목록은 구분선으로 쓴다 → 표시만 붙이고 모양은 CSS.
+    // 화면이 아니라 Roll20 폴더 구조로 판단해서, 접혀 있는 목록도 틀리지 않는다
+    let sepRaw = null, sepIds = new Set();
+    const markSeps = () => {
+        const raw = window.Campaign?.get?.("jukeboxfolder") || "[]";
+        if (raw !== sepRaw) {
+            sepRaw = raw;
+            sepIds = new Set();
+            let list = [];
+            try { list = JSON.parse(raw); } catch (e) {}
+            const walk = l => (Array.isArray(l) ? l : []).forEach(x => { if (x && typeof x === "object") { if (!(x.i || []).length) sepIds.add(x.id); walk(x.i); } });
+            walk(list);
+        }
+        document.querySelectorAll("#jukeboxfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
+            const on = sepIds.has(f.dataset.globalfolderid);
+            if (f.classList.contains("r20jb-sep") !== on) f.classList.toggle("r20jb-sep", on);
+        });
+    };
     const addStepControl = () => {
         const host = document.querySelector("#jukebox .secondarycontrols");
         if (!host || host.querySelector(".r20jb-step")) return;
@@ -4214,6 +4235,7 @@ const jukeboxRow = (() => {
                 addVolume();
                 addLoop();
                 addTags();
+                markSeps();
                 bgmPreview.inject();
             }).observe(jb, { childList: true, subtree: true });
         }
@@ -4242,6 +4264,7 @@ const jukeboxRow = (() => {
         addVolume();
         addLoop();
         addTags();
+        markSeps();
     };
     document.addEventListener("click", e => {
         const lb = e.target.closest?.(".r20jb-loop");
