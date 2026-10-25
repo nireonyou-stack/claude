@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.17.0
+// @version      1.17.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.17.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.17.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -494,7 +494,7 @@ function applyCocofoliaLayout() {
                     desc: document.getElementById("custom-desc-toggle"),
                     journal: document.getElementById("custom-journal-toggle")
                 };
-                if (targets[key]) targets[key].style.display = inp.checked ? "" : "none";
+                if (targets[key]) targets[key].style.display = inp.checked ? (targets[key].dataset.disp || "") : "none";
 
                 const sBtn = document.getElementById("custom-sadam-toggle");
                 if (sBtn) {
@@ -942,7 +942,9 @@ function applyCocofoliaLayout() {
                 popup.style.right = "auto"; popup.style.bottom = "auto";
             } else if (!popup.dataset.userMoved) {
                 const rect = journalBtn.getBoundingClientRect();
-                popup.style.right  = (window.innerWidth - rect.left + 210) + "px";
+                // 단추가 대화 판 안(⚙ 옆)에 있으니 판 왼쪽 바깥에 연다
+                const sideL = document.getElementById("rightsidebar")?.getBoundingClientRect().left;
+                popup.style.right  = (window.innerWidth - (sideL > 0 ? sideL - 8 : rect.left - 210)) + "px";
                 popup.style.bottom = (window.innerHeight - rect.top + 8) + "px";
                 popup.style.left   = "auto"; popup.style.top = "auto";
             }
@@ -991,7 +993,18 @@ function applyCocofoliaLayout() {
     leftBtnGroup.id = "custom-left-group";
     leftBtnGroup.appendChild(toggleBtn);
     leftBtnGroup.appendChild(sadamBtn);
-    leftBtnGroup.appendChild(journalBtn);
+    // 저널(빠른 저널) 단추는 말하는 사람 줄의 ⚙ 왼쪽에 아이콘으로
+    const gearBtn = document.getElementById("custom-settings-btn");
+    if (gearBtn) {
+        journalBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>';
+        journalBtn.title = "빠른 저널";
+        journalBtn.setAttribute("aria-label", "빠른 저널");
+        journalBtn.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;"
+            + `background-color: ${CONFIG.inactiveBg} !important; color: ${CONFIG.inactiveText} !important; border-color: ${CONFIG.inactiveBorder} !important;`
+            + (btnVisible.journal ? "" : "display: none;");
+        journalBtn.dataset.disp = "flex";
+        gearBtn.before(journalBtn);
+    } else leftBtnGroup.appendChild(journalBtn);
 
     buttonRow.appendChild(leftBtnGroup);
     buttonRow.appendChild(sendBtn);
@@ -1584,11 +1597,17 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
         #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 #e7b3c9 !important; }
         #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 #b8215f !important; background-color:rgba(184,33,95,0.08) !important; }
-        .r20cap-bar { position:fixed; z-index:100003; display:flex; align-items:center; gap:6px; padding:6px 8px 6px 12px; border-radius:10px; background:rgba(34,34,38,0.94); color:#fff; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,0.3); }
-        .r20cap-bar span { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-        .r20cap-bar button { height:26px; margin:0; padding:0 12px; border:0; border-radius:6px; background:#fff; color:#222; font-size:12px; font-weight:700; cursor:pointer; }
-        .r20cap-bar button.ghost { background:transparent; color:#ddd; font-weight:400; }
-        .r20cap-bar button:disabled { opacity:0.45; cursor:default; }
+        .r20cap-fab { position:fixed; z-index:20; display:flex; gap:6px; opacity:0.45; transition:opacity .15s; }
+        .r20cap-fab:hover, .r20cap-fab.on, .r20cap-fab:focus-within, .r20cap-fab:has(.ok, .bad) { opacity:1; }
+        .r20cap-fab button { position:relative; width:30px; height:30px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:rgba(34,34,38,0.82); color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.3); cursor:pointer; }
+        .r20cap-fab button:focus-visible { outline:2px solid #b8215f; outline-offset:2px; }
+        .r20cap-fab [data-a=copy] { background:#b8215f; }
+        .r20cap-fab [data-a=copy]:disabled { opacity:0.5; cursor:default; }
+        .r20cap-fab button.ok { background:#2e8b57; }
+        .r20cap-fab button.bad { background:#c0392b; }
+        .r20cap-fab b { position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#fff; color:#b8215f; font:700 10px/16px sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+        .r20cap-fab .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
+        @keyframes r20cap-spin { to { transform:rotate(360deg); } }
         .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
         .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
         .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
@@ -4312,6 +4331,20 @@ const tokenMenu = (() => {
         menu.appendChild(sub);
         const build = () => sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
         build();
+        // 메뉴에 transform · zoom 이 걸려 있으면 left/top 값이 곧 화면 좌표가 아니다 (기준점이 옮겨지고 배율이 붙는다)
+        // → 두 번 놓아 보고 실제로 놓인 화면 좌표에서 이동·배율을 구해, 원하는 화면 좌표가 되는 값을 넣는다 (!important: Roll20 CSS 를 이기도록)
+        const place = () => {
+            const put = (x, y) => { sub.style.setProperty("left", x + "px", "important"); sub.style.setProperty("top", y + "px", "important"); };
+            put(0, 0);
+            const a = sub.getBoundingClientRect();
+            put(100, 100);
+            const b = sub.getBoundingClientRect();
+            const sx = (b.left - a.left) / 100 || 1, sy = (b.top - a.top) / 100 || 1;
+            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = a.width, h = a.height;
+            const pad = (parseFloat(getComputedStyle(sub).paddingTop) || 0) * sy;
+            const want = { x: m.right + 4 + w > innerWidth - 4 ? m.left - w - 4 : m.right + 4, y: Math.max(4, Math.min(r.top - pad, innerHeight - h - 4)) };
+            put((want.x - a.left) / sx, (want.y - a.top) / sy);
+        };
         // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥에 띄우고, 첫 항목을 이 줄 높이에 맞춘다.
         // (Roll20 하위 메뉴에서 자리를 읽어 따라 하면 여는 방식·움직임에 따라 어긋나서, 자리는 정해진 규칙으로만 계산한다)
         hoverKeep(g, () => {
@@ -4323,18 +4356,9 @@ const tokenMenu = (() => {
             if (PANEL) Object.assign(sub.style, PANEL);
             else if (getComputedStyle(sub).backgroundColor === "rgba(0, 0, 0, 0)")
                 Object.assign(sub.style, { backgroundColor: mcs.backgroundColor, border: mcs.border, borderRadius: mcs.borderRadius, boxShadow: mcs.boxShadow, padding: mcs.padding });
-            // 메뉴에 transform · zoom 이 걸려 있으면 left/top 값이 곧 화면 좌표가 아니다 (기준점이 옮겨지고 배율이 붙는다)
-            // → 두 번 놓아 보고 실제로 놓인 화면 좌표에서 이동·배율을 구해, 원하는 화면 좌표가 되는 값을 넣는다 (!important: Roll20 CSS 를 이기도록)
-            const put = (x, y) => { sub.style.setProperty("left", x + "px", "important"); sub.style.setProperty("top", y + "px", "important"); };
-            put(0, 0);
-            const a = sub.getBoundingClientRect();
-            put(100, 100);
-            const b = sub.getBoundingClientRect();
-            const sx = (b.left - a.left) / 100 || 1, sy = (b.top - a.top) / 100 || 1;
-            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = a.width, h = a.height;
-            const pad = (parseFloat(getComputedStyle(sub).paddingTop) || 0) * sy;
-            const want = { x: m.right + 4 + w > innerWidth - 4 ? m.left - w - 4 : m.right + 4, y: Math.max(4, Math.min(r.top - pad, innerHeight - h - 4)) };
-            put((want.x - a.left) / sx, (want.y - a.top) / sy);
+            place();
+            // 바로 옆 Roll20 하위 메뉴(고급 변환 · 여러 면)가 닫히는 동안 화면 기준이 잠깐 바뀌어 어긋날 수 있다 → 조금 뒤 다시 맞춘다
+            [60, 250].forEach(ms => setTimeout(() => { if (sub.style.display !== "none") place(); }, ms));
         }, () => { sub.style.display = "none"; }, sub);
         return g;
     };
@@ -4986,7 +5010,8 @@ const screenUI = (() => {
     const place = () => {
         const hb = document.getElementById("sidebarcontrol");
         if (!hb) return;
-        const r = hb.getBoundingClientRect();
+        const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
         [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")].forEach(el => {
             if (!el) return;
@@ -4994,14 +5019,19 @@ const screenUI = (() => {
             set("position", "fixed"); set("left", "auto");
             if (el.id === "vm_zoom_buttons") { set("width", "auto"); set("height", "auto"); }
             set("top", Math.round(y) + "px");
-            set("right", Math.round(innerWidth - r.right) + "px");
+            set("right", Math.round(innerWidth - edge) + "px");
             y += el.getBoundingClientRect().height + 4;
         });
     };
-    let watched = null;
+    let watched = null, watchedSide = null;
     const inject = () => {
         if (!btnVisible.screenui) return;
         place();
+        const side = document.getElementById("rightsidebar");
+        if (side && watchedSide !== side) {
+            watchedSide = side;
+            new ResizeObserver(() => btnVisible.screenui && place()).observe(side);
+        }
         // 채팅·저널을 여닫으면 햄버거가 움직인다 → 따라간다
         const hb = document.getElementById("sidebarcontrol");
         if (hb && watched !== hb) {
@@ -5083,53 +5113,58 @@ const tokenActs = (() => {
 // ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
 // 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
 const chatCapture = (() => {
-    let on = false, last = null, bar = null;
+    let on = false, last = null;
     const logEl = () => document.querySelector("#textchat .content");
     const msgs = () => [...(logEl()?.querySelectorAll(":scope > .message") || [])];
     const picked = () => msgs().filter(m => m.classList.contains("r20cap-sel"));
-    const btn = () => document.getElementById("custom-capture-toggle");
-    const paintBtn = () => {
-        const b = btn();
-        if (!b) return;
-        b.style.setProperty("background-color", on ? CONFIG.activeBg : CONFIG.inactiveBg, "important");
-        b.style.setProperty("color", on ? CONFIG.activeText : CONFIG.inactiveText, "important");
-        b.style.setProperty("border-color", on ? CONFIG.activeBorder : CONFIG.inactiveBorder, "important");
+    const ICON = {
+        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+        x: '<path d="M18 6 6 18M6 6l12 12"/>',
+        copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+        ok: '<path d="M20 6 9 17l-5-5"/>',
+        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
     };
-    const placeBar = () => {
+    const svg = k => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+    let fab = null, ro = null, busy = false, note = "", noteT = 0;
+    // 대화 기록 판의 오른쪽 아래 (판이 숨으면 같이 숨는다). 조상에 transform 이 있어도 맞도록 한 번 재고 어긋난 만큼 고친다
+    const place = () => {
         const lg = logEl();
-        if (!bar || !lg) return;
+        if (!fab || !lg) return;
         const r = lg.getBoundingClientRect();
-        Object.assign(bar.style, { left: r.left + 8 + "px", width: Math.max(220, r.width - 16) + "px", top: Math.max(8, r.bottom - 46) + "px" });
+        fab.style.visibility = r.width && r.height ? "" : "hidden";
+        if (!r.width || !r.height) return;
+        const x = r.right - 18 - fab.offsetWidth, y = r.bottom - 10 - fab.offsetHeight;
+        fab.style.left = x + "px"; fab.style.top = y + "px";
+        const g = fab.getBoundingClientRect();
+        fab.style.left = 2 * x - g.left + "px"; fab.style.top = 2 * y - g.top + "px";
     };
     const update = () => {
-        if (!bar) return;
-        const n = picked().length;
-        bar.querySelector("span").textContent = n ? `${n}개 고름 · Shift: 범위` : "메시지를 눌러 고르기 · Shift: 범위";
-        bar.querySelector("[data-a=copy]").disabled = !n;
+        if (!fab) return;
+        const n = picked().length, [cb, mb] = fab.children;
+        fab.classList.toggle("on", on);
+        cb.style.display = on ? "" : "none";
+        cb.disabled = !n || busy;
+        cb.innerHTML = svg(busy ? "load" : "copy") + (n ? `<b>${n}</b>` : "");
+        mb.innerHTML = svg(note || (on ? "x" : "cam"));
+        mb.className = note;
+        const tip = note === "ok" ? "클립보드에 복사했어요" : note === "bad" ? "복사하지 못했어요 — 다시 눌러 주세요"
+            : on ? "캡처 그만두기 (Esc)" : "대화 캡처: 메시지를 눌러 고르고(Shift: 범위) 이미지로 복사";
+        mb.title = tip; mb.setAttribute("aria-label", tip);
+        place();
     };
+    const blink = k => { clearTimeout(noteT); note = k; update(); noteT = setTimeout(() => { note = ""; update(); }, 1400); };
     const start = () => {
         if (on) return;
         on = true; last = null;
         document.getElementById("textchat")?.classList.add("r20cap-on");
-        bar = document.createElement("div");
-        bar.className = "r20cap-bar";
-        bar.setAttribute("role", "toolbar");
-        bar.setAttribute("aria-label", "대화 캡처");
-        bar.innerHTML = '<span></span><button type="button" data-a="copy">이미지 복사</button><button type="button" class="ghost" data-a="cancel">취소</button>';
-        bar.addEventListener("click", e => {
-            const a = e.target.closest("button")?.dataset.a;
-            if (a === "cancel") stop();
-            else if (a === "copy") copy();
-        });
-        document.body.appendChild(bar);
-        placeBar(); update(); paintBtn();
+        update();
     };
     const stop = () => {
         on = false;
         document.getElementById("textchat")?.classList.remove("r20cap-on");
         msgs().forEach(m => m.classList.remove("r20cap-sel"));
-        bar?.remove(); bar = null;
-        paintBtn();
+        update();
     };
     // 고르는 동안 메시지를 누르면 고르기만 한다 (링크·단추 등 Roll20 동작은 막는다)
     document.addEventListener("click", e => {
@@ -5148,7 +5183,7 @@ const chatCapture = (() => {
     // Shift+클릭이 글자를 끌어 고르지 않게
     document.addEventListener("mousedown", e => { if (on && e.target.closest?.("#textchat .content > .message")) e.preventDefault(); }, true);
     document.addEventListener("keydown", e => { if (on && e.key === "Escape") stop(); }, true);
-    window.addEventListener("resize", placeBar);
+    window.addEventListener("resize", () => place());
 
     // ── 그리기 ──
     // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
@@ -5283,51 +5318,49 @@ const chatCapture = (() => {
     };
     const copy = async () => {
         const list = picked();
-        if (!list.length || !bar) return;
-        const cb = bar.querySelector("[data-a=copy]"), label = bar.querySelector("span");
-        cb.disabled = true;
-        label.textContent = "이미지 만드는 중…";
+        if (!list.length || busy) return;
+        busy = true; update();
         try {
             // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 만들어지는 대로 넘긴다)
             await navigator.clipboard.write([new ClipboardItem({ "image/png": render(list) })]);
+            busy = false;
             stop();
-            label.textContent = "";
-            flash("대화 이미지를 클립보드에 복사했어요");
+            blink("ok");
         } catch (e) {
             console.warn("[대화 캡처] 실패:", e);
-            label.textContent = "복사하지 못했어요 — 다시 눌러 주세요";
-            cb.disabled = false;
+            busy = false;
+            blink("bad");
         }
     };
-    const flash = msg => {
-        const t = document.createElement("div");
-        t.className = "r20cap-bar";
-        t.textContent = msg;
-        document.body.appendChild(t);
-        const lg = logEl()?.getBoundingClientRect();
-        if (lg) Object.assign(t.style, { left: lg.left + 8 + "px", top: Math.max(8, lg.bottom - 46) + "px", padding: "8px 12px" });
-        setTimeout(() => t.remove(), 1800);
-    };
-    // 채팅 입력 아래 단추 줄(desc · 사담 · 저널 옆)에 [캡처]
+    // 대화 기록 판 오른쪽 아래에 반투명 아이콘: [복사(고른 개수)] [캡처 ↔ 그만두기]
     const inject = () => {
-        const grp = document.getElementById("custom-left-group");
-        if (!grp || btn()) return;
-        const b = document.createElement("button");
-        b.id = "custom-capture-toggle";
-        b.type = "button";
-        b.textContent = "캡처";
-        b.title = "대화 캡처: 메시지를 골라 이미지로 클립보드에 복사";
-        b.style.cssText = sharedBtnStyle;
-        if (!btnVisible.capture) b.style.display = "none";
-        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); on ? stop() : start(); });
-        grp.appendChild(b);
-        paintBtn();
+        const tc = document.getElementById("textchat");
+        if (!btnVisible.capture || !tc || !logEl() || (fab && tc.contains(fab))) return;
+        fab?.remove();
+        fab = document.createElement("div");
+        fab.className = "r20cap-fab";
+        fab.setAttribute("role", "toolbar");
+        fab.setAttribute("aria-label", "대화 캡처");
+        fab.innerHTML = '<button type="button" data-a="copy" title="고른 메시지를 이미지로 클립보드에 복사" aria-label="이미지로 복사"></button><button type="button" data-a="main"></button>';
+        fab.addEventListener("click", e => {
+            const a = e.target.closest("button")?.dataset.a;
+            if (!a) return;
+            e.preventDefault(); e.stopPropagation();
+            if (a === "copy") return copy();
+            clearTimeout(noteT); note = "";
+            on ? stop() : start();
+        });
+        tc.appendChild(fab);
+        ro?.disconnect();
+        ro = new ResizeObserver(() => place());
+        ro.observe(logEl());
+        update();
     };
     const setEnabled = v => {
-        if (!v && on) stop();
-        const b = btn();
-        if (b) b.style.display = v ? "" : "none";
-        else if (v) inject();
+        if (v) return inject();
+        if (on) stop();
+        ro?.disconnect(); ro = null;
+        fab?.remove(); fab = null;
     };
     return { inject, setEnabled };
 })();
