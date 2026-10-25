@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.17.1
+// @version      1.17.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.17.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.17.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -61,15 +61,17 @@ const btnVisible = {
 
 const sharedBtnStyle = `
     border-radius: 4px !important;
-    padding: 3px 6px !important;
-    min-width: 36px !important;
+    padding: 1px 6px !important;
+    min-width: 0 !important;
     font-size: 11px !important;
     font-weight: 700 !important;
     cursor: pointer !important;
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
     border-style: solid !important;
     border-width: 1px !important;
-    line-height: normal !important;
+    height: 20px !important;
+    box-sizing: border-box !important;
+    line-height: 16px !important;
 `;
 
 function getCustomBtns() {
@@ -160,8 +162,11 @@ if (!document.getElementById("custom-journal-style")) {
         .cj-item.cj-selected { background-color:#dcebfb; box-shadow:inset 0 0 0 2px #1867c7; }
         .cj-avatar { width:var(--cj-size, 50px); height:var(--cj-size, 50px); min-width:var(--cj-size, 50px); border-radius:8px; object-fit:cover; background-color:#eeeeee; pointer-events:none; }
         .cj-avatar.cj-initial { display:flex; justify-content:center; align-items:center; font-size:calc(var(--cj-size, 50px) * 0.32); font-weight:700; color:#888; }
-        #custom-settings-popup { position:fixed; width:190px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
+        #custom-settings-popup { position:fixed; width:270px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
         #custom-settings-popup.show { display:flex !important; }
+        /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
+        #textchat-input.layout-applied-v11 { padding:4px 6px !important; }
+        #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:12px !important; line-height:1.5 !important; }
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
         .cs-row.cs-rd { padding:0 10px 6px; }
@@ -215,14 +220,18 @@ function updateDescButtonStyle(btn) {
     applyBtnColors(btn, isDescMode, { bg: CONFIG.activeBg, text: CONFIG.activeText, border: CONFIG.activeBorder });
 }
 
+const SADAM_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg>';
 function updateSadamButtonStyle(btn) {
     if (!btn) return;
-    btn.innerText = "사담";
+    if (!btn.querySelector("svg")) {
+        btn.innerHTML = SADAM_ICON;
+        btn.style.setProperty("padding", "1px 4px", "important");
+    }
     if (btnVisible.charsadam) {
-        btn.title = "캐릭터 사담";
+        btn.title = "캐릭터 사담"; btn.setAttribute("aria-label", "캐릭터 사담");
         applyBtnColors(btn, isSadamMode, { bg: CONFIG.charSadamActiveBg, text: CONFIG.charSadamActiveText, border: CONFIG.charSadamActiveBorder });
     } else {
-        btn.title = "오너 사담";
+        btn.title = "오너 사담"; btn.setAttribute("aria-label", "오너 사담");
         applyBtnColors(btn, isSadamMode, { bg: CONFIG.sadamActiveBg, text: CONFIG.sadamActiveText, border: CONFIG.sadamActiveBorder });
     }
 }
@@ -274,11 +283,11 @@ function applyCocofoliaLayout() {
     if (!document.getElementById("custom-speaker-wrap")) {
         const wrap = document.createElement("div");
         wrap.id = "custom-speaker-wrap";
-        wrap.style.cssText = "display: flex; width: 100%; height: 32px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fff; position: relative; align-items: stretch;";
+        wrap.style.cssText = "display: flex; width: 100%; height: 26px; margin-bottom: 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fff; position: relative; align-items: stretch;";
 
         const visualSelect = document.createElement("div");
         visualSelect.id = "custom-select-visual";
-        visualSelect.style.cssText = "width: 40px; min-width: 40px; display: flex; justify-content: center; align-items: center; position: relative; border-radius: 3px 0 0 3px; background-color: rgba(136, 136, 136, 0.1); color: #888888;";
+        visualSelect.style.cssText = "width: 28px; min-width: 28px; display: flex; justify-content: center; align-items: center; position: relative; border-radius: 3px 0 0 3px; background-color: rgba(136, 136, 136, 0.1); color: #888888;";
 
         const iconBox = document.createElement("div");
         iconBox.id = "custom-icon-box";
@@ -672,16 +681,16 @@ function applyCocofoliaLayout() {
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
-            margin: 0 0 4px 0 !important;
+            margin: 0 0 3px 0 !important;
             padding: 0 !important;
         `;
     }
 
     const buttonRow = document.createElement("div");
-    buttonRow.style.cssText = "display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 4px !important; width: 100% !important;";
+    buttonRow.style.cssText = "display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 2px !important; width: 100% !important;";
 
     const leftBtnGroup = document.createElement("div");
-    leftBtnGroup.style.cssText = "display: flex !important; gap: 4px !important; align-items: center !important; position: relative !important; flex-wrap: wrap !important;";
+    leftBtnGroup.style.cssText = "display: flex !important; gap: 3px !important; align-items: center !important; position: relative !important; flex-wrap: wrap !important;";
 
     let toggleBtn = document.getElementById("custom-desc-toggle");
     if (!toggleBtn) {
@@ -991,8 +1000,8 @@ function applyCocofoliaLayout() {
     }
 
     leftBtnGroup.id = "custom-left-group";
-    leftBtnGroup.appendChild(toggleBtn);
     leftBtnGroup.appendChild(sadamBtn);
+    leftBtnGroup.appendChild(toggleBtn);
     // 저널(빠른 저널) 단추는 말하는 사람 줄의 ⚙ 왼쪽에 아이콘으로
     const gearBtn = document.getElementById("custom-settings-btn");
     if (gearBtn) {
@@ -1013,11 +1022,11 @@ function applyCocofoliaLayout() {
     resizer.id = "custom-resizer";
     resizer.style.cssText = `
         width: 100%;
-        height: 6px;
+        height: 4px;
         cursor: ns-resize;
         background: transparent;
         border-top: 1px solid #ddd;
-        margin-bottom: 2px;
+        margin-bottom: 0;
         z-index: 2000;
         position: relative;
     `;
@@ -1597,16 +1606,10 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
         #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 #e7b3c9 !important; }
         #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 #b8215f !important; background-color:rgba(184,33,95,0.08) !important; }
-        .r20cap-fab { position:fixed; z-index:20; display:flex; gap:6px; opacity:0.45; transition:opacity .15s; }
-        .r20cap-fab:hover, .r20cap-fab.on, .r20cap-fab:focus-within, .r20cap-fab:has(.ok, .bad) { opacity:1; }
-        .r20cap-fab button { position:relative; width:30px; height:30px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:rgba(34,34,38,0.82); color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.3); cursor:pointer; }
-        .r20cap-fab button:focus-visible { outline:2px solid #b8215f; outline-offset:2px; }
-        .r20cap-fab [data-a=copy] { background:#b8215f; }
-        .r20cap-fab [data-a=copy]:disabled { opacity:0.5; cursor:default; }
-        .r20cap-fab button.ok { background:#2e8b57; }
-        .r20cap-fab button.bad { background:#c0392b; }
-        .r20cap-fab b { position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#fff; color:#b8215f; font:700 10px/16px sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
-        .r20cap-fab .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
+        #custom-sadam-toggle { display:inline-flex; align-items:center; justify-content:center; }
+        #custom-capture-copy:disabled { cursor:default; }
+        #custom-capture-copy b { font:700 10px/1 sans-serif; }
+        #custom-capture-copy .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
         @keyframes r20cap-spin { to { transform:rotate(360deg); } }
         .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
         .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
@@ -5056,7 +5059,18 @@ const tokenActs = (() => {
     let down = null, pop = null;
     const barEl = () => document.getElementById("secondary-toolbar");
     const shown = el => !!el && getComputedStyle(el).display !== "none";
-    const actions = () => { const ul = barEl()?.querySelector("ul.tokenactions"); return shown(ul) ? [...ul.querySelectorAll("button")] : []; };
+    // 우리가 줄을 숨기는 것(visibility)과 상관없이, Roll20 이 줄·단추를 실제로 보여 주고 있는지로 판단한다
+    // (빈 곳을 누르면 선택이 풀려 Roll20 이 줄을 감춘다 → 메뉴를 띄우지 않는다)
+    const actions = () => {
+        const b = barEl(), ul = b?.querySelector("ul.tokenactions");
+        if (!ul) return [];
+        const hid = b.classList.contains("r20ta-hide");
+        if (hid) b.classList.remove("r20ta-hide");
+        const live = ul.getClientRects().length > 0 && getComputedStyle(ul).visibility !== "hidden" && +getComputedStyle(b).opacity > 0;
+        const list = live ? [...ul.querySelectorAll("button")].filter(x => x.getClientRects().length > 0) : [];
+        if (hid) b.classList.add("r20ta-hide");
+        return list;
+    };
     const close = () => { pop?.remove(); pop = null; };
     const open = (at, list) => {
         close();
@@ -5125,33 +5139,25 @@ const chatCapture = (() => {
         ok: '<path d="M20 6 9 17l-5-5"/>',
         bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
     };
-    const svg = k => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-    let fab = null, ro = null, busy = false, note = "", noteT = 0;
-    // 대화 기록 판의 오른쪽 아래 (판이 숨으면 같이 숨는다). 조상에 transform 이 있어도 맞도록 한 번 재고 어긋난 만큼 고친다
-    const place = () => {
-        const lg = logEl();
-        if (!fab || !lg) return;
-        const r = lg.getBoundingClientRect();
-        fab.style.visibility = r.width && r.height ? "" : "hidden";
-        if (!r.width || !r.height) return;
-        const x = r.right - 18 - fab.offsetWidth, y = r.bottom - 10 - fab.offsetHeight;
-        fab.style.left = x + "px"; fab.style.top = y + "px";
-        const g = fab.getBoundingClientRect();
-        fab.style.left = 2 * x - g.left + "px"; fab.style.top = 2 * y - g.top + "px";
-    };
+    const svg = k => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+    let busy = false, note = "", noteT = 0;
+    const capBtn = () => document.getElementById("custom-capture-toggle");
+    const copyBtn = () => document.getElementById("custom-capture-copy");
+    const paint = (b, bg, fg) => { b.style.setProperty("background-color", bg, "important"); b.style.setProperty("color", fg, "important"); };
+    const IDLE_BG = "rgba(136,136,136,0.07)", IDLE_FG = "#aaa";
     const update = () => {
-        if (!fab) return;
-        const n = picked().length, [cb, mb] = fab.children;
-        fab.classList.toggle("on", on);
-        cb.style.display = on ? "" : "none";
+        const mb = capBtn(), cb = copyBtn();
+        if (!mb || !cb) return;
+        const n = picked().length;
+        cb.style.display = on ? "flex" : "none";
         cb.disabled = !n || busy;
         cb.innerHTML = svg(busy ? "load" : "copy") + (n ? `<b>${n}</b>` : "");
+        paint(cb, n ? CONFIG.activeBg : IDLE_BG, n ? CONFIG.activeText : IDLE_FG);
         mb.innerHTML = svg(note || (on ? "x" : "cam"));
-        mb.className = note;
+        paint(mb, on ? "rgba(24,103,199,0.12)" : IDLE_BG, note === "ok" ? "#2e8b57" : note === "bad" ? "#c0392b" : on ? CONFIG.activeBg : IDLE_FG);
         const tip = note === "ok" ? "클립보드에 복사했어요" : note === "bad" ? "복사하지 못했어요 — 다시 눌러 주세요"
             : on ? "캡처 그만두기 (Esc)" : "대화 캡처: 메시지를 눌러 고르고(Shift: 범위) 이미지로 복사";
         mb.title = tip; mb.setAttribute("aria-label", tip);
-        place();
     };
     const blink = k => { clearTimeout(noteT); note = k; update(); noteT = setTimeout(() => { note = ""; update(); }, 1400); };
     const start = () => {
@@ -5183,7 +5189,6 @@ const chatCapture = (() => {
     // Shift+클릭이 글자를 끌어 고르지 않게
     document.addEventListener("mousedown", e => { if (on && e.target.closest?.("#textchat .content > .message")) e.preventDefault(); }, true);
     document.addEventListener("keydown", e => { if (on && e.key === "Escape") stop(); }, true);
-    window.addEventListener("resize", () => place());
 
     // ── 그리기 ──
     // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
@@ -5332,35 +5337,34 @@ const chatCapture = (() => {
             blink("bad");
         }
     };
-    // 대화 기록 판 오른쪽 아래에 반투명 아이콘: [복사(고른 개수)] [캡처 ↔ 그만두기]
+    // 말하는 사람 줄: [저널] [복사(고른 개수) — 고르는 동안만] [캡처 ↔ 그만두기] [⚙]
     const inject = () => {
-        const tc = document.getElementById("textchat");
-        if (!btnVisible.capture || !tc || !logEl() || (fab && tc.contains(fab))) return;
-        fab?.remove();
-        fab = document.createElement("div");
-        fab.className = "r20cap-fab";
-        fab.setAttribute("role", "toolbar");
-        fab.setAttribute("aria-label", "대화 캡처");
-        fab.innerHTML = '<button type="button" data-a="copy" title="고른 메시지를 이미지로 클립보드에 복사" aria-label="이미지로 복사"></button><button type="button" data-a="main"></button>';
-        fab.addEventListener("click", e => {
-            const a = e.target.closest("button")?.dataset.a;
-            if (!a) return;
-            e.preventDefault(); e.stopPropagation();
-            if (a === "copy") return copy();
-            clearTimeout(noteT); note = "";
-            on ? stop() : start();
-        });
-        tc.appendChild(fab);
-        ro?.disconnect();
-        ro = new ResizeObserver(() => place());
-        ro.observe(logEl());
+        const gear = document.getElementById("custom-settings-btn");
+        if (!btnVisible.capture || !gear || capBtn()) return;
+        const mk = id => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.id = id;
+            b.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; cursor: pointer;";
+            b.addEventListener("click", e => {
+                e.preventDefault(); e.stopPropagation();
+                if (id === "custom-capture-copy") return copy();
+                clearTimeout(noteT); note = "";
+                on ? stop() : start();
+            });
+            return b;
+        };
+        const cb = mk("custom-capture-copy");
+        cb.style.width = "auto"; cb.style.padding = "0 5px";
+        cb.title = "고른 메시지를 이미지로 클립보드에 복사";
+        cb.setAttribute("aria-label", "이미지로 복사");
+        gear.before(cb, mk("custom-capture-toggle"));
         update();
     };
     const setEnabled = v => {
         if (v) return inject();
         if (on) stop();
-        ro?.disconnect(); ro = null;
-        fab?.remove(); fab = null;
+        capBtn()?.remove(); copyBtn()?.remove();
     };
     return { inject, setEnabled };
 })();
