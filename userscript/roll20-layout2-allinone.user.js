@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.17.2
+// @version      1.17.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.17.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.17.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -91,7 +91,7 @@ function updateCustomButtonStyles() {
         const idx = parseInt(b.dataset.customBtn);
         const isActive = activeCustomBtn && activeCustomBtn._idx === idx;
         applyBtnColors(b, isActive, { bg: CONFIG.activeBg, text: CONFIG.activeText, border: CONFIG.activeBorder });
-        b.style.setProperty("padding", small ? "2px 4px" : "3px 6px", "important");
+        b.style.setProperty("padding", small ? "1px 4px" : "1px 6px", "important");     // 위아래 1px: 높이 20px 안에서 글자가 가운데 오게
         b.style.setProperty("font-size", small ? "10px" : "11px", "important");
         b.style.setProperty("min-width", small ? "28px" : "36px", "important");
     });
