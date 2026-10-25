@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.18.2
+// @version      1.18.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.18.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.18.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1273,7 +1273,9 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-menu button:disabled { background:transparent; color:#aaa; cursor:default; }
         #r20be .r20be-body { flex:1 1 0; min-height:0; display:flex; overflow:hidden; }
         #r20be .r20be-col { position:relative; min-height:0; display:flex; }
-        #r20be .r20be-col.tree { flex:0 0 300px; min-width:200px; border-right:1px solid #e6e6e6; }
+        #r20be .r20be-col.tree { flex:0 0 300px; min-width:200px; max-width:calc(100% - 280px); border-right:1px solid #e6e6e6; }
+        #r20be .r20be-split { position:absolute; top:0; bottom:0; right:-4px; z-index:5; width:8px; cursor:col-resize; touch-action:none; }
+        #r20be .r20be-split:hover, #r20be .r20be-split:focus-visible, #r20be .r20be-split.on { background:rgba(24,103,199,0.22); outline:none; }
         #r20be .r20be-col.pane { flex:1; min-width:0; }
         /* 기본 스크롤바 대신 직접 만든 스크롤바(.r20be-sb)를 쓴다 */
         #r20be .r20be-tree, #r20be .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:none; }
@@ -1412,7 +1414,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #r20be .r20be-foot.err { color:#b91c1c; font-weight:700; }
         @media (max-width: 640px) {
             #r20be .r20be-body { flex-direction:column; }
-            #r20be .r20be-col.tree { flex:0 0 40%; border-right:0; border-bottom:1px solid #e6e6e6; }
+            #r20be .r20be-col.tree { flex:0 0 40% !important; max-width:none; border-right:0; border-bottom:1px solid #e6e6e6; }
+            #r20be .r20be-split { display:none; }
             #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
         }
         /* 주크박스 한 줄 보기: Roll20 요소는 그대로 두고 배치·크기만 바꾼다 (.playbackcontrol 을 풀어 한 줄 flex 로) */
@@ -1629,13 +1632,14 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
-        /* 덱 창: 반투명 판에 카드 더미만 (최대 100px). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
+        /* 덱 창: 반투명 판에 카드 더미만 (폭 70px, 높이는 그림 비율대로). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
         /* Roll20 은 메뉴를 판 안 40px 폭에 넣어서 글자가 한 자씩 꺾였다 → position:fixed 로 판 밖에 (자리는 deckView 가 잡는다) */
         #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:8px; box-sizing:border-box; scrollbar-width:thin; }
         #showndecks.r20dk-on .adeck { width:auto !important; height:auto !important; margin:0 0 6px !important; padding:0 !important; float:none !important; }
         #showndecks.r20dk-on .adeck:last-child { margin-bottom:0 !important; }
-        #showndecks.r20dk-on .deckstack { left:0 !important; margin:0 !important; }
-        #showndecks.r20dk-on .deckstack img { max-width:100px !important; max-height:100px !important; object-fit:contain; }
+        #showndecks.r20dk-on .deckstack { left:0 !important; margin:0 !important; width:70px !important; height:auto !important; }
+        #showndecks.r20dk-on .deckstack .allback, #showndecks.r20dk-on .deckstack .nextcard > div { width:70px !important; height:auto !important; }
+        #showndecks.r20dk-on .deckstack img { display:block; width:70px !important; height:auto !important; max-width:none !important; max-height:none !important; }
         #showndecks.r20dk-on .controls { display:none !important; }
         #showndecks.r20dk-on .adeck.r20dk-hov .controls { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; right:auto !important; z-index:20; width:96px !important; height:auto !important; padding:4px !important; overflow:visible !important; background:#fff !important; border:1px solid #e3dee2; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
         #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; line-height:20px; text-align:left !important; }
@@ -3958,6 +3962,37 @@ const bulkEditor = (() => {
         });
         return el("div", { class: "r20be-col " + kind }, area, track);
     };
+    // 왼쪽 목록 폭: 경계를 끌어서(←/→ 키로도) 바꾸고 기억한다
+    const bindSplit = col => {
+        const KEY = "r20be_tree_w";
+        const set = w => { w = Math.round(Math.max(200, w)); col.style.flexBasis = w + "px"; return w; };
+        const saved = parseInt(localStorage.getItem(KEY), 10);
+        if (saved) set(saved);
+        const bar = el("div", { class: "r20be-split", role: "separator", "aria-orientation": "vertical", "aria-label": "목록 폭 조절", tabindex: "0", title: "끌어서 목록 폭 조절" });
+        bar.addEventListener("pointerdown", e => {
+            e.preventDefault();
+            bar.setPointerCapture(e.pointerId);
+            bar.classList.add("on");
+            const x0 = e.clientX, w0 = col.getBoundingClientRect().width;
+            const move = ev => set(w0 + ev.clientX - x0);
+            const up = () => {
+                bar.removeEventListener("pointermove", move);
+                bar.removeEventListener("pointerup", up);
+                bar.classList.remove("on");
+                localStorage.setItem(KEY, Math.round(col.getBoundingClientRect().width));       // max-width 로 잘린 실제 폭
+            };
+            bar.addEventListener("pointermove", move);
+            bar.addEventListener("pointerup", up);
+        });
+        bar.addEventListener("keydown", e => {
+            const d = { ArrowLeft: -20, ArrowRight: 20 }[e.key];
+            if (!d) return;
+            e.preventDefault(); e.stopPropagation();
+            set(col.getBoundingClientRect().width + d);
+            localStorage.setItem(KEY, Math.round(col.getBoundingClientRect().width));
+        });
+        col.appendChild(bar);
+    };
     const ensureUi = () => {
         if (ui) return;
         ui = {};
@@ -4011,6 +4046,7 @@ const bulkEditor = (() => {
             ui.foot);
         bindTree();
         bindPanel(head);
+        bindSplit(ui.root.querySelector(".r20be-col.tree"));
         document.body.appendChild(ui.root);
     };
 
