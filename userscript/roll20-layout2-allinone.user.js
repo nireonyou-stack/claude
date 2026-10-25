@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.19.3
+// @version      1.19.4
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.19.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.19.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -175,7 +175,7 @@ if (!document.getElementById("custom-journal-style")) {
         #custom-settings-popup { position:fixed; width:270px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
         #custom-settings-popup.show { display:flex !important; }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
-        #textchat-input.layout-applied-v11 { padding:4px 6px !important; border-top:0 !important; }
+        #textchat-input.layout-applied-v11 { border-top:0 !important; }
         #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:12px !important; line-height:1.5 !important; }
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
@@ -290,7 +290,7 @@ function applyCocofoliaLayout() {
     }
 
     for (const [prop, val] of Object.entries({
-        display: "flex", "flex-direction": "column", padding: "10px",
+        display: "flex", "flex-direction": "column", padding: "4px 6px",
         "box-sizing": "border-box", overflow: "hidden", height: "auto"
     })) container.style.setProperty(prop, val, "important");
 
@@ -1467,13 +1467,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
         body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { font-size:12px !important; line-height:26px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { order:3; display:inline-flex !important; align-items:center; width:14px; justify-content:center; }
-        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label * { margin:0 !important; padding:0 !important; font-size:10px !important; line-height:26px !important; color:#c6c6c6 !important; cursor:pointer; }
-        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop:checked + label, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer input.loop:checked + label * { color:#5f8fc7 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:48px !important; height:26px; margin:0 2px !important; }
-        /* 볼륨: 슬라이더 대신 ◂ 값 ▸ (10% 단위) — 버튼이 붙으면 슬라이더는 숨긴다 */
-        body.r20jb-on #jukebox li.jukeboxitem .volume { width:auto !important; margin:0 !important; }
+        /* 볼륨: 슬라이더 대신 ◂ 값 ▸ */
+        body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:auto !important; height:26px; margin:0 !important; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
         .r20jb-vol, .r20jb-loop { display:none; }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
@@ -1487,14 +1482,9 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button { width:8px; height:22px; margin:0; padding:0; border:0; background:none; color:#aaa; font-size:9px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button:hover { color:#222; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol span { width:16px; color:#777; font-size:10px; text-align:center; font-variant-numeric:tabular-nums; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { -webkit-appearance:none !important; appearance:none !important; width:100% !important; height:14px !important; margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-webkit-slider-runnable-track { height:2px !important; border:0 !important; border-radius:1px; background:#d3dbe6 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-webkit-slider-thumb { -webkit-appearance:none !important; width:8px !important; height:8px !important; margin-top:-3px !important; border:0 !important; border-radius:50% !important; background:#7d9fc9 !important; box-shadow:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-moz-range-track { height:2px; border:0; background:#d3dbe6; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider::-moz-range-thumb { width:8px; height:8px; border:0; border-radius:50%; background:#7d9fc9; }
         /* 메뉴(⋮)는 숨기고 그 자리를 제목이 쓴다 (삭제 등은 일괄 편집기에서) */
         body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play:hover, body.r20jb-on #jukebox li.jukeboxitem .loopcontainer label:hover * { color:#222 !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play:hover { color:#222 !important; }
         /* 저널 한 줄 보기: 항목 = 작은 동그란 아바타 + 이름 (폴더 계층은 10px 씩만 들여쓴다) */
         body.r20jb-on #journalfolderroot .dd-list .dd-list { clear:both; margin:0 !important; padding:0 0 0 12px !important; }
         body.r20jb-on #journalfolderroot li.dd-item { margin:0 !important; padding:0 !important; }
@@ -1710,7 +1700,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
         body.r20sc-on #vm_zoom_buttons button { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
         body.r20sc-on #vm_zoom_buttons .level { font-size:11px !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; width:28px !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { display:flex !important; flex-direction:column !important; align-items:center !important; width:auto !important; height:auto !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { order:1; }
@@ -2269,7 +2259,7 @@ const bulkEditor = (() => {
     const HINT_IMG = "그림을 눌러 고르기 (Shift: 범위) · 고른 그림을 덱 카드 · 굴림표 항목으로 넣거나 주소를 따서 매크로에 쓰기 · 같은 그림은 한 번만";
     const HINT_ICON = "아이콘을 누르면 오른쪽에서 편집 · 왼쪽 위 네모(Shift: 범위)로 여러 개 골라 폴더 이동·삭제 · −/+ 아이콘 크기 · Ctrl+S: 저장";
 
-    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const esc = escAttr;
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     const uid = () => typeof window.generateUUID === "function" ? window.generateUUID()
         : "-r20be" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -4175,7 +4165,6 @@ const jukeboxRow = (() => {
     const tagText = m => tagList(m?.get("tags")).map(x => "#" + x).join(" ");
     const addTags = () => {
         document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content > .title").forEach(ti => {
-            if (ti.nextElementSibling?.classList.contains("r20jb-tags")) ti.nextElementSibling.remove();     // v1.16~1.18 의 회색 글씨
             const txt = tagText(trackOf(ti.closest("li.jukeboxitem")));
             if (txt) { if (ti.dataset.r20jbTags !== txt) ti.dataset.r20jbTags = txt; }
             else if (ti.dataset.r20jbTags) delete ti.dataset.r20jbTags;
@@ -4252,15 +4241,6 @@ const jukeboxRow = (() => {
         // 다른 곳(일괄 편집기 등)에서 볼륨이 바뀌면 숫자도 맞춘다
         if (!bound && window.Jukebox?.playlist?.on) {
             bound = true;
-            // 없앤 '정지 페이드'(v1.12.1~1.13.1)가 볼륨을 1로 줄여 둔 곡이 있으면 한 번만 원래 볼륨으로 돌려놓고 기록을 지운다
-            try {
-                Object.entries(JSON.parse(localStorage.getItem("r20jb_faded") || "{}")).forEach(([id, v]) => {
-                    const m = window.Jukebox.playlist.get(id);
-                    if (m && Number(m.get("volume")) <= 1) m.save({ volume: v });
-                });
-            } catch (e) {}
-            localStorage.removeItem("r20jb_faded");
-            localStorage.removeItem("r20jb_fade");
             window.Jukebox.playlist.on("change:volume", m => {
                 const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
                 if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
@@ -4832,7 +4812,7 @@ const roomImages = (() => {
     const KINDS = [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]];
     const OWN = { table: 0, deck: 1, char: 2, handout: 3, page: 4 };
     const SEARCH_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
-    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const esc = escAttr;
     const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다 → 크기 부분을 뺀 주소로 같은 그림을 묶는다
@@ -5419,9 +5399,11 @@ const chatCapture = (() => {
     const dataCache = new Map();
     const toData = url => {
         if (!url || url.startsWith("data:")) return Promise.resolve(url);
-        if (!dataCache.has(url)) dataCache.set(url, fetch(url, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
+        const get = u => fetch(u, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
             .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
-            .catch(() => null));
+            .catch(() => null);
+        // s3.amazonaws.com/files.d20.io 주소는 CORS 가 막혀 있어 files.d20.io 로 먼저 받는다
+        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null)));
         return dataCache.get(url);
     };
     const inlineUrls = async css => {
@@ -5591,7 +5573,6 @@ const deckView = (() => {
         const sd = document.getElementById("showndecks");
         if (!sd) return;
         sd.classList.toggle("r20dk-on", btnVisible.deckview);
-        sd.querySelector(":scope > .r20dk-size")?.remove();         // v1.18.0 의 [크게] 단추
     };
     return { inject, setEnabled: () => inject() };
 })();
@@ -5658,8 +5639,7 @@ const mapShot = (() => {
     });
     let failed = [];
     const load = async u => {
-        const alt = u.replace(/^https?:\/\/s3\.amazonaws\.com\/files\.d20\.io\//, "https://files.d20.io/");
-        for (const c of new Set([alt, u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])) {
+        for (const c of new Set([r20img(u), u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])) {
             const im = await loadOne(c);
             if (im) return im;
         }
