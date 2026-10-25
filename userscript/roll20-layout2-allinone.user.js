@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.18.0
+// @version      1.18.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.18.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.18.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -613,7 +613,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("화면 배치 (페이지 버튼·화면 제어)", "screenui"));
         settingsPopup.appendChild(makeRow("토큰 액션 → 클릭 메뉴", "tokact"));
         settingsPopup.appendChild(makeRow("대화 캡처", "capture"));
-        settingsPopup.appendChild(makeRow("덱 창 정리 · 크게 보기", "deckview"));
+        settingsPopup.appendChild(makeRow("덱 창 정리", "deckview"));
         settingsPopup.appendChild(makeRow("매크로 줄 (두 줄 · 길게 눌러 옮기기)", "macrobar"));
         settingsPopup.appendChild(makeRow("맵 촬영 (맵·토큰 레이어)", "mapshot"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
@@ -1460,8 +1460,7 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
-        .r20jb-tags { display:none; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-tags { order:2; display:block; flex:0 3 auto; min-width:0; max-width:45%; padding:0 3px 0 0; overflow:hidden; color:#9a9aa0; font-size:10px; white-space:nowrap; text-overflow:ellipsis; }
+        .r20jb-tip { position:fixed; z-index:100005; max-width:260px; padding:4px 8px; border-radius:4px; background:rgba(20,20,22,0.94); color:#fff; font-size:11px; line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-loop { display:inline-flex; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20-bgm-pv { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop.on { color:#3d7cc9; font-weight:700; }
@@ -1630,20 +1629,18 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
-        /* 덱 창: 링크는 돌리기·선택·회수·섞기·숨기기만 */
+        /* 덱 창: 덱마다 한 칸 — 왼쪽 링크(이름 + 돌리기·선택·회수·섞기·숨기기, 늘 보임) + 오른쪽 카드 더미. 덱이 많으면 세로 스크롤만 */
+        /* Roll20 은 링크 목록을 마우스를 올릴 때만, 40px 폭으로 보여 줘서 글자가 한 자씩 꺾였다 */
+        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(250,250,251,0.96) !important; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.3); box-sizing:border-box; scrollbar-width:thin; }
+        #showndecks.r20dk-on .adeck { position:relative; width:auto !important; height:auto !important; min-height:120px; margin:0 0 6px !important; padding:8px 8px 8px 112px !important; float:none !important; background:#fff; border:1px solid #ebe6ea; border-radius:8px; }
+        #showndecks.r20dk-on .adeck:last-child { margin-bottom:0 !important; }
+        #showndecks.r20dk-on .deckstack { left:0 !important; margin:0 !important; }
+        #showndecks.r20dk-on .controls { display:block !important; visibility:visible !important; opacity:1 !important; left:auto !important; right:calc(100% + 8px) !important; top:0 !important; width:96px !important; height:auto !important; padding:0 !important; overflow:visible !important; background:none !important; }
+        #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; line-height:20px; text-align:left !important; }
+        #showndecks.r20dk-on .control:first-child { padding:0 6px; font-weight:700; color:#222; }
+        #showndecks.r20dk-on .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
+        #showndecks.r20dk-on .control a:hover { background:#eaf1fb; }
         #showndecks.r20dk-on .control:has(> a.removedcardspile), #showndecks.r20dk-on .control:has(> a.discardpile) { display:none !important; }
-        #showndecks .r20dk-size { position:sticky; top:0; z-index:3; display:block; width:100%; height:20px; margin:0 0 4px; padding:0; border:1px solid #ddd; border-radius:4px; background:#fff; color:#666; font-size:11px; line-height:18px; cursor:pointer; }
-        #showndecks .r20dk-size:hover { color:#b8215f; border-color:#d9a9bf; }
-        /* 덱 창 크게: 덱마다 칸 (왼쪽 링크 + 오른쪽 카드 더미), 옆으로 놓다가 넘치면 다음 줄 — 세로 스크롤만 */
-        #showndecks.r20dk-big { width:620px !important; padding:8px !important; display:flex !important; flex-wrap:wrap; align-content:flex-start; gap:8px; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(251,250,251,0.97) !important; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.35); box-sizing:border-box; }
-        #showndecks.r20dk-big .r20dk-size { flex:0 0 100%; margin:0; }
-        #showndecks.r20dk-big .adeck { position:relative; display:flex !important; justify-content:flex-end; align-items:flex-start; width:194px !important; min-height:140px; margin:0 !important; padding:8px !important; float:none !important; background:#fff; border:1px solid #efe9ed; border-radius:8px; box-sizing:border-box; }
-        #showndecks.r20dk-big .deckstack { margin:0 !important; }
-        #showndecks.r20dk-big .controls { left:auto !important; right:calc(100% + 8px) !important; top:0 !important; width:94px !important; height:auto !important; overflow:visible !important; }
-        #showndecks.r20dk-big .control { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; line-height:20px; }
-        #showndecks.r20dk-big .control:first-child { font-weight:700; color:#222; padding:0 6px; }
-        #showndecks.r20dk-big .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
-        #showndecks.r20dk-big .control a:hover { background:#eaf1fb; }
         /* 매크로 줄: 두 줄로 쌓고 넘치면 줄 안에서 세로 스크롤 · 길게 누르면 들림 */
         body.r20mb-on #macrobar { height:auto !important; max-height:66px !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:thin; }
         /* flex 로 하면 jQuery UI 가 세로 목록으로 여겨 옆으로 끌어도 안 바뀐다 → inline-block 을 줄바꿈 */
@@ -4097,17 +4094,30 @@ const jukeboxRow = (() => {
             c.appendChild(b);
         });
     };
-    // 태그: 제목 뒤에 작은 회색 글씨 (좁으면 태그부터 잘린다)
+    // 태그: 제목 줄 자리는 차지하지 않고, 제목에 마우스를 올리면 바로 검은 말풍선으로 (띄어쓰기·쉼표로 나눔)
     const tagText = m => tagList(m?.get("tags")).map(x => "#" + x).join(" ");
     const addTags = () => {
         document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content > .title").forEach(ti => {
-            const m = trackOf(ti.closest("li.jukeboxitem")), txt = tagText(m);
-            let sp = ti.nextElementSibling?.classList.contains("r20jb-tags") ? ti.nextElementSibling : null;
-            if (!txt) { sp?.remove(); return; }
-            if (!sp) { sp = document.createElement("span"); sp.className = "r20jb-tags"; ti.after(sp); }
-            if (sp.textContent !== txt) { sp.textContent = txt; sp.title = txt; }
+            if (ti.nextElementSibling?.classList.contains("r20jb-tags")) ti.nextElementSibling.remove();     // v1.16~1.18 의 회색 글씨
+            const txt = tagText(trackOf(ti.closest("li.jukeboxitem")));
+            if (txt) { if (ti.dataset.r20jbTags !== txt) ti.dataset.r20jbTags = txt; }
+            else if (ti.dataset.r20jbTags) delete ti.dataset.r20jbTags;
         });
     };
+    let tip = null;
+    const TAGGED = "#jukebox .title[data-r20jb-tags]";
+    document.addEventListener("mouseover", e => {
+        const ti = btnVisible.jbrow && e.target.closest?.(TAGGED);
+        if (!ti) return;
+        if (!tip) { tip = document.createElement("div"); tip.className = "r20jb-tip"; tip.setAttribute("role", "tooltip"); }
+        tip.textContent = ti.dataset.r20jbTags;
+        document.body.appendChild(tip);
+        const r = ti.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+        tip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
+        tip.style.top = (r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
+    });
+    document.addEventListener("mouseout", e => { const ti = e.target.closest?.(TAGGED); if (ti && !ti.contains(e.relatedTarget)) tip?.remove(); });
+    document.addEventListener("wheel", () => tip?.remove(), { capture: true, passive: true });
     const addStepControl = () => {
         const host = document.querySelector("#jukebox .secondarycontrols");
         if (!host || host.querySelector(".r20jb-step")) return;
@@ -5455,27 +5465,13 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
-// ───────── 덱 창: 링크 다섯 개만 + [크게] 단추로 넓게 보기 (#showndecks.r20dk-on / .r20dk-big) ─────────
+// ───────── 덱 창: 링크 다섯 개만, 늘 보이게 정돈 (#showndecks.r20dk-on — 모양은 CSS) ─────────
 const deckView = (() => {
-    let big = localStorage.getItem("r20_deck_big") === "true";
     const inject = () => {
         const sd = document.getElementById("showndecks");
         if (!sd) return;
         sd.classList.toggle("r20dk-on", btnVisible.deckview);
-        sd.classList.toggle("r20dk-big", btnVisible.deckview && big);
-        let b = sd.querySelector(":scope > .r20dk-size");
-        if (!btnVisible.deckview) { b?.remove(); return; }
-        if (!b) {
-            b = document.createElement("button");
-            b.type = "button";
-            b.className = "r20dk-size";
-            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); big = !big; localStorage.setItem("r20_deck_big", String(big)); inject(); });
-            sd.prepend(b);
-        }
-        const label = big ? "⤡ 작게" : "⤢ 크게";
-        if (b.textContent !== label) b.textContent = label;
-        b.setAttribute("aria-pressed", String(big));
-        b.title = big ? "덱 창을 원래 크기로" : "덱 창을 넓게 보기";
+        sd.querySelector(":scope > .r20dk-size")?.remove();         // v1.18.0 의 [크게] 단추
     };
     return { inject, setEnabled: () => inject() };
 })();
@@ -5531,14 +5527,25 @@ const mapShot = (() => {
     const idle = () => show("cam", "맵 촬영: 맵·토큰 레이어를 이미지로 클립보드에 복사");
     const note = (k, tip) => { clearTimeout(noteT); show(k, tip); noteT = setTimeout(idle, 3000); };
     // Roll20 은 fetch 로 그림 서버에 못 가게 막혀 있어서 <img crossOrigin> 으로 받는다.
-    // CORS 없이 캐시된 그림이면 실패하므로 한 번은 주소 끝을 바꿔 새로 받는다
-    const load = (u, retry) => new Promise(res => {
+    // s3.amazonaws.com/files.d20.io 주소는 CORS 가 안 될 수 있어 files.d20.io 로 먼저 받아 보고,
+    // 그다음 원래 주소, 마지막으로 (CORS 없이 캐시된 경우를 피해) 주소 끝을 바꿔 받는다
+    const loadOne = u => new Promise(res => {
         const im = new Image();
         im.crossOrigin = "anonymous";
         im.onload = () => res(im);
-        im.onerror = () => retry ? res(null) : load(u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now(), true).then(res);
+        im.onerror = () => res(null);
         im.src = u;
     });
+    let failed = [];
+    const load = async u => {
+        const alt = u.replace(/^https?:\/\/s3\.amazonaws\.com\/files\.d20\.io\//, "https://files.d20.io/");
+        for (const c of new Set([alt, u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])) {
+            const im = await loadOne(c);
+            if (im) return im;
+        }
+        failed.push(u);
+        return null;
+    };
     const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
     const usable = c => c && c !== "transparent" && c !== "none";
     // 펜 선: path 는 [["M",x,y],["L",x,y],["Q",..],["C",..]] — 점들의 가운데가 (left, top) 에 오도록 놓는다
@@ -5588,7 +5595,9 @@ const mapShot = (() => {
         // 맵 레이어 먼저, 그다음 토큰 레이어. 같은 레이어 안에서는 Roll20 의 앞뒤 순서(zorder)대로
         const list = ["map", "objects"].flatMap(layer => objs.filter(o => o.get("layer") === layer)
             .sort((a, b) => (z.get(a.id) ?? num(a, "z_index", 1e9)) - (z.get(b.id) ?? num(b, "z_index", 1e9))));
+        failed = [];
         const imgs = await Promise.all(list.map(o => o.get("imgsrc") ? load(o.get("imgsrc")) : null));
+        if (failed.length) console.warn(`[맵 촬영] 그림 ${failed.length}/${list.length}개를 못 불러옴`, failed.slice(0, 20));
         const cv = document.createElement("canvas");
         cv.width = Math.round(W * k); cv.height = Math.round(H * k);
         const ctx = cv.getContext("2d");
