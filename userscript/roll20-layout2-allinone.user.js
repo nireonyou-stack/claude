@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.16.0
+// @version      1.17.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.16.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.17.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -55,7 +55,8 @@ const btnVisible = {
     pageslim:  localStorage.getItem("r20_show_pageslim") !== "false",
     artroom:   localStorage.getItem("r20_show_artroom") !== "false",
     screenui:  localStorage.getItem("r20_show_screenui") !== "false",
-    tokact:    localStorage.getItem("r20_show_tokact") !== "false"
+    tokact:    localStorage.getItem("r20_show_tokact") !== "false",
+    capture:   localStorage.getItem("r20_show_capture") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -508,6 +509,7 @@ function applyCocofoliaLayout() {
                 if (key === "artroom") roomImages.setEnabled(inp.checked);
                 if (key === "screenui") screenUI.setEnabled(inp.checked);
                 if (key === "tokact") tokenActs.setEnabled(inp.checked);
+                if (key === "capture") chatCapture.setEnabled(inp.checked);
                 if (!inp.checked && key === "autofill") autofill.close();
 
                 if (!inp.checked && key === "journal") {
@@ -556,6 +558,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("그림 라이브러리 · 이 방의 이미지", "artroom"));
         settingsPopup.appendChild(makeRow("화면 배치 (페이지 버튼·화면 제어)", "screenui"));
         settingsPopup.appendChild(makeRow("토큰 액션 → 클릭 메뉴", "tokact"));
+        settingsPopup.appendChild(makeRow("대화 캡처", "capture"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1558,7 +1561,10 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu > button[data-r20tm="choose"] { position:relative; }
         /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
-        body.r20sc-on #page-button { width:32px !important; height:32px !important; min-width:0 !important; padding:0 !important; }
+        body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
+        body.r20sc-on #vm_zoom_buttons button { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
+        body.r20sc-on #vm_zoom_buttons .level { font-size:11px !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; width:28px !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { display:flex !important; flex-direction:column !important; align-items:center !important; width:auto !important; height:auto !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { order:1; }
@@ -1574,6 +1580,15 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .r20ta-pop .r20ta-h { padding:4px 10px 2px; color:#8a8a90; font-size:10px; font-weight:700; }
         .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
         .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
+        /* 대화 캡처: 고르는 동안 메시지를 눌러 고르고, 고른 것은 왼쪽 막대 + 옅은 배경 */
+        #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
+        #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 #e7b3c9 !important; }
+        #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 #b8215f !important; background-color:rgba(184,33,95,0.08) !important; }
+        .r20cap-bar { position:fixed; z-index:100003; display:flex; align-items:center; gap:6px; padding:6px 8px 6px 12px; border-radius:10px; background:rgba(34,34,38,0.94); color:#fff; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,0.3); }
+        .r20cap-bar span { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .r20cap-bar button { height:26px; margin:0; padding:0 12px; border:0; border-radius:6px; background:#fff; color:#222; font-size:12px; font-weight:700; cursor:pointer; }
+        .r20cap-bar button.ghost { background:transparent; color:#ddd; font-weight:400; }
+        .r20cap-bar button:disabled { opacity:0.45; cursor:default; }
         .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
         .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
         .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
@@ -4308,18 +4323,18 @@ const tokenMenu = (() => {
             if (PANEL) Object.assign(sub.style, PANEL);
             else if (getComputedStyle(sub).backgroundColor === "rgba(0, 0, 0, 0)")
                 Object.assign(sub.style, { backgroundColor: mcs.backgroundColor, border: mcs.border, borderRadius: mcs.borderRadius, boxShadow: mcs.boxShadow, padding: mcs.padding });
-            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight;
-            const pad = parseFloat(getComputedStyle(sub).paddingTop) || 0;
+            // 메뉴에 transform · zoom 이 걸려 있으면 left/top 값이 곧 화면 좌표가 아니다 (기준점이 옮겨지고 배율이 붙는다)
+            // → 두 번 놓아 보고 실제로 놓인 화면 좌표에서 이동·배율을 구해, 원하는 화면 좌표가 되는 값을 넣는다 (!important: Roll20 CSS 를 이기도록)
+            const put = (x, y) => { sub.style.setProperty("left", x + "px", "important"); sub.style.setProperty("top", y + "px", "important"); };
+            put(0, 0);
+            const a = sub.getBoundingClientRect();
+            put(100, 100);
+            const b = sub.getBoundingClientRect();
+            const sx = (b.left - a.left) / 100 || 1, sy = (b.top - a.top) / 100 || 1;
+            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = a.width, h = a.height;
+            const pad = (parseFloat(getComputedStyle(sub).paddingTop) || 0) * sy;
             const want = { x: m.right + 4 + w > innerWidth - 4 ? m.left - w - 4 : m.right + 4, y: Math.max(4, Math.min(r.top - pad, innerHeight - h - 4)) };
-            // fixed 의 기준점: 조상에 transform 등이 있으면 화면 (0,0)이 아니다 → 보이지 않는 점을 같은 곳에 놓아 잰다
-            const probe = document.createElement("div");
-            probe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;transition:none;animation:none";
-            menu.appendChild(probe);
-            const base = probe.getBoundingClientRect();
-            probe.remove();
-            // Roll20 CSS 가 하위 메뉴 자리를 강제해도 이기도록 !important
-            sub.style.setProperty("left", (want.x - base.left) + "px", "important");
-            sub.style.setProperty("top", (want.y - base.top) + "px", "important");
+            put((want.x - a.left) / sx, (want.y - a.top) / sy);
         }, () => { sub.style.display = "none"; }, sub);
         return g;
     };
@@ -5065,10 +5080,262 @@ const tokenActs = (() => {
     return { inject, setEnabled };
 })();
 
+// ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
+// 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
+const chatCapture = (() => {
+    let on = false, last = null, bar = null;
+    const logEl = () => document.querySelector("#textchat .content");
+    const msgs = () => [...(logEl()?.querySelectorAll(":scope > .message") || [])];
+    const picked = () => msgs().filter(m => m.classList.contains("r20cap-sel"));
+    const btn = () => document.getElementById("custom-capture-toggle");
+    const paintBtn = () => {
+        const b = btn();
+        if (!b) return;
+        b.style.setProperty("background-color", on ? CONFIG.activeBg : CONFIG.inactiveBg, "important");
+        b.style.setProperty("color", on ? CONFIG.activeText : CONFIG.inactiveText, "important");
+        b.style.setProperty("border-color", on ? CONFIG.activeBorder : CONFIG.inactiveBorder, "important");
+    };
+    const placeBar = () => {
+        const lg = logEl();
+        if (!bar || !lg) return;
+        const r = lg.getBoundingClientRect();
+        Object.assign(bar.style, { left: r.left + 8 + "px", width: Math.max(220, r.width - 16) + "px", top: Math.max(8, r.bottom - 46) + "px" });
+    };
+    const update = () => {
+        if (!bar) return;
+        const n = picked().length;
+        bar.querySelector("span").textContent = n ? `${n}개 고름 · Shift: 범위` : "메시지를 눌러 고르기 · Shift: 범위";
+        bar.querySelector("[data-a=copy]").disabled = !n;
+    };
+    const start = () => {
+        if (on) return;
+        on = true; last = null;
+        document.getElementById("textchat")?.classList.add("r20cap-on");
+        bar = document.createElement("div");
+        bar.className = "r20cap-bar";
+        bar.setAttribute("role", "toolbar");
+        bar.setAttribute("aria-label", "대화 캡처");
+        bar.innerHTML = '<span></span><button type="button" data-a="copy">이미지 복사</button><button type="button" class="ghost" data-a="cancel">취소</button>';
+        bar.addEventListener("click", e => {
+            const a = e.target.closest("button")?.dataset.a;
+            if (a === "cancel") stop();
+            else if (a === "copy") copy();
+        });
+        document.body.appendChild(bar);
+        placeBar(); update(); paintBtn();
+    };
+    const stop = () => {
+        on = false;
+        document.getElementById("textchat")?.classList.remove("r20cap-on");
+        msgs().forEach(m => m.classList.remove("r20cap-sel"));
+        bar?.remove(); bar = null;
+        paintBtn();
+    };
+    // 고르는 동안 메시지를 누르면 고르기만 한다 (링크·단추 등 Roll20 동작은 막는다)
+    document.addEventListener("click", e => {
+        if (!on) return;
+        const m = e.target.closest?.("#textchat .content > .message");
+        if (!m) return;
+        e.preventDefault(); e.stopPropagation();
+        const list = msgs();
+        if (e.shiftKey && last && list.includes(last)) {
+            const a = list.indexOf(last), z = list.indexOf(m);
+            list.slice(Math.min(a, z), Math.max(a, z) + 1).forEach(x => x.classList.add("r20cap-sel"));
+        } else m.classList.toggle("r20cap-sel");
+        last = m;
+        update();
+    }, true);
+    // Shift+클릭이 글자를 끌어 고르지 않게
+    document.addEventListener("mousedown", e => { if (on && e.target.closest?.("#textchat .content > .message")) e.preventDefault(); }, true);
+    document.addEventListener("keydown", e => { if (on && e.key === "Escape") stop(); }, true);
+    window.addEventListener("resize", placeBar);
+
+    // ── 그리기 ──
+    // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
+    const INHERIT = new Set(["color", "font-family", "font-size", "font-style", "font-variant", "font-weight", "font-stretch", "line-height", "letter-spacing",
+        "word-spacing", "text-align", "text-indent", "text-transform", "text-shadow", "white-space", "word-break", "overflow-wrap", "visibility", "direction",
+        "list-style-type", "list-style-position", "list-style-image", "quotes", "tab-size", "hyphens", "font-kerning", "font-feature-settings",
+        "font-variation-settings", "-webkit-text-fill-color", "-webkit-text-stroke-color", "-webkit-text-stroke-width", "text-rendering",
+        "border-collapse", "border-spacing", "caption-side", "empty-cells", "cursor"]);
+    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor)/;
+    let sandbox = null;
+    const defaults = new Map();
+    const defaultsOf = el => {
+        const key = el.namespaceURI + ":" + el.tagName;
+        if (defaults.has(key)) return defaults.get(key);
+        if (!sandbox) { sandbox = document.createElement("div"); sandbox.style.cssText = "all:initial;position:fixed;left:-99999px;top:0;visibility:hidden"; document.body.appendChild(sandbox); }
+        const d = document.createElementNS(el.namespaceURI, el.tagName);
+        sandbox.appendChild(d);
+        const cs = getComputedStyle(d), map = {};
+        for (let i = 0; i < cs.length; i++) map[cs[i]] = cs.getPropertyValue(cs[i]);
+        d.remove();
+        defaults.set(key, map);
+        return map;
+    };
+    const styleText = (cs, parentCs, def) => {
+        const out = [];
+        for (let i = 0; i < cs.length; i++) {
+            const p = cs[i];
+            if (SKIP.test(p)) continue;
+            const v = cs.getPropertyValue(p);
+            if (INHERIT.has(p) ? (!parentCs || v !== parentCs.getPropertyValue(p)) : v !== def[p]) out.push(`${p}:${v}`);
+        }
+        return out.join(";");
+    };
+    // 그림 · 글꼴은 주소 대신 데이터로 넣어야 이미지 안에 보인다 (못 가져오면 비워 둔다)
+    const dataCache = new Map();
+    const toData = url => {
+        if (!url || url.startsWith("data:")) return Promise.resolve(url);
+        if (!dataCache.has(url)) dataCache.set(url, fetch(url, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
+            .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
+            .catch(() => null));
+        return dataCache.get(url);
+    };
+    const inlineUrls = async css => {
+        const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map(m => m[1]).filter(u => !u.startsWith("data:"));
+        for (const u of new Set(urls)) {
+            const d = await toData(new URL(u, location.href).href);
+            css = css.split(u).join(d || "");
+        }
+        return css;
+    };
+    // 쓰인 글꼴의 @font-face 를 찾아 데이터로 넣는다 (다른 곳 스타일시트는 읽을 수 없어 건너뛴다)
+    const fontFaces = async families => {
+        const want = new Set([...families].flatMap(f => f.split(",")).map(f => f.trim().replace(/^["']|["']$/g, "").toLowerCase()));
+        const out = [];
+        for (const sh of document.styleSheets) {
+            let rules;
+            try { rules = sh.cssRules; } catch (e) { continue; }
+            for (const r of rules || []) {
+                if (!(r instanceof CSSFontFaceRule)) continue;
+                const fam = r.style.getPropertyValue("font-family").trim().replace(/^["']|["']$/g, "").toLowerCase();
+                if (!want.has(fam)) continue;
+                let css = r.cssText;
+                const base = sh.href || location.href;
+                css = css.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/g, (m0, u) => `url("${new URL(u, base).href}")`);
+                out.push(await inlineUrls(css));
+            }
+        }
+        return out.join("\n");
+    };
+    const render = async list => {
+        const lg = logEl();
+        const wrap = document.createElement("div"), lgCs = getComputedStyle(lg), rules = [], families = new Set([lgCs.fontFamily]);
+        let pn = 0;
+        // 맨 바깥: 채팅창 글꼴·색·배경을 그대로 (투명하면 흰 바탕)
+        const bg = [lg, lg.parentElement, document.getElementById("textchat")].map(x => x && getComputedStyle(x).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)") || "#fff";
+        wrap.setAttribute("style", styleText(lgCs, null, defaultsOf(wrap)) + `;width:${lg.clientWidth}px;background-color:${bg};margin:0;padding:0;overflow:hidden;height:auto;max-height:none;position:static;inset:auto;transform:none`);
+        const walk = (orig, parentCs) => {
+            const cl = orig.cloneNode(false);
+            if (orig.nodeType !== 1) return cl;
+            const cs = getComputedStyle(orig);
+            families.add(cs.fontFamily);
+            cl.removeAttribute("id");
+            cl.setAttribute("style", styleText(cs, parentCs, defaultsOf(orig)));
+            // ::before · ::after 는 복제에 없으니 규칙으로 따로 적는다
+            ["::before", "::after"].forEach(ps => {
+                const pcs = getComputedStyle(orig, ps), c = pcs.getPropertyValue("content");
+                if (!c || c === "none" || c === "normal") return;
+                const cls = "r20cp" + (++pn);
+                cl.classList.add(cls);
+                const body = [];
+                for (let i = 0; i < pcs.length; i++) if (!SKIP.test(pcs[i])) body.push(`${pcs[i]}:${pcs.getPropertyValue(pcs[i])}`);
+                rules.push(`.${cls}${ps}{${body.join(";")}}`);
+            });
+            orig.childNodes.forEach(ch => cl.appendChild(walk(ch, cs)));
+            if (orig.tagName === "IMG") { cl.setAttribute("data-src", orig.currentSrc || orig.src); cl.removeAttribute("srcset"); cl.removeAttribute("loading"); }
+            return cl;
+        };
+        // 고른 표시는 빼고 계산된 스타일을 읽는다
+        document.getElementById("textchat")?.classList.remove("r20cap-on");
+        list.forEach(m => m.classList.remove("r20cap-sel"));
+        try { list.forEach(m => wrap.appendChild(walk(m, lgCs))); }
+        finally { list.forEach(m => m.classList.add("r20cap-sel")); if (on) document.getElementById("textchat")?.classList.add("r20cap-on"); }
+        // 그림 · 배경 그림 → 데이터
+        for (const img of wrap.querySelectorAll("img[data-src]")) {
+            const d = await toData(img.getAttribute("data-src"));
+            img.removeAttribute("data-src");
+            if (d) img.setAttribute("src", d); else { img.removeAttribute("src"); img.style.visibility = "hidden"; }
+        }
+        for (const el of [wrap, ...wrap.querySelectorAll("[style*='url(']")]) el.setAttribute("style", await inlineUrls(el.getAttribute("style")));
+        const style = document.createElement("style");
+        style.textContent = (await fontFaces(families)) + "\n" + (await inlineUrls(rules.join("\n")));
+        wrap.prepend(style);
+        // 높이는 실제로 놓아 보고 잰다
+        const meas = document.createElement("div");
+        meas.style.cssText = "position:fixed;left:-99999px;top:0;visibility:hidden";
+        meas.appendChild(wrap);
+        document.body.appendChild(meas);
+        const w = Math.ceil(wrap.getBoundingClientRect().width), h = Math.ceil(wrap.getBoundingClientRect().height);
+        meas.remove();
+        const xml = new XMLSerializer().serializeToString(wrap);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="100%" height="100%">${xml}</foreignObject></svg>`;
+        const img = new Image();
+        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        await img.decode();
+        const scale = h * 2 <= 16000 ? 2 : Math.max(0.5, 16000 / h);       // 선명하게, 너무 길면 줄여서
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
+        const ctx = cv.getContext("2d");
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("toBlob 실패")), "image/png"));
+    };
+    const copy = async () => {
+        const list = picked();
+        if (!list.length || !bar) return;
+        const cb = bar.querySelector("[data-a=copy]"), label = bar.querySelector("span");
+        cb.disabled = true;
+        label.textContent = "이미지 만드는 중…";
+        try {
+            // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 만들어지는 대로 넘긴다)
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": render(list) })]);
+            stop();
+            label.textContent = "";
+            flash("대화 이미지를 클립보드에 복사했어요");
+        } catch (e) {
+            console.warn("[대화 캡처] 실패:", e);
+            label.textContent = "복사하지 못했어요 — 다시 눌러 주세요";
+            cb.disabled = false;
+        }
+    };
+    const flash = msg => {
+        const t = document.createElement("div");
+        t.className = "r20cap-bar";
+        t.textContent = msg;
+        document.body.appendChild(t);
+        const lg = logEl()?.getBoundingClientRect();
+        if (lg) Object.assign(t.style, { left: lg.left + 8 + "px", top: Math.max(8, lg.bottom - 46) + "px", padding: "8px 12px" });
+        setTimeout(() => t.remove(), 1800);
+    };
+    // 채팅 입력 아래 단추 줄(desc · 사담 · 저널 옆)에 [캡처]
+    const inject = () => {
+        const grp = document.getElementById("custom-left-group");
+        if (!grp || btn()) return;
+        const b = document.createElement("button");
+        b.id = "custom-capture-toggle";
+        b.type = "button";
+        b.textContent = "캡처";
+        b.title = "대화 캡처: 메시지를 골라 이미지로 클립보드에 복사";
+        b.style.cssText = sharedBtnStyle;
+        if (!btnVisible.capture) b.style.display = "none";
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); on ? stop() : start(); });
+        grp.appendChild(b);
+        paintBtn();
+    };
+    const setEnabled = v => {
+        if (!v && on) stop();
+        const b = btn();
+        if (b) b.style.display = v ? "" : "none";
+        else if (v) inject();
+    };
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); chatCapture.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
