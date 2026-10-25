@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.15.1
+// @version      1.16.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.15.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.16.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -554,7 +554,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("토큰 메뉴 정리 (묶기·면 이동)", "tokmenu"));
         settingsPopup.appendChild(makeRow("페이지 창·설정 슬림", "pageslim"));
         settingsPopup.appendChild(makeRow("그림 라이브러리 · 이 방의 이미지", "artroom"));
-        settingsPopup.appendChild(makeRow("화면 배치 (화면 제어·페이지 버튼)", "screenui"));
+        settingsPopup.appendChild(makeRow("화면 배치 (페이지 버튼·화면 제어)", "screenui"));
         settingsPopup.appendChild(makeRow("토큰 액션 → 클릭 메뉴", "tokact"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
@@ -1387,6 +1387,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
+        .r20jb-tags { display:none; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-tags { order:2; display:block; flex:0 3 auto; min-width:0; max-width:45%; padding:0 3px 0 0; overflow:hidden; color:#9a9aa0; font-size:10px; white-space:nowrap; text-overflow:ellipsis; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-loop { display:inline-flex; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20-bgm-pv { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop.on { color:#3d7cc9; font-weight:700; }
@@ -1556,19 +1558,16 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu > button[data-r20tm="choose"] { position:relative; }
         /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
-        body.r20sc-on #lighting-layer-button, body.r20sc-on #page-button { display:none !important; }
-        body.r20sc-on .r20sc-page .icon-slot .grimoire__roll20-icon { display:inline-block; font-size:17px !important; line-height:17px; width:auto !important; height:17px !important; }
+        body.r20sc-on #page-button { width:32px !important; height:32px !important; min-width:0 !important; padding:0 !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer { display:grid !important; grid-template-columns:auto auto; justify-items:end; align-items:center; width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > .zoomButtonsInner { grid-column:1; grid-row:1; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > :last-child { grid-column:2; grid-row:1; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { grid-column:2; grid-row:2; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { flex-direction:row !important; align-items:center !important; width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:1; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { display:flex !important; flex-direction:column !important; align-items:center !important; width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { order:1; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > :last-child { order:2; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > .zoomButtonsInner { order:3; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .plus { order:1; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .level { order:2; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .sliderSection { order:3; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .plus { order:4; }
-        body.r20sc-on #vm_zoom_buttons:not(:hover) .zoomButtonsInner { display:none !important; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:4; }
         /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
         .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
@@ -2046,6 +2045,8 @@ const copyText = async text => {
         const ok = document.execCommand("copy"); ta.remove(); return ok;
     }
 };
+// 주크박스 곡 태그: Roll20 곡의 tags 칸 (방 데이터라 방을 복사하면 같이 가고, 주크박스는 GM 만 본다)
+const tagList = s => String(s || "").split(/[\s,]+/).map(t => t.replace(/^#/, "")).filter(Boolean);
 // ── 그림 미리보기 공통 (일괄 편집기 · 이 방의 이미지) ──
 // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다
 const VARIANT = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
@@ -2167,7 +2168,7 @@ const bulkEditor = (() => {
         isNew: false, deleted: false, moved: false, orphan: false, dupOf: null
     });
     const leaf = (kind, m) => mkNode(m.id, kind, m, kind === "track"
-        ? { name: m.get("title") || "", vol: Number(m.get("volume")) || 0, loop: !!m.get("loop") }
+        ? { name: m.get("title") || "", vol: Number(m.get("volume")) || 0, loop: !!m.get("loop"), tags: m.get("tags") || "" }
         : { name: m.get("name") || "", share: m.get("inplayerjournals") || "", archived: !!m.get("archived") });
 
     const allNodes = t => { const out = []; const w = l => l.forEach(n => { out.push(n); if (n.kids) w(n.kids); }); w(t.roots); return out; };
@@ -2341,13 +2342,14 @@ const bulkEditor = (() => {
         if (n.kind === "rtable") return `${n.items.filter(it => !it.deleted).length}개`;
         if (n.kind === "deck") return `${n.items.filter(it => !it.deleted).length}장`;
         if (n.kind === "macro") return n.cur.token ? "토큰" : "";
-        if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}`;
+        if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}${tagList(n.cur.tags).map(x => " #" + x).join("")}`;
         const s = n.cur.share;
         return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM");
     };
     const visibleRows = t => {
         const q = t.q.trim().toLowerCase(), filtering = !!q || t.filter !== "all";
-        const hit = n => !q || n.cur.name.toLowerCase().includes(q) || (n.kind === "macro" && n.cur.action.toLowerCase().includes(q));
+        const hit = n => !q || n.cur.name.toLowerCase().includes(q) || (n.kind === "macro" && n.cur.action.toLowerCase().includes(q))
+            || (n.kind === "track" && (n.cur.tags || "").toLowerCase().includes(q.replace(/^#/, "")));
         // 핸드아웃·캐릭터만 볼 때는 폴더 없이 한 줄로 모은다 (어느 폴더인지는 오른쪽에 표시)
         if (isFlat(t)) return allNodes(t).filter(n => !n.kids && n.kind === t.filter && hit(n)).map(n => ({ n, depth: 0, flat: true }));
         const walk = (list, depth) => list.flatMap(n => {
@@ -2588,6 +2590,8 @@ const bulkEditor = (() => {
         const here = n.parent ? n.parent.id : "";
         return el("div", { class: "r20be-pane-in" }, paneHead(n),
             field("트랙 제목", nameInput(n)),
+            field("태그 (GM 만 보임 · 띄어쓰기로 여러 개)", el("input", { class: "r20be-in", value: n.cur.tags, placeholder: "예: 전투 보스 잔잔",
+                oninput: e => { setField(n, "tags", e.target.value.trim()); refreshRow(n); } })),
             field("위치", el("select", { class: "r20be-in", onchange: e => { if (moveNode(t, n, e.target.value ? find(t, e.target.value) : null, null)) renderTree(); } },
                 el("option", { value: "", selected: !here }, "맨 위 (플레이리스트 밖)"),
                 groupList(t).map(g => el("option", { value: g.n.id, selected: g.n.id === here }, g.label)))),
@@ -2667,6 +2671,23 @@ const bulkEditor = (() => {
                 el("select", { class: "r20be-in", onchange: e => { st.share = e.target.value; draw(); } },
                     el("option", { value: "_keep", selected: !shareOn() }, "바꾸지 않음"),
                     shareOptions("").map(o => el("option", { value: o.v, selected: shareOn() && st.share === o.v }, t.which === "macros" && !o.v ? "나만" : o.label)))) : null,
+            t.which === "bgm" ? (() => {
+                const tagIn = el("input", { class: "r20be-in", placeholder: "태그 (띄어쓰기로 여러 개)", "aria-label": "붙이거나 뺄 태그" });
+                const tagOp = add => {
+                    const want = tagList(tagIn.value);
+                    if (!want.length) return;
+                    const tracks = list.filter(n => n.kind === "track");
+                    tracks.forEach(n => {
+                        const has = tagList(n.cur.tags), next = add ? [...has, ...want.filter(x => !has.includes(x))] : has.filter(x => !want.includes(x));
+                        if (next.join(" ") !== has.join(" ")) setField(n, "tags", next.join(" "));
+                    });
+                    renderTree(); renderPane();
+                    setStatus(`곡 ${tracks.length}개에서 태그 ${want.map(x => "#" + x).join(" ")}를 ${add ? "붙였" : "뺐"}습니다 (저장해야 Roll20에 반영)`, "ok");
+                };
+                return field("태그", el("div", { class: "r20be-acts" }, tagIn,
+                    el("button", { type: "button", class: "r20be-sec", onclick: () => tagOp(true) }, "붙이기"),
+                    el("button", { type: "button", class: "r20be-sec", onclick: () => tagOp(false) }, "빼기")));
+            })() : null,
             t.which === "macros" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(true) }, "토큰 액션 켜기"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => setTok(false) }, "토큰 액션 끄기")) : null,
@@ -3375,7 +3396,7 @@ const bulkEditor = (() => {
         if (n.kind === "track") {
             const a = n.dupOf.attributes;
             n.model = window.Jukebox.playlist.create({ title: n.cur.name, source: a.source, track_id: a.track_id, tags: a.tags || "",
-                volume: n.cur.vol, loop: n.cur.loop, playing: false, softstop: false });
+                volume: n.cur.vol, loop: n.cur.loop, tags: n.cur.tags ?? (a.tags || ""), playing: false, softstop: false });
         } else {
             const [bn, bg] = BLOBS[n.kind], blobs = {};
             if (n.dupOf) {          // 원본 내용을 먼저 읽고 나서 만든다
@@ -3418,6 +3439,7 @@ const bulkEditor = (() => {
         if (n.changed.has("share")) a.inplayerjournals = n.cur.share;
         if (n.changed.has("vol")) a.volume = n.cur.vol;
         if (n.changed.has("loop")) a.loop = n.cur.loop;
+        if (n.changed.has("tags")) a.tags = n.cur.tags;
         const html = {};
         CONTENT.forEach((k, i) => {
             if (!n.changed.has(k)) return;
@@ -3956,6 +3978,17 @@ const jukeboxRow = (() => {
             c.appendChild(b);
         });
     };
+    // 태그: 제목 뒤에 작은 회색 글씨 (좁으면 태그부터 잘린다)
+    const tagText = m => tagList(m?.get("tags")).map(x => "#" + x).join(" ");
+    const addTags = () => {
+        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content > .title").forEach(ti => {
+            const m = trackOf(ti.closest("li.jukeboxitem")), txt = tagText(m);
+            let sp = ti.nextElementSibling?.classList.contains("r20jb-tags") ? ti.nextElementSibling : null;
+            if (!txt) { sp?.remove(); return; }
+            if (!sp) { sp = document.createElement("span"); sp.className = "r20jb-tags"; ti.after(sp); }
+            if (sp.textContent !== txt) { sp.textContent = txt; sp.title = txt; }
+        });
+    };
     const addStepControl = () => {
         const host = document.querySelector("#jukebox .secondarycontrols");
         if (!host || host.querySelector(".r20jb-step")) return;
@@ -3987,6 +4020,7 @@ const jukeboxRow = (() => {
                 if (!btnVisible.jbrow) return;
                 addVolume();
                 addLoop();
+                addTags();
                 bgmPreview.inject();
             }).observe(jb, { childList: true, subtree: true });
         }
@@ -4006,6 +4040,7 @@ const jukeboxRow = (() => {
                 const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
                 if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
             });
+            window.Jukebox.playlist.on("change:tags", () => addTags());
             window.Jukebox.playlist.on("change:loop", m => {
                 const b = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-loop`);
                 if (b) setLoop(b, !!m.get("loop"));
@@ -4013,6 +4048,7 @@ const jukeboxRow = (() => {
         }
         addVolume();
         addLoop();
+        addTags();
     };
     document.addEventListener("click", e => {
         const lb = e.target.closest?.(".r20jb-loop");
@@ -4261,23 +4297,20 @@ const tokenMenu = (() => {
         menu.appendChild(sub);
         const build = () => sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
         build();
-        // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥, 이 줄 높이에 띄운다 (간격 OFF · 모양 PANEL 은 Roll20 하위 메뉴에서 읽어 둔 값)
+        // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥에 띄우고, 첫 항목을 이 줄 높이에 맞춘다.
+        // (Roll20 하위 메뉴에서 자리를 읽어 따라 하면 여는 방식·움직임에 따라 어긋나서, 자리는 정해진 규칙으로만 계산한다)
         hoverKeep(g, () => {
             if (ITEM && !sub.dataset.real) { sub.dataset.real = "1"; build(); }       // 하위 메뉴 항목 모양을 잡았으면 그 모양으로
-            OPEN?.subCls.forEach(c => sub.classList.add(c));
-            sub.setAttribute("style", (OPEN?.style || "").split(";").map(x => x.trim())
-                .filter(x => x && !/^(position|left|top|right|bottom|inset|transform|translate|z-index|display)\s*:/i.test(x)).join("; "));
+            sub.removeAttribute("style");
             Object.assign(sub.style, { display: "flex", flexDirection: "column", zIndex: "100001" });
-            sub.style.setProperty("position", "fixed", "important");
-            // 미끄러지는 효과가 있으면 빠르게 오갈 때 자리 계산이 어긋난다 → 끈다
-            ["transition", "animation", "transform"].forEach(k => sub.style.setProperty(k, "none", "important"));
+            ["position:fixed", "margin:0", "transition:none", "animation:none", "transform:none", "translate:none"].forEach(kv => { const [k, v] = kv.split(":"); sub.style.setProperty(k, v, "important"); });
             const mcs = getComputedStyle(menu);
             if (PANEL) Object.assign(sub.style, PANEL);
             else if (getComputedStyle(sub).backgroundColor === "rgba(0, 0, 0, 0)")
                 Object.assign(sub.style, { backgroundColor: mcs.backgroundColor, border: mcs.border, borderRadius: mcs.borderRadius, boxShadow: mcs.boxShadow, padding: mcs.padding });
             const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight;
-            const gap = OFF.gap, dy = OFF.dy ?? -(parseFloat(getComputedStyle(sub).paddingTop) || 0);
-            const want = { x: m.right + gap + w > innerWidth - 4 ? m.left - w - gap : m.right + gap, y: Math.max(4, Math.min(r.top + dy, innerHeight - h - 4)) };
+            const pad = parseFloat(getComputedStyle(sub).paddingTop) || 0;
+            const want = { x: m.right + 4 + w > innerWidth - 4 ? m.left - w - 4 : m.right + 4, y: Math.max(4, Math.min(r.top - pad, innerHeight - h - 4)) };
             // fixed 의 기준점: 조상에 transform 등이 있으면 화면 (0,0)이 아니다 → 보이지 않는 점을 같은 곳에 놓아 잰다
             const probe = document.createElement("div");
             probe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;transition:none;animation:none";
@@ -4287,68 +4320,39 @@ const tokenMenu = (() => {
             // Roll20 CSS 가 하위 메뉴 자리를 강제해도 이기도록 !important
             sub.style.setProperty("left", (want.x - base.left) + "px", "important");
             sub.style.setProperty("top", (want.y - base.top) + "px", "important");
-        }, () => {
-            sub.style.display = "none";
-            OPEN?.subCls.forEach(c => sub.classList.remove(c));
-        }, sub);
+        }, () => { sub.style.display = "none"; }, sub);
         return g;
     };
     // Roll20 하위 메뉴(▸)는 눌러야 열린다 → 마우스를 올리면 대신 눌러 열고, 벗어나면 닫는다
     const subOf = b => b.querySelector(":scope > .submenu");
     const isOpen = b => { const sb = subOf(b); return !!sb && getComputedStyle(sb).display !== "none"; };
     const toggleR20 = b => (b.querySelector(":scope > .submenu-button-outer") || b).click();
-    // Roll20 하위 메뉴가 열릴 때 바뀌는 것(하위 메뉴 style, 머리·하위 메뉴 class)을 숨겨 둔 '레이어 변경'을 한 번 열어 보고 읽어 둔다
-    let OPEN = null, learning = false;
-    let OFF = { gap: 4, dy: null, seen: false };
-    let PANEL = null;           // Roll20 하위 메뉴 판 모양 (배경·테두리·둥글기·그림자·여백·최소 폭)       // Roll20 하위 메뉴가 메뉴 판 오른쪽에서 떨어진 간격 · 머리 줄과의 높이 차
-    // 화면에 보이는 Roll20 하위 메뉴(고급 변환 · 여러 면)가 열린 자리에서 간격을 잰다
-    // (Roll20 하위 메뉴는 미끄러지며 열린다 → 움직임이 멈춘 뒤 두 번 재서 같을 때만 쓴다)
-    const measure = (b, sb, menu) => {
-        const sr = sb.getBoundingClientRect(), hr = b.getBoundingClientRect(), mr = menu.getBoundingClientRect();
-        return sr.width && hr.width && sr.left >= mr.right - 30 ? { gap: sr.left - mr.right, dy: sr.top - hr.top } : null;   // 왼쪽으로 뒤집혀 열린 것은 쓰지 않는다
-    };
-    const learnOff = async b => {
+    // 모양만 읽는다: 숨겨 둔 '레이어 변경'을 한 번 열어 하위 메뉴 항목 본(ITEM)을 잡고,
+    // 화면에 열린 Roll20 하위 메뉴에서 판 모양(PANEL: 배경·테두리·둥글기·그림자·여백)을 읽는다
+    let PANEL = null, learning = false, probed = false;
+    const learnLook = b => {
         const sb = subOf(b), menu = b.closest(".context-menu");
         grabItem(menu);
-        if (OFF.seen || !sb || !isOpen(b)) return;
-        // 연달아 잰 두 값이 같아질 때까지 (최대 1초쯤) 다시 잰다
-        let prev = measure(b, sb, menu);
-        for (let k = 0; k < 4; k++) {
-            await new Promise(r => setTimeout(r, 250));
-            if (!isOpen(b)) return;
-            const cur = measure(b, sb, menu);
-            if (prev && cur && Math.abs(prev.gap - cur.gap) < 0.5 && Math.abs(prev.dy - cur.dy) < 0.5) { OFF = { ...cur, seen: true }; break; }
-            prev = cur;
-        }
-        if (!OFF.seen) return;
+        if (PANEL || !sb || !isOpen(b)) return;
         const cs = getComputedStyle(sb);
         if (cs.backgroundColor !== "rgba(0, 0, 0, 0)")
             PANEL = { backgroundColor: cs.backgroundColor, border: cs.border, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, padding: cs.padding, minWidth: cs.minWidth };
     };
     const learnOpen = async menu => {
-        if (OPEN || learning) return;
+        if (probed || learning) return;
         const b = [...menu.querySelectorAll(":scope > button[data-r20tm-hide]")].find(x => x.querySelector(":scope > .submenu-button-outer .submenu-button-icon"));
         if (!b) return;
         learning = true;
-        const hc = [...b.classList], sc = [...(subOf(b)?.classList || [])];
         toggleR20(b);
         await new Promise(r => setTimeout(r, 40));
         const sb = subOf(b);
-        if (sb && sb.style.display !== "none") {
-            OPEN = { style: sb.getAttribute("style") || "", cls: [...b.classList].filter(c => !hc.includes(c)), subCls: [...sb.classList].filter(c => !sc.includes(c)) };
-            grabItem(menu);
-            // 숨긴 머리는 높이가 0 이라 Roll20 이 넣은 top 이 곧 줄 높이 차, left 는 메뉴 판 오른쪽 + 간격 (실제로 재기 전 임시값)
-            const num = k => parseFloat((new RegExp("(?:^|;)\\s*" + k + "\\s*:\\s*(-?[\\d.]+)px").exec(OPEN.style) || [])[1]);
-            const gx = num("left") - menu.getBoundingClientRect().right, ty = num("top");
-            if (!OFF.seen && gx >= 0 && gx < 30 && Math.abs(ty) < 40) OFF = { gap: gx, dy: ty, seen: false };
-            toggleR20(b);           // 다시 닫는다
-        }
+        if (sb && sb.style.display !== "none") { grabItem(menu); toggleR20(b); probed = true; }        // 다시 닫는다
         learning = false;
     };
     const hoverR20 = menu => menu.querySelectorAll(":scope > button").forEach(b => {
         if (ours(b) || b.dataset.r20tmHov || !b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")) return;
         b.dataset.r20tmHov = "1";
-        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnOff(b), 300); }, () => { if (isOpen(b)) toggleR20(b); });
+        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnLook(b), 300); }, () => { if (isOpen(b)) toggleR20(b); });
     });
     const arrange = menu => {
         if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
@@ -4959,39 +4963,30 @@ const roomImages = (() => {
     return { inject, setEnabled, gather, ownerMap, sized, loadPages, onPages: fn => hooks.add(fn), loadingNow: () => loading };
 })();
 
-// ───────── 화면 배치: 화면 제어(보기·확대·축소)를 햄버거(≡) 밑으로, 페이지 메뉴 버튼을 왼쪽 아래 '조명' 자리로 (body.r20sc-on) ─────────
-// Roll20 요소는 그대로 두고 자리·모양만 바꾼다. 페이지 버튼은 조명 버튼을 본뜬 단추가 원래 페이지 버튼을 대신 누른다
+// ───────── 화면 배치: 햄버거(≡) 밑에 페이지 메뉴 버튼, 그 밑에 화면 제어(보기 · 중앙 · 확대 · 배율 · 축소)를 세로로 (body.r20sc-on) ─────────
+// Roll20 요소는 그대로 두고 자리·모양만 바꾼다
 const screenUI = (() => {
     const Z_KEYS = ["position", "left", "right", "top", "width", "height"];
-    // 화면 제어: 햄버거 바로 밑, 오른쪽 끝을 햄버거에 맞춘다 (펼치면 왼쪽으로 늘어난다)
+    // 햄버거 바로 밑부터 차례로 쌓고, 오른쪽 끝을 햄버거에 맞춘다
     const place = () => {
-        const zb = document.getElementById("vm_zoom_buttons"), hb = document.getElementById("sidebarcontrol");
-        if (!zb || !hb) return;
-        const r = hb.getBoundingClientRect(), set = (k, v) => zb.style.setProperty(k, v, "important");
-        set("position", "fixed"); set("left", "auto"); set("width", "auto"); set("height", "auto");
-        set("top", Math.round(r.bottom + 4) + "px");
-        set("right", Math.round(innerWidth - r.right) + "px");
-    };
-    const pageBtn = () => {
-        const light = document.getElementById("lighting-layer-button"), pb = document.getElementById("page-button");
-        if (!light || !pb || light.parentNode.querySelector(":scope > .r20sc-page")) return;
-        const c = light.cloneNode(true);
-        c.removeAttribute("id");
-        c.classList.add("r20sc-page");
-        c.querySelectorAll(".icon-selected").forEach(x => x.classList.remove("icon-selected"));
-        const slot = c.querySelector(".icon-slot"), ic = pb.querySelector(".grimoire__roll20-icon");
-        if (slot && ic) slot.replaceChildren(ic.cloneNode(true));
-        const lb = c.querySelector(".label");
-        if (lb) lb.textContent = "페이지";
-        c.title = "페이지 메뉴";
-        c.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); document.getElementById("page-button")?.click(); }, true);
-        light.after(c);
+        const hb = document.getElementById("sidebarcontrol");
+        if (!hb) return;
+        const r = hb.getBoundingClientRect();
+        let y = r.bottom + 4;
+        [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")].forEach(el => {
+            if (!el) return;
+            const set = (k, v) => el.style.setProperty(k, v, "important");
+            set("position", "fixed"); set("left", "auto");
+            if (el.id === "vm_zoom_buttons") { set("width", "auto"); set("height", "auto"); }
+            set("top", Math.round(y) + "px");
+            set("right", Math.round(innerWidth - r.right) + "px");
+            y += el.getBoundingClientRect().height + 4;
+        });
     };
     let watched = null;
     const inject = () => {
         if (!btnVisible.screenui) return;
         place();
-        pageBtn();
         // 채팅·저널을 여닫으면 햄버거가 움직인다 → 따라간다
         const hb = document.getElementById("sidebarcontrol");
         if (hb && watched !== hb) {
@@ -5003,9 +4998,7 @@ const screenUI = (() => {
     const setEnabled = on => {
         document.body.classList.toggle("r20sc-on", on);
         if (on) return inject();
-        const zb = document.getElementById("vm_zoom_buttons");
-        if (zb) Z_KEYS.forEach(k => zb.style.removeProperty(k));
-        document.querySelectorAll(".r20sc-page").forEach(x => x.remove());
+        ["vm_zoom_buttons", "page-button"].forEach(id => { const el = document.getElementById(id); if (el) Z_KEYS.forEach(k => el.style.removeProperty(k)); });
     };
     window.addEventListener("resize", () => btnVisible.screenui && place());
     setEnabled(btnVisible.screenui);
