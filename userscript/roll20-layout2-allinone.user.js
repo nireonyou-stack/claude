@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.14.6
+// @version      1.15.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.14.6";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.15.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -53,7 +53,9 @@ const btnVisible = {
     qpick:     localStorage.getItem("r20_show_qpick")   !== "false",
     tokmenu:   localStorage.getItem("r20_show_tokmenu") !== "false",
     pageslim:  localStorage.getItem("r20_show_pageslim") !== "false",
-    artroom:   localStorage.getItem("r20_show_artroom") !== "false"
+    artroom:   localStorage.getItem("r20_show_artroom") !== "false",
+    screenui:  localStorage.getItem("r20_show_screenui") !== "false",
+    tokact:    localStorage.getItem("r20_show_tokact") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -504,6 +506,8 @@ function applyCocofoliaLayout() {
                 if (key === "jbrow") jukeboxRow.setEnabled(inp.checked);
                 if (key === "pageslim") pagePanel.setEnabled(inp.checked);
                 if (key === "artroom") roomImages.setEnabled(inp.checked);
+                if (key === "screenui") screenUI.setEnabled(inp.checked);
+                if (key === "tokact") tokenActs.setEnabled(inp.checked);
                 if (!inp.checked && key === "autofill") autofill.close();
 
                 if (!inp.checked && key === "journal") {
@@ -550,6 +554,8 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("토큰 메뉴 정리 (묶기·면 이동)", "tokmenu"));
         settingsPopup.appendChild(makeRow("페이지 창·설정 슬림", "pageslim"));
         settingsPopup.appendChild(makeRow("그림 라이브러리 · 이 방의 이미지", "artroom"));
+        settingsPopup.appendChild(makeRow("화면 배치 (화면 제어·페이지 버튼)", "screenui"));
+        settingsPopup.appendChild(makeRow("토큰 액션 → 클릭 메뉴", "tokact"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1549,6 +1555,18 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu > button[data-r20tm="choose"] { position:relative; }
+        /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
+        body.r20sc-on #lighting-layer-button, body.r20sc-on #page-button { display:none !important; }
+        body.r20sc-on .r20sc-page .icon-slot .grimoire__roll20-icon { display:inline-block; font-size:17px !important; line-height:17px; width:auto !important; height:17px !important; }
+        body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { flex-direction:row !important; align-items:center !important; width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons:not(:hover) .parentContainer > :not(:last-child) { display:none !important; }
+        /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
+        body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
+        .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
+        .r20ta-pop .r20ta-h { padding:4px 10px 2px; color:#8a8a90; font-size:10px; font-weight:700; }
+        .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
         .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
         .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
         .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
@@ -4921,10 +4939,123 @@ const roomImages = (() => {
     return { inject, setEnabled, gather, ownerMap, sized, loadPages, onPages: fn => hooks.add(fn), loadingNow: () => loading };
 })();
 
+// ───────── 화면 배치: 화면 제어(보기·확대·축소)를 햄버거(≡) 밑으로, 페이지 메뉴 버튼을 왼쪽 아래 '조명' 자리로 (body.r20sc-on) ─────────
+// Roll20 요소는 그대로 두고 자리·모양만 바꾼다. 페이지 버튼은 조명 버튼을 본뜬 단추가 원래 페이지 버튼을 대신 누른다
+const screenUI = (() => {
+    const Z_KEYS = ["position", "left", "right", "top", "width", "height"];
+    // 화면 제어: 햄버거 바로 밑, 오른쪽 끝을 햄버거에 맞춘다 (펼치면 왼쪽으로 늘어난다)
+    const place = () => {
+        const zb = document.getElementById("vm_zoom_buttons"), hb = document.getElementById("sidebarcontrol");
+        if (!zb || !hb) return;
+        const r = hb.getBoundingClientRect(), set = (k, v) => zb.style.setProperty(k, v, "important");
+        set("position", "fixed"); set("left", "auto"); set("width", "auto"); set("height", "auto");
+        set("top", Math.round(r.bottom + 4) + "px");
+        set("right", Math.round(innerWidth - r.right) + "px");
+    };
+    const pageBtn = () => {
+        const light = document.getElementById("lighting-layer-button"), pb = document.getElementById("page-button");
+        if (!light || !pb || light.parentNode.querySelector(":scope > .r20sc-page")) return;
+        const c = light.cloneNode(true);
+        c.removeAttribute("id");
+        c.classList.add("r20sc-page");
+        c.querySelectorAll(".icon-selected").forEach(x => x.classList.remove("icon-selected"));
+        const slot = c.querySelector(".icon-slot"), ic = pb.querySelector(".grimoire__roll20-icon");
+        if (slot && ic) slot.replaceChildren(ic.cloneNode(true));
+        const lb = c.querySelector(".label");
+        if (lb) lb.textContent = "페이지";
+        c.title = "페이지 메뉴";
+        c.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); document.getElementById("page-button")?.click(); }, true);
+        light.after(c);
+    };
+    let watched = null;
+    const inject = () => {
+        if (!btnVisible.screenui) return;
+        place();
+        pageBtn();
+        // 채팅·저널을 여닫으면 햄버거가 움직인다 → 따라간다
+        const hb = document.getElementById("sidebarcontrol");
+        if (hb && watched !== hb) {
+            watched = hb;
+            new MutationObserver(() => btnVisible.screenui && place()).observe(hb, { attributes: true, attributeFilter: ["style", "class"] });
+            hb.addEventListener("click", () => [60, 300, 700].forEach(ms => setTimeout(() => btnVisible.screenui && place(), ms)));
+        }
+    };
+    const setEnabled = on => {
+        document.body.classList.toggle("r20sc-on", on);
+        if (on) return inject();
+        const zb = document.getElementById("vm_zoom_buttons");
+        if (zb) Z_KEYS.forEach(k => zb.style.removeProperty(k));
+        document.querySelectorAll(".r20sc-page").forEach(x => x.remove());
+    };
+    window.addEventListener("resize", () => btnVisible.screenui && place());
+    setEnabled(btnVisible.screenui);
+    return { inject, setEnabled };
+})();
+
+// ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
+// 위쪽 토큰 액션 줄(#secondary-toolbar 의 ul.tokenactions)은 숨기고, 메뉴 항목은 그 줄의 원래 단추를 대신 누른다
+const tokenActs = (() => {
+    let down = null, pop = null;
+    const barEl = () => document.getElementById("secondary-toolbar");
+    const shown = el => !!el && getComputedStyle(el).display !== "none";
+    const actions = () => { const ul = barEl()?.querySelector("ul.tokenactions"); return shown(ul) ? [...ul.querySelectorAll("button")] : []; };
+    const close = () => { pop?.remove(); pop = null; };
+    const open = (at, list) => {
+        close();
+        pop = document.createElement("div");
+        pop.className = "r20ta-pop";
+        pop.setAttribute("role", "menu");
+        pop.setAttribute("aria-label", "토큰 액션");
+        pop.innerHTML = '<div class="r20ta-h">토큰 액션</div>';
+        list.forEach(orig => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.setAttribute("role", "menuitem");
+            b.textContent = orig.textContent.trim() || "(이름 없음)";
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); close(); orig.click(); });
+            pop.appendChild(b);
+        });
+        document.body.appendChild(pop);
+        const w = pop.offsetWidth, h = pop.offsetHeight;
+        pop.style.left = Math.max(4, Math.min(at.x + 10, innerWidth - w - 4)) + "px";
+        pop.style.top = Math.max(4, Math.min(at.y + 10, innerHeight - h - 4)) + "px";
+    };
+    // 위쪽 줄에 토큰 액션만 있을 때는 줄을 숨긴다 (그리기 도구 설정 등 다른 줄은 그대로)
+    const inject = () => {
+        const b = barEl();
+        if (!b) return;
+        const ul = b.querySelector("ul.tokenactions");
+        const others = [...b.querySelectorAll("ul.mode")].some(u => u !== ul && shown(u));
+        b.classList.toggle("r20ta-hide", btnVisible.tokact && !!ul && !others);
+        if (pop && !actions().length) close();         // 선택이 풀리면 메뉴도 닫는다
+    };
+    document.addEventListener("pointerdown", e => {
+        if (pop && !pop.contains(e.target)) close();
+        down = btnVisible.tokact && e.button === 0 && e.target.closest?.("#editor-wrapper") ? { x: e.clientX, y: e.clientY } : null;
+    }, true);
+    document.addEventListener("pointerup", e => {
+        if (!down || e.button !== 0) return;
+        const at = { x: e.clientX, y: e.clientY }, moved = Math.hypot(at.x - down.x, at.y - down.y) > 4;
+        down = null;
+        if (moved) return;                  // 끌어서 옮긴 것은 메뉴를 띄우지 않는다
+        setTimeout(() => { const list = actions(); if (list.length) open(at, list); }, 150);     // Roll20 이 선택·토큰 액션을 갱신한 뒤
+    }, true);
+    document.addEventListener("keydown", e => { if (pop && e.key === "Escape") close(); }, true);
+    document.addEventListener("contextmenu", close, true);
+    document.addEventListener("wheel", () => pop && close(), { capture: true, passive: true });
+    const setEnabled = on => {
+        document.body.classList.toggle("r20ta-on", on);
+        if (!on) { close(); barEl()?.classList.remove("r20ta-hide"); }
+        else inject();
+    };
+    setEnabled(btnVisible.tokact);
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
