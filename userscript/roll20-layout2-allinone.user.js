@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.19.1
+// @version      1.19.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.19.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.19.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1430,17 +1430,27 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
         /* 재생목록 머리줄: 폴더째 재생 버튼만 */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:28px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:28px !important; }
+        /* 재생목록 줄 높이를 24px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder { min-height:0 !important; margin:0 !important; padding:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder::before, body.r20jb-on #jukeboxfolderroot li.dd-folder::after, body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content::after { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { height:24px !important; margin-top:0 !important; margin-bottom:0 !important; line-height:24px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; line-height:24px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:24px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:24px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.playstyle, body.r20jb-on #jukeboxfolderroot .playlistcontrols a.exportplaylist { display:none !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play { display:inline-flex !important; align-items:center; justify-content:center; width:22px; margin:0 !important; color:#777 !important; text-decoration:none !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:28px !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:24px !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
         /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content { min-height:16px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .folder-title { line-height:16px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-list { display:none !important; }
         /* 빈 재생목록의 자리표시(끌어 넣기용)는 남기되 높이만 줄인다 */
+        body.r20jb-on #jukeboxfolderroot li.dd-item-dummy { min-height:0 !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
         /* 곡 줄 */
         body.r20jb-on #jukebox li.jukeboxitem { position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
