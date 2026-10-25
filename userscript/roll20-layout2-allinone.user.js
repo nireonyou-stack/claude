@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.17.3
+// @version      1.18.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.17.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.18.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -56,7 +56,10 @@ const btnVisible = {
     artroom:   localStorage.getItem("r20_show_artroom") !== "false",
     screenui:  localStorage.getItem("r20_show_screenui") !== "false",
     tokact:    localStorage.getItem("r20_show_tokact") !== "false",
-    capture:   localStorage.getItem("r20_show_capture") !== "false"
+    capture:   localStorage.getItem("r20_show_capture") !== "false",
+    deckview:  localStorage.getItem("r20_show_deckview") !== "false",
+    macrobar:  localStorage.getItem("r20_show_macrobar") !== "false",
+    mapshot:   localStorage.getItem("r20_show_mapshot") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -81,16 +84,22 @@ function saveCustomBtns(btns) {
     localStorage.setItem("r20_custom_btns", JSON.stringify(btns));
 }
 
+// 커스텀 버튼 색 (이름, 값) — '' 은 기본(회색 → 파랑)
+const BTN_COLORS = [["기본", ""], ["빨강", "#d64545"], ["주황", "#e07b1f"], ["노랑", "#c9a400"], ["초록", "#2e8b57"], ["청록", "#159a9c"], ["파랑", "#1867c7"], ["보라", "#7b4bc4"], ["분홍", "#b8215f"]];
+
 function updateCustomButtonStyles() {
     const group = document.getElementById("custom-left-group");
     if (!group) return;
     const domBtns = [...group.querySelectorAll("[data-custom-btn]")];
     const count = domBtns.length;
     const small = count > 3;
+    const saved = getCustomBtns();
     domBtns.forEach(b => {
         const idx = parseInt(b.dataset.customBtn);
         const isActive = activeCustomBtn && activeCustomBtn._idx === idx;
-        applyBtnColors(b, isActive, { bg: CONFIG.activeBg, text: CONFIG.activeText, border: CONFIG.activeBorder });
+        const c = saved[idx]?.color;       // 색을 고른 단추: 평소엔 글자·테두리만 그 색, 켜면 그 색으로 채움
+        applyBtnColors(b, isActive, c ? { bg: c, text: "#ffffff", border: c } : { bg: CONFIG.activeBg, text: CONFIG.activeText, border: CONFIG.activeBorder });
+        if (c && !isActive) { b.style.setProperty("color", c, "important"); b.style.setProperty("border-color", c, "important"); }
         b.style.setProperty("padding", small ? "1px 4px" : "1px 6px", "important");     // 위아래 1px: 높이 20px 안에서 글자가 가운데 오게
         b.style.setProperty("font-size", small ? "10px" : "11px", "important");
         b.style.setProperty("min-width", small ? "28px" : "36px", "important");
@@ -196,6 +205,10 @@ if (!document.getElementById("custom-journal-style")) {
         .cs-side-name:focus { border-color:#1867c7; }
         .cs-side-textarea { border:1px solid #ccc; border-radius:3px; padding:6px 8px; font-size:11px; outline:none; width:100%; box-sizing:border-box; resize:vertical; min-height:120px; font-family:monospace; line-height:1.5; }
         .cs-side-textarea:focus { border-color:#1867c7; }
+        .cs-swatches { display:flex; flex-wrap:wrap; gap:6px; }
+        .cs-swatches button { width:20px; height:20px; padding:0; border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px #ccc; background:repeating-linear-gradient(45deg,#fff 0 3px,#ddd 3px 6px); cursor:pointer; }
+        .cs-swatches button[aria-checked="true"] { box-shadow:0 0 0 2px #333; }
+        .cs-swatches button:focus-visible { outline:2px solid #1867c7; outline-offset:2px; }
         .cs-side-footer { display:flex; gap:6px; padding:0 12px 12px; }
         .cs-side-save { flex:1; background:#1867c7; color:white; border:none; border-radius:3px; padding:7px; cursor:pointer; font-size:12px; font-weight:bold; }
         .cs-side-save:hover { background:#1455a4; }
@@ -382,8 +395,33 @@ function applyCocofoliaLayout() {
         contentField.appendChild(contentLabel);
         contentField.appendChild(sideContentTa);
 
+        const colorField = document.createElement("div");
+        colorField.className = "cs-side-field";
+        const colorLabel = document.createElement("label");
+        colorLabel.textContent = "색";
+        const swatchRow = document.createElement("div");
+        swatchRow.className = "cs-swatches";
+        swatchRow.setAttribute("role", "radiogroup");
+        swatchRow.setAttribute("aria-label", "버튼 색");
+        let sideColor = "";
+        const paintSwatches = () => swatchRow.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.c === sideColor)));
+        BTN_COLORS.forEach(([name, hex]) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.dataset.c = hex;
+            b.title = name;
+            b.setAttribute("role", "radio");
+            b.setAttribute("aria-label", name);
+            if (hex) b.style.background = hex;
+            b.onclick = () => { sideColor = hex; paintSwatches(); };
+            swatchRow.appendChild(b);
+        });
+        colorField.appendChild(colorLabel);
+        colorField.appendChild(swatchRow);
+
         sidePanelBody.appendChild(nameField);
         sidePanelBody.appendChild(contentField);
+        sidePanelBody.appendChild(colorField);
         sidePanel.appendChild(sidePanelBody);
 
         const sidePanelFooter = document.createElement("div");
@@ -411,16 +449,19 @@ function applyCocofoliaLayout() {
                 sidePanelTitle.textContent = "커스텀 버튼 수정";
                 sideNameInp.value = btn.label;
                 sideContentTa.value = btn.content;
+                sideColor = btn.color || "";
             } else {
                 sidePanelTitle.textContent = "커스텀 버튼 추가";
                 sideNameInp.value = "";
                 sideContentTa.value = "";
+                sideColor = "";
             }
             const spRect = settingsPopup.getBoundingClientRect();
             sidePanel.style.right = (window.innerWidth - spRect.left + 6) + "px";
             sidePanel.style.bottom = (window.innerHeight - spRect.bottom) + "px";
             sidePanel.style.left = "auto";
             sidePanel.style.top = "auto";
+            paintSwatches();
             sidePanel.classList.add("show");
             sideNameInp.focus();
         };
@@ -439,8 +480,9 @@ function applyCocofoliaLayout() {
             if (sidePanelMode === "edit" && sidePanelEditIdx >= 0) {
                 btns[sidePanelEditIdx].label = lbl;
                 btns[sidePanelEditIdx].content = sideContentTa.value;
+                btns[sidePanelEditIdx].color = sideColor;
             } else {
-                btns.push({ label: lbl, content: sideContentTa.value, visible: true });
+                btns.push({ label: lbl, content: sideContentTa.value, visible: true, color: sideColor });
             }
             saveCustomBtns(btns);
             closeSidePanel();
@@ -519,6 +561,9 @@ function applyCocofoliaLayout() {
                 if (key === "screenui") screenUI.setEnabled(inp.checked);
                 if (key === "tokact") tokenActs.setEnabled(inp.checked);
                 if (key === "capture") chatCapture.setEnabled(inp.checked);
+                if (key === "deckview") deckView.setEnabled(inp.checked);
+                if (key === "macrobar") macroBar.setEnabled(inp.checked);
+                if (key === "mapshot") mapShot.setEnabled(inp.checked);
                 if (!inp.checked && key === "autofill") autofill.close();
 
                 if (!inp.checked && key === "journal") {
@@ -568,6 +613,9 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("화면 배치 (페이지 버튼·화면 제어)", "screenui"));
         settingsPopup.appendChild(makeRow("토큰 액션 → 클릭 메뉴", "tokact"));
         settingsPopup.appendChild(makeRow("대화 캡처", "capture"));
+        settingsPopup.appendChild(makeRow("덱 창 정리 · 크게 보기", "deckview"));
+        settingsPopup.appendChild(makeRow("매크로 줄 (두 줄 · 길게 눌러 옮기기)", "macrobar"));
+        settingsPopup.appendChild(makeRow("맵 촬영 (맵·토큰 레이어)", "mapshot"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1581,6 +1629,40 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .ui-dialog.r20cs-drive .sideslider { display:block !important; position:fixed !important; left:0 !important; top:0 !important; width:1000px !important; height:10px !important; visibility:hidden !important; }
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
+        .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
+        /* 덱 창: 링크는 돌리기·선택·회수·섞기·숨기기만 */
+        #showndecks.r20dk-on .control:has(> a.removedcardspile), #showndecks.r20dk-on .control:has(> a.discardpile) { display:none !important; }
+        #showndecks .r20dk-size { position:sticky; top:0; z-index:3; display:block; width:100%; height:20px; margin:0 0 4px; padding:0; border:1px solid #ddd; border-radius:4px; background:#fff; color:#666; font-size:11px; line-height:18px; cursor:pointer; }
+        #showndecks .r20dk-size:hover { color:#b8215f; border-color:#d9a9bf; }
+        /* 덱 창 크게: 덱마다 칸 (왼쪽 링크 + 오른쪽 카드 더미), 옆으로 놓다가 넘치면 다음 줄 — 세로 스크롤만 */
+        #showndecks.r20dk-big { width:620px !important; padding:8px !important; display:flex !important; flex-wrap:wrap; align-content:flex-start; gap:8px; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(251,250,251,0.97) !important; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.35); box-sizing:border-box; }
+        #showndecks.r20dk-big .r20dk-size { flex:0 0 100%; margin:0; }
+        #showndecks.r20dk-big .adeck { position:relative; display:flex !important; justify-content:flex-end; align-items:flex-start; width:194px !important; min-height:140px; margin:0 !important; padding:8px !important; float:none !important; background:#fff; border:1px solid #efe9ed; border-radius:8px; box-sizing:border-box; }
+        #showndecks.r20dk-big .deckstack { margin:0 !important; }
+        #showndecks.r20dk-big .controls { left:auto !important; right:calc(100% + 8px) !important; top:0 !important; width:94px !important; height:auto !important; overflow:visible !important; }
+        #showndecks.r20dk-big .control { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; line-height:20px; }
+        #showndecks.r20dk-big .control:first-child { font-weight:700; color:#222; padding:0 6px; }
+        #showndecks.r20dk-big .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
+        #showndecks.r20dk-big .control a:hover { background:#eaf1fb; }
+        /* 매크로 줄: 두 줄로 쌓고 넘치면 줄 안에서 세로 스크롤 · 길게 누르면 들림 */
+        body.r20mb-on #macrobar { height:auto !important; max-height:66px !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:thin; }
+        /* flex 로 하면 jQuery UI 가 세로 목록으로 여겨 옆으로 끌어도 안 바뀐다 → inline-block 을 줄바꿈 */
+        body.r20mb-on #macrobar_macros { display:block !important; width:auto !important; white-space:normal !important; padding:2px 0 0; }
+        body.r20mb-on #macrobar_macros .macrobox { display:inline-block !important; vertical-align:top; width:auto !important; margin:0 4px 4px 0 !important; float:none !important; }
+        body.r20mb-on #macrobar_macros .macrobox > button { height:26px !important; max-width:180px; margin:0 !important; padding:0 10px !important; border-radius:13px !important; font-size:12px !important; line-height:24px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 1px 2px rgba(0,0,0,0.25); }
+        body.r20mb-on #macrobar_macros .macrobox > .handle { display:none !important; }     /* 단추 전체를 길게 눌러 끄니 손잡이는 필요 없다 */
+        body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(184,33,95,0.55); }
+        body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
+        body.r20mb-on #macrobar_macros.r20mb-drag > .macrobox:not(.ui-sortable-helper):not(.ui-sortable-placeholder) { opacity:0.55; }
+        body.r20mb-on #macrobar_macros > .ui-sortable-placeholder { display:inline-block !important; visibility:visible !important; width:3px !important; min-width:3px; height:26px !important; padding:0 !important; border-radius:2px; background:#ffd84d; box-shadow:0 0 6px #ffd84d; }
+        /* 맵 촬영 단추 (화면 제어 줄 맨 아래) */
+        #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
+        #r20-mapshot:hover { color:#b8215f; }
+        #r20-mapshot:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        #r20-mapshot[data-state=ok] { color:#2e8b57; }
+        #r20-mapshot[data-state=warn] { color:#c98a00; }
+        #r20-mapshot[data-state=bad] { color:#c0392b; }
+        #r20-mapshot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
         .context-menu > button[data-r20tm="choose"] { position:relative; }
         /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
         body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
@@ -4413,6 +4495,7 @@ const tokenMenu = (() => {
             if (gb) gb.style.order = order;
         });
         learnOpen(menu);
+        menu.classList.add("r20tm-arranged");
         menu.querySelectorAll(":scope > button").forEach(b => { if (!ours(b) && !used.has(b)) b.style.order = 900; });       // 목록에 없는 것은 맨 아래
     };
     const inject = () => {
@@ -5016,7 +5099,9 @@ const screenUI = (() => {
         const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
         const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
-        [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")].forEach(el => {
+        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
+        els.push(document.getElementById("r20-mapshot"));
+        els.forEach(el => {
             if (!el) return;
             const set = (k, v) => el.style.setProperty(k, v, "important");
             set("position", "fixed"); set("left", "auto");
@@ -5028,29 +5113,30 @@ const screenUI = (() => {
     };
     let watched = null, watchedSide = null;
     const inject = () => {
-        if (!btnVisible.screenui) return;
+        if (!btnVisible.screenui && !btnVisible.mapshot) return;
         place();
         const side = document.getElementById("rightsidebar");
         if (side && watchedSide !== side) {
             watchedSide = side;
-            new ResizeObserver(() => btnVisible.screenui && place()).observe(side);
+            new ResizeObserver(() => place()).observe(side);
         }
         // 채팅·저널을 여닫으면 햄버거가 움직인다 → 따라간다
         const hb = document.getElementById("sidebarcontrol");
         if (hb && watched !== hb) {
             watched = hb;
-            new MutationObserver(() => btnVisible.screenui && place()).observe(hb, { attributes: true, attributeFilter: ["style", "class"] });
-            hb.addEventListener("click", () => [60, 300, 700].forEach(ms => setTimeout(() => btnVisible.screenui && place(), ms)));
+            new MutationObserver(() => place()).observe(hb, { attributes: true, attributeFilter: ["style", "class"] });
+            hb.addEventListener("click", () => [60, 300, 700].forEach(ms => setTimeout(() => place(), ms)));
         }
     };
     const setEnabled = on => {
         document.body.classList.toggle("r20sc-on", on);
         if (on) return inject();
         ["vm_zoom_buttons", "page-button"].forEach(id => { const el = document.getElementById(id); if (el) Z_KEYS.forEach(k => el.style.removeProperty(k)); });
+        place();
     };
-    window.addEventListener("resize", () => btnVisible.screenui && place());
+    window.addEventListener("resize", () => place());
     setEnabled(btnVisible.screenui);
-    return { inject, setEnabled };
+    return { inject, setEnabled, place };
 })();
 
 // ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
@@ -5369,10 +5455,191 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
+// ───────── 덱 창: 링크 다섯 개만 + [크게] 단추로 넓게 보기 (#showndecks.r20dk-on / .r20dk-big) ─────────
+const deckView = (() => {
+    let big = localStorage.getItem("r20_deck_big") === "true";
+    const inject = () => {
+        const sd = document.getElementById("showndecks");
+        if (!sd) return;
+        sd.classList.toggle("r20dk-on", btnVisible.deckview);
+        sd.classList.toggle("r20dk-big", btnVisible.deckview && big);
+        let b = sd.querySelector(":scope > .r20dk-size");
+        if (!btnVisible.deckview) { b?.remove(); return; }
+        if (!b) {
+            b = document.createElement("button");
+            b.type = "button";
+            b.className = "r20dk-size";
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); big = !big; localStorage.setItem("r20_deck_big", String(big)); inject(); });
+            sd.prepend(b);
+        }
+        const label = big ? "⤡ 작게" : "⤢ 크게";
+        if (b.textContent !== label) b.textContent = label;
+        b.setAttribute("aria-pressed", String(big));
+        b.title = big ? "덱 창을 원래 크기로" : "덱 창을 넓게 보기";
+    };
+    return { inject, setEnabled: () => inject() };
+})();
+
+// ───────── 맵 아래 매크로 줄: 두 줄로 쌓기 + 길게(0.4초) 눌러 끌면 순서 바꾸기 (body.r20mb-on) ─────────
+// 순서 바꾸기·저장은 Roll20 의 sortable 그대로이고, 시작 조건(delay)만 바꾼다
+const macroBar = (() => {
+    let bound = null, orig = null;
+    const inject = () => {
+        document.body.classList.toggle("r20mb-on", btnVisible.macrobar);
+        const list = document.getElementById("macrobar_macros"), jq = window.jQuery || window.$;
+        if (!list || !jq?.fn?.sortable || !list.classList.contains("ui-sortable")) return;
+        const $l = jq(list);
+        if (bound !== list) {
+            bound = list;
+            orig = { delay: $l.sortable("option", "delay") || 0, cancel: $l.sortable("option", "cancel") };
+            $l.on("sortstart.r20mb", () => list.classList.add("r20mb-drag")).on("sortstop.r20mb", () => list.classList.remove("r20mb-drag"));
+        }
+        // jQuery UI 는 기본으로 <button> 에서 시작한 끌기를 무시한다 → 켜져 있을 땐 단추를 잡아도 끌리게
+        const want = btnVisible.macrobar ? { delay: 400, cancel: "input,textarea,select,option" } : orig;
+        if ($l.sortable("option", "delay") !== want.delay || $l.sortable("option", "cancel") !== want.cancel) $l.sortable("option", want);
+        // 두 줄이 되며 아래로 넘치면 아래쪽에 붙인다
+        const mb = document.getElementById("macrobar");
+        if (btnVisible.macrobar && mb && mb.getBoundingClientRect().bottom > innerHeight - 2) {
+            mb.style.setProperty("top", "auto", "important");
+            mb.style.setProperty("bottom", "12px", "important");
+        }
+    };
+    return { inject, setEnabled: () => inject() };
+})();
+
+// ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
+// 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
+const mapShot = (() => {
+    const ICON = {
+        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
+        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+        ok: '<path d="M20 6 9 17l-5-5"/>',
+        warn: '<path d="M20 6 9 17l-5-5"/><circle cx="19" cy="19" r="2" fill="currentColor"/>',
+        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+    };
+    const svg = k => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+    const btn = () => document.getElementById("r20-mapshot");
+    let busy = false, noteT = 0;
+    const show = (k, tip) => {
+        const b = btn();
+        if (!b) return;
+        b.innerHTML = svg(k);
+        b.dataset.state = k;
+        b.title = tip;
+        b.setAttribute("aria-label", tip);
+    };
+    const idle = () => show("cam", "맵 촬영: 맵·토큰 레이어를 이미지로 클립보드에 복사");
+    const note = (k, tip) => { clearTimeout(noteT); show(k, tip); noteT = setTimeout(idle, 3000); };
+    // Roll20 은 fetch 로 그림 서버에 못 가게 막혀 있어서 <img crossOrigin> 으로 받는다.
+    // CORS 없이 캐시된 그림이면 실패하므로 한 번은 주소 끝을 바꿔 새로 받는다
+    const load = (u, retry) => new Promise(res => {
+        const im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = () => res(im);
+        im.onerror = () => retry ? res(null) : load(u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now(), true).then(res);
+        im.src = u;
+    });
+    const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
+    const usable = c => c && c !== "transparent" && c !== "none";
+    // 펜 선: path 는 [["M",x,y],["L",x,y],["Q",..],["C",..]] — 점들의 가운데가 (left, top) 에 오도록 놓는다
+    const drawPath = (ctx, p) => {
+        let cmds;
+        try { cmds = JSON.parse(p.get("path") || "[]"); } catch (e) { return; }
+        if (!Array.isArray(cmds) || !cmds.length) return;
+        const xs = [], ys = [];
+        cmds.forEach(([, ...a]) => a.forEach((v, i) => (i % 2 ? ys : xs).push(+v)));
+        if (!xs.length) return;
+        ctx.save();
+        ctx.translate(num(p, "left"), num(p, "top"));
+        ctx.rotate(num(p, "rotation") * Math.PI / 180);
+        ctx.scale(num(p, "scaleX", 1), num(p, "scaleY", 1));
+        ctx.translate(-(Math.min(...xs) + Math.max(...xs)) / 2, -(Math.min(...ys) + Math.max(...ys)) / 2);
+        ctx.beginPath();
+        cmds.forEach(([c, ...a]) => {
+            a = a.map(Number);
+            if (c === "M") ctx.moveTo(a[0], a[1]);
+            else if (c === "L") ctx.lineTo(a[0], a[1]);
+            else if (c === "Q") ctx.quadraticCurveTo(a[0], a[1], a[2], a[3]);
+            else if (c === "C") ctx.bezierCurveTo(a[0], a[1], a[2], a[3], a[4], a[5]);
+            else if (c === "Z" || c === "z") ctx.closePath();
+        });
+        if (usable(p.get("fill"))) { ctx.fillStyle = p.get("fill"); ctx.fill(); }
+        const sw = num(p, "stroke_width", 0);
+        if (sw > 0 && usable(p.get("stroke"))) { ctx.lineWidth = sw; ctx.strokeStyle = p.get("stroke"); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
+        ctx.restore();
+    };
+    const drawImg = (ctx, g, im) => {
+        const w = num(g, "width"), h = num(g, "height");
+        ctx.save();
+        ctx.translate(num(g, "left"), num(g, "top"));
+        ctx.rotate(num(g, "rotation") * Math.PI / 180);
+        ctx.scale(g.get("fliph") ? -1 : 1, g.get("flipv") ? -1 : 1);
+        ctx.globalAlpha = Math.max(0, Math.min(1, num(g, "baseOpacity", 1)));
+        ctx.drawImage(im, -w / 2, -h / 2, w, h);
+        ctx.restore();
+    };
+    const render = async () => {
+        const pg = Campaign.activePage?.() || Campaign.pages?.get(Campaign.get("playerpageid"));
+        if (!pg?.thegraphics) throw new Error("페이지를 아직 불러오지 않았어요");
+        const W = num(pg, "width", 25) * 70, H = num(pg, "height", 25) * 70;
+        const k = Math.min(1, 8192 / Math.max(W, H));             // 브라우저 캔버스 한도 안으로
+        const z = new Map(String(pg.get("zorder") || "").split(",").map((id, i) => [id, i]));
+        const objs = [...pg.thegraphics.models.filter(g => g.get("imgsrc")), ...(pg.thepaths?.models || [])];
+        // 맵 레이어 먼저, 그다음 토큰 레이어. 같은 레이어 안에서는 Roll20 의 앞뒤 순서(zorder)대로
+        const list = ["map", "objects"].flatMap(layer => objs.filter(o => o.get("layer") === layer)
+            .sort((a, b) => (z.get(a.id) ?? num(a, "z_index", 1e9)) - (z.get(b.id) ?? num(b, "z_index", 1e9))));
+        const imgs = await Promise.all(list.map(o => o.get("imgsrc") ? load(o.get("imgsrc")) : null));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+        const ctx = cv.getContext("2d");
+        ctx.scale(k, k);
+        ctx.fillStyle = pg.get("background_color") || "#ffffff";
+        ctx.fillRect(0, 0, W, H);
+        let miss = 0;
+        list.forEach((o, i) => {
+            if (!o.get("imgsrc")) return drawPath(ctx, o);
+            if (imgs[i]) drawImg(ctx, o, imgs[i]); else miss++;
+        });
+        const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("이미지를 만들지 못했어요")), "image/png"));
+        return { blob, miss };
+    };
+    const shoot = async () => {
+        if (busy) return;
+        busy = true;
+        clearTimeout(noteT);
+        show("load", "맵을 그리는 중…");
+        let info = null;
+        try {
+            // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 다 그려지는 대로 넘긴다)
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": render().then(r => (info = r).blob) })]);
+            note(info.miss ? "warn" : "ok", info.miss ? `복사했어요 — 그림 ${info.miss}개는 불러오지 못해 빠졌어요` : "맵 이미지를 클립보드에 복사했어요");
+        } catch (e) {
+            console.warn("[맵 촬영] 실패:", e);
+            note("bad", "복사하지 못했어요 — " + (e?.message || e));
+        }
+        busy = false;
+    };
+    const inject = () => {
+        if (!btnVisible.mapshot || btn() || !document.getElementById("sidebarcontrol")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "r20-mapshot";
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); shoot(); });
+        document.body.appendChild(b);
+        idle();
+        screenUI.place();
+    };
+    const setEnabled = v => {
+        if (v) return inject();
+        btn()?.remove();
+    };
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); chatCapture.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); chatCapture.inject(); deckView.inject(); macroBar.inject(); mapShot.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
