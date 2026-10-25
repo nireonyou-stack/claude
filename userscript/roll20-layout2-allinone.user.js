@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.18.3
+// @version      1.19.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.18.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.19.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -59,7 +59,8 @@ const btnVisible = {
     capture:   localStorage.getItem("r20_show_capture") !== "false",
     deckview:  localStorage.getItem("r20_show_deckview") !== "false",
     macrobar:  localStorage.getItem("r20_show_macrobar") !== "false",
-    mapshot:   localStorage.getItem("r20_show_mapshot") !== "false"
+    mapshot:   localStorage.getItem("r20_show_mapshot") !== "false",
+    emoji:     localStorage.getItem("r20_show_emoji") !== "false"
 };
 
 const sharedBtnStyle = `
@@ -564,6 +565,7 @@ function applyCocofoliaLayout() {
                 if (key === "deckview") deckView.setEnabled(inp.checked);
                 if (key === "macrobar") macroBar.setEnabled(inp.checked);
                 if (key === "mapshot") mapShot.setEnabled(inp.checked);
+                if (key === "emoji") emojiPalette.setEnabled(inp.checked);
                 if (!inp.checked && key === "autofill") autofill.close();
 
                 if (!inp.checked && key === "journal") {
@@ -616,6 +618,7 @@ function applyCocofoliaLayout() {
         settingsPopup.appendChild(makeRow("덱 창 정리", "deckview"));
         settingsPopup.appendChild(makeRow("매크로 줄 (두 줄 · 길게 눌러 옮기기)", "macrobar"));
         settingsPopup.appendChild(makeRow("맵 촬영 (맵·토큰 레이어)", "mapshot"));
+        settingsPopup.appendChild(makeRow("이모지 팔레트", "emoji"));
         settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
 
         // 커스텀 버튼 섹션
@@ -1658,6 +1661,29 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
         body.r20mb-on #macrobar_macros.r20mb-drag > .macrobox:not(.ui-sortable-helper):not(.ui-sortable-placeholder) { opacity:0.55; }
         body.r20mb-on #macrobar_macros > .ui-sortable-placeholder { display:inline-block !important; visibility:visible !important; width:3px !important; min-width:3px; height:26px !important; padding:0 !important; border-radius:2px; background:#ffd84d; box-shadow:0 0 6px #ffd84d; }
+        /* 이모지 팔레트 (입력칸 위) */
+        #r20-emoji { position:fixed; z-index:10005; display:flex; flex-direction:column; background:#fff; border:1px solid #ddd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.22); overflow:hidden; font-family:sans-serif; color:#333; }
+        #r20-emoji[hidden] { display:none; }
+        #r20-emoji .q { flex-shrink:0; width:auto; height:28px; margin:8px 8px 4px; padding:0 10px; border:1px solid #ddd; border-radius:14px; font-size:12px; outline:none; box-sizing:border-box; box-shadow:none; }
+        #r20-emoji .q:focus { border-color:#1867c7; }
+        #r20-emoji .tabs { flex-shrink:0; display:flex; padding:0 4px; border-bottom:1px solid #eee; }
+        #r20-emoji .tabs button { flex:1; min-width:0; height:28px; margin:0; padding:0; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; font-size:15px; cursor:pointer; opacity:0.55; }
+        #r20-emoji .tabs button.txt { font-size:11px; font-weight:700; color:#555; }
+        #r20-emoji .tabs button[aria-selected="true"] { opacity:1; border-bottom-color:#1867c7; }
+        #r20-emoji .tabs button:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
+        #r20-emoji .head { flex-shrink:0; padding:4px 10px 2px; font-size:11px; font-weight:700; color:#888; }
+        #r20-emoji .grid { flex:1; min-height:0; overflow-y:auto; padding:2px 6px 8px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:2px; scrollbar-width:thin; }
+        #r20-emoji .it { margin:0; border:0; border-radius:6px; background:none; color:#333; cursor:pointer; }
+        #r20-emoji .it.e { width:34px; height:34px; padding:0; font-size:21px; line-height:34px; }
+        #r20-emoji .it.t { height:28px; padding:0 8px; background:#f6f6f8; font-size:13px; white-space:nowrap; }
+        #r20-emoji .it:hover, #r20-emoji .it:focus-visible { background:#eaf1fb; outline:none; }
+        #r20-emoji .empty { padding:12px 6px; font-size:12px; color:#999; }
+        #r20-emoji .add { flex-shrink:0; display:flex; gap:4px; margin:0; padding:6px 8px; border-top:1px solid #eee; }
+        #r20-emoji .add[hidden] { display:none; }
+        #r20-emoji .add input { min-width:0; height:26px; margin:0; padding:0 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; box-sizing:border-box; box-shadow:none; }
+        #r20-emoji .add .at { flex:1.4; }
+        #r20-emoji .add .an { flex:1; }
+        #r20-emoji .add button { flex-shrink:0; height:26px; margin:0; padding:0 10px; border:0; border-radius:4px; background:#1867c7; color:#fff; font-size:12px; cursor:pointer; }
         /* 맵 촬영 단추 (화면 제어 줄 맨 아래) */
         #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
         #r20-mapshot:hover { color:#b8215f; }
@@ -5706,10 +5732,189 @@ const mapShot = (() => {
     return { inject, setEnabled };
 })();
 
+// ───────── 이모지 팔레트: 전송 왼쪽 단추 → 입력칸 위에 이모지 · 텍스트 이모티콘 · 내 것(직접 등록) ─────────
+// 누르면 커서 자리에 넣고 팔레트는 열어 둔다. 우클릭: 내 것에 넣기/빼기. 최근 쓴 것·내 것은 이 브라우저에 저장
+const emojiPalette = (() => {
+    const E = s => s.split("|").map(x => { const i = x.indexOf(" "); return [x.slice(0, i), x.slice(i + 1)]; });
+    const TEXTS = [["^^", "웃음"], ["^_^", "웃음"], ["ㅎㅅㅎ", "헤헤"], ["ㅎㅎ", "히히 웃음"], ["ㅋㅋㅋ", "웃음"], ["ㅠㅠ", "눈물 울음"], ["ㅜㅜ", "눈물 울음"], [";;", "땀 당황"],
+        ["-_-", "무표정"], ["ㅡㅡ", "무표정 짜증"], [">_<", "꽉 부끄"], ["@_@", "어지러움"], ["T_T", "울음"], ["OTL", "좌절"], ["orz", "좌절"],
+        ["(｡•̀ᴗ-)✧", "윙크 반짝"], ["٩(◕‿◕)۶", "신남"], ["(๑•̀ㅂ•́)و✧", "화이팅"], ["(╯°□°)╯︵ ┻━┻", "상 엎기 화남"], ["┬─┬ノ( º _ ºノ)", "상 정리"],
+        ["¯\\_(ツ)_/¯", "몰라"], ["( ˘ω˘ )", "졸림 평온"], ["(*´▽`*)", "행복"], ["(´；ω；`)", "울음 눈물"], ["ʕ•ᴥ•ʔ", "곰"], ["ฅ^•ﻌ•^ฅ", "고양이"],
+        ["(=^･ω･^=)", "고양이"], ["( •́ ̯•̀ )", "시무룩"], ["(ノ´ヮ`)ノ*: ･ﾟ", "반짝 신남"], ["✧*｡٩(ˊᗜˋ*)و✧*｡", "신남 기쁨"], ["(っ˘ω˘ς )", "포근 졸림"],
+        ["( ˙▿˙ )", "멍"], ["(⊙_⊙)", "놀람"], ["(￣▽￣)", "흐뭇"], ["(｀・ω・´)", "결의 진지"], ["٩(๑`^´๑)۶", "화남"], ["(。>﹏<。)", "부끄 당황"],
+        ["(づ｡◕‿‿◕｡)づ", "안아줘 포옹"], ["♪(´▽｀)", "노래 신남"], ["(｡•́︿•̀｡)", "시무룩 슬픔"], ["( ´ ▽ ` )ﾉ", "안녕 인사"], ["ヽ(・∀・)ﾉ", "만세"]];
+    const GROUPS = [
+        { k: "recent", icon: "🕘", name: "최근" },
+        { k: "mine", icon: "⭐", name: "내 것" },
+        { k: "text", icon: "^^", name: "텍스트 이모티콘", list: TEXTS, txt: true },
+        { k: "face", icon: "😀", name: "표정", list: E("😀 웃음|😃 활짝|😄 신남|😁 히죽|😆 깔깔|😅 진땀|🤣 데굴데굴 웃음|😂 웃음 눈물|🙂 미소|🙃 거꾸로|😉 윙크|😊 수줍음 미소|😇 천사|🥰 사랑|😍 하트 눈|🤩 반짝 눈|😘 뽀뽀|😋 냠냠|😛 메롱|🤪 장난|🤭 입가림|🤫 쉿|🤔 생각|🤨 의심|😐 무표정|😑 멍|😶 말없음|😏 능글|😒 시큰둥|🙄 눈굴림|😬 이크|😌 안도|😔 시무룩|😪 졸림|😴 잠|😷 마스크|🤒 아픔|🥵 더움|🥶 추움|😵 어지러움|🤯 충격|🥳 파티 축하|😎 멋짐|🧐 관찰|😕 갸우뚱|😟 걱정|🥺 부탁|🥹 감동|😢 눈물|😭 엉엉 울음|😱 비명 놀람|😳 당황|😤 씩씩|😡 화남|🤬 욕|😈 악마|💀 해골|👻 유령|👽 외계인|🤖 로봇|💩 똥") },
+        { k: "people", icon: "👋", name: "손·사람", list: E("👋 손 인사|👌 오케이|✌️ 브이|🤞 행운|👍 좋아요|👎 싫어요|👏 박수|🙌 만세|🙏 부탁 기도|🤝 악수|💪 힘|✋ 손바닥 멈춰|👉 오른쪽|👈 왼쪽|👆 위|👇 아래|🫶 하트 손|🫡 경례|🤷 몰라|🙇 꾸벅 사과|🙋 손들기|🙅 안돼|🙆 좋아|🤦 이마짚기|👀 눈 보기|👂 귀|🧠 뇌|🫠 녹음|💃 춤|🏃 달리기") },
+        { k: "animal", icon: "🐱", name: "동물", list: E("🐱 고양이|🐶 강아지|🐰 토끼|🦊 여우|🐻 곰|🐼 판다|🐨 코알라|🐯 호랑이|🦁 사자|🐮 소|🐷 돼지|🐸 개구리|🐵 원숭이|🐔 닭|🐧 펭귄|🐦 새|🦜 앵무새|🦉 부엉이|🦇 박쥐|🐺 늑대|🐍 뱀|🐉 용|🐢 거북|🐟 물고기|🐠 열대어|🐙 문어|🦋 나비|🐝 벌|🕷️ 거미|🦄 유니콘") },
+        { k: "food", icon: "🍎", name: "음식", list: E("🍎 사과|🍓 딸기|🍑 복숭아|🍋 레몬|🍇 포도|🍉 수박|🍞 빵|🧀 치즈|🍖 고기|🍗 치킨|🍔 햄버거|🍕 피자|🍜 라면|🍣 초밥|🍙 주먹밥|🍡 경단|🍰 케이크|🎂 생일 케이크|🍫 초콜릿|🍬 사탕|🍩 도넛|🍪 쿠키|☕ 커피|🍵 차|🧋 버블티|🍺 맥주|🍷 와인|🥂 건배") },
+        { k: "play", icon: "🎲", name: "놀이·전투", list: E("🎲 주사위|🃏 카드 조커|🎴 화투|🀄 마작|♟️ 체스|🎭 연극 가면|🎮 게임|🕹️ 조이스틱|🎯 명중 다트|🏆 트로피|🥇 금메달|🎉 축하|🎊 색종이|🎁 선물|🎈 풍선|🎵 음표|🎶 음악|🎤 마이크|🎬 영화|📸 사진|⚔️ 칼 전투|🛡️ 방패|🏹 활|🔫 총|💣 폭탄|🧪 물약") },
+        { k: "nature", icon: "🌸", name: "자연", list: E("☀️ 해|🌙 달|⭐ 별|🌟 반짝 별|✨ 반짝|☁️ 구름|🌧️ 비|⛈️ 천둥|❄️ 눈|⚡ 번개|🔥 불|💧 물방울|🌊 파도|🌈 무지개|🌸 벚꽃|🌹 장미|🌻 해바라기|🍀 네잎클로버|🍁 단풍|🌲 나무|🌵 선인장|🍄 버섯|🌕 보름달|🌑 그믐달|🪐 행성|🏰 성|⛩️ 신사|🌃 밤") },
+        { k: "thing", icon: "💡", name: "사물", list: E("💡 전구|🗡️ 단검|🔪 칼|📜 두루마리|📖 책|📚 책더미|✉️ 편지|🔮 수정구|🗝️ 열쇠|🔒 잠금|💰 돈|💎 보석|👑 왕관|🎩 모자|👓 안경|⌛ 모래시계|⏰ 시계|📱 휴대폰|💻 노트북|🕯️ 촛불|🧸 곰인형|🪄 마법 지팡이|🧿 부적|⚰️ 관|🩸 피|💊 약|🔍 돋보기|📌 핀") },
+        { k: "symbol", icon: "❤️", name: "기호", list: E("❤️ 하트 빨강|🧡 주황 하트|💛 노랑 하트|💚 초록 하트|💙 파랑 하트|💜 보라 하트|🖤 검은 하트|🤍 흰 하트|💔 깨진 하트|💕 하트 둘|💖 반짝 하트|💯 백점|💢 분노|💥 쾅|💦 땀|💨 휙|💤 쿨쿨|💬 말풍선|💭 생각 풍선|❗ 느낌표|❓ 물음표|‼️ 느낌표 둘|⁉️ 물음 느낌|✅ 체크|❌ 엑스|⭕ 동그라미|🔺 세모|➡️ 화살표|♪ 음표 기호|★ 검은 별|☆ 흰 별|♡ 빈 하트|♥ 하트 기호") }
+    ];
+    const RECENT = "r20_emo_recent", MINE = "r20_emo_mine", TAB = "r20_emo_tab";
+    const read = k => { try { const v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+    const all = () => GROUPS.filter(g => g.list).flatMap(g => g.list);
+    const nameOf = t => (read(MINE).find(x => x[0] === t) || all().find(x => x[0] === t) || [t, ""])[1];
+    const isEmoji = t => [...t].length <= 3 && /\p{Extended_Pictographic}/u.test(t);
+    const SMILE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>';
+    let pop = null, tab = localStorage.getItem(TAB) || "face", q = "", sel = null, note = "";
+    const ta = () => document.querySelector("#textchat-input textarea");
+    const btn = () => document.getElementById("custom-emoji-toggle");
+    const isOpen = () => !!pop && !pop.hidden;
+    const paintBtn = () => {
+        const b = btn();
+        if (!b) return;
+        applyBtnColors(b, isOpen(), { bg: CONFIG.activeBg, text: CONFIG.activeText, border: CONFIG.activeBorder });
+        b.setAttribute("aria-expanded", String(isOpen()));
+    };
+    const listNow = () => {
+        const s = q.trim().toLowerCase();
+        if (s) {
+            const seen = new Set();
+            return [...read(MINE), ...all()].filter(([t, n]) => (String(n).toLowerCase().includes(s) || t.toLowerCase().includes(s)) && !seen.has(t) && seen.add(t));
+        }
+        if (tab === "recent") return read(RECENT).map(t => [t, nameOf(t)]);
+        if (tab === "mine") return read(MINE);
+        return GROUPS.find(g => g.k === tab)?.list || [];
+    };
+    const render = () => {
+        if (!pop) return;
+        pop.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(!q && b.dataset.k === tab)));
+        const g = GROUPS.find(x => x.k === tab);
+        const items = listNow();
+        pop.querySelector(".head").textContent = note || (q ? `'${q}' 찾기` : g?.name || "") + (tab === "mine" && !q ? " · 우클릭으로 빼기" : "");
+        const grid = pop.querySelector(".grid");
+        grid.textContent = "";
+        items.forEach(([t, n]) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "it " + (isEmoji(t) ? "e" : "t");
+            b.dataset.t = t;
+            b.textContent = t;
+            const mine = read(MINE).some(x => x[0] === t);
+            b.title = (n ? n + " · " : "") + (mine ? "클릭: 넣기 · 우클릭: 내 것에서 빼기" : "클릭: 넣기 · 우클릭: 내 것에 넣기");
+            b.setAttribute("aria-label", n || t);
+            grid.appendChild(b);
+        });
+        if (!items.length) grid.innerHTML = `<div class="empty">${q ? "찾는 것이 없어요" : tab === "recent" ? "아직 쓴 것이 없어요" : tab === "mine" ? "아래에서 등록하거나, 다른 탭에서 우클릭해 넣어요" : ""}</div>`;
+        pop.querySelector(".add").hidden = !(tab === "mine" && !q);
+    };
+    const flash = msg => { note = msg; render(); setTimeout(() => { note = ""; render(); }, 1200); };
+    const insert = t => {
+        const el = ta();
+        if (!el) return;
+        if (document.activeElement !== el) { el.focus(); if (sel) el.setSelectionRange(sel[0], sel[1]); }
+        // insertText: 되돌리기(Ctrl+Z)가 되고 input 이벤트도 난다. 안 되면 직접 끼운다
+        if (!document.execCommand("insertText", false, t)) {
+            el.setRangeText(t, el.selectionStart, el.selectionEnd, "end");
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        sel = [el.selectionStart, el.selectionEnd];
+        localStorage.setItem(RECENT, JSON.stringify([t, ...read(RECENT).filter(x => x !== t)].slice(0, 32)));
+    };
+    const toggleMine = t => {
+        const mine = read(MINE), has = mine.some(x => x[0] === t);
+        localStorage.setItem(MINE, JSON.stringify(has ? mine.filter(x => x[0] !== t) : [...mine, [t, nameOf(t)]]));
+        flash(has ? `'${t}' 를 내 것에서 뺐어요` : `'${t}' 를 내 것에 넣었어요`);
+    };
+    const place = () => {
+        const c = document.getElementById("textchat-input");
+        if (!pop || !c) return;
+        const r = c.getBoundingClientRect();
+        pop.style.width = Math.round(Math.max(220, Math.min(330, r.width - 8))) + "px";
+        pop.style.right = Math.round(innerWidth - r.right + 4) + "px";
+        pop.style.bottom = Math.round(innerHeight - r.top + 4) + "px";
+        pop.style.height = Math.round(Math.max(180, Math.min(330, r.top - 8))) + "px";
+    };
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "r20-emoji";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "이모지 팔레트");
+        pop.hidden = true;
+        pop.innerHTML = '<input type="search" class="q" placeholder="찾기 (예: 웃음, 하트, 고양이)" aria-label="이모지 찾기"><div class="tabs" role="tablist" aria-label="분류"></div>'
+            + '<div class="head" aria-live="polite"></div><div class="grid"></div>'
+            + '<form class="add"><input class="at" placeholder="넣을 글자 (이모지·이모티콘)" aria-label="등록할 글자" required><input class="an" placeholder="이름 (찾기용)" aria-label="이름"><button type="submit">등록</button></form>';
+        const tabs = pop.querySelector(".tabs");
+        GROUPS.forEach(g => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.setAttribute("role", "tab");
+            b.dataset.k = g.k;
+            b.title = b.ariaLabel = g.name;
+            b.textContent = g.icon;
+            if (g.icon === "^^") b.className = "txt";
+            tabs.appendChild(b);
+        });
+        tabs.addEventListener("click", e => {
+            const b = e.target.closest("button[data-k]");
+            if (!b) return;
+            tab = b.dataset.k; q = ""; pop.querySelector(".q").value = "";
+            localStorage.setItem(TAB, tab);
+            render();
+        });
+        pop.querySelector(".q").addEventListener("input", e => { q = e.target.value; render(); });
+        pop.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") { close(); ta()?.focus(); } });    // Roll20 단축키로 새지 않게
+        const grid = pop.querySelector(".grid");
+        grid.addEventListener("mousedown", e => { if (e.target.closest(".it")) e.preventDefault(); });      // 입력칸 커서를 잃지 않게
+        grid.addEventListener("click", e => { const b = e.target.closest(".it"); if (b) insert(b.dataset.t); });
+        grid.addEventListener("contextmenu", e => { const b = e.target.closest(".it"); if (!b) return; e.preventDefault(); e.stopPropagation(); toggleMine(b.dataset.t); });
+        pop.querySelector(".add").addEventListener("submit", e => {
+            e.preventDefault();
+            const t = pop.querySelector(".at").value.trim(), n = pop.querySelector(".an").value.trim();
+            if (!t) return;
+            localStorage.setItem(MINE, JSON.stringify([...read(MINE).filter(x => x[0] !== t), [t, n]]));
+            pop.querySelector(".at").value = pop.querySelector(".an").value = "";
+            flash(`'${t}' 를 등록했어요`);
+        });
+        document.body.appendChild(pop);
+    };
+    const open = () => {
+        if (!pop) build();
+        const el = ta();
+        if (el && document.activeElement === el) sel = [el.selectionStart, el.selectionEnd];
+        pop.hidden = false;
+        place(); render(); paintBtn();
+    };
+    const close = () => { if (pop) pop.hidden = true; paintBtn(); };
+    // 입력칸을 떠날 때 커서 자리를 기억해 둔다 (찾기 칸에 글을 쓰다가 눌러도 그 자리에 들어가게)
+    document.addEventListener("focusout", e => { if (e.target === ta()) sel = [e.target.selectionStart, e.target.selectionEnd]; }, true);
+    document.addEventListener("pointerdown", e => { if (isOpen() && !pop.contains(e.target) && !btn()?.contains(e.target) && e.target !== ta()) close(); }, true);     // 입력칸을 눌러 커서를 옮기는 건 열어 둔다
+    document.addEventListener("keydown", e => { if (isOpen() && e.key === "Escape") close(); }, true);
+    window.addEventListener("resize", () => isOpen() && place());
+    const inject = () => {
+        const send = document.getElementById("chatSendBtn");
+        if (!btnVisible.emoji || !send || btn() || !send.closest("#textchat-input")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "custom-emoji-toggle";
+        b.title = "이모지 · 이모티콘";
+        b.setAttribute("aria-label", "이모지 팔레트");
+        b.innerHTML = SMILE;
+        b.style.cssText = sharedBtnStyle + "margin-left:auto !important; margin-right:4px !important; padding:1px 5px !important; display:inline-flex; align-items:center; justify-content:center;";
+        b.addEventListener("mousedown", e => e.preventDefault());
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); isOpen() ? close() : open(); });
+        addStyleRefresh(b, paintBtn);
+        send.before(b);
+        paintBtn();
+    };
+    const setEnabled = v => {
+        if (v) return inject();
+        close();
+        btn()?.remove();
+    };
+    return { inject, setEnabled };
+})();
+
 let _layoutTimer = null;
 const observer = new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); chatCapture.inject(); deckView.inject(); macroBar.inject(); mapShot.inject(); }, 100);
+    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); chatCapture.inject(); deckView.inject(); macroBar.inject(); mapShot.inject(); emojiPalette.inject(); }, 100);
 });
 observer.observe(document.body, { childList: true, subtree: true });
 applyCocofoliaLayout();
