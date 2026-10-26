@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.0
+// @version      1.20.1
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -426,7 +426,7 @@ function applyCocofoliaLayout() {
         const settingsPopup = document.createElement("div");
         settingsPopup.id = "custom-settings-popup";
 
-        // 스위치 한 줄: 이름(+ 아래 회색 설명) · 스위치
+        // 스위치 한 줄: 이름 · 스위치 (묶인 기능은 이름에 마우스를 올리면 말풍선으로)
         const switchRow = (label, sub, on, onChange) => {
             const row = document.createElement("div");
             row.className = "cs-row";
@@ -436,12 +436,7 @@ function applyCocofoliaLayout() {
             name.className = "cs-name";
             name.textContent = label;
             text.appendChild(name);
-            if (sub) {
-                const s = document.createElement("span");
-                s.className = "cs-sub";
-                s.textContent = sub;
-                text.appendChild(s);
-            }
+            if (sub) { text.dataset.tip = sub; text.setAttribute("aria-description", sub); }
             const sw = document.createElement("label");
             sw.className = "cs-switch";
             const inp = document.createElement("input");
@@ -456,6 +451,18 @@ function applyCocofoliaLayout() {
             return row;
         };
         const sep = () => Object.assign(document.createElement("div"), { className: "cs-sep" });
+        let csTip = null;
+        settingsPopup.addEventListener("mouseover", e => {
+            const t = e.target.closest?.(".cs-text[data-tip]");
+            if (!t) return;
+            if (!csTip) { csTip = document.createElement("div"); csTip.className = "cs-tip"; csTip.setAttribute("role", "tooltip"); }
+            csTip.textContent = t.dataset.tip;
+            document.body.appendChild(csTip);
+            const r = t.getBoundingClientRect(), w = csTip.offsetWidth, h = csTip.offsetHeight;
+            csTip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
+            csTip.style.top = (r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
+        });
+        settingsPopup.addEventListener("mouseout", e => { const t = e.target.closest?.(".cs-text[data-tip]"); if (t && !t.contains(e.relatedTarget)) csTip?.remove(); });
         // 기능 묶음: 스위치 하나로 묶음 안 기능을 다 켜고 끈다 (기능마다 켜짐 값은 따로 저장해 둔다)
         const bundleRows = b => {
             const row = switchRow(b.label, b.sub, b.members.every(([k]) => btnVisible[k]), on => {
@@ -880,7 +887,7 @@ const addBundle = def => BUNDLES.push(def);
 const addCss = css => CSS_PARTS.push(css);
 
 const CORE_CSS = `
-        #custom-settings-popup { position:fixed; width:270px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
+        #custom-settings-popup { position:fixed; width:300px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
         #custom-settings-popup.show { display:flex !important; }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
         #textchat-input.layout-applied-v11 { border-top:0 !important; }
@@ -926,7 +933,7 @@ const CORE_CSS = `
         #custom-sadam-toggle { display:inline-flex; align-items:center; justify-content:center; }
         .cs-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; padding-right:8px; }
         .cs-name { font-size:12px; color:#333; }
-        .cs-sub { font-size:10px; line-height:1.35; color:#9a9aa0; }
+        .cs-tip { position:fixed; z-index:100005; max-width:240px; padding:4px 8px; border-radius:4px; background:rgba(20,20,22,0.94); color:#fff; font-size:11px; line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
         .cs-sep { flex-shrink:0; height:0; margin:3px 0; border-top:1px solid #e3e3e6; }
         .cs-seg { display:flex; flex-shrink:0; border:1px solid #ccc; border-radius:4px; overflow:hidden; }
         .cs-seg button { height:20px; margin:0; padding:0 7px; border:0; border-left:1px solid #ccc; background:#fff; color:#777; font-size:11px; cursor:pointer; }
@@ -935,7 +942,7 @@ const CORE_CSS = `
         .cs-seg button:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
 `;
 
-// ══════════ 묶음 1 · 주크박스 · 저널 목록 ══════════
+// ══════════ 묶음 1 · 주크박스 · 저널 목록 간소화 ══════════
 
 // ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
 // 브라우저 Audio 로 재생하므로 Roll20 동기화(참가자 재생)와 무관하다.
@@ -1327,10 +1334,10 @@ addCss(`
 `);
 addFeature("bgmPreview", bgmPreview);
 addFeature("jukeboxRow", jukeboxRow);
-addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록", sub: "BGM 미리듣기 · 한 줄 보기 · 태그 말풍선 · 구분선",
+addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"]] });
 
-// ══════════ 묶음 2 · 캡처 ══════════
+// ══════════ 묶음 2 · 대화 캡쳐 · 맵시트 촬영 ══════════
 
 // ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
 // 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
@@ -1744,10 +1751,10 @@ addCss(`
 `);
 addFeature("chatCapture", chatCapture);
 addFeature("mapShot", mapShot);
-addBundle({ place: "main", order: 2, label: "캡처", sub: "대화 캡처 · 맵 촬영",
+addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵시트 촬영", sub: "",
     members: [["capture", "chatCapture"], ["mapshot", "mapShot"]] });
 
-// ══════════ 묶음 3 · 토큰 · 카드 · 화면 정리 ══════════
+// ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
 
 // ───────── 면 선택: 다면 토큰의 Choose Side 창을 썸네일 격자로 (슬라이더 대신 눌러서 고르기) ─────────
 // Roll20 창과 이미지는 그대로 두고, 고른 면에 맞춰 Roll20 슬라이더를 움직인 뒤 원래 [Choose] 로 적용한다
@@ -2518,10 +2525,10 @@ addFeature("deckView", deckView);
 addFeature("screenUI", screenUI);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
-addBundle({ place: "main", order: 3, label: "토큰 · 카드 · 화면 정리", sub: "토큰 메뉴 · 면 선택 격자 · 토큰 클릭 메뉴 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
+addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴 · Rollable 선택 메뉴 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
     members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"]] });
 
-// ══════════ 묶음 4 · 그림 · 매크로 · 빠른 저널 ══════════
+// ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 
 // ───────── 그림 라이브러리 · 이 방의 이미지: 페이지·캐릭터·핸드아웃·굴림표·덱에 쓰인 그림을 한곳에서 본다 ─────────
 // 맵에 놓기는 Roll20 라이브러리 항목과 같은 모양(.draggableresult + data-fullsizeurl)으로 만들어 Roll20 드롭을 그대로 쓴다
@@ -3392,10 +3399,10 @@ addCss(`
 addFeature("roomImages", roomImages);
 addFeature("queryPicker", queryPicker);
 addFeature("quickJournal", quickJournal);
-addBundle({ place: "main", order: 4, label: "그림 · 매크로 · 빠른 저널", sub: "이 방의 이미지 · 매크로 선택 썸네일 · 빠른 저널 단추",
+addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 빠른 저널 뷰어",
     members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
 
-// ══════════ 묶음 5 · 일괄 편집기 ══════════
+// ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
 
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
@@ -5476,11 +5483,11 @@ addCss(`
         .r20be-mini:hover { background:#ebebeb; color:#333; }
 `);
 addFeature("bulkEditor", bulkEditor);
-addBundle({ place: "main", order: 5, label: "일괄 편집기", sub: "",
+addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 편집기", sub: "",
     members: [["bulk", "bulkEditor"]],
     extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
 
-// ══════════ 묶음 6 · 시트 자동완성 ══════════
+// ══════════ 묶음 6 · 기본시트 데이터 자동완성 ══════════
 
 // ───────── 자동완성: 시트 인법/마법 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
 // 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] } — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
@@ -5748,11 +5755,11 @@ addCss(`
 `);
 addFeature("autofill", autofill);
 // 자동완성 줄: 이름 옆에 데이터 상태(개수 · 불러오는 중 · 실패), 아래 칸에 데이터 주소
-addBundle({ place: "main", order: 6, label: "시트 자동완성", sub: "",
+addBundle({ place: "main", order: 5, label: "기본시트 데이터 자동완성", sub: "",
     members: [["autofill", "autofill"]],
     extra: row => {
         const name = row.querySelector(".cs-name");
-        const show = () => { name.textContent = `시트 자동완성 (${autofill.statusText()})`; };
+        const show = () => { name.textContent = `기본시트 데이터 자동완성 (${autofill.statusText()})`; };
         show();
         document.addEventListener("r20-ruledata", show);
         const rdRow = document.createElement("div");
