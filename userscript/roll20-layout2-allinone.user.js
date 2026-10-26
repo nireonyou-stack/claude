@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.13
+// @version      1.20.14
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.13";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.14";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1131,6 +1131,7 @@ const jukeboxRow = (() => {
             c.appendChild(b);
         }
         tagOne(li);
+        li.querySelectorAll(":scope > .dd-content > .title:not([tabindex])").forEach(ti => { ti.tabIndex = 0; ti.setAttribute("role", "button"); });
     };
     // 반복 재생: Roll20 곡 모델의 loop 값을 직접 켜고 끈다 (Roll20 쪽 체크박스 모양에 기대지 않게)
     const setLoop = (b, on) => {
@@ -1257,7 +1258,7 @@ const jukeboxRow = (() => {
     };
     // 곡 줄을 0.4초 누르고 있으면 숨겨 둔 Roll20 끌기 손잡이에 mousedown 을 대신 보내 순서 바꾸기를 시작한다
     // (그 뒤 움직임·놓기는 실제 마우스 그대로 Roll20 이 처리). 단추·볼륨·미리듣기 위에서는 시작하지 않는다
-    let lp = null;
+    let lp = null, dropT = 0;
     const endLp = () => { clearTimeout(lp?.t); document.querySelectorAll("#jukebox li.r20jb-lift").forEach(x => x.classList.remove("r20jb-lift")); };
     document.addEventListener("mousedown", e => {
         if (!btnVisible.jbrow || e.button !== 0 || !e.isTrusted) return;
@@ -1278,13 +1279,22 @@ const jukeboxRow = (() => {
         endLp();
         // 끌고 놓은 뒤 따라오는 click 은 버린다 (놓은 자리의 재생 단추 등이 눌리지 않게)
         if (lp.fired) {
+            dropT = performance.now();
             const kill = ev => { ev.stopPropagation(); ev.preventDefault(); };
             document.addEventListener("click", kill, { capture: true, once: true });
             setTimeout(() => document.removeEventListener("click", kill, true), 300);       // click 이 안 따라오면 다음 클릭을 막지 않게
         }
         lp = null;
     }, true);
+    // 곡 제목을 누르면 숨겨 둔 Roll20 재생 단추를 대신 누른다 (재생 ↔ 정지)
+    const TITLE = "#jukebox li.jukeboxitem > .dd-content > .title";
+    const playOf = ti => ti.closest("li.jukeboxitem").querySelector("a.play")?.click();
+    document.addEventListener("keydown", e => {
+        if ((e.key === "Enter" || e.key === " ") && btnVisible.jbrow && e.target.matches?.(TITLE)) { e.preventDefault(); e.stopPropagation(); playOf(e.target); }
+    }, true);
     document.addEventListener("click", e => {
+        const ti = btnVisible.jbrow && e.isTrusted && e.target.closest?.(TITLE);
+        if (ti) { e.preventDefault(); e.stopPropagation(); if (performance.now() - dropT > 300) playOf(ti); return; }      // 끌어 놓은 직후 click 은 무시
         // 재생목록 제목 줄을 누르면 Roll20 의 +/− 단추를 대신 눌러 하위 트랙을 펼치거나 접는다 (구분선은 그대로)
         const head = btnVisible.jbrow && e.target.closest?.("#jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content");
         if (head && !e.target.closest(".playlistcontrols")) {
@@ -1331,7 +1341,10 @@ const jukeboxRow = (() => {
     const setEnabled = on => {
         document.body.classList.toggle("r20jb-on", on);
         if (on) { inject(); jbWatch.all().forEach(decorate); markSeps(); measured = false; if (rootShown) measureSoon(); }
-        else journalTools(false);
+        else {
+            journalTools(false);
+            document.querySelectorAll(TITLE + "[tabindex]").forEach(ti => { ti.removeAttribute("tabindex"); ti.removeAttribute("role"); });
+        }
     };
     setEnabled(btnVisible.jbrow);
     return { inject, setEnabled };
@@ -1402,8 +1415,10 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:11px; padding:0 !important; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:10px; padding:0 !important; color:#777 !important; text-decoration:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { margin:0 !important; padding:0 !important; font-size:11px !important; line-height:26px !important; }
+        /* 재생 ▶ 은 숨기고 곡 제목을 누르면 재생/정지 (jukeboxRow 가 숨긴 단추를 대신 누른다). 재생 중인 곡은 파란 제목으로 보인다 */
+        body.r20jb-on #jukebox li.jukeboxitem a.play { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content > .title { cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content > .title:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
         /* 볼륨: 슬라이더 대신 ◂ 값 ▸ */
         body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:auto !important; height:26px; margin:0 !important; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
@@ -1421,7 +1436,6 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol span { width:16px; color:#777; font-size:10px; text-align:center; font-variant-numeric:tabular-nums; }
         /* 메뉴(⋮)는 숨기고 그 자리를 제목이 쓴다 (삭제 등은 일괄 편집기에서) */
         body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play:hover { color:#222 !important; }
         /* 저널 한 줄 보기: 항목 = 작은 동그란 아바타 + 이름 (폴더 계층은 10px 씩만 들여쓴다) */
         body.r20jb-on #journalfolderroot .dd-list .dd-list { clear:both; margin:0 !important; padding:0 0 0 12px !important; }
         body.r20jb-on #journalfolderroot li.dd-item { margin:0 !important; padding:0 !important; }
@@ -1465,7 +1479,6 @@ addCss(`
         body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:18px !important; vertical-align:middle; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
 `);
 addFeature("bgmPreview", bgmPreview);
 addFeature("jukeboxRow", jukeboxRow);
