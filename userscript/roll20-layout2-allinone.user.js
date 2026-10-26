@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.11
+// @version      1.20.12
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.11";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.12";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -471,6 +471,7 @@ function applyCocofoliaLayout() {
                     localStorage.setItem("r20_show_" + k, String(on));
                     try { FEAT[name]?.setEnabled?.(on); } catch (e) { console.warn(`[올인원] ${name} 켜고 끄기 오류`, e); }
                 });
+                DIRTY.all = true;
             });
             return [row, ...(b.extra?.(row) || [])];
         };
@@ -885,6 +886,9 @@ const CSS_PARTS = [];
 const addFeature = (name, mod) => (FEAT[name] = mod);
 const addBundle = def => BUNDLES.push(def);
 const addCss = css => CSS_PARTS.push(css);
+// 기능이 watch(선택자)를 주면 그 요소가 새로 생기거나 그 안이 바뀐 때만 inject 를 부른다 (매번 문서 전체를 훑지 않게).
+// all: 다음 번엔 전부 (처음 · 설정을 바꾼 뒤)
+const DIRTY = { all: true, set: new Set() };
 
 // ── 성능 측정: 콘솔에 r20aioPerf() (또는 r20aioPerf(초)) → 그동안 기능마다 걸린 시간을 모아 보여 준다 ──
 const PERF = { on: false, t: {}, n: {}, runs: 0, muts: 0, recs: 0, long: 0, longN: 0 };
@@ -2046,7 +2050,8 @@ const sidePicker = (() => {
     };
     document.addEventListener("click", e => pick(e, false), true);
     document.addEventListener("dblclick", e => pick(e, true), true);
-    return { inject, startAuto };
+    // 면 자동 고르기 중에는 매번 (창이 다시 보이기만 할 수도 있어서)
+    return { inject, startAuto, get watch() { return auto ? null : ".ui-dialog"; } };
 })();
 
 // ───────── 토큰 메뉴: 여러 면 토큰에 면 선택 · 이전 면 · 다음 면, '여러 면' 안에 처음 면 · 마지막 면 ─────────
@@ -2297,7 +2302,7 @@ const tokenMenu = (() => {
     new MutationObserver(ms => timed("tokenMenu (메뉴 감시)", () => {
         if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.classList.contains("context-menu") || n.querySelector(".context-menu"))))) inject();
     })).observe(document.body, { childList: true, subtree: true });
-    return { inject };
+    return { inject, watch: ".context-menu" };
 })();
 
 // ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
@@ -2486,7 +2491,7 @@ const pagePanel = (() => {
         else inject();
     };
     setEnabled(btnVisible.pageslim);
-    return { inject, setEnabled };
+    return { inject, setEnabled, watch: ".vtt-page-card-menu" };
 })();
 
 // ───────── 맵 아래 매크로 줄: 두 줄로 쌓기 + 길게(0.4초) 눌러 끌면 순서 바꾸기 (body.r20mb-on) ─────────
@@ -3192,7 +3197,7 @@ const queryPicker = (() => {
             enhance(dlg, sel);
         });
     };
-    return { inject };
+    return { inject, watch: ".ui-dialog" };
 })();
 
 // ───────── 빠른 저널: 말하는 사람 줄 ⚙ 왼쪽 단추 → 캐릭터 아이콘 격자에서 골라 말하는 사람 바꾸기 (끌어서 순서 바꾸기) ─────────
@@ -5893,10 +5898,11 @@ const autofill = (() => {
     // 캐릭터 시트는 같은 출처의 iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다.
     // document.write 로 다시 그려지면 문서는 그대로인데 리스너만 지워지므로, 기록해 두지 않고 매번 다시 건다
     // (같은 함수를 다시 addEventListener 하면 중복되지 않는다)
-    const hooked = new WeakSet();
+    // 걸었다는 표시는 <html> 요소에 (document.open 으로 다시 쓰면 리스너와 함께 <html> 도 새로 생긴다)
     const hook = doc => {
-        if (!doc || hooked.has(doc)) return;
-        hooked.add(doc);
+        const root = doc?.documentElement;
+        if (!root || root._r20af) return;
+        root._r20af = true;
         doc.addEventListener("input", onInput, true);
         doc.addEventListener("keydown", onKey, true);
         doc.addEventListener("focusout", onFocusOut, true);
@@ -5920,9 +5926,11 @@ const autofill = (() => {
         const a = document.activeElement;
         if (a?.tagName === "IFRAME") hookFrame(a);
     }, 0));
+    // 시트에서 다른 시트로 옮겨 갈 때는 맨 위 창 blur 가 없다 → iframe 이 포커스를 받을 때도
+    document.addEventListener("focusin", e => { if (e.target.tagName === "IFRAME") hookFrame(e.target); });
 
     const setEnabled = on => { if (!on) close(); };
-    return { close, inject, getUrl, setUrl, statusText, setEnabled };
+    return { close, inject, getUrl, setUrl, statusText, setEnabled, watch: "iframe" };
 })();
 
 addCss(`
@@ -6180,13 +6188,27 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
 const injectAll = () => {
     if (PERF.on) PERF.runs++;
     try { timed("채팅 입력칸", applyCocofoliaLayout); } catch (e) { console.warn("[올인원] 채팅 입력칸 오류", e); }
+    const all = DIRTY.all;
+    DIRTY.all = false;
     for (const [name, mod] of Object.entries(FEAT)) {
+        if (mod.watch && !all && !DIRTY.set.delete(name)) continue;
         try { timed(name, () => mod.inject?.()); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
+    }
+};
+const markDirty = recs => {
+    if (DIRTY.all) return;
+    for (const [name, mod] of Object.entries(FEAT)) {
+        const sel = mod.watch;
+        if (!sel || DIRTY.set.has(name)) continue;
+        const hit = recs.some(r => r.target.closest?.(sel)
+            || [...r.addedNodes].some(n => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))));
+        if (hit) DIRTY.set.add(name);
     }
 };
 let _layoutTimer = null;
 new MutationObserver(recs => {
     if (PERF.on) { PERF.muts++; PERF.recs += recs.length; }
+    timed("변화 살피기", () => markDirty(recs));
     clearTimeout(_layoutTimer);
     _layoutTimer = setTimeout(injectAll, 100);
 }).observe(document.body, { childList: true, subtree: true });
