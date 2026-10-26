@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.5
+// @version      1.20.6
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.6";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1192,6 +1192,7 @@ const jukeboxRow = (() => {
         addLoop();
         addTags();
         markSeps();
+        journalTools(true);
     };
     // 곡 줄을 0.4초 누르고 있으면 숨겨 둔 Roll20 끌기 손잡이에 mousedown 을 대신 보내 순서 바꾸기를 시작한다
     // (그 뒤 움직임·놓기는 실제 마우스 그대로 Roll20 이 처리). 단추·볼륨·미리듣기 위에서는 시작하지 않는다
@@ -1246,9 +1247,29 @@ const jukeboxRow = (() => {
         step(btn.closest("li.jukeboxitem"), Number(btn.dataset.dir));
     }, true);
 
+    // 저널 탭: '+ 캐릭터 · + 핸드아웃 · + 추가' 를 맨 윗줄(일괄 편집 · 태그 단추 왼쪽)로 올린다.
+    // Roll20 단추 자체를 옮기므로 동작은 그대로. 원래 자리를 기억해 두고 끄면 되돌린다
+    let jtools = null;      // { wrap, moved: [[요소, 원래 부모, 원래 다음 형제]] }
+    const journalTools = on => {
+        if (!on) {
+            // 나중에 옮긴 것부터 되돌려야 '원래 다음 형제'가 제자리에 있다
+            jtools?.moved.slice().reverse().forEach(([el, p, n]) => { if (p.isConnected) p.insertBefore(el, n?.parentNode === p ? n : null); });
+            jtools?.wrap.remove();
+            jtools = null;
+            return;
+        }
+        const sb = document.querySelector("#journal .content.searchbox"), cc = document.getElementById("vm_journal_creation_controls");
+        if (!sb || !cc || cc.closest(".r20jn-tools")) return;
+        // 같은 줄의 '+ 핸드아웃 · + 추가' (만들기 칸 밖에 있을 때만, 목록 안 단추는 제외)
+        const extra = [...(cc.parentElement?.querySelectorAll(".btn, button") || [])]
+            .filter(b => !cc.contains(b) && !b.closest(".searchbox, .dd-list, .r20jn-tools") && /핸드아웃|추가|Handout|Add/.test(b.textContent));
+        if (!jtools?.wrap.isConnected) jtools = { wrap: Object.assign(document.createElement("div"), { className: "r20jn-tools" }), moved: [] };
+        [cc, ...extra].forEach(el => { jtools.moved.push([el, el.parentElement, el.nextSibling]); jtools.wrap.appendChild(el); });
+        sb.prepend(jtools.wrap);
+    };
     const setEnabled = on => {
         document.body.classList.toggle("r20jb-on", on);
-        if (on) inject();
+        if (on) inject(); else journalTools(false);
     };
     setEnabled(btnVisible.jbrow);
     return { inject, setEnabled };
@@ -1268,6 +1289,10 @@ addCss(`
         /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
         /* Roll20 새 단추(grimoire__button, 예: 저널 '+ 캐릭터')도 같이. 높이는 테두리 포함 24px */
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button) { box-sizing:border-box !important; height:24px !important; min-height:0 !important; padding:0 10px !important; border:1px solid #ccc !important; border-radius:4px !important; background:#fff !important; background-image:none !important; box-shadow:none !important; text-shadow:none !important; color:#333 !important; font-size:11px !important; font-weight:700 !important; line-height:22px !important; vertical-align:middle; }
+        body.r20jb-on #journal .searchbox .r20jn-tools { float:left; display:flex; align-items:center; gap:3px; margin:5px 0 0; }
+        body.r20jb-on #journal .searchbox .r20jn-tools > *, body.r20jb-on #journal .searchbox .r20jn-tools #journal-creation-controls { float:none !important; margin:0 !important; }
+        body.r20jb-on #journal .searchbox .r20jn-tools #journal-creation-controls { display:flex; gap:3px; }
+        body.r20jb-on #journal .searchbox .r20jn-tools :is(.btn, .grimoire__button) { padding:0 7px !important; }
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):hover { background:#f2f2f2 !important; }
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):focus-visible { outline:2px solid #1867c7 !important; outline-offset:1px; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
@@ -5525,6 +5550,7 @@ addCss(`
         body button.r20be-open { display:inline-flex; align-items:center; gap:4px; height:24px; margin:6px 0; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; box-sizing:border-box; }
         body button.r20be-open:hover { background:#f2f2f2; }
         #jukebox button.r20be-open { margin-top:2px; margin-left:3px; }     /* 옆 '오디오 관리'와 높이 맞춤 */
+        #journal button.r20be-open { margin-top:5px; margin-left:3px; }     /* 옆 태그 단추와 높이 맞춤 */
         body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
         .r20be-mini:hover { background:#ebebeb; color:#333; }
