@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.1
+// @version      1.20.2
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1229,7 +1229,10 @@ addCss(`
         .r20jb-step { display:none; }
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
-        body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
+        /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
+        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) .btn { height:24px !important; min-height:0 !important; padding:0 10px !important; border:1px solid #ccc !important; border-radius:4px !important; background:#fff !important; background-image:none !important; box-shadow:none !important; text-shadow:none !important; color:#333 !important; font-size:11px !important; font-weight:700 !important; line-height:22px !important; vertical-align:middle; }
+        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) .btn:hover { background:#f2f2f2 !important; }
+        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) .btn:focus-visible { outline:2px solid #1867c7 !important; outline-offset:1px; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
         /* 재생목록 머리줄: 폴더째 재생 버튼만 */
         /* 재생목록 줄 높이를 26px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
@@ -1314,7 +1317,7 @@ addCss(`
         body.r20jb-on #deckstables .content > .clear { height:6px !important; }
         body.r20jb-on #deckstables .content > hr { margin:4px 0 !important; }
         body.r20jb-on #deckstables .content > h3 { margin:6px 0 4px !important; font-size:13px !important; line-height:24px !important; }
-        body.r20jb-on #deckstables .content > button.btn { height:auto !important; margin:6px 0 0 !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
+        body.r20jb-on #deckstables .content > button.btn { margin:6px 0 0 !important; }
         body.r20jb-on #deckstables .content > label { font-size:11px !important; font-weight:normal !important; }
         body.r20jb-on #deckstables table.table { width:100% !important; margin:0 !important; border-collapse:collapse !important; }
         body.r20jb-on #deckstables table.table thead { display:none !important; }
@@ -1327,14 +1330,14 @@ addCss(`
         body.r20jb-on #deckstables td.bartoggle input { margin:0 !important; }
         body.r20jb-on #deckstables tr.deck > td:nth-child(2), body.r20jb-on #deckstables tr.rollabletable > td:nth-child(2) { color:#999 !important; font-size:10px !important; text-align:right; }
         body.r20jb-on #deckstables td.actions { text-align:right !important; }
-        body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:20px !important; vertical-align:middle; }
+        body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:18px !important; vertical-align:middle; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
         body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
 `);
 addFeature("bgmPreview", bgmPreview);
 addFeature("jukeboxRow", jukeboxRow);
-addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기",
+addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"]] });
 
 // ══════════ 묶음 2 · 대화 캡쳐 · 맵시트 촬영 ══════════
@@ -2472,7 +2475,10 @@ addCss(`
         body.r20mb-on #macrobar_macros { display:block !important; width:auto !important; white-space:normal !important; padding:2px 0 0; }
         body.r20mb-on #macrobar_macros .macrobox { display:inline-block !important; vertical-align:top; width:auto !important; margin:0 4px 4px 0 !important; float:none !important; }
         body.r20mb-on #macrobar_macros .macrobox > button { height:26px !important; max-width:180px; margin:0 !important; padding:0 10px !important; border-radius:13px !important; font-size:12px !important; line-height:24px !important; white-space:nowrap; overflow:hidden; text-overflow:clip; box-shadow:0 1px 2px rgba(0,0,0,0.25); }
-        body.r20mb-on #macrobar_macros .macrobox > .handle { display:none !important; }     /* 단추 전체를 길게 눌러 끄니 손잡이는 필요 없다 */
+        body.r20mb-on #macrobar #macrobar_macros .macrobox > :not(button) { display:none !important; }     /* 손잡이 등: 단추 전체를 길게 눌러 끄니 필요 없다 (Roll20 의 :hover 규칙보다 우선) */
+        /* 마우스를 올려도 단추 칸 크기가 그대로 (Roll20 이 올렸을 때 오른쪽에 주는 여백·장식 없애기) */
+        body.r20mb-on #macrobar #macrobar_macros .macrobox:hover { width:auto !important; margin:0 4px 4px 0 !important; padding:0 !important; }
+        body.r20mb-on #macrobar_macros .macrobox::before, body.r20mb-on #macrobar_macros .macrobox::after, body.r20mb-on #macrobar_macros .macrobox > button::after { display:none !important; }
         body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(184,33,95,0.55); }
         body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
         body.r20mb-on #macrobar_macros.r20mb-drag > .macrobox:not(.ui-sortable-helper):not(.ui-sortable-placeholder) { opacity:0.55; }
@@ -5476,7 +5482,7 @@ addCss(`
             #r20be .r20be-split { display:none; }
             #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
         }
-        body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
+        body button.r20be-open { display:inline-flex; align-items:center; gap:4px; height:24px; margin:6px 0; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; box-sizing:border-box; }
         body button.r20be-open:hover { background:#f2f2f2; }
         body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
