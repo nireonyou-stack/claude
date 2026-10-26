@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.2
+// @version      1.20.3
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1194,6 +1194,13 @@ const jukeboxRow = (() => {
         markSeps();
     };
     document.addEventListener("click", e => {
+        // 재생목록 제목 줄을 누르면 Roll20 의 +/− 단추를 대신 눌러 하위 트랙을 펼치거나 접는다 (구분선은 그대로)
+        const head = btnVisible.jbrow && e.target.closest?.("#jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content");
+        if (head && !e.target.closest(".playlistcontrols")) {
+            const tg = [...head.parentElement.querySelectorAll(":scope > button[data-action]")].find(b => getComputedStyle(b).display !== "none");
+            if (tg) { e.preventDefault(); tg.click(); }
+            return;
+        }
         const lb = e.target.closest?.(".r20jb-loop");
         if (lb) {
             e.preventDefault(); e.stopPropagation();
@@ -1249,6 +1256,8 @@ addCss(`
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
         /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content .folder-title { margin-left:-20px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content { cursor:pointer; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content { min-height:18px !important; }
