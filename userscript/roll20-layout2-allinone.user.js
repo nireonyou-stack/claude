@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.8
+// @version      1.20.9
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.8";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.9";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1137,6 +1137,11 @@ const jukeboxRow = (() => {
         document.querySelectorAll("#jukeboxfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
             const on = sepIds.has(f.dataset.globalfolderid);
             if (f.classList.contains("r20jb-sep") !== on) f.classList.toggle("r20jb-sep", on);
+            // 안의 곡을 재생목록 제목 글자 자리까지 들여 쓰도록 실제 위치를 잰다 (Roll20 여백이 바뀌어도 맞게)
+            const t = !on && f.querySelector(":scope > .dd-content .folder-title");
+            if (!t || !t.offsetWidth) return;
+            const ind = Math.round(t.getBoundingClientRect().left - f.getBoundingClientRect().left) + "px";
+            if (f.style.getPropertyValue("--r20jb-ind") !== ind) f.style.setProperty("--r20jb-ind", ind);
         });
     };
     const addStepControl = () => {
@@ -1311,10 +1316,10 @@ addCss(`
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { width:16px !important; height:26px !important; margin:0 0 0 2px !important; padding:0 !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; left:0 !important; width:100% !important; text-align:center; font-size:12px !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
-        /* 재생목록 안 곡: 제목 글자 위치(22px)까지 들여 쓰고, +/− 가운데에서 내려오는 세로 선으로 묶음을 보인다 */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:10px !important; padding-left:12px !important; border-left:1px solid rgba(128,128,128,0.28) !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
+        /* 재생목록 안 곡: 재생목록 제목 글자가 시작하는 자리부터 (--r20jb-ind 는 jukeboxRow 가 실제 위치를 재서 넣는다) */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:0 !important; padding-left:var(--r20jb-ind, 18px) !important; border-left:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 1px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; text-indent:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
         /* 재생목록 줄의 재생 · 섞기 · 내보내기 단추는 빼고 제목을 끝까지 (재생은 곡 줄에서) */
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:none !important; }
         /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
