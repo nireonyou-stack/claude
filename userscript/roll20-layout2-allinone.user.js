@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.19.4
+// @version      1.20.0
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.19.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -147,77 +147,6 @@ function renderCustomButtons() {
     updateCustomButtonStyles();
 }
 
-if (!document.getElementById("custom-journal-style")) {
-    const style = document.createElement("style");
-    style.id = "custom-journal-style";
-    style.innerHTML = `
-        #custom-journal-popup { position:fixed; width:190px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); z-index:10002; display:none; flex-direction:column; overflow:hidden; font-family:sans-serif; color:#333; }
-        /* Roll20(Bootstrap)의 .show { display:block !important } 보다 앞서도록 !important */
-        #custom-journal-popup.show { display:flex !important; }
-        .cj-header { display:flex; align-items:center; justify-content:space-between; padding:4px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; cursor:move; user-select:none; }
-        .cj-close-btn { background:none; border:none; cursor:pointer; font-size:13px; color:#999; padding:0 2px; line-height:1; }
-        .cj-close-btn:hover { color:#333; }
-        .cj-zoom { display:flex; gap:2px; margin-left:auto; margin-right:6px; }
-        .cj-zoom button { width:20px; height:18px; padding:0; border:1px solid #ddd; border-radius:3px; background:#fff; color:#666; font-size:12px; line-height:1; cursor:pointer; }
-        .cj-zoom button:hover { background:#ebebeb; color:#333; }
-        .cj-item.cj-drag-over-left { box-shadow:inset 3px 0 0 #1867c7 !important; }
-        .cj-item.cj-drag-over-right { box-shadow:inset -3px 0 0 #1867c7 !important; }
-        .cj-search-container { padding:5px 6px; border-bottom:1px solid #eeeeee; background:#f9f9f9; flex-shrink:0; }
-        .cj-search-input { width:100%; box-sizing:border-box; padding:4px 6px; border:1px solid #cccccc; border-radius:3px; outline:none; font-size:12px; }
-        /* 아이콘 격자: 이름은 마우스를 올리면 툴팁으로 */
-        .cj-list-container { overflow-y:auto; flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(calc(var(--cj-size, 50px) + 4px), 1fr)); gap:4px; padding:6px; align-content:start; }
-        .cj-resize-handle { height:8px; cursor:se-resize; background:linear-gradient(135deg, transparent 40%, #ccc 40%, #ccc 50%, transparent 50%, transparent 60%, #ccc 60%, #ccc 70%, transparent 70%); background-size:8px 8px; background-position:bottom right; background-repeat:no-repeat; flex-shrink:0; }
-        .cj-item { display:flex; align-items:center; justify-content:center; aspect-ratio:1; padding:2px; border-radius:10px; cursor:pointer; transition:background-color 0.1s ease; user-select:none; }
-        .cj-item:hover { background-color:#e6f7ff; }
-        .cj-item.cj-selected { background-color:#dcebfb; box-shadow:inset 0 0 0 2px #1867c7; }
-        .cj-avatar { width:var(--cj-size, 50px); height:var(--cj-size, 50px); min-width:var(--cj-size, 50px); border-radius:8px; object-fit:cover; background-color:#eeeeee; pointer-events:none; }
-        .cj-avatar.cj-initial { display:flex; justify-content:center; align-items:center; font-size:calc(var(--cj-size, 50px) * 0.32); font-weight:700; color:#888; }
-        #custom-settings-popup { position:fixed; width:270px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
-        #custom-settings-popup.show { display:flex !important; }
-        /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
-        #textchat-input.layout-applied-v11 { border-top:0 !important; }
-        #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:12px !important; line-height:1.5 !important; }
-        .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
-        .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
-        .cs-row.cs-rd { padding:0 10px 6px; }
-        .cs-rd input { flex:1; min-width:0; height:22px !important; margin:0 !important; padding:0 6px !important; border:1px solid #ccc; border-radius:3px; font-size:11px !important; box-sizing:border-box; }
-        .cs-switch { position:relative; width:32px; height:18px; display:inline-block; cursor:pointer; }
-        .cs-switch input { opacity:0; width:0; height:0; }
-        .cs-slider { position:absolute; inset:0; background:#cccccc; border-radius:18px; transition:0.2s; }
-        .cs-slider:before { content:""; position:absolute; width:12px; height:12px; left:3px; top:3px; background:white; border-radius:50%; transition:0.2s; }
-        .cs-switch input:checked + .cs-slider { background:#1867c7; }
-        .cs-switch input:checked + .cs-slider:before { transform:translateX(14px); }
-        .cs-custom-row { display:flex; align-items:center; padding:5px 8px; border-bottom:1px solid #f5f5f5; gap:4px; }
-        .cs-custom-row > span { overflow:hidden; text-overflow:clip; white-space:nowrap; flex:1; font-size:11px; }
-        .cs-custom-icon-btn { background:none; border:none; cursor:pointer; color:#bbb; font-size:11px; padding:2px 3px; flex-shrink:0; line-height:1; }
-        .cs-custom-icon-btn:hover { color:#555; }
-        .cs-custom-del:hover { color:#e55 !important; }
-        .cs-custom-add-btn { display:flex; align-items:center; justify-content:center; gap:4px; margin:6px 8px 8px; padding:5px 8px; background:#f5f5f5; border:1px solid #ddd; border-radius:3px; cursor:pointer; font-size:11px; color:#666; font-weight:normal; }
-        .cs-custom-add-btn:hover { background:#ebebeb; color:#333; }
-        #cs-side-panel { position:fixed; width:300px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,0.2); z-index:10004; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; }
-        #cs-side-panel.show { display:flex !important; }
-        .cs-side-header { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#555; flex-shrink:0; }
-        .cs-side-close { background:none; border:none; cursor:pointer; color:#999; font-size:13px; padding:0 2px; line-height:1; }
-        .cs-side-close:hover { color:#333; }
-        .cs-side-body { padding:12px; display:flex; flex-direction:column; gap:10px; }
-        .cs-side-field { display:flex; flex-direction:column; gap:4px; }
-        .cs-side-field label { font-size:10px; color:#888; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px; }
-        .cs-side-name { border:1px solid #ccc; border-radius:3px; padding:6px 8px; font-size:12px; outline:none; width:100%; box-sizing:border-box; }
-        .cs-side-name:focus { border-color:#1867c7; }
-        .cs-side-textarea { border:1px solid #ccc; border-radius:3px; padding:6px 8px; font-size:11px; outline:none; width:100%; box-sizing:border-box; resize:vertical; min-height:120px; font-family:monospace; line-height:1.5; }
-        .cs-side-textarea:focus { border-color:#1867c7; }
-        .cs-swatches { display:flex; flex-wrap:wrap; gap:6px; }
-        .cs-swatches button { width:20px; height:20px; padding:0; border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px #ccc; background:repeating-linear-gradient(45deg,#fff 0 3px,#ddd 3px 6px); cursor:pointer; }
-        .cs-swatches button[aria-checked="true"] { box-shadow:0 0 0 2px #333; }
-        .cs-swatches button:focus-visible { outline:2px solid #1867c7; outline-offset:2px; }
-        .cs-side-footer { display:flex; gap:6px; padding:0 12px 12px; }
-        .cs-side-save { flex:1; background:#1867c7; color:white; border:none; border-radius:3px; padding:7px; cursor:pointer; font-size:12px; font-weight:bold; }
-        .cs-side-save:hover { background:#1455a4; }
-        .cs-side-cancel { flex:1; background:#eeeeee; color:#555; border:none; border-radius:3px; padding:7px; cursor:pointer; font-size:12px; }
-        .cs-side-cancel:hover { background:#e0e0e0; }
-    `;
-    document.head.appendChild(style);
-}
 
 function applyBtnColors(btn, isActive, c) {
     if (!btn) return;
@@ -497,129 +426,91 @@ function applyCocofoliaLayout() {
         const settingsPopup = document.createElement("div");
         settingsPopup.id = "custom-settings-popup";
 
-        const csHeader = document.createElement("div");
-        csHeader.className = "cs-header";
-        csHeader.textContent = "버튼 표시";
-        settingsPopup.appendChild(csHeader);
-
-        let sadamInp, charsadamInp;
-
-        const makeRow = (label, key) => {
+        // 스위치 한 줄: 이름(+ 아래 회색 설명) · 스위치
+        const switchRow = (label, sub, on, onChange) => {
             const row = document.createElement("div");
             row.className = "cs-row";
-            const labelSpan = document.createElement("span");
-            labelSpan.textContent = label;
+            const text = document.createElement("span");
+            text.className = "cs-text";
+            const name = document.createElement("span");
+            name.className = "cs-name";
+            name.textContent = label;
+            text.appendChild(name);
+            if (sub) {
+                const s = document.createElement("span");
+                s.className = "cs-sub";
+                s.textContent = sub;
+                text.appendChild(s);
+            }
             const sw = document.createElement("label");
             sw.className = "cs-switch";
             const inp = document.createElement("input");
             inp.type = "checkbox";
-            inp.checked = btnVisible[key];
+            inp.checked = on;
+            inp.setAttribute("aria-label", label);
             const slider = document.createElement("div");
             slider.className = "cs-slider";
-            sw.appendChild(inp);
-            sw.appendChild(slider);
-            row.appendChild(labelSpan);
-            row.appendChild(sw);
-
-            if (key === "sadam") sadamInp = inp;
-            if (key === "charsadam") charsadamInp = inp;
-
-            inp.addEventListener("change", () => {
-                if (key === "sadam" && inp.checked) {
-                    btnVisible.sadam = true;
-                    btnVisible.charsadam = false;
-                    if (charsadamInp) charsadamInp.checked = false;
-                    localStorage.setItem("r20_show_sadam", "true");
-                    localStorage.setItem("r20_show_charsadam", "false");
-                } else if (key === "charsadam" && inp.checked) {
-                    btnVisible.charsadam = true;
-                    btnVisible.sadam = false;
-                    if (sadamInp) sadamInp.checked = false;
-                    localStorage.setItem("r20_show_charsadam", "true");
-                    localStorage.setItem("r20_show_sadam", "false");
-                } else {
-                    btnVisible[key] = inp.checked;
-                    localStorage.setItem("r20_show_" + key, String(inp.checked));
-                }
-
-                const targets = {
-                    desc: document.getElementById("custom-desc-toggle"),
-                    journal: document.getElementById("custom-journal-toggle")
-                };
-                if (targets[key]) targets[key].style.display = inp.checked ? (targets[key].dataset.disp || "") : "none";
-
-                const sBtn = document.getElementById("custom-sadam-toggle");
-                if (sBtn) {
-                    sBtn.style.display = (btnVisible.sadam || btnVisible.charsadam) ? "" : "none";
-                    updateSadamButtonStyle(sBtn);
-                }
-
-                if (key === "bgm") bgmPreview.setEnabled(inp.checked);
-                if (key === "bulk") bulkEditor.setEnabled(inp.checked);
-                if (key === "jbrow") jukeboxRow.setEnabled(inp.checked);
-                if (key === "pageslim") pagePanel.setEnabled(inp.checked);
-                if (key === "artroom") roomImages.setEnabled(inp.checked);
-                if (key === "screenui") screenUI.setEnabled(inp.checked);
-                if (key === "tokact") tokenActs.setEnabled(inp.checked);
-                if (key === "capture") chatCapture.setEnabled(inp.checked);
-                if (key === "deckview") deckView.setEnabled(inp.checked);
-                if (key === "macrobar") macroBar.setEnabled(inp.checked);
-                if (key === "mapshot") mapShot.setEnabled(inp.checked);
-                if (key === "emoji") emojiPalette.setEnabled(inp.checked);
-                if (!inp.checked && key === "autofill") autofill.close();
-
-                if (!inp.checked && key === "journal") {
-                    const jp = document.getElementById("custom-journal-popup");
-                    if (jp) jp.classList.remove("show");
-                }
-                if (inp.checked && key === "journal") {
-                    const jb = document.getElementById("custom-journal-toggle");
-                    if (jb) {
-                        jb.style.setProperty("background-color", CONFIG.inactiveBg, "important");
-                        jb.style.setProperty("color", CONFIG.inactiveText, "important");
-                        jb.style.setProperty("border-color", CONFIG.inactiveBorder, "important");
-                    }
-                }
-            });
+            sw.append(inp, slider);
+            row.append(text, sw);
+            inp.addEventListener("change", () => onChange(inp.checked));
             return row;
         };
-        settingsPopup.appendChild(makeRow("desc", "desc"));
-        settingsPopup.appendChild(makeRow("오너 사담", "sadam"));
-        settingsPopup.appendChild(makeRow("캐릭터 사담", "charsadam"));
-        settingsPopup.appendChild(makeRow("저널", "journal"));
-        // 자동완성: 데이터 상태(개수 · 불러오는 중 · 실패)를 이름 옆에 보이고, 아래 칸에 데이터 주소를 넣는다
-        const afRow = makeRow("자동완성", "autofill");
-        const showRd = () => { afRow.firstChild.textContent = `자동완성 (${autofill.statusText()})`; };
-        showRd();
-        document.addEventListener("r20-ruledata", showRd);
-        settingsPopup.appendChild(afRow);
-        const rdRow = document.createElement("div");
-        rdRow.className = "cs-row cs-rd";
-        const rdInp = document.createElement("input");
-        rdInp.type = "text";
-        rdInp.placeholder = "데이터 주소 붙여넣기";
-        rdInp.setAttribute("aria-label", "자동완성 데이터 주소");
-        rdInp.value = autofill.getUrl();
-        rdInp.addEventListener("change", () => { rdInp.value = autofill.setUrl(rdInp.value); });
-        rdRow.appendChild(rdInp);
-        settingsPopup.appendChild(rdRow);
-        settingsPopup.appendChild(makeRow("BGM 미리듣기", "bgm"));
-        const bulkRow = makeRow("일괄 편집기", "bulk");
-        bulkRow.firstChild.after(bulkEditor.openButton());
-        settingsPopup.appendChild(bulkRow);
-        settingsPopup.appendChild(makeRow("한 줄 보기 (주크박스·저널·모음)", "jbrow"));
-        settingsPopup.appendChild(makeRow("면 선택 격자", "sidepick"));
-        settingsPopup.appendChild(makeRow("토큰 메뉴 정리 (묶기·면 이동)", "tokmenu"));
-        settingsPopup.appendChild(makeRow("페이지 창·설정 슬림", "pageslim"));
-        settingsPopup.appendChild(makeRow("그림 라이브러리 · 이 방의 이미지", "artroom"));
-        settingsPopup.appendChild(makeRow("화면 배치 (페이지 버튼·화면 제어)", "screenui"));
-        settingsPopup.appendChild(makeRow("토큰 액션 → 클릭 메뉴", "tokact"));
-        settingsPopup.appendChild(makeRow("대화 캡처", "capture"));
-        settingsPopup.appendChild(makeRow("덱 창 정리", "deckview"));
-        settingsPopup.appendChild(makeRow("매크로 줄 (두 줄 · 길게 눌러 옮기기)", "macrobar"));
-        settingsPopup.appendChild(makeRow("맵 촬영 (맵·토큰 레이어)", "mapshot"));
-        settingsPopup.appendChild(makeRow("이모지 팔레트", "emoji"));
-        settingsPopup.appendChild(makeRow("매크로 선택 썸네일", "qpick"));
+        const sep = () => Object.assign(document.createElement("div"), { className: "cs-sep" });
+        // 기능 묶음: 스위치 하나로 묶음 안 기능을 다 켜고 끈다 (기능마다 켜짐 값은 따로 저장해 둔다)
+        const bundleRows = b => {
+            const row = switchRow(b.label, b.sub, b.members.every(([k]) => btnVisible[k]), on => {
+                b.members.forEach(([k, name]) => {
+                    btnVisible[k] = on;
+                    localStorage.setItem("r20_show_" + k, String(on));
+                    try { FEAT[name]?.setEnabled?.(on); } catch (e) { console.warn(`[올인원] ${name} 켜고 끄기 오류`, e); }
+                });
+            });
+            return [row, ...(b.extra?.(row) || [])];
+        };
+        const byPlace = place => BUNDLES.filter(b => b.place === place).sort((x, y) => x.order - y.order);
+        byPlace("main").forEach(b => settingsPopup.append(...bundleRows(b)));
+        settingsPopup.appendChild(sep());
+        settingsPopup.appendChild(switchRow("desc", "", btnVisible.desc, on => {
+            btnVisible.desc = on;
+            localStorage.setItem("r20_show_desc", String(on));
+            const d = document.getElementById("custom-desc-toggle");
+            if (d) d.style.display = on ? "" : "none";
+        }));
+        // 사담 단추: 끔 · 오너 · 캐릭터 중 하나
+        const sadamRow = document.createElement("div");
+        sadamRow.className = "cs-row";
+        const sadamName = document.createElement("span");
+        sadamName.className = "cs-name";
+        sadamName.textContent = "사담";
+        const seg = document.createElement("div");
+        seg.className = "cs-seg";
+        seg.setAttribute("role", "radiogroup");
+        seg.setAttribute("aria-label", "사담 단추");
+        const sadamNow = () => btnVisible.charsadam ? "char" : btnVisible.sadam ? "owner" : "off";
+        const paintSeg = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === sadamNow())));
+        [["off", "끔"], ["owner", "오너"], ["char", "캐릭터"]].forEach(([v, label]) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.dataset.v = v;
+            b.textContent = label;
+            b.setAttribute("role", "radio");
+            b.onclick = () => {
+                btnVisible.sadam = v === "owner";
+                btnVisible.charsadam = v === "char";
+                localStorage.setItem("r20_show_sadam", String(btnVisible.sadam));
+                localStorage.setItem("r20_show_charsadam", String(btnVisible.charsadam));
+                if (v === "off") isSadamMode = false;
+                const sBtn = document.getElementById("custom-sadam-toggle");
+                if (sBtn) { sBtn.style.display = v === "off" ? "none" : ""; updateSadamButtonStyle(sBtn); }
+                paintSeg();
+            };
+            seg.appendChild(b);
+        });
+        paintSeg();
+        sadamRow.append(sadamName, seg);
+        settingsPopup.appendChild(sadamRow);
+        byPlace("chat").forEach(b => settingsPopup.append(...bundleRows(b)));
+        settingsPopup.appendChild(sep());
 
         // 커스텀 버튼 섹션
         const csCustomHeader = document.createElement("div");
@@ -781,19 +672,2363 @@ function applyCocofoliaLayout() {
         updateSadamButtonStyle(sadamBtn);
     }
 
-    let journalBtn = document.getElementById("custom-journal-toggle");
-    let popup = document.getElementById("custom-journal-popup");
-    let charList = [];
+    leftBtnGroup.id = "custom-left-group";
+    leftBtnGroup.appendChild(sadamBtn);
+    leftBtnGroup.appendChild(toggleBtn);
 
-    if (!journalBtn) {
-        journalBtn = document.createElement("button");
+    buttonRow.appendChild(leftBtnGroup);
+    buttonRow.appendChild(sendBtn);
+
+    const resizer = document.createElement("div");
+    resizer.id = "custom-resizer";
+    resizer.style.cssText = `
+        width: 100%;
+        height: 4px;
+        cursor: ns-resize;
+        background: transparent;
+        border-top: 1px solid #ddd;
+        margin-bottom: 0;
+        z-index: 2000;
+        position: relative;
+    `;
+
+    let targetHeight = 90;
+    let isApplying = false;
+
+    const applyTextareaHeight = () => {
+        if (isApplying) return;
+        isApplying = true;
+        textarea.style.setProperty("height", targetHeight + "px", "important");
+        textarea.style.setProperty("min-height", targetHeight + "px", "important");
+        isApplying = false;
+    };
+    applyTextareaHeight();
+
+    textarea.style.setProperty("resize", "none", "important");
+    textarea.style.setProperty("width", "100%", "important");
+    textarea.style.setProperty("margin", "0", "important");
+    textarea.style.setProperty("box-sizing", "border-box", "important");
+
+    new MutationObserver(applyTextareaHeight).observe(textarea, {
+        attributes: true,
+        attributeFilter: ["style"]
+    });
+
+    resizer.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startHeight = targetHeight;
+        document.body.style.setProperty("user-select", "none", "important");
+        function doDrag(e) {
+            const newHeight = startHeight + (startY - e.clientY);
+            if (newHeight > 50) { targetHeight = newHeight; applyTextareaHeight(); }
+        }
+        function stopDrag() {
+            document.body.style.removeProperty("user-select");
+            window.removeEventListener("mousemove", doDrag);
+            window.removeEventListener("mouseup", stopDrag);
+        }
+        window.addEventListener("mousemove", doDrag);
+        window.addEventListener("mouseup", stopDrag);
+    });
+
+    container.appendChild(buttonRow);
+    container.appendChild(resizer);
+    container.appendChild(textarea);
+    container.classList.add("layout-applied-v11");
+    renderCustomButtons();
+}
+
+function applyDescPrefix(text) {
+    const stripped = text.startsWith(CONFIG.prefix) ? text.slice(CONFIG.prefix.length) : text;
+    if (!stripped.trim() || stripped.startsWith("/")) return text;
+    return CONFIG.prefix + stripped;
+}
+
+// 오너 사담 · 캐릭터 사담 공통 글자 모양
+const SADAM_STYLE = "text-decoration:none; font-size:11px; color:#aaaaaa;";
+
+function applySadamPrefix(text) {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith("/")) return text;
+    return `/o [${trimmed}](#"style="${SADAM_STYLE}")`;
+}
+
+function applyCharSadamPrefix(text) {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith("/")) return text;
+    return `[${trimmed}](#"style="${SADAM_STYLE}")`;
+}
+
+function applyActivePrefix(text) {
+	text = text.trimStart();
+    if (activeCustomBtn) {
+        const content = activeCustomBtn.content;
+        const match = content.match(/^([\s\S]*?)\?\{[^}]*\}([\s\S]*)$/);
+        if (match) return match[1] + text + match[2];
+        return content;
+    }
+
+    let baseText = text;
+    const asRegex = /^\/as\s+"[^"]+"\s*/i;
+    if (asRegex.test(baseText)) baseText = baseText.replace(asRegex, "");
+
+    if (isDescMode) return applyDescPrefix(baseText);
+    if (isSadamMode) {
+        if (btnVisible.charsadam) return applyCharSadamPrefix(baseText);
+        else return applySadamPrefix(baseText);
+    }
+
+    const speakingAsSelect = document.getElementById("speakingas");
+    const nameInput = document.getElementById("custom-speaker-name");
+    if (speakingAsSelect && nameInput) {
+        const originalName = speakingAsSelect.options[speakingAsSelect.selectedIndex]?.text || "";
+        const customName = nameInput.value.trim();
+        const trimmedText = baseText.trim();
+        if (customName !== "" && customName !== originalName && !trimmedText.startsWith("/")) {
+            return `/as "${customName}" ${baseText}`;
+        }
+    }
+    return baseText;
+}
+
+document.addEventListener("keydown", (e) => {
+    const target = e.target;
+    if (target.tagName === "TEXTAREA" && target.classList.contains("ui-autocomplete-input")) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            target.value = applyActivePrefix(target.value);
+            target.dispatchEvent(new Event("input", { bubbles: true }));
+            const sendBtn = document.getElementById("chatSendBtn");
+            if (sendBtn) sendBtn.click();
+        }
+        if (e.key === "ArrowUp") {
+            setTimeout(() => {
+                let val = target.value;
+                val = val.replace(/^\/as\s+"[^"]+"\s*/i, "");
+                val = val.replace(/^\/desc\s+/i, "");
+
+                // 오너·캐릭터 사담 (예전 글자 모양으로 보낸 것도 포함)
+                const sadamMatch = val.match(/^(?:\/o\s+)?\[(.*?)\]\(#"style="[^"]*"\)/i);
+                if (sadamMatch) val = sadamMatch[1];
+
+                if (target.value !== val) target.value = val;
+            }, 10);
+        }
+    }
+}, true);
+
+document.addEventListener("mousedown", (e) => {
+    if (e.target.id === "chatSendBtn" || e.target.closest("#chatSendBtn")) {
+        const textarea = document.querySelector("#textchat-input textarea");
+        if (textarea) {
+            textarea.value = applyActivePrefix(textarea.value);
+            textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    }
+}, true);
+
+// Roll20 은 예전 S3 그림 주소(s3.amazonaws.com/files.d20.io/…)를 files.d20.io 로 바꿔 보여 준다 → 미리보기도 같게
+const r20img = u => String(u || "").replace(/^(?:https?:)?\/\/s3\.amazonaws\.com\/files\.d20\.io\//i, "https://files.d20.io/");
+const copyText = async text => {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.cssText = "position:fixed;left:-9999px";
+        document.body.append(ta); ta.select();
+        const ok = document.execCommand("copy"); ta.remove(); return ok;
+    }
+};
+// 주크박스 곡 태그: Roll20 곡의 tags 칸 (방 데이터라 방을 복사하면 같이 가고, 주크박스는 GM 만 본다)
+const tagList = s => String(s || "").split(/[\s,]+/).map(t => t.replace(/^#/, "")).filter(Boolean);
+// ── 그림 미리보기 공통 (일괄 편집기 · 이 방의 이미지) ──
+// files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다
+const VARIANT = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
+const sizedUrl = (u, s) => VARIANT.test(u) ? u.replace(VARIANT, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
+const escAttr = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// 움직이는 그림 중 webm·mp4 는 <img> 로 그릴 수 없어 <video> 로 (Roll20 도 움직이는 그림은 med.webm 을 쓴다)
+const isAnimVideo = u => /\.(?:webm|mp4)(?:[?#]|$)/i.test(String(u || ""));
+// 미리보기 주소 후보: 앞에서부터 열어 보고 안 열리면 다음 것 (움직이는 png·gif 는 thumb 가 없는 경우가 있다)
+const previewAlts = (u, sizes = ["thumb", "med", "max"]) =>
+    [...new Set(sizes.flatMap(s => { const v = sizedUrl(u, s); return [r20img(v), v]; }).concat(r20img(u), u))].filter(Boolean);
+const previewHtml = (u, cls = "") => {
+    const vid = isAnimVideo(u), list = previewAlts(u, vid ? ["med", "max"] : undefined).map(x => vid ? x + "#t=0.1" : x);      // #t: 첫 장면을 보여 준다
+    const a = `src="${escAttr(list[0])}" data-alts="${escAttr(list.slice(1).join("\n"))}"`;
+    return vid ? `<video class="r20-anim ${cls}" ${a} muted loop playsinline preload="metadata"></video>`
+        : `<img class="${cls}" ${a} alt="" loading="lazy" draggable="false">`;
+};
+// 안 열린 미리보기: 다음 후보로 바꾼다 (더 없으면 false)
+const nextPreview = m => {
+    const alts = (m.dataset.alts || "").split("\n").filter(Boolean);
+    if (!alts.length) return false;
+    m.dataset.alts = alts.slice(1).join("\n");
+    m.src = alts[0];
+    return true;
+};
+// 움직이는 그림 미리보기는 마우스를 올린 동안만 재생 (여러 개가 한꺼번에 돌아 무거워지지 않게)
+document.addEventListener("mouseover", e => { if (e.target.matches?.("video.r20-anim")) e.target.play().catch(() => {}); });
+document.addEventListener("mouseout", e => { if (e.target.matches?.("video.r20-anim")) e.target.pause(); });
+
+// ── 기능 묶음 등록 ──
+// 묶음(구역)마다 자기 CSS · 모듈 · 설정 줄을 스스로 등록한다. 묶음끼리는 FEAT.이름?.함수() 로만 부르므로
+// 구역 하나를 통째로 지워도 나머지는 그대로 돈다. 화면이 바뀌면 FEAT 의 inject 를 하나씩 따로(try) 돌린다
+const FEAT = {};            // 이름 → 모듈 { inject, setEnabled, … }
+const BUNDLES = [];         // 설정 창 줄 { place: "main"|"chat", order, label, sub, members: [[btnVisible 키, 모듈 이름]], extra(row) }
+const CSS_PARTS = [];
+const addFeature = (name, mod) => (FEAT[name] = mod);
+const addBundle = def => BUNDLES.push(def);
+const addCss = css => CSS_PARTS.push(css);
+
+const CORE_CSS = `
+        #custom-settings-popup { position:fixed; width:270px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
+        #custom-settings-popup.show { display:flex !important; }
+        /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
+        #textchat-input.layout-applied-v11 { border-top:0 !important; }
+        #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:12px !important; line-height:1.5 !important; }
+        .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
+        .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
+        .cs-row.cs-rd { padding:0 10px 6px; }
+        .cs-rd input { flex:1; min-width:0; height:22px !important; margin:0 !important; padding:0 6px !important; border:1px solid #ccc; border-radius:3px; font-size:11px !important; box-sizing:border-box; }
+        .cs-switch { position:relative; width:32px; height:18px; display:inline-block; cursor:pointer; }
+        .cs-switch input { opacity:0; width:0; height:0; }
+        .cs-slider { position:absolute; inset:0; background:#cccccc; border-radius:18px; transition:0.2s; }
+        .cs-slider:before { content:""; position:absolute; width:12px; height:12px; left:3px; top:3px; background:white; border-radius:50%; transition:0.2s; }
+        .cs-switch input:checked + .cs-slider { background:#1867c7; }
+        .cs-switch input:checked + .cs-slider:before { transform:translateX(14px); }
+        .cs-custom-row { display:flex; align-items:center; padding:5px 8px; border-bottom:1px solid #f5f5f5; gap:4px; }
+        .cs-custom-row > span { overflow:hidden; text-overflow:clip; white-space:nowrap; flex:1; font-size:11px; }
+        .cs-custom-icon-btn { background:none; border:none; cursor:pointer; color:#bbb; font-size:11px; padding:2px 3px; flex-shrink:0; line-height:1; }
+        .cs-custom-icon-btn:hover { color:#555; }
+        .cs-custom-del:hover { color:#e55 !important; }
+        .cs-custom-add-btn { display:flex; align-items:center; justify-content:center; gap:4px; margin:6px 8px 8px; padding:5px 8px; background:#f5f5f5; border:1px solid #ddd; border-radius:3px; cursor:pointer; font-size:11px; color:#666; font-weight:normal; }
+        .cs-custom-add-btn:hover { background:#ebebeb; color:#333; }
+        #cs-side-panel { position:fixed; width:300px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,0.2); z-index:10004; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; }
+        #cs-side-panel.show { display:flex !important; }
+        .cs-side-header { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#555; flex-shrink:0; }
+        .cs-side-close { background:none; border:none; cursor:pointer; color:#999; font-size:13px; padding:0 2px; line-height:1; }
+        .cs-side-close:hover { color:#333; }
+        .cs-side-body { padding:12px; display:flex; flex-direction:column; gap:10px; }
+        .cs-side-field { display:flex; flex-direction:column; gap:4px; }
+        .cs-side-field label { font-size:10px; color:#888; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px; }
+        .cs-side-name { border:1px solid #ccc; border-radius:3px; padding:6px 8px; font-size:12px; outline:none; width:100%; box-sizing:border-box; }
+        .cs-side-name:focus { border-color:#1867c7; }
+        .cs-side-textarea { border:1px solid #ccc; border-radius:3px; padding:6px 8px; font-size:11px; outline:none; width:100%; box-sizing:border-box; resize:vertical; min-height:120px; font-family:monospace; line-height:1.5; }
+        .cs-side-textarea:focus { border-color:#1867c7; }
+        .cs-swatches { display:flex; flex-wrap:wrap; gap:6px; }
+        .cs-swatches button { width:20px; height:20px; padding:0; border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px #ccc; background:repeating-linear-gradient(45deg,#fff 0 3px,#ddd 3px 6px); cursor:pointer; }
+        .cs-swatches button[aria-checked="true"] { box-shadow:0 0 0 2px #333; }
+        .cs-swatches button:focus-visible { outline:2px solid #1867c7; outline-offset:2px; }
+        .cs-side-footer { display:flex; gap:6px; padding:0 12px 12px; }
+        .cs-side-save { flex:1; background:#1867c7; color:white; border:none; border-radius:3px; padding:7px; cursor:pointer; font-size:12px; font-weight:bold; }
+        .cs-side-save:hover { background:#1455a4; }
+        .cs-side-cancel { flex:1; background:#eeeeee; color:#555; border:none; border-radius:3px; padding:7px; cursor:pointer; font-size:12px; }
+        .cs-side-cancel:hover { background:#e0e0e0; }
+        #custom-sadam-toggle { display:inline-flex; align-items:center; justify-content:center; }
+        .cs-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; padding-right:8px; }
+        .cs-name { font-size:12px; color:#333; }
+        .cs-sub { font-size:10px; line-height:1.35; color:#9a9aa0; }
+        .cs-sep { flex-shrink:0; height:0; margin:3px 0; border-top:1px solid #e3e3e6; }
+        .cs-seg { display:flex; flex-shrink:0; border:1px solid #ccc; border-radius:4px; overflow:hidden; }
+        .cs-seg button { height:20px; margin:0; padding:0 7px; border:0; border-left:1px solid #ccc; background:#fff; color:#777; font-size:11px; cursor:pointer; }
+        .cs-seg button:first-child { border-left:0; }
+        .cs-seg button[aria-checked="true"] { background:#1867c7; color:#fff; }
+        .cs-seg button:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
+`;
+
+// ══════════ 묶음 1 · 주크박스 · 저널 목록 ══════════
+
+// ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
+// 브라우저 Audio 로 재생하므로 Roll20 동기화(참가자 재생)와 무관하다.
+const bgmPreview = (() => {
+    let audio = null, curId = null, failedId = null;
+    const listeners = new Set();
+    const notify = () => listeners.forEach(fn => fn());
+    // 참가자가 듣게 될 크기 그대로: 트랙 볼륨(0~100)을 따른다
+    const trackVol = track => { const v = Number(track.get("volume")); return isFinite(v) ? Math.min(1, Math.max(0, v / 100)) : 0.5; };
+    const fmt = t => isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}` : "-:--";
+
+    // My Audio 트랙 주소는 vtt.bundle 의 재생 주소 형식을 따른다 (track_id 앞부분 = 오디오 ID)
+    const trackUrl = track => {
+        const tid = String(track.get("track_id") || "");
+        if (/^https?:\/\//.test(tid)) return tid;
+        if (track.get("source") !== "My Audio" || !tid) return null;
+        return `${window.IS_EMBEDDED ? "/.proxy" : ""}/audio_library/play/${window.campaign_id}/${tid.split(/[-#]/)[0]}`;
+    };
+
+    // 주크박스 목록은 Roll20이 자주 다시 그리므로 요소 대신 트랙 ID로 찾는다
+    const markBtn = on => {
+        if (!curId) return;
+        document.querySelectorAll(`li.jukeboxitem[data-itemid="${CSS.escape(curId)}"] .r20-bgm-pv`)
+            .forEach(b => b.classList.toggle("on", on));
+    };
+
+    function stop() {
+        if (audio) { audio.pause(); audio.removeAttribute("src"); audio.load(); audio = null; }
+        markBtn(false);
+        curId = null;
+        notify();
+    }
+
+    // vol(0~1)을 주면 그 크기로, 없으면 트랙 볼륨으로 재생
+    const play = (id, vol) => {
+        const track = window.Jukebox?.playlist?.get(id);
+        if (!track) { console.warn("[BGM 미리듣기] 트랙을 찾지 못함:", id); return; }
+        stop();
+        failedId = null;
+        const url = trackUrl(track);
+        if (!url) { console.warn("[BGM 미리듣기] 지원하지 않는 음원:", track.attributes); failedId = id; notify(); return; }
+        curId = id;
+        const a = audio = new Audio(url);
+        a.volume = vol ?? trackVol(track);
+        // 정지된 이전 Audio 의 늦은 이벤트는 무시
+        a.addEventListener("timeupdate", () => { if (a === audio) notify(); });
+        a.addEventListener("ended", () => { if (a === audio) stop(); });
+        a.addEventListener("error", () => {
+            if (a !== audio) return;
+            console.warn("[BGM 미리듣기] 재생 실패:", url, track.attributes);
+            failedId = id;
+            stop();
+        });
+        a.play().catch(() => {});
+        markBtn(true);
+        notify();
+    };
+    // 편집기에 보여줄 상태 글자
+    const status = id => audio && curId === id ? `재생 중 ${fmt(audio.currentTime)} / ${fmt(audio.duration)}`
+        : failedId === id ? "재생 실패 (콘솔 확인)" : "";
+
+    const inject = () => {
+        if (!btnVisible.bgm) return;
+        document.querySelectorAll("li.jukeboxitem .playbackcontrol:not(:has(> .r20-bgm-pv))").forEach(pc => {
+            const a = document.createElement("a");
+            a.className = "r20-bgm-pv";
+            a.textContent = "🎧";
+            a.title = "미리듣기 (나만 듣기)";
+            a.setAttribute("role", "button");
+            a.tabIndex = 0;
+            pc.insertBefore(a, pc.querySelector("a.play"));
+            if (audio && pc.closest("li.jukeboxitem")?.dataset.itemid === curId) a.classList.add("on");
+        });
+    };
+
+    const onToggle = e => {
+        const btn = e.target.closest?.(".r20-bgm-pv");
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        const li = btn.closest("li.jukeboxitem");
+        if (!li) return;
+        if (audio && curId === li.dataset.itemid) stop();
+        else play(li.dataset.itemid);
+    };
+    document.addEventListener("click", e => {
+        // Roll20 전체 재생을 누르면 미리듣기는 끈다
+        if (audio && e.target.closest?.("li.jukeboxitem a.play")) stop();
+        onToggle(e);
+    }, true);
+    document.addEventListener("mousedown", e => { if (e.target.closest?.(".r20-bgm-pv")) e.stopPropagation(); }, true);
+    document.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") onToggle(e); }, true);
+
+    const setEnabled = on => {
+        document.body.classList.toggle("r20-bgm-off", !on);
+        if (on) inject(); else stop();
+    };
+    setEnabled(btnVisible.bgm);
+
+    return {
+        inject, setEnabled, play, stop, status,
+        current: () => audio ? curId : null,
+        setVolume: (id, v) => { if (audio && curId === id) audio.volume = v; },
+        onChange: fn => listeners.add(fn)
+    };
+})();
+
+// ───────── 한 줄 보기: 주크박스 곡 · 저널 항목을 한 줄씩 ('지금 재생 중'은 Roll20 원래 상자 그대로) ─────────
+// 재생·반복·볼륨·메뉴는 Roll20 요소를 그대로 쓰고 CSS 로 배치만 바꾼다 (body.r20jb-on)
+const jukeboxRow = (() => {
+    let bound = false;
+    const trackOf = li => window.Jukebox?.playlist?.get(li.dataset.itemid);
+    const volOf = li => Number(trackOf(li)?.get("volume") ?? li.querySelector(".volume input.slider")?.value ?? 0);
+
+    // ◂ ▸ 조절 단위(%)는 주크박스 위 칸에서 그때그때 바꾼다 (수동 페이드용)
+    let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
+    // Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
+    const step = (li, dir) => {
+        const now = volOf(li);
+        const v = Math.max(0, Math.min(100, dir > 0 ? Math.floor(now / STEP) * STEP + STEP : Math.ceil(now / STEP) * STEP - STEP));
+        const slider = li.querySelector(".volume input.slider");
+        if (slider) {
+            slider.value = v;
+            slider.dispatchEvent(new Event("input", { bubbles: true }));
+            slider.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        const m = trackOf(li);
+        if (m && Number(m.get("volume")) !== v) m.save({ volume: v });
+        const label = li.querySelector(".r20jb-vol span");
+        if (label) label.textContent = v;
+    };
+
+    const addVolume = () => {
+        document.querySelectorAll("#jukebox li.jukeboxitem .volume:not(:has(> .r20jb-vol))").forEach(vol => {
+            const box = document.createElement("span");
+            box.className = "r20jb-vol";
+            box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 올리기">▸</button>';
+            box.querySelector("span").textContent = Math.round(volOf(vol.closest("li.jukeboxitem")));
+            vol.appendChild(box);
+        });
+    };
+    // 반복 재생: Roll20 곡 모델의 loop 값을 직접 켜고 끈다 (Roll20 쪽 체크박스 모양에 기대지 않게)
+    const setLoop = (b, on) => {
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+        b.title = on ? "반복 재생 중 · 누르면 끄기" : "반복 안 함 · 누르면 켜기";
+    };
+    const addLoop = () => {
+        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content:not(:has(> .r20jb-loop))").forEach(c => {
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "r20jb-loop"; b.textContent = "↻";
+            b.setAttribute("aria-label", "반복 재생");
+            setLoop(b, !!trackOf(c.closest("li.jukeboxitem"))?.get("loop"));
+            c.appendChild(b);
+        });
+    };
+    // 태그: 제목 줄 자리는 차지하지 않고, 제목에 마우스를 올리면 바로 검은 말풍선으로 (띄어쓰기·쉼표로 나눔)
+    const tagText = m => tagList(m?.get("tags")).map(x => "#" + x).join(" ");
+    const addTags = () => {
+        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content > .title").forEach(ti => {
+            const txt = tagText(trackOf(ti.closest("li.jukeboxitem")));
+            if (txt) { if (ti.dataset.r20jbTags !== txt) ti.dataset.r20jbTags = txt; }
+            else if (ti.dataset.r20jbTags) delete ti.dataset.r20jbTags;
+        });
+    };
+    let tip = null;
+    const TAGGED = "#jukebox .title[data-r20jb-tags]";
+    document.addEventListener("mouseover", e => {
+        const ti = btnVisible.jbrow && e.target.closest?.(TAGGED);
+        if (!ti) return;
+        if (!tip) { tip = document.createElement("div"); tip.className = "r20jb-tip"; tip.setAttribute("role", "tooltip"); }
+        tip.textContent = ti.dataset.r20jbTags;
+        document.body.appendChild(tip);
+        const r = ti.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+        tip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
+        tip.style.top = (r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
+    });
+    document.addEventListener("mouseout", e => { const ti = e.target.closest?.(TAGGED); if (ti && !ti.contains(e.relatedTarget)) tip?.remove(); });
+    document.addEventListener("wheel", () => tip?.remove(), { capture: true, passive: true });
+    // 트랙이 없는 재생목록은 구분선으로 쓴다 → 표시만 붙이고 모양은 CSS.
+    // 화면이 아니라 Roll20 폴더 구조로 판단해서, 접혀 있는 목록도 틀리지 않는다
+    let sepRaw = null, sepIds = new Set();
+    const markSeps = () => {
+        const raw = window.Campaign?.get?.("jukeboxfolder") || "[]";
+        if (raw !== sepRaw) {
+            sepRaw = raw;
+            sepIds = new Set();
+            let list = [];
+            try { list = JSON.parse(raw); } catch (e) {}
+            const walk = l => (Array.isArray(l) ? l : []).forEach(x => { if (x && typeof x === "object") { if (!(x.i || []).length) sepIds.add(x.id); walk(x.i); } });
+            walk(list);
+        }
+        document.querySelectorAll("#jukeboxfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
+            const on = sepIds.has(f.dataset.globalfolderid);
+            if (f.classList.contains("r20jb-sep") !== on) f.classList.toggle("r20jb-sep", on);
+        });
+    };
+    const addStepControl = () => {
+        const host = document.querySelector("#jukebox .secondarycontrols");
+        if (!host || host.querySelector(".r20jb-step")) return;
+        const wrap = document.createElement("label");
+        wrap.className = "r20jb-step";
+        wrap.title = "◂ ▸ 를 누를 때 바뀌는 볼륨 크기";
+        wrap.append("볼륨 ±");
+        const inp = document.createElement("input");
+        inp.type = "number"; inp.min = "1"; inp.max = "50"; inp.value = STEP;
+        inp.setAttribute("aria-label", "볼륨 조절 단위(%)");
+        inp.addEventListener("input", () => {
+            const v = parseInt(inp.value, 10);
+            if (v >= 1 && v <= 50) { STEP = v; localStorage.setItem("r20jb_step", v); }
+        });
+        inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
+        wrap.append(inp, "%");
+        host.appendChild(wrap);
+    };
+
+    let watched = null;
+    const inject = () => {
+        if (!btnVisible.jbrow) return;
+        addStepControl();
+        // Roll20 이 곡 줄을 다시 그리면 화면에 그려지기 전에 바로 다시 붙인다 (슬라이더·버튼 깜빡임 방지)
+        const jb = document.getElementById("jukebox");
+        if (jb && watched !== jb) {
+            watched = jb;
+            new MutationObserver(() => {
+                if (!btnVisible.jbrow) return;
+                addVolume();
+                addLoop();
+                addTags();
+                markSeps();
+                bgmPreview.inject();
+            }).observe(jb, { childList: true, subtree: true });
+        }
+        // 다른 곳(일괄 편집기 등)에서 볼륨이 바뀌면 숫자도 맞춘다
+        if (!bound && window.Jukebox?.playlist?.on) {
+            bound = true;
+            window.Jukebox.playlist.on("change:volume", m => {
+                const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
+                if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
+            });
+            window.Jukebox.playlist.on("change:tags", () => addTags());
+            window.Jukebox.playlist.on("change:loop", m => {
+                const b = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-loop`);
+                if (b) setLoop(b, !!m.get("loop"));
+            });
+        }
+        addVolume();
+        addLoop();
+        addTags();
+        markSeps();
+    };
+    document.addEventListener("click", e => {
+        const lb = e.target.closest?.(".r20jb-loop");
+        if (lb) {
+            e.preventDefault(); e.stopPropagation();
+            const m = trackOf(lb.closest("li.jukeboxitem"));
+            if (!m) return;
+            const on = !m.get("loop");
+            m.save({ loop: on });
+            setLoop(lb, on);
+            return;
+        }
+        const btn = e.target.closest?.(".r20jb-vol button");
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        step(btn.closest("li.jukeboxitem"), Number(btn.dataset.dir));
+    }, true);
+
+    const setEnabled = on => {
+        document.body.classList.toggle("r20jb-on", on);
+        if (on) inject();
+    };
+    setEnabled(btnVisible.jbrow);
+    return { inject, setEnabled };
+})();
+
+addCss(`
+        .r20-bgm-pv { cursor:pointer; margin-right:4px; font-size:12px; opacity:0.55; text-decoration:none !important; user-select:none; }
+        .r20-bgm-pv:hover, .r20-bgm-pv:focus-visible { opacity:1; }
+        .r20-bgm-pv.on { opacity:1; filter:drop-shadow(0 0 2px #1867c7); }
+        body.r20-bgm-off .r20-bgm-pv { display:none; }
+        /* 주크박스 한 줄 보기: Roll20 요소는 그대로 두고 배치·크기만 바꾼다 (.playbackcontrol 을 풀어 한 줄 flex 로) */
+        body.r20jb-on #jukebox .instructions { display:none !important; }
+        body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
+        .r20jb-step { display:none; }
+        body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
+        body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
+        body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
+        body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
+        /* 재생목록 머리줄: 폴더째 재생 버튼만 */
+        /* 재생목록 줄 높이를 26px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder { min-height:0 !important; margin:0 !important; padding:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder::before, body.r20jb-on #jukeboxfolderroot li.dd-folder::after, body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content::after { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { height:26px !important; margin-top:0 !important; margin-bottom:0 !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.playstyle, body.r20jb-on #jukeboxfolderroot .playlistcontrols a.exportplaylist { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play { display:inline-flex !important; align-items:center; justify-content:center; width:22px; margin:0 !important; color:#777 !important; text-decoration:none !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
+        /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content { min-height:18px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .folder-title { font-size:10px !important; line-height:18px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-list { display:none !important; }
+        /* 빈 재생목록의 자리표시(끌어 넣기용)는 남기되 높이만 줄인다 */
+        body.r20jb-on #jukeboxfolderroot li.dd-item-dummy { min-height:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
+        /* 곡 줄 */
+        body.r20jb-on #jukebox li.jukeboxitem { position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        /* 끌기 손잡이(☰)는 곡 줄 바로 왼쪽에 붙이고, 줄에 마우스를 올렸을 때만 보인다 */
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:12px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; transform:none !important; overflow:hidden !important; text-indent:0 !important; font-size:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:grab; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { content:"☰" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:#999 !important; opacity:0; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::after { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem:hover > .dd-handle::before { opacity:1; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
+        body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:12px; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { font-size:12px !important; line-height:26px !important; }
+        /* 볼륨: 슬라이더 대신 ◂ 값 ▸ */
+        body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:auto !important; height:26px; margin:0 !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
+        .r20jb-vol, .r20jb-loop { display:none; }
+        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
+        .r20jb-tip { position:fixed; z-index:100005; max-width:260px; padding:4px 8px; border-radius:4px; background:rgba(20,20,22,0.94); color:#fff; font-size:11px; line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-loop { display:inline-flex; }
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20-bgm-pv { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop.on { color:#3d7cc9; font-weight:700; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol { display:inline-flex; align-items:center; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button { width:8px; height:22px; margin:0; padding:0; border:0; background:none; color:#aaa; font-size:9px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button:hover { color:#222; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol span { width:16px; color:#777; font-size:10px; text-align:center; font-variant-numeric:tabular-nums; }
+        /* 메뉴(⋮)는 숨기고 그 자리를 제목이 쓴다 (삭제 등은 일괄 편집기에서) */
+        body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { display:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play:hover { color:#222 !important; }
+        /* 저널 한 줄 보기: 항목 = 작은 동그란 아바타 + 이름 (폴더 계층은 10px 씩만 들여쓴다) */
+        body.r20jb-on #journalfolderroot .dd-list .dd-list { clear:both; margin:0 !important; padding:0 0 0 12px !important; }
+        body.r20jb-on #journalfolderroot li.dd-item { margin:0 !important; padding:0 !important; }
+        /* Roll20 이 들여쓰기·간격에 쓰는 값(오프셋·text-indent 등)을 모두 0 으로 */
+        body.r20jb-on #journalfolderroot ol.dd-list, body.r20jb-on #journalfolderroot li.dd-item, body.r20jb-on #journalfolderroot .dd-content, body.r20jb-on #journalfolderroot .folder-title, body.r20jb-on #journalfolderroot li.journalitem .token, body.r20jb-on #journalfolderroot li.journalitem .name, body.r20jb-on #journalfolderroot li.journalitem .namecontainer { text-indent:0 !important; left:auto !important; transform:none !important; }
+        /* 폴더 ± 버튼은 줄 왼쪽 16px 안에 고정 */
+        body.r20jb-on #journalfolderroot li.dd-folder { position:relative !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder > button[data-action] { position:absolute !important; left:0 !important; top:0 !important; float:none !important; width:16px !important; height:26px !important; margin:0 !important; line-height:26px !important; z-index:2; }
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 16px !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
+        /* 폴더 끌기 손잡이(투명)가 줄 높이를 늘리지 않게 흐름에서 뺀다 */
+        body.r20jb-on #journalfolderroot li.dd-folder > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; float:none !important; height:26px !important; margin:0 !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder { min-height:0 !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder::before, body.r20jb-on #journalfolderroot li.dd-folder::after, body.r20jb-on #journalfolderroot li.dd-folder > .dd-content::after { display:none !important; }
+        body.r20jb-on #journalfolderroot li.journalitem { min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        body.r20jb-on #journalfolderroot li.journalitem > .dd-content { display:flex !important; align-items:center !important; gap:6px; float:none !important; position:relative !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .token { float:none !important; position:static !important; flex:0 0 18px; width:18px !important; height:18px !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:50%; overflow:hidden; background:none !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .token img { width:18px !important; height:18px !important; max-width:none !important; margin:0 !important; border-radius:50%; object-fit:cover; }
+        body.r20jb-on #journalfolderroot li.journalitem .name { flex:1 1 auto; min-width:0; display:flex !important; align-items:center; gap:4px; float:none !important; position:static !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .namecontainer { flex:1 1 auto; min-width:0; float:none !important; position:static !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .playerdots { flex-shrink:0; margin:0 !important; font-size:12px !important; line-height:1 !important; }
+        body.r20jb-on #journalfolderroot li.journalitem .sourcefooter:empty { display:none !important; }
+        /* 모음 탭(매크로 · 덱 · 목록에서 뽑기): 저널처럼 한 줄씩 가늘게 */
+        body.r20jb-on #deckstables .content > p { display:none !important; }
+        body.r20jb-on #deckstables .content > .clear { height:6px !important; }
+        body.r20jb-on #deckstables .content > hr { margin:4px 0 !important; }
+        body.r20jb-on #deckstables .content > h3 { margin:6px 0 4px !important; font-size:13px !important; line-height:24px !important; }
+        body.r20jb-on #deckstables .content > button.btn { height:auto !important; margin:6px 0 0 !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
+        body.r20jb-on #deckstables .content > label { font-size:11px !important; font-weight:normal !important; }
+        body.r20jb-on #deckstables table.table { width:100% !important; margin:0 !important; border-collapse:collapse !important; }
+        body.r20jb-on #deckstables table.table thead { display:none !important; }
+        body.r20jb-on #deckstables table.table td { height:26px; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none !important; font-size:12px !important; line-height:26px !important; vertical-align:middle !important; white-space:nowrap; }
+        body.r20jb-on #deckstables table.table tr:hover td { background:rgba(24,103,199,0.06) !important; }
+        body.r20jb-on #deckstables table.table td.name { width:100%; max-width:0; overflow:hidden; text-overflow:clip; cursor:pointer; }
+        body.r20jb-on #deckstables td.name a.rollmacro { display:inline-block; width:16px; margin:0 2px 0 0 !important; color:#999 !important; font-size:12px !important; text-align:center; text-decoration:none !important; }
+        body.r20jb-on #deckstables td.name a.rollmacro:hover { color:#222 !important; }
+        body.r20jb-on #deckstables td.bartoggle label { display:inline-flex !important; align-items:center; gap:2px; margin:0 !important; font-size:10px !important; font-weight:normal !important; color:#999 !important; line-height:26px !important; }
+        body.r20jb-on #deckstables td.bartoggle input { margin:0 !important; }
+        body.r20jb-on #deckstables tr.deck > td:nth-child(2), body.r20jb-on #deckstables tr.rollabletable > td:nth-child(2) { color:#999 !important; font-size:10px !important; text-align:right; }
+        body.r20jb-on #deckstables td.actions { text-align:right !important; }
+        body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:20px !important; vertical-align:middle; }
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
+`);
+addFeature("bgmPreview", bgmPreview);
+addFeature("jukeboxRow", jukeboxRow);
+addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록", sub: "BGM 미리듣기 · 한 줄 보기 · 태그 말풍선 · 구분선",
+    members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"]] });
+
+// ══════════ 묶음 2 · 캡처 ══════════
+
+// ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
+// 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
+const chatCapture = (() => {
+    let on = false, last = null;
+    const logEl = () => document.querySelector("#textchat .content");
+    const msgs = () => [...(logEl()?.querySelectorAll(":scope > .message") || [])];
+    const picked = () => msgs().filter(m => m.classList.contains("r20cap-sel"));
+    const ICON = {
+        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+        x: '<path d="M18 6 6 18M6 6l12 12"/>',
+        copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+        ok: '<path d="M20 6 9 17l-5-5"/>',
+        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+    };
+    const svg = k => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+    let busy = false, note = "", noteT = 0;
+    const capBtn = () => document.getElementById("custom-capture-toggle");
+    const copyBtn = () => document.getElementById("custom-capture-copy");
+    const paint = (b, bg, fg) => { b.style.setProperty("background-color", bg, "important"); b.style.setProperty("color", fg, "important"); };
+    const IDLE_BG = "rgba(136,136,136,0.07)", IDLE_FG = "#aaa";
+    const update = () => {
+        const mb = capBtn(), cb = copyBtn();
+        if (!mb || !cb) return;
+        const n = picked().length;
+        cb.style.display = on ? "flex" : "none";
+        cb.disabled = !n || busy;
+        cb.innerHTML = svg(busy ? "load" : "copy") + (n ? `<b>${n}</b>` : "");
+        paint(cb, n ? CONFIG.activeBg : IDLE_BG, n ? CONFIG.activeText : IDLE_FG);
+        mb.innerHTML = svg(note || (on ? "x" : "cam"));
+        paint(mb, on ? "rgba(24,103,199,0.12)" : IDLE_BG, note === "ok" ? "#2e8b57" : note === "bad" ? "#c0392b" : on ? CONFIG.activeBg : IDLE_FG);
+        const tip = note === "ok" ? "클립보드에 복사했어요" : note === "bad" ? "복사하지 못했어요 — 다시 눌러 주세요"
+            : on ? "캡처 그만두기 (Esc)" : "대화 캡처: 메시지를 눌러 고르고(Shift: 범위) 이미지로 복사";
+        mb.title = tip; mb.setAttribute("aria-label", tip);
+    };
+    const blink = k => { clearTimeout(noteT); note = k; update(); noteT = setTimeout(() => { note = ""; update(); }, 1400); };
+    const start = () => {
+        if (on) return;
+        on = true; last = null;
+        document.getElementById("textchat")?.classList.add("r20cap-on");
+        update();
+    };
+    const stop = () => {
+        on = false;
+        document.getElementById("textchat")?.classList.remove("r20cap-on");
+        msgs().forEach(m => m.classList.remove("r20cap-sel"));
+        update();
+    };
+    // 고르는 동안 메시지를 누르면 고르기만 한다 (링크·단추 등 Roll20 동작은 막는다)
+    document.addEventListener("click", e => {
+        if (!on) return;
+        const m = e.target.closest?.("#textchat .content > .message");
+        if (!m) return;
+        e.preventDefault(); e.stopPropagation();
+        const list = msgs();
+        if (e.shiftKey && last && list.includes(last)) {
+            const a = list.indexOf(last), z = list.indexOf(m);
+            list.slice(Math.min(a, z), Math.max(a, z) + 1).forEach(x => x.classList.add("r20cap-sel"));
+        } else m.classList.toggle("r20cap-sel");
+        last = m;
+        update();
+    }, true);
+    // Shift+클릭이 글자를 끌어 고르지 않게
+    document.addEventListener("mousedown", e => { if (on && e.target.closest?.("#textchat .content > .message")) e.preventDefault(); }, true);
+    document.addEventListener("keydown", e => { if (on && e.key === "Escape") stop(); }, true);
+
+    // ── 그리기 ──
+    // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
+    const INHERIT = new Set(["color", "font-family", "font-size", "font-style", "font-variant", "font-weight", "font-stretch", "line-height", "letter-spacing",
+        "word-spacing", "text-align", "text-indent", "text-transform", "text-shadow", "white-space", "word-break", "overflow-wrap", "visibility", "direction",
+        "list-style-type", "list-style-position", "list-style-image", "quotes", "tab-size", "hyphens", "font-kerning", "font-feature-settings",
+        "font-variation-settings", "-webkit-text-fill-color", "-webkit-text-stroke-color", "-webkit-text-stroke-width", "text-rendering",
+        "border-collapse", "border-spacing", "caption-side", "empty-cells", "cursor"]);
+    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor)/;
+    let sandbox = null;
+    const defaults = new Map();
+    const defaultsOf = el => {
+        const key = el.namespaceURI + ":" + el.tagName;
+        if (defaults.has(key)) return defaults.get(key);
+        if (!sandbox) { sandbox = document.createElement("div"); sandbox.style.cssText = "all:initial;position:fixed;left:-99999px;top:0;visibility:hidden"; document.body.appendChild(sandbox); }
+        const d = document.createElementNS(el.namespaceURI, el.tagName);
+        sandbox.appendChild(d);
+        const cs = getComputedStyle(d), map = {};
+        for (let i = 0; i < cs.length; i++) map[cs[i]] = cs.getPropertyValue(cs[i]);
+        d.remove();
+        defaults.set(key, map);
+        return map;
+    };
+    const styleText = (cs, parentCs, def) => {
+        const out = [];
+        for (let i = 0; i < cs.length; i++) {
+            const p = cs[i];
+            if (SKIP.test(p)) continue;
+            const v = cs.getPropertyValue(p);
+            if (INHERIT.has(p) ? (!parentCs || v !== parentCs.getPropertyValue(p)) : v !== def[p]) out.push(`${p}:${v}`);
+        }
+        return out.join(";");
+    };
+    // 그림 · 글꼴은 주소 대신 데이터로 넣어야 이미지 안에 보인다 (못 가져오면 비워 둔다)
+    const dataCache = new Map();
+    const toData = url => {
+        if (!url || url.startsWith("data:")) return Promise.resolve(url);
+        const get = u => fetch(u, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
+            .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
+            .catch(() => null);
+        // s3.amazonaws.com/files.d20.io 주소는 CORS 가 막혀 있어 files.d20.io 로 먼저 받는다
+        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null)));
+        return dataCache.get(url);
+    };
+    const inlineUrls = async css => {
+        const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map(m => m[1]).filter(u => !u.startsWith("data:"));
+        for (const u of new Set(urls)) {
+            const d = await toData(new URL(u, location.href).href);
+            css = css.split(u).join(d || "");
+        }
+        return css;
+    };
+    // 쓰인 글꼴의 @font-face 를 찾아 데이터로 넣는다 (다른 곳 스타일시트는 읽을 수 없어 건너뛴다)
+    const fontFaces = async families => {
+        const want = new Set([...families].flatMap(f => f.split(",")).map(f => f.trim().replace(/^["']|["']$/g, "").toLowerCase()));
+        const out = [];
+        for (const sh of document.styleSheets) {
+            let rules;
+            try { rules = sh.cssRules; } catch (e) { continue; }
+            for (const r of rules || []) {
+                if (!(r instanceof CSSFontFaceRule)) continue;
+                const fam = r.style.getPropertyValue("font-family").trim().replace(/^["']|["']$/g, "").toLowerCase();
+                if (!want.has(fam)) continue;
+                let css = r.cssText;
+                const base = sh.href || location.href;
+                css = css.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/g, (m0, u) => `url("${new URL(u, base).href}")`);
+                out.push(await inlineUrls(css));
+            }
+        }
+        return out.join("\n");
+    };
+    const render = async list => {
+        const lg = logEl();
+        const wrap = document.createElement("div"), lgCs = getComputedStyle(lg), rules = [], families = new Set([lgCs.fontFamily]);
+        let pn = 0;
+        // 맨 바깥: 채팅창 글꼴·색·배경을 그대로 (투명하면 흰 바탕)
+        const bg = [lg, lg.parentElement, document.getElementById("textchat")].map(x => x && getComputedStyle(x).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)") || "#fff";
+        wrap.setAttribute("style", styleText(lgCs, null, defaultsOf(wrap)) + `;width:${lg.clientWidth}px;background-color:${bg};margin:0;padding:0;overflow:hidden;height:auto;max-height:none;position:static;inset:auto;transform:none`);
+        const walk = (orig, parentCs) => {
+            const cl = orig.cloneNode(false);
+            if (orig.nodeType !== 1) return cl;
+            const cs = getComputedStyle(orig);
+            families.add(cs.fontFamily);
+            cl.removeAttribute("id");
+            cl.setAttribute("style", styleText(cs, parentCs, defaultsOf(orig)));
+            // ::before · ::after 는 복제에 없으니 규칙으로 따로 적는다
+            ["::before", "::after"].forEach(ps => {
+                const pcs = getComputedStyle(orig, ps), c = pcs.getPropertyValue("content");
+                if (!c || c === "none" || c === "normal") return;
+                const cls = "r20cp" + (++pn);
+                cl.classList.add(cls);
+                const body = [];
+                for (let i = 0; i < pcs.length; i++) if (!SKIP.test(pcs[i])) body.push(`${pcs[i]}:${pcs.getPropertyValue(pcs[i])}`);
+                rules.push(`.${cls}${ps}{${body.join(";")}}`);
+            });
+            orig.childNodes.forEach(ch => cl.appendChild(walk(ch, cs)));
+            if (orig.tagName === "IMG") { cl.setAttribute("data-src", orig.currentSrc || orig.src); cl.removeAttribute("srcset"); cl.removeAttribute("loading"); }
+            return cl;
+        };
+        // 고른 표시는 빼고 계산된 스타일을 읽는다
+        document.getElementById("textchat")?.classList.remove("r20cap-on");
+        list.forEach(m => m.classList.remove("r20cap-sel"));
+        try { list.forEach(m => wrap.appendChild(walk(m, lgCs))); }
+        finally { list.forEach(m => m.classList.add("r20cap-sel")); if (on) document.getElementById("textchat")?.classList.add("r20cap-on"); }
+        // 그림 · 배경 그림 → 데이터
+        for (const img of wrap.querySelectorAll("img[data-src]")) {
+            const d = await toData(img.getAttribute("data-src"));
+            img.removeAttribute("data-src");
+            if (d) img.setAttribute("src", d); else { img.removeAttribute("src"); img.style.visibility = "hidden"; }
+        }
+        for (const el of [wrap, ...wrap.querySelectorAll("[style*='url(']")]) el.setAttribute("style", await inlineUrls(el.getAttribute("style")));
+        const style = document.createElement("style");
+        style.textContent = (await fontFaces(families)) + "\n" + (await inlineUrls(rules.join("\n")));
+        wrap.prepend(style);
+        // 높이는 실제로 놓아 보고 잰다
+        const meas = document.createElement("div");
+        meas.style.cssText = "position:fixed;left:-99999px;top:0;visibility:hidden";
+        meas.appendChild(wrap);
+        document.body.appendChild(meas);
+        const w = Math.ceil(wrap.getBoundingClientRect().width), h = Math.ceil(wrap.getBoundingClientRect().height);
+        meas.remove();
+        const xml = new XMLSerializer().serializeToString(wrap);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="100%" height="100%">${xml}</foreignObject></svg>`;
+        const img = new Image();
+        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        await img.decode();
+        const scale = h * 2 <= 16000 ? 2 : Math.max(0.5, 16000 / h);       // 선명하게, 너무 길면 줄여서
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
+        const ctx = cv.getContext("2d");
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("toBlob 실패")), "image/png"));
+    };
+    const copy = async () => {
+        const list = picked();
+        if (!list.length || busy) return;
+        busy = true; update();
+        try {
+            // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 만들어지는 대로 넘긴다)
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": render(list) })]);
+            busy = false;
+            stop();
+            blink("ok");
+        } catch (e) {
+            console.warn("[대화 캡처] 실패:", e);
+            busy = false;
+            blink("bad");
+        }
+    };
+    // 말하는 사람 줄: [저널] [복사(고른 개수) — 고르는 동안만] [캡처 ↔ 그만두기] [⚙]
+    const inject = () => {
+        const gear = document.getElementById("custom-settings-btn");
+        if (!btnVisible.capture || !gear || capBtn()) return;
+        const mk = id => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.id = id;
+            b.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; cursor: pointer;";
+            b.addEventListener("click", e => {
+                e.preventDefault(); e.stopPropagation();
+                if (id === "custom-capture-copy") return copy();
+                clearTimeout(noteT); note = "";
+                on ? stop() : start();
+            });
+            return b;
+        };
+        const cb = mk("custom-capture-copy");
+        cb.style.width = "auto"; cb.style.padding = "0 5px";
+        cb.title = "고른 메시지를 이미지로 클립보드에 복사";
+        cb.setAttribute("aria-label", "이미지로 복사");
+        gear.before(cb, mk("custom-capture-toggle"));
+        update();
+    };
+    const setEnabled = v => {
+        if (v) return inject();
+        if (on) stop();
+        capBtn()?.remove(); copyBtn()?.remove();
+    };
+    return { inject, setEnabled };
+})();
+
+// ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
+// 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
+const mapShot = (() => {
+    const ICON = {
+        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
+        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+        ok: '<path d="M20 6 9 17l-5-5"/>',
+        warn: '<path d="M20 6 9 17l-5-5"/><circle cx="19" cy="19" r="2" fill="currentColor"/>',
+        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+    };
+    const svg = k => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+    const btn = () => document.getElementById("r20-mapshot");
+    let busy = false, noteT = 0;
+    const show = (k, tip) => {
+        const b = btn();
+        if (!b) return;
+        b.innerHTML = svg(k);
+        b.dataset.state = k;
+        b.title = tip;
+        b.setAttribute("aria-label", tip);
+    };
+    const idle = () => show("cam", "맵 촬영: 맵·토큰 레이어를 이미지로 클립보드에 복사");
+    const note = (k, tip) => { clearTimeout(noteT); show(k, tip); noteT = setTimeout(idle, 3000); };
+    // Roll20 은 fetch 로 그림 서버에 못 가게 막혀 있어서 <img crossOrigin> 으로 받는다.
+    // s3.amazonaws.com/files.d20.io 주소는 CORS 가 안 될 수 있어 files.d20.io 로 먼저 받아 보고,
+    // 그다음 원래 주소, 마지막으로 (CORS 없이 캐시된 경우를 피해) 주소 끝을 바꿔 받는다
+    const loadOne = u => new Promise(res => {
+        const im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = () => res(im);
+        im.onerror = () => res(null);
+        im.src = u;
+    });
+    let failed = [];
+    const load = async u => {
+        for (const c of new Set([r20img(u), u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])) {
+            const im = await loadOne(c);
+            if (im) return im;
+        }
+        failed.push(u);
+        return null;
+    };
+    const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
+    const usable = c => c && c !== "transparent" && c !== "none";
+    // 펜 선: path 는 [["M",x,y],["L",x,y],["Q",..],["C",..]] — 점들의 가운데가 (left, top) 에 오도록 놓는다
+    const drawPath = (ctx, p) => {
+        let cmds;
+        try { cmds = JSON.parse(p.get("path") || "[]"); } catch (e) { return; }
+        if (!Array.isArray(cmds) || !cmds.length) return;
+        const xs = [], ys = [];
+        cmds.forEach(([, ...a]) => a.forEach((v, i) => (i % 2 ? ys : xs).push(+v)));
+        if (!xs.length) return;
+        ctx.save();
+        ctx.translate(num(p, "left"), num(p, "top"));
+        ctx.rotate(num(p, "rotation") * Math.PI / 180);
+        ctx.scale(num(p, "scaleX", 1), num(p, "scaleY", 1));
+        ctx.translate(-(Math.min(...xs) + Math.max(...xs)) / 2, -(Math.min(...ys) + Math.max(...ys)) / 2);
+        ctx.beginPath();
+        cmds.forEach(([c, ...a]) => {
+            a = a.map(Number);
+            if (c === "M") ctx.moveTo(a[0], a[1]);
+            else if (c === "L") ctx.lineTo(a[0], a[1]);
+            else if (c === "Q") ctx.quadraticCurveTo(a[0], a[1], a[2], a[3]);
+            else if (c === "C") ctx.bezierCurveTo(a[0], a[1], a[2], a[3], a[4], a[5]);
+            else if (c === "Z" || c === "z") ctx.closePath();
+        });
+        if (usable(p.get("fill"))) { ctx.fillStyle = p.get("fill"); ctx.fill(); }
+        const sw = num(p, "stroke_width", 0);
+        if (sw > 0 && usable(p.get("stroke"))) { ctx.lineWidth = sw; ctx.strokeStyle = p.get("stroke"); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
+        ctx.restore();
+    };
+    const drawImg = (ctx, g, im) => {
+        const w = num(g, "width"), h = num(g, "height");
+        ctx.save();
+        ctx.translate(num(g, "left"), num(g, "top"));
+        ctx.rotate(num(g, "rotation") * Math.PI / 180);
+        ctx.scale(g.get("fliph") ? -1 : 1, g.get("flipv") ? -1 : 1);
+        ctx.globalAlpha = Math.max(0, Math.min(1, num(g, "baseOpacity", 1)));
+        ctx.drawImage(im, -w / 2, -h / 2, w, h);
+        ctx.restore();
+    };
+    const render = async () => {
+        const pg = Campaign.activePage?.() || Campaign.pages?.get(Campaign.get("playerpageid"));
+        if (!pg?.thegraphics) throw new Error("페이지를 아직 불러오지 않았어요");
+        const W = num(pg, "width", 25) * 70, H = num(pg, "height", 25) * 70;
+        const k = Math.min(1, 8192 / Math.max(W, H));             // 브라우저 캔버스 한도 안으로
+        const z = new Map(String(pg.get("zorder") || "").split(",").map((id, i) => [id, i]));
+        const objs = [...pg.thegraphics.models.filter(g => g.get("imgsrc")), ...(pg.thepaths?.models || [])];
+        // 맵 레이어 먼저, 그다음 토큰 레이어. 같은 레이어 안에서는 Roll20 의 앞뒤 순서(zorder)대로
+        const list = ["map", "objects"].flatMap(layer => objs.filter(o => o.get("layer") === layer)
+            .sort((a, b) => (z.get(a.id) ?? num(a, "z_index", 1e9)) - (z.get(b.id) ?? num(b, "z_index", 1e9))));
+        failed = [];
+        const imgs = await Promise.all(list.map(o => o.get("imgsrc") ? load(o.get("imgsrc")) : null));
+        if (failed.length) console.warn(`[맵 촬영] 그림 ${failed.length}/${list.length}개를 못 불러옴`, failed.slice(0, 20));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+        const ctx = cv.getContext("2d");
+        ctx.scale(k, k);
+        ctx.fillStyle = pg.get("background_color") || "#ffffff";
+        ctx.fillRect(0, 0, W, H);
+        let miss = 0;
+        list.forEach((o, i) => {
+            if (!o.get("imgsrc")) return drawPath(ctx, o);
+            if (imgs[i]) drawImg(ctx, o, imgs[i]); else miss++;
+        });
+        const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("이미지를 만들지 못했어요")), "image/png"));
+        return { blob, miss };
+    };
+    const shoot = async () => {
+        if (busy) return;
+        busy = true;
+        clearTimeout(noteT);
+        show("load", "맵을 그리는 중…");
+        let info = null;
+        try {
+            // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 다 그려지는 대로 넘긴다)
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": render().then(r => (info = r).blob) })]);
+            note(info.miss ? "warn" : "ok", info.miss ? `복사했어요 — 그림 ${info.miss}개는 불러오지 못해 빠졌어요` : "맵 이미지를 클립보드에 복사했어요");
+        } catch (e) {
+            console.warn("[맵 촬영] 실패:", e);
+            note("bad", "복사하지 못했어요 — " + (e?.message || e));
+        }
+        busy = false;
+    };
+    const inject = () => {
+        if (!btnVisible.mapshot || btn() || !document.getElementById("sidebarcontrol")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "r20-mapshot";
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); shoot(); });
+        document.body.appendChild(b);
+        idle();
+        if (FEAT.screenUI) FEAT.screenUI.place();
+        else {      // 화면 정리 묶음이 없으면 햄버거 밑에 혼자 놓는다
+            const r = document.getElementById("sidebarcontrol").getBoundingClientRect();
+            Object.assign(b.style, { top: r.bottom + 4 + "px", right: innerWidth - r.right + "px" });
+        }
+    };
+    const setEnabled = v => {
+        if (v) return inject();
+        btn()?.remove();
+    };
+    return { inject, setEnabled };
+})();
+
+addCss(`
+        /* 맵 촬영 단추 (화면 제어 줄 맨 아래) */
+        #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
+        #r20-mapshot:hover { color:#b8215f; }
+        #r20-mapshot:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        #r20-mapshot[data-state=ok] { color:#2e8b57; }
+        #r20-mapshot[data-state=warn] { color:#c98a00; }
+        #r20-mapshot[data-state=bad] { color:#c0392b; }
+        #r20-mapshot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
+        /* 대화 캡처: 고르는 동안 메시지를 눌러 고르고, 고른 것은 왼쪽 막대 + 옅은 배경 */
+        #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
+        #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 #e7b3c9 !important; }
+        #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 #b8215f !important; background-color:rgba(184,33,95,0.08) !important; }
+        #custom-capture-copy:disabled { cursor:default; }
+        #custom-capture-copy b { font:700 10px/1 sans-serif; }
+        #custom-capture-copy .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
+        @keyframes r20cap-spin { to { transform:rotate(360deg); } }
+`);
+addFeature("chatCapture", chatCapture);
+addFeature("mapShot", mapShot);
+addBundle({ place: "main", order: 2, label: "캡처", sub: "대화 캡처 · 맵 촬영",
+    members: [["capture", "chatCapture"], ["mapshot", "mapShot"]] });
+
+// ══════════ 묶음 3 · 토큰 · 카드 · 화면 정리 ══════════
+
+// ───────── 면 선택: 다면 토큰의 Choose Side 창을 썸네일 격자로 (슬라이더 대신 눌러서 고르기) ─────────
+// Roll20 창과 이미지는 그대로 두고, 고른 면에 맞춰 Roll20 슬라이더를 움직인 뒤 원래 [Choose] 로 적용한다
+const sidePicker = (() => {
+    let size = Math.max(48, Math.min(220, parseInt(localStorage.getItem("r20_cs_size"), 10) || 96));
+    const choicesOf = dlg => [...dlg.querySelectorAll(".sidechoices > .sidechoice")];
+
+    const select = (dlg, idx) => {
+        const list = choicesOf(dlg);
+        if (idx < 0 || idx >= list.length) return;
+        const $ = window.$ || window.jQuery, sl = dlg.querySelector(".sideslider");
+        let done = false;
+        // Roll20 의 [Choose] 는 setTokenSide(tt) — tt 는 창에 걸린 'slide' 이벤트 처리기만 바꾼다.
+        // 그래서 값만 넣지 않고, 끌었을 때처럼 slide 이벤트를 보내 그 처리기를 태운다
+        if ($ && sl) {
+            try {
+                const min = $(sl).slider("option", "min"), max = $(sl).slider("option", "max");
+                if (typeof min === "number" && typeof max === "number") {
+                    const v = max - min === list.length - 1 ? min + idx : Math.round(min + idx * (max - min) / Math.max(1, list.length - 1));
+                    $(sl).slider("value", v);
+                    $(sl).trigger("slide", { value: v, handle: sl.querySelector(".ui-slider-handle") });
+                    done = $(sl).slider("value") === v;
+                }
+            } catch (e) { /* 슬라이더를 만든 jQuery 가 아님 → 아래 마우스 방식 */ }
+        }
+        // 아니면 슬라이더 막대를 그 자리에서 누른 것처럼 마우스 이벤트를 보내 Roll20 처리기를 그대로 태운다
+        // (숨겨 둔 슬라이더는 잠깐 보이지 않게 펼쳐 위치를 잰다 · 값 범위는 0 ~ 면 수-1)
+        if (!done && sl && list.length > 1) {
+            dlg.classList.add("r20cs-drive");
+            try {
+                const r = sl.getBoundingClientRect();
+                const o = { bubbles: true, cancelable: true, view: window, button: 0, clientX: r.left + (idx / (list.length - 1)) * r.width, clientY: r.top + r.height / 2 };
+                sl.dispatchEvent(new MouseEvent("mousedown", { ...o, buttons: 1 }));
+                sl.dispatchEvent(new MouseEvent("mouseup", o));
+            } finally { dlg.classList.remove("r20cs-drive"); }
+        }
+        list.forEach((c, i) => c.setAttribute("data-selected", String(i === idx)));
+        const bar = dlg.querySelector(".r20cs-bar");
+        if (bar) {
+            bar.querySelector(".r20cs-num").textContent = `${idx + 1}번`;
+            bar.querySelector("input").value = idx + 1;
+        }
+    };
+    const choose = dlg => {
+        const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
+        (btns.find(b => /choose/i.test(b.textContent)) || btns[0])?.click();
+    };
+
+    const enhance = dlg => {
+        const list = choicesOf(dlg), cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
+        dlg.classList.add("r20cs");
+        dlg._r20csFirst = list[0];
+        dlg.style.setProperty("--cs-size", size + "px");
+        list[cur]?.classList.add("r20cs-cur");
+        const bar = document.createElement("div");
+        bar.className = "r20cs-bar";
+        bar.innerHTML = '<strong class="r20cs-num"></strong><span class="r20cs-info"></span><span class="r20cs-flex"></span>'
+            + '<label>번호로 가기 <input type="number" min="1" aria-label="번호로 가기"></label>'
+            + '<span class="r20cs-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span>';
+        bar.querySelector(".r20cs-num").textContent = `${cur + 1}번`;
+        bar.querySelector(".r20cs-info").textContent = `/ 전체 ${list.length}면 · 지금 ${cur + 1}번 · 더블클릭하면 바로 적용`;
+        const inp = bar.querySelector("input");
+        inp.max = list.length;
+        inp.value = cur + 1;
+        inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") choose(dlg); });
+        inp.addEventListener("input", () => {
+            const n = parseInt(inp.value, 10);
+            if (n >= 1 && n <= list.length) { select(dlg, n - 1); list[n - 1].scrollIntoView({ block: "nearest" }); }
+        });
+        bar.querySelectorAll(".r20cs-zoom button").forEach(b => b.addEventListener("click", () => {
+            size = Math.max(48, Math.min(220, size + Number(b.dataset.d) * 16));
+            localStorage.setItem("r20_cs_size", size);
+            dlg.style.setProperty("--cs-size", size + "px");
+        }));
+        dlg.querySelector(".ui-dialog-titlebar")?.after(bar);
+        // 창을 키워서 화면 가운데로
+        const w = Math.min(760, window.innerWidth - 40);
+        dlg.style.width = w + "px";
+        dlg.style.left = Math.max(10, (window.innerWidth - w) / 2) + "px";
+        dlg.style.top = Math.max(10, (window.innerHeight - dlg.offsetHeight) / 2) + "px";
+        list[cur]?.scrollIntoView({ block: "center" });
+    };
+
+    // 토큰 메뉴에서 이전·다음·처음·마지막 면을 고르면: Roll20 의 면 선택 창이 뜨는 대로 보이지 않게 골라 적용한다
+    let auto = null, autoTimer = null;
+    const endAuto = () => {
+        auto = null; clearTimeout(autoTimer);
+        setTimeout(() => document.body.classList.remove("r20cs-auto"), 300);      // 닫히는 창이 번쩍이지 않게
+    };
+    const startAuto = act => {
+        auto = act;
+        document.body.classList.add("r20cs-auto");
+        clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => { if (auto) { console.warn("[토큰 메뉴] 면 선택 창이 뜨지 않음"); endAuto(); } }, 3000);
+    };
+    const runAuto = () => {
+        const dlg = [...document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)")].find(d => getComputedStyle(d).display !== "none");
+        if (!dlg) return;
+        const list = choicesOf(dlg), n = list.length, cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
+        const to = { prev: (cur - 1 + n) % n, next: (cur + 1) % n, first: 0, last: n - 1 }[auto];
+        endAuto();
+        select(dlg, to);
+        choose(dlg);
+    };
+
+    const inject = () => {
+        if (auto) return runAuto();
+        if (!btnVisible.sidepick) return;
+        document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)").forEach(dlg => {
+            const first = dlg.querySelector(".sidechoices > .sidechoice");
+            if (dlg.classList.contains("r20cs")) {
+                if (dlg._r20csFirst === first) return;
+                // Roll20 이 같은 창을 다른 토큰으로 다시 쓴 경우: 새로 꾸민다
+                dlg.querySelector(".r20cs-bar")?.remove();
+                dlg.querySelectorAll(".r20cs-cur").forEach(c => c.classList.remove("r20cs-cur"));
+            }
+            enhance(dlg);
+        });
+    };
+    const pick = (e, apply) => {
+        const c = e.target.closest?.(".ui-dialog.r20cs .sidechoice");
+        if (!c) return;
+        const dlg = c.closest(".ui-dialog");
+        select(dlg, choicesOf(dlg).indexOf(c));
+        if (apply) choose(dlg);
+    };
+    document.addEventListener("click", e => pick(e, false), true);
+    document.addEventListener("dblclick", e => pick(e, true), true);
+    return { inject, startAuto };
+})();
+
+// ───────── 토큰 메뉴: 여러 면 토큰에 면 선택 · 이전 면 · 다음 면, '여러 면' 안에 처음 면 · 마지막 면 ─────────
+// 토큰 선택(d20 엔진)에 손댈 수 없어서, 새 단추는 Roll20 의 원래 '면 선택'을 대신 눌러 창을 열고 sidePicker 가 보이지 않게 고른다
+// + 메뉴 정리: 카드 메뉴 · 파티 · 레이어 · 편집 묶음(▸)과 순서. Roll20 항목은 옮기지 않고 숨기기만 하며(flex order 로 순서),
+//   묶음 안 단추는 숨겨 둔 원래 항목을 대신 누른다
+const tokenMenu = (() => {
+    const RE = { multi: /^(여러 면|Multi-?Sided)$/i, choose: /^(면 선택|Choose Side)$/i, random: /^(무작위 면|Random Side)$/i };
+    const labelEl = b => b.querySelector(":scope > .submenu-button-outer span[style*='text-align']");
+    const label = b => labelEl(b)?.textContent.trim() || "";
+    const multiOf = menu => [...menu.querySelectorAll(":scope > button")].find(b => RE.multi.test(label(b)));
+    const origChoose = multi => [...multi.querySelectorAll(":scope > .submenu > button:not([data-r20tm])")].find(b => RE.choose.test(label(b)));
+    // Roll20 단추를 본떠(같은 스타일) 새 단추를 만든다
+    const makeBtn = (tpl, text, act) => {
+        const b = tpl.cloneNode(true);
+        b.querySelector(":scope > .submenu")?.replaceChildren();
+        b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
+        labelEl(b).textContent = text;
+        b.classList.remove("disabled", "r20tm-hide");
+        b.dataset.r20tm = act;
+        return b;
+    };
+    // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]
+    const LAYOUT = [
+        { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
+        { one: "카드 뒤집기" },
+        { g: "파티", icon: "모두에게 핑", items: [["모두에게 핑"], ["시선 집중 핑"], ["파티 정의"], ["파티 배치"], ["핀 놓기"], ["턴 추가"]] },
+        { g: "레이어", icon: "레이어 변경", items: [["레이어 변경>토큰", "토큰 레이어로"], ["레이어 변경>GM", "GM 레이어로"], ["레이어 변경>맵", "맵 레이어로"],
+            ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"]] },
+        { faces: true },
+        { one: "여러 면" },
+        { one: "고급 변환" },
+        { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"]] }
+    ];
+    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP;
+    const leftIcon = b => b.querySelector(":scope > .submenu-button-outer .submenu-button-inner .grimoire__roll20-icon");
+    // 같은 이름이 먼저, 없으면 앞부분이 같은 것 ('위치 고정 해제' 같은 바뀐 이름)
+    const findIn = (menu, name) => {
+        const tops = [...menu.querySelectorAll(":scope > button")].filter(b => !ours(b));
+        return tops.find(b => label(b) === name) || tops.find(b => label(b).startsWith(name)) || null;
+    };
+    const hoverOpen = b => ["mouseenter", "mouseover"].forEach(t => b.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
+    // 묶음 안 단추: Roll20 하위 메뉴 항목(고급 변환 안의 '그룹 생성'처럼 글자만 있는 단추)을 본떠 만들고,
+    // 누르면 숨겨 둔 원래 항목을 누른다. 꺼짐 상태는 원래 항목을 따른다
+    let ITEM = null;            // 본뜰 Roll20 하위 메뉴 항목 (하위 메뉴가 처음 그려질 때 잡아 둔다)
+    const grabItem = menu => {
+        const it = ITEM ? null : menu.querySelector(":scope > button > .submenu > button:not([data-r20tm]):not([data-r20tm-p])");
+        if (it && labelEl(it)) ITEM = it.cloneNode(true);
+    };
+    const proxyBtn = (src, path, text) => {
+        const b = (ITEM || src).cloneNode(true);
+        b.removeAttribute("data-r20tm-hide"); b.removeAttribute("data-r20tm-hov"); b.style.order = "";
+        b.querySelector(":scope > .submenu")?.replaceChildren();
+        b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
+        b.querySelectorAll(".grimoire__roll20-icon, svg").forEach(x => x.remove());
+        labelEl(b).textContent = text;
+        b.classList.toggle("disabled", src.classList.contains("disabled"));
+        b.dataset.r20tmP = path;
+        return b;
+    };
+    // 마우스를 올리면 열고, 벗어나면 잠깐(0.3초) 기다렸다 닫는다 — 메뉴와 하위 메뉴 사이 틈을 지나가도 닫히지 않게.
+    // 다른 머리에 올리면 앞의 것은 바로 닫는다
+    let closeNow = null;
+    const hoverKeep = (el, open, close, fly) => {
+        let t = 0;
+        const shut = () => { clearTimeout(t); if (closeNow === shut) closeNow = null; close(); };
+        el.addEventListener("mouseenter", () => {
+            clearTimeout(t);
+            if (closeNow && closeNow !== shut) closeNow();
+            closeNow = shut;
+            open();
+        });
+        el.addEventListener("mouseleave", () => { clearTimeout(t); t = setTimeout(shut, 300); });
+        fly?.addEventListener("mouseenter", () => clearTimeout(t));
+        fly?.addEventListener("mouseleave", () => { clearTimeout(t); t = setTimeout(shut, 300); });
+    };
+    // 묶음 머리: 하위 메뉴가 있는 Roll20 단추(화살표 포함)를 본뜨고, 아이콘은 대표 항목 것으로
+    const makeGroup = (menu, L, present, tpl) => {
+        const g = tpl.cloneNode(true);
+        g.removeAttribute("data-r20tm-hide"); g.removeAttribute("data-r20tm-hov"); g.classList.remove("disabled");
+        g.dataset.r20tmG = L.g;
+        labelEl(g).textContent = L.g;
+        const ic = leftIcon(findIn(menu, L.icon) || tpl), gi = leftIcon(g);
+        if (ic && gi) gi.replaceWith(ic.cloneNode(true));
+        // 하위 메뉴는 머리 안이 아니라 메뉴 판에 따로 붙여 띄운다 (머리 안의 .submenu 는 Roll20 이 자리를 다시 잡아 버린다)
+        const tsub = g.querySelector(":scope > .submenu");
+        const sub = document.createElement("div");
+        if (tsub) { for (const at of tsub.attributes) if (at.name.startsWith("data-v-")) sub.setAttribute(at.name, ""); tsub.remove(); }
+        sub.className = "submenu r20tm-sub";
+        sub.style.display = "none";
+        g._r20tmFly = sub;
+        menu.appendChild(sub);
+        const build = () => sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
+        build();
+        // 메뉴에 transform · zoom 이 걸려 있으면 left/top 값이 곧 화면 좌표가 아니다 (기준점이 옮겨지고 배율이 붙는다)
+        // → 두 번 놓아 보고 실제로 놓인 화면 좌표에서 이동·배율을 구해, 원하는 화면 좌표가 되는 값을 넣는다 (!important: Roll20 CSS 를 이기도록)
+        const place = () => {
+            const put = (x, y) => { sub.style.setProperty("left", x + "px", "important"); sub.style.setProperty("top", y + "px", "important"); };
+            put(0, 0);
+            const a = sub.getBoundingClientRect();
+            put(100, 100);
+            const b = sub.getBoundingClientRect();
+            const sx = (b.left - a.left) / 100 || 1, sy = (b.top - a.top) / 100 || 1;
+            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = a.width, h = a.height;
+            const pad = (parseFloat(getComputedStyle(sub).paddingTop) || 0) * sy;
+            const want = { x: m.right + 4 + w > innerWidth - 4 ? m.left - w - 4 : m.right + 4, y: Math.max(4, Math.min(r.top - pad, innerHeight - h - 4)) };
+            put((want.x - a.left) / sx, (want.y - a.top) / sy);
+        };
+        // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥에 띄우고, 첫 항목을 이 줄 높이에 맞춘다.
+        // (Roll20 하위 메뉴에서 자리를 읽어 따라 하면 여는 방식·움직임에 따라 어긋나서, 자리는 정해진 규칙으로만 계산한다)
+        hoverKeep(g, () => {
+            if (ITEM && !sub.dataset.real) { sub.dataset.real = "1"; build(); }       // 하위 메뉴 항목 모양을 잡았으면 그 모양으로
+            sub.removeAttribute("style");
+            Object.assign(sub.style, { display: "flex", flexDirection: "column", zIndex: "100001" });
+            ["position:fixed", "margin:0", "transition:none", "animation:none", "transform:none", "translate:none"].forEach(kv => { const [k, v] = kv.split(":"); sub.style.setProperty(k, v, "important"); });
+            const mcs = getComputedStyle(menu);
+            if (PANEL) Object.assign(sub.style, PANEL);
+            else if (getComputedStyle(sub).backgroundColor === "rgba(0, 0, 0, 0)")
+                Object.assign(sub.style, { backgroundColor: mcs.backgroundColor, border: mcs.border, borderRadius: mcs.borderRadius, boxShadow: mcs.boxShadow, padding: mcs.padding });
+            place();
+            // 바로 옆 Roll20 하위 메뉴(고급 변환 · 여러 면)가 닫히는 동안 화면 기준이 잠깐 바뀌어 어긋날 수 있다 → 조금 뒤 다시 맞춘다
+            [60, 250].forEach(ms => setTimeout(() => { if (sub.style.display !== "none") place(); }, ms));
+        }, () => { sub.style.display = "none"; }, sub);
+        return g;
+    };
+    // Roll20 하위 메뉴(▸)는 눌러야 열린다 → 마우스를 올리면 대신 눌러 열고, 벗어나면 닫는다
+    const subOf = b => b.querySelector(":scope > .submenu");
+    const isOpen = b => { const sb = subOf(b); return !!sb && getComputedStyle(sb).display !== "none"; };
+    const toggleR20 = b => (b.querySelector(":scope > .submenu-button-outer") || b).click();
+    // 모양만 읽는다: 숨겨 둔 '레이어 변경'을 한 번 열어 하위 메뉴 항목 본(ITEM)을 잡고,
+    // 화면에 열린 Roll20 하위 메뉴에서 판 모양(PANEL: 배경·테두리·둥글기·그림자·여백)을 읽는다
+    let PANEL = null, learning = false, probed = false;
+    const learnLook = b => {
+        const sb = subOf(b), menu = b.closest(".context-menu");
+        grabItem(menu);
+        if (PANEL || !sb || !isOpen(b)) return;
+        const cs = getComputedStyle(sb);
+        if (cs.backgroundColor !== "rgba(0, 0, 0, 0)")
+            PANEL = { backgroundColor: cs.backgroundColor, border: cs.border, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, padding: cs.padding, minWidth: cs.minWidth };
+    };
+    const learnOpen = async menu => {
+        if (probed || learning) return;
+        const b = [...menu.querySelectorAll(":scope > button[data-r20tm-hide]")].find(x => x.querySelector(":scope > .submenu-button-outer .submenu-button-icon"));
+        if (!b) return;
+        learning = true;
+        toggleR20(b);
+        await new Promise(r => setTimeout(r, 40));
+        const sb = subOf(b);
+        if (sb && sb.style.display !== "none") { grabItem(menu); toggleR20(b); probed = true; }        // 다시 닫는다
+        learning = false;
+    };
+    const hoverR20 = menu => menu.querySelectorAll(":scope > button").forEach(b => {
+        if (ours(b) || b.dataset.r20tmHov || !b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")) return;
+        b.dataset.r20tmHov = "1";
+        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnLook(b), 300); }, () => { if (isOpen(b)) toggleR20(b); });
+    });
+    const arrange = menu => {
+        if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
+        hoverR20(menu);
+        const tpl = findIn(menu, "레이어 변경") || findIn(menu, "고급 변환") || findIn(menu, "여러 면");
+        const used = new Set();
+        LAYOUT.forEach((L, i) => {
+            const order = (i + 1) * 10;
+            if (L.one) { const b = findIn(menu, L.one); if (b) { b.style.order = order; used.add(b); } return; }
+            if (L.faces) { menu.querySelectorAll(":scope > button[data-r20tm]").forEach((b, k) => { b.style.order = order + k; }); return; }
+            const present = L.items.filter(([path]) => findIn(menu, path.split(">")[0]));
+            present.forEach(([path]) => { const b = findIn(menu, path.split(">")[0]); b.setAttribute("data-r20tm-hide", ""); used.add(b); });
+            let gb = menu.querySelector(`:scope > button[data-r20tm-g="${L.g}"]`);
+            if (!present.length) { gb?._r20tmFly?.remove(); gb?.remove(); return; }
+            if (!gb && tpl) gb = menu.appendChild(makeGroup(menu, L, present, tpl));
+            if (gb) gb.style.order = order;
+        });
+        learnOpen(menu);
+        menu.classList.add("r20tm-arranged");
+        menu.querySelectorAll(":scope > button").forEach(b => { if (!ours(b) && !used.has(b)) b.style.order = 900; });       // 목록에 없는 것은 맨 아래
+    };
+    const inject = () => {
+        document.querySelectorAll(".context-menu").forEach(menu => {
+            faces(menu);
+            if (btnVisible.tokmenu) arrange(menu);      // 면 단추를 붙인 뒤에 순서를 매긴다
+        });
+    };
+    const faces = menu => {
+        {   // (예전 inject 본문 — 들여쓰기 유지)
+            const multi = btnVisible.tokmenu && multiOf(menu);
+            // 여러 면 토큰이 아니게 다시 그려졌으면 붙였던 단추를 걷는다
+            if (!multi) { menu.querySelectorAll("button[data-r20tm]").forEach(b => b.remove()); menu.querySelectorAll(".r20tm-hide").forEach(b => b.classList.remove("r20tm-hide")); return; }
+            const sub = [...multi.querySelectorAll(":scope > .submenu > button:not([data-r20tm])")];
+            const choose = sub.find(b => RE.choose.test(label(b))), random = sub.find(b => RE.random.test(label(b)));
+            const tpl = random || choose;
+            if (!tpl) return;
+            if (!menu.querySelector(":scope > button[data-r20tm]")) {
+                // 면 선택 ‹ › : 줄을 누르면 고르는 창, ‹ › 는 이전 · 다음 면
+                const row = makeBtn(tpl, "면 선택", "choose"), nav = document.createElement("span");
+                nav.className = "r20tm-nav";
+                nav.innerHTML = '<span role="button" data-r20tm-nav="prev" title="이전 면" aria-label="이전 면">‹</span><span role="button" data-r20tm-nav="next" title="다음 면" aria-label="다음 면">›</span>';
+                row.appendChild(nav);
+                multi.before(row);
+            }
+            if (!multi.querySelector(":scope > .submenu > button[data-r20tm]"))
+                tpl.after(makeBtn(tpl, "처음 면", "first"), makeBtn(tpl, "마지막 면", "last"));
+            choose?.classList.add("r20tm-hide");       // 원래 '면 선택'은 위로 올렸으므로 숨긴다 (누르는 데는 쓴다)
+        }
+    };
+    document.addEventListener("click", async e => {
+        const hdr = e.isTrusted && e.target.closest?.(".context-menu > button[data-r20tm-hov]");
+        if (hdr && !e.target.closest(".submenu") && isOpen(hdr)) { e.preventDefault(); e.stopPropagation(); return; }
+        const p = e.target.closest?.("button[data-r20tm-p]");
+        if (!p && e.target.closest?.("button[data-r20tm-g]")) { e.preventDefault(); e.stopPropagation(); return; }
+        if (p) {
+            e.preventDefault(); e.stopPropagation();
+            if (p.classList.contains("disabled")) return;
+            const [parent, child] = p.dataset.r20tmP.split(">"), orig = findIn(p.closest(".context-menu"), parent);
+            if (!orig) return;
+            if (!child) { orig.click(); return; }
+            // 하위 메뉴 항목: 원래 묶음에 마우스를 올린 것처럼 해서 그리게 한 뒤 누른다
+            const item = () => [...orig.querySelectorAll(":scope > .submenu > button")].find(x => label(x) === child);
+            if (!item()) { hoverOpen(orig); await new Promise(r => setTimeout(r, 80)); }
+            item()?.click();
+            return;
+        }
+        const b = e.target.closest?.("button[data-r20tm]");
+        if (!b) return;
+        e.preventDefault(); e.stopPropagation();
+        const multi = multiOf(b.closest(".context-menu"));
+        let orig = multi && origChoose(multi);
+        if (!orig && multi) {
+            // 하위 메뉴가 아직 안 그려졌으면 '여러 면'에 마우스를 올린 것처럼 해서 그리게 한다
+            ["mouseenter", "mouseover"].forEach(t => multi.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
+            await new Promise(r => setTimeout(r, 80));
+            orig = origChoose(multi);
+        }
+        if (!orig) { console.warn("[토큰 메뉴] '면 선택'을 찾지 못함"); return; }
+        const act = e.target.closest("[data-r20tm-nav]")?.dataset.r20tmNav || b.dataset.r20tm;
+        if (act !== "choose") sidePicker.startAuto(act);
+        orig.click();
+    }, true);
+    new MutationObserver(ms => {
+        if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.classList.contains("context-menu") || n.querySelector(".context-menu"))))) inject();
+    }).observe(document.body, { childList: true, subtree: true });
+    return { inject };
+})();
+
+// ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
+// 위쪽 토큰 액션 줄(#secondary-toolbar 의 ul.tokenactions)은 숨기고, 메뉴 항목은 그 줄의 원래 단추를 대신 누른다
+const tokenActs = (() => {
+    let down = null, pop = null;
+    const barEl = () => document.getElementById("secondary-toolbar");
+    const shown = el => !!el && getComputedStyle(el).display !== "none";
+    // 우리가 줄을 숨기는 것(visibility)과 상관없이, Roll20 이 줄·단추를 실제로 보여 주고 있는지로 판단한다
+    // (빈 곳을 누르면 선택이 풀려 Roll20 이 줄을 감춘다 → 메뉴를 띄우지 않는다)
+    const actions = () => {
+        const b = barEl(), ul = b?.querySelector("ul.tokenactions");
+        if (!ul) return [];
+        const hid = b.classList.contains("r20ta-hide");
+        if (hid) b.classList.remove("r20ta-hide");
+        const live = ul.getClientRects().length > 0 && getComputedStyle(ul).visibility !== "hidden" && +getComputedStyle(b).opacity > 0;
+        const list = live ? [...ul.querySelectorAll("button")].filter(x => x.getClientRects().length > 0) : [];
+        if (hid) b.classList.add("r20ta-hide");
+        return list;
+    };
+    const close = () => { pop?.remove(); pop = null; };
+    const open = (at, list) => {
+        close();
+        pop = document.createElement("div");
+        pop.className = "r20ta-pop";
+        pop.setAttribute("role", "menu");
+        pop.setAttribute("aria-label", "토큰 액션");
+        pop.innerHTML = '<div class="r20ta-h">토큰 액션</div>';
+        list.forEach(orig => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.setAttribute("role", "menuitem");
+            b.textContent = orig.textContent.trim() || "(이름 없음)";
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); close(); orig.click(); });
+            pop.appendChild(b);
+        });
+        document.body.appendChild(pop);
+        const w = pop.offsetWidth, h = pop.offsetHeight;
+        pop.style.left = Math.max(4, Math.min(at.x + 10, innerWidth - w - 4)) + "px";
+        pop.style.top = Math.max(4, Math.min(at.y + 10, innerHeight - h - 4)) + "px";
+    };
+    // 위쪽 줄에 토큰 액션만 있을 때는 줄을 숨긴다 (그리기 도구 설정 등 다른 줄은 그대로)
+    const inject = () => {
+        const b = barEl();
+        if (!b) return;
+        const ul = b.querySelector("ul.tokenactions");
+        const others = [...b.querySelectorAll("ul.mode")].some(u => u !== ul && shown(u));
+        b.classList.toggle("r20ta-hide", btnVisible.tokact && !!ul && !others);
+        if (pop && !actions().length) close();         // 선택이 풀리면 메뉴도 닫는다
+    };
+    document.addEventListener("pointerdown", e => {
+        if (pop && !pop.contains(e.target)) close();
+        down = btnVisible.tokact && e.button === 0 && e.target.closest?.("#editor-wrapper") ? { x: e.clientX, y: e.clientY } : null;
+    }, true);
+    document.addEventListener("pointerup", e => {
+        if (!down || e.button !== 0) return;
+        const at = { x: e.clientX, y: e.clientY }, moved = Math.hypot(at.x - down.x, at.y - down.y) > 4;
+        down = null;
+        if (moved) return;                  // 끌어서 옮긴 것은 메뉴를 띄우지 않는다
+        setTimeout(() => { const list = actions(); if (list.length) open(at, list); }, 150);     // Roll20 이 선택·토큰 액션을 갱신한 뒤
+    }, true);
+    document.addEventListener("keydown", e => { if (pop && e.key === "Escape") close(); }, true);
+    document.addEventListener("contextmenu", close, true);
+    document.addEventListener("wheel", () => pop && close(), { capture: true, passive: true });
+    const setEnabled = on => {
+        document.body.classList.toggle("r20ta-on", on);
+        if (!on) { close(); barEl()?.classList.remove("r20ta-hide"); }
+        else inject();
+    };
+    setEnabled(btnVisible.tokact);
+    return { inject, setEnabled };
+})();
+
+// ───────── 덱 창: 반투명 판 · 카드 최대 100px · 메뉴는 마우스를 올릴 때 카드 왼쪽에 (#showndecks.r20dk-on — 모양은 CSS) ─────────
+const deckView = (() => {
+    let hov = null, t = 0;
+    const place = ad => {
+        const c = ad.querySelector(".controls"), st = ad.querySelector(".deckstack");
+        if (!c || !st) return;
+        const r = st.getBoundingClientRect(), w = c.offsetWidth, h = c.offsetHeight;
+        const x = r.left - w - 6 >= 4 ? r.left - w - 6 : r.right + 6;
+        c.style.setProperty("left", Math.round(x) + "px", "important");
+        c.style.setProperty("top", Math.round(Math.max(4, Math.min(r.top, innerHeight - h - 4))) + "px", "important");
+    };
+    const close = () => { clearTimeout(t); t = 0; hov?.classList.remove("r20dk-hov"); hov = null; };
+    // 카드 → 메뉴로 옮겨 가는 틈에서 닫히지 않게 조금 기다린다
+    document.addEventListener("mouseover", e => {
+        if (!btnVisible.deckview) return;
+        const ad = e.target.closest?.("#showndecks.r20dk-on .adeck");
+        if (!ad) { if (hov && !t) t = setTimeout(close, 250); return; }
+        clearTimeout(t); t = 0;
+        if (hov === ad) return;
+        close();
+        hov = ad;
+        ad.classList.add("r20dk-hov");
+        place(ad);
+    });
+    document.addEventListener("scroll", e => { if (hov && e.target.id === "showndecks") close(); }, true);
+    const inject = () => {
+        const sd = document.getElementById("showndecks");
+        if (!sd) return;
+        sd.classList.toggle("r20dk-on", btnVisible.deckview);
+    };
+    return { inject, setEnabled: () => inject() };
+})();
+
+// ───────── 화면 배치: 햄버거(≡) 밑에 페이지 메뉴 버튼, 그 밑에 화면 제어(보기 · 중앙 · 확대 · 배율 · 축소)를 세로로 (body.r20sc-on) ─────────
+// Roll20 요소는 그대로 두고 자리·모양만 바꾼다
+const screenUI = (() => {
+    const Z_KEYS = ["position", "left", "right", "top", "width", "height"];
+    // 햄버거 바로 밑부터 차례로 쌓고, 오른쪽 끝을 햄버거에 맞춘다
+    const place = () => {
+        const hb = document.getElementById("sidebarcontrol");
+        if (!hb) return;
+        const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
+        let y = r.bottom + 4;
+        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
+        els.push(document.getElementById("r20-mapshot"));
+        els.forEach(el => {
+            if (!el) return;
+            const set = (k, v) => el.style.setProperty(k, v, "important");
+            set("position", "fixed"); set("left", "auto");
+            if (el.id === "vm_zoom_buttons") { set("width", "auto"); set("height", "auto"); }
+            set("top", Math.round(y) + "px");
+            set("right", Math.round(innerWidth - edge) + "px");
+            y += el.getBoundingClientRect().height + 4;
+        });
+    };
+    let watched = null, watchedSide = null;
+    const inject = () => {
+        if (!btnVisible.screenui && !btnVisible.mapshot) return;
+        place();
+        const side = document.getElementById("rightsidebar");
+        if (side && watchedSide !== side) {
+            watchedSide = side;
+            new ResizeObserver(() => place()).observe(side);
+        }
+        // 채팅·저널을 여닫으면 햄버거가 움직인다 → 따라간다
+        const hb = document.getElementById("sidebarcontrol");
+        if (hb && watched !== hb) {
+            watched = hb;
+            new MutationObserver(() => place()).observe(hb, { attributes: true, attributeFilter: ["style", "class"] });
+            hb.addEventListener("click", () => [60, 300, 700].forEach(ms => setTimeout(() => place(), ms)));
+        }
+    };
+    const setEnabled = on => {
+        document.body.classList.toggle("r20sc-on", on);
+        if (on) return inject();
+        ["vm_zoom_buttons", "page-button"].forEach(id => { const el = document.getElementById(id); if (el) Z_KEYS.forEach(k => el.style.removeProperty(k)); });
+        place();
+    };
+    window.addEventListener("resize", () => place());
+    setEnabled(btnVisible.screenui);
+    return { inject, setEnabled, place };
+})();
+
+// ───────── 페이지 창 슬림: Roll20 페이지 창(.vtt-page-card-menu)의 겉모양만 가늘고 가볍게 (body.r20pg-on) ─────────
+// 누르기 · 끌기 · 메뉴 등 동작은 Roll20 그대로. 카드 크기만 −/+ 단추로 바꾼다
+const pagePanel = (() => {
+    let size = Math.max(90, Math.min(260, parseInt(localStorage.getItem("r20_pg_size"), 10) || 150));
+    const apply = menu => menu.style.setProperty("--r20pg-size", size + "px");
+    const inject = () => {
+        if (!btnVisible.pageslim) return;
+        document.querySelectorAll(".vtt-page-card-menu").forEach(menu => {
+            apply(menu);
+            const row = menu.querySelector(".input-row");
+            if (!row || row.querySelector(".r20pg-zoom")) return;       // Vue 가 다시 그리면 다시 단다
+            const z = document.createElement("span");
+            z.className = "r20pg-zoom";
+            z.innerHTML = '<button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button>';
+            z.addEventListener("click", e => {
+                const b = e.target.closest("button[data-d]");
+                if (!b) return;
+                size = Math.max(90, Math.min(260, size + Number(b.dataset.d) * 30));
+                localStorage.setItem("r20_pg_size", size);
+                document.querySelectorAll(".vtt-page-card-menu").forEach(apply);
+            });
+            const create = [...row.children].find(c => c.querySelector(".create-page"));
+            row.insertBefore(z, create || null);
+        });
+    };
+    const setEnabled = on => {
+        document.body.classList.toggle("r20pg-on", on);
+        if (!on) document.querySelectorAll(".r20pg-zoom").forEach(z => z.remove());
+        else inject();
+    };
+    setEnabled(btnVisible.pageslim);
+    return { inject, setEnabled };
+})();
+
+// ───────── 맵 아래 매크로 줄: 두 줄로 쌓기 + 길게(0.4초) 눌러 끌면 순서 바꾸기 (body.r20mb-on) ─────────
+// 순서 바꾸기·저장은 Roll20 의 sortable 그대로이고, 시작 조건(delay)만 바꾼다
+const macroBar = (() => {
+    let bound = null, orig = null;
+    const inject = () => {
+        document.body.classList.toggle("r20mb-on", btnVisible.macrobar);
+        const list = document.getElementById("macrobar_macros"), jq = window.jQuery || window.$;
+        if (!list || !jq?.fn?.sortable || !list.classList.contains("ui-sortable")) return;
+        const $l = jq(list);
+        if (bound !== list) {
+            bound = list;
+            orig = { delay: $l.sortable("option", "delay") || 0, cancel: $l.sortable("option", "cancel") };
+            $l.on("sortstart.r20mb", () => list.classList.add("r20mb-drag")).on("sortstop.r20mb", () => list.classList.remove("r20mb-drag"));
+        }
+        // jQuery UI 는 기본으로 <button> 에서 시작한 끌기를 무시한다 → 켜져 있을 땐 단추를 잡아도 끌리게
+        const want = btnVisible.macrobar ? { delay: 400, cancel: "input,textarea,select,option" } : orig;
+        if ($l.sortable("option", "delay") !== want.delay || $l.sortable("option", "cancel") !== want.cancel) $l.sortable("option", want);
+        // 두 줄이 되며 아래로 넘치면 아래쪽에 붙인다
+        const mb = document.getElementById("macrobar");
+        if (btnVisible.macrobar && mb && mb.getBoundingClientRect().bottom > innerHeight - 2) {
+            mb.style.setProperty("top", "auto", "important");
+            mb.style.setProperty("bottom", "12px", "important");
+        }
+    };
+    return { inject, setEnabled: () => inject() };
+})();
+
+addCss(`
+        /* 재생 중인 곡 */
+        /* 페이지 창 슬림 (body.r20pg-on) — Roll20 Vue 스타일 위에 덮어쓴다 */
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header { padding:0 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header > .horizontal-wrapper:first-child { min-height:0 !important; height:46px !important; padding:0 10px 0 14px !important; border-bottom:1px solid #efeff2; align-items:center !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page-wrapper { display:flex !important; align-items:center !important; gap:10px !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page { display:flex !important; align-items:center !important; gap:8px !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page__thumbnail { width:auto !important; height:24px !important; max-width:40px; border-radius:4px !important; object-fit:cover; }
+        body.r20pg-on .vtt-page-card-menu .current-page__title { font-size:14px !important; font-weight:700 !important; color:#222 !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page-settings { display:inline-flex !important; align-items:center !important; gap:5px !important; height:28px !important; padding:0 10px !important; border-radius:6px !important; color:#555 !important; font-size:12px !important; cursor:pointer; }
+        body.r20pg-on .vtt-page-card-menu .current-page-settings:hover { background:#f1f1f3 !important; color:#222 !important; }
+        body.r20pg-on .vtt-page-card-menu .current-page-settings__text { font-size:12px !important; font-weight:400 !important; color:inherit !important; }
+        body.r20pg-on .vtt-page-card-menu .party-box-outer { min-height:0 !important; height:32px !important; padding:0 8px !important; border:0 !important; border-radius:7px !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .party-box-outer:hover { background:#f1f1f3 !important; }
+        body.r20pg-on .vtt-page-card-menu .party-ribbon img { height:20px !important; width:auto !important; }
+        body.r20pg-on .vtt-page-card-menu .player-icon { width:22px !important; height:22px !important; min-width:0 !important; border-width:2px !important; }
+        body.r20pg-on .vtt-page-card-menu .party-page-name { font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .party-page-members { font-size:10px !important; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header .btn-cancel { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#666 !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .page-card-menu-header .btn-cancel:hover { background:#f1f1f3 !important; color:#222 !important; }
+        body.r20pg-on .vtt-page-card-menu .input-row { min-height:0 !important; height:44px !important; gap:8px !important; padding:0 14px !important; margin:0 !important; align-items:center !important; }
+        body.r20pg-on .vtt-page-card-menu .folder__add { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#555 !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .folder__add:hover { background:#f1f1f3 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-search-input .el-input__wrapper { height:30px !important; min-height:0 !important; padding:0 10px !important; border-radius:7px !important; background:#f4f4f6 !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .page-search-input .el-input__inner { height:28px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .page-search-input .grimoire__roll20-icon { --v7353a950:14px !important; color:#888 !important; }
+        body.r20pg-on .vtt-page-card-menu .create-page button { height:28px !important; min-height:0 !important; padding:0 10px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .create-page__label { font-size:12px !important; font-weight:700 !important; }
+        body.r20pg-on .vtt-page-card-menu .r20pg-zoom { display:flex; gap:2px; flex-shrink:0; }
+        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button { width:24px; height:24px; margin:0; padding:0; border:1px solid #e1e1e5; border-radius:5px; background:#fff; color:#666; font-size:13px; line-height:1; cursor:pointer; }
+        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button:hover { background:#f4f4f6; color:#222; }
+        body.r20pg-on .vtt-page-card-menu .breadcrumb-wrapper { min-height:0 !important; height:32px !important; font-size:12px !important; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .breadcrumb-item { font-size:12px !important; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .breadcrumb-item:last-of-type { color:#333 !important; font-weight:700 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-tree-view-collapse-title { font-size:10px !important; font-weight:700 !important; letter-spacing:0.04em; color:#8a8a90 !important; }
+        body.r20pg-on .vtt-page-card-menu .all-btn { height:28px !important; padding:0 8px !important; border-radius:6px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node { min-height:0 !important; height:28px !important; margin:0 !important; padding:0 4px !important; border:0 !important; border-radius:6px !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node:hover { background:#f4f4f6 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node.active { background:#fbe9f1 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-button { height:28px !important; min-height:0 !important; padding:0 4px !important; font-size:12px !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-icon .grimoire__roll20-icon { --v7353a950:14px !important; font-size:14px !important; color:#9a9aa3 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node.active .node-icon .grimoire__roll20-icon { color:#b8215f !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-name { font-size:12px !important; font-weight:400 !important; color:#333 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node.active .node-name { font-weight:700 !important; color:#8f1849 !important; }
+        body.r20pg-on .vtt-page-card-menu .tree-view .node-children-count { min-width:0 !important; padding:0 !important; border:0 !important; background:none !important; color:#9a9aa0 !important; font-size:11px !important; font-weight:400 !important; }
+        body.r20pg-on .vtt-page-card-menu .page-container { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--r20pg-size, 150px), 1fr)) !important; gap:12px 10px !important; padding:4px 16px 16px !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card-wrapper.page-card { width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card { position:relative !important; flex:1 1 auto !important; min-width:0 !important; width:100% !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
+        body.r20pg-on .vtt-page-card-menu .card-thumbnail-container { position:relative !important; width:100% !important; height:auto !important; aspect-ratio:16/10; border-radius:6px !important; overflow:hidden !important; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06); }
+        body.r20pg-on .vtt-page-card-menu .card-thumbnail { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; border-radius:0 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .card-thumbnail-container { box-shadow:0 0 0 2px #e7b3c9 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container { box-shadow:0 0 0 2px #b8215f !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container::before { content:"현재"; position:absolute; left:5px; top:5px; z-index:3; padding:0 6px; border-radius:8px; background:#b8215f; color:#fff; font-size:9px; font-weight:700; line-height:15px; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-title { min-height:0 !important; height:auto !important; margin:0 !important; padding:5px 1px 0 !important; text-align:left !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-title .el-text { font-size:16px !important; font-weight:400 !important; color:#333 !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-controls { position:absolute !important; top:4px !important; right:4px !important; left:auto !important; bottom:auto !important; z-index:3; display:flex !important; gap:2px; width:auto !important; height:auto !important; margin:0 !important; padding:1px 3px !important; border-radius:5px; background:rgba(255,255,255,0.92) !important; opacity:0; transition:opacity 0.12s; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-controls > span:first-child { display:none !important; }
+        body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .vtt-page-controls, body.r20pg-on .vtt-page-card-menu .vtt-page-card:focus-within .vtt-page-controls { opacity:1; }
+        /* 페이지 설정 창(세부 정보): Roll20 공용 .block-submenu 중 페이지 설정 칸이 든 창에만 */
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) { border-radius:10px !important; box-shadow:0 6px 24px rgba(0,0,0,0.18) !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header { min-height:0 !important; height:42px !important; padding:0 8px 0 14px !important; border-bottom:1px solid #efeff2 !important; align-items:center !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .title { margin:0 !important; font-size:13px !important; font-weight:700 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .buttons-container button { width:28px !important; height:28px !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#666 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .buttons-container button:hover { background:#f1f1f3 !important; color:#222 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-body { padding:0 14px 10px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .section.tabs { min-height:0 !important; margin:0 0 4px !important; padding:6px 0 0 !important; border-bottom:1px solid #efeff2; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__button { height:auto !important; padding:4px 0 7px !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__label { font-size:12px !important; font-weight:700 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .section { padding-top:6px !important; padding-bottom:6px !important; margin:0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .title-wrapper { min-height:0 !important; margin:0 0 4px !important; padding:0 !important; gap:4px !important; align-items:center !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) h4.title, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .large-title { margin:6px 0 4px !important; font-size:12px !important; font-weight:700 !important; color:#333 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) h5, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .title.subheader, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .smallerTitle { margin:0 !important; font-size:11px !important; font-weight:400 !important; color:#6b6b70 !important; line-height:1.4 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .info-icon { --v7353a950:12px !important; color:#b0b0b6 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer { min-height:0 !important; height:auto !important; gap:4px !important; padding-top:0 !important; align-items:center !important; flex-wrap:nowrap !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top { display:grid !important; grid-template-columns:minmax(0, 1.3fr) minmax(0, 1fr) !important; gap:8px !important; padding:6px 0 4px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top > div { width:auto !important; min-width:0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top .el-input, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top .el-select { width:100% !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-input__wrapper, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-select__wrapper { min-height:0 !important; height:28px !important; padding:0 8px !important; border-radius:6px !important; box-shadow:0 0 0 1px #e1e1e5 inset !important; background:#fff !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-input__inner, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-select__selected-item { height:26px !important; font-size:12px !important; line-height:26px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper { flex:1 1 0 !important; min-width:0 !important; width:auto !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper.disabled { flex:0.8 1 0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper .__container, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper .label { width:100% !important; min-width:0 !important; margin:0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox { display:flex !important; align-items:center !important; width:100% !important; min-width:0 !important; height:28px !important; margin:0 !important; padding:0 !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; overflow:hidden; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox.disabled { background:#f6f6f8 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox .__box { flex:1 1 auto !important; width:100% !important; min-width:0 !important; height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; background:transparent !important; font-size:12px !important; text-align:right !important; box-shadow:none !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox.disabled .__box { color:#9a9aa0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox .append { flex-shrink:0 !important; height:auto !important; margin:0 !important; padding:0 7px 0 2px !important; border:0 !important; background:transparent !important; color:#8a8a90 !important; font-size:10px !important; white-space:nowrap; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer > .el-button.is-link { border:0 !important; background:transparent !important; box-shadow:none !important; flex:0 0 14px !important; width:14px !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; opacity:0.45; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer > .el-button.is-link img { width:12px !important; height:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-divider, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .divider-svg { margin:8px 0 !important; border-color:#f0f0f3 !important; background:#f0f0f3; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .hug-edges { width:100% !important; min-height:0 !important; margin:0 !important; padding-top:4px !important; padding-bottom:4px !important; align-items:center !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .text-tool-color { display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; gap:8px !important; width:100% !important; margin:0 !important; padding:2px 0 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .text-tool-color h5 { font-size:12px !important; color:#333 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .color-picker-trigger { width:22px !important; height:22px !important; border-radius:5px !important; box-shadow:0 0 0 1px #e1e1e5 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .switch-label h5 { font-size:12px !important; color:#333 !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-switch { height:22px !important; transform:scale(0.8); transform-origin:right center; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .vtt-button, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .button--delete-archive { height:28px !important; min-height:0 !important; padding:0 10px !important; border-radius:6px !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-labels, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-input-units { font-size:10px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-input-box { height:26px !important; font-size:12px !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer { min-height:0 !important; height:48px !important; padding:0 12px !important; border-top:1px solid #efeff2 !important; background:#fafafb !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer-content { gap:6px !important; align-items:center !important; }
+        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer .grimoire__button { height:28px !important; min-height:0 !important; padding:0 14px !important; border-radius:6px !important; font-size:12px !important; }
+        /* 면 선택(Choose Side): 슬라이더 대신 썸네일 격자, 번호는 CSS counter 로 붙인다 */
+        .ui-dialog.r20cs .sideslider { display:none !important; }
+        .ui-dialog.r20cs-drive .sideslider { display:block !important; position:fixed !important; left:0 !important; top:0 !important; width:1000px !important; height:10px !important; visibility:hidden !important; }
+        body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
+        .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
+        .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
+        /* 덱 창: 반투명 판에 카드 더미만 (폭 70px, 높이는 그림 비율대로). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
+        /* Roll20 은 메뉴를 판 안 40px 폭에 넣어서 글자가 한 자씩 꺾였다 → position:fixed 로 판 밖에 (자리는 deckView 가 잡는다) */
+        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:8px; box-sizing:border-box; scrollbar-width:thin; }
+        #showndecks.r20dk-on .adeck { width:auto !important; height:auto !important; margin:0 0 6px !important; padding:0 !important; float:none !important; }
+        #showndecks.r20dk-on .adeck:last-child { margin-bottom:0 !important; }
+        #showndecks.r20dk-on .deckstack { left:0 !important; margin:0 !important; width:70px !important; height:auto !important; }
+        #showndecks.r20dk-on .deckstack .allback, #showndecks.r20dk-on .deckstack .nextcard > div { width:70px !important; height:auto !important; }
+        #showndecks.r20dk-on .deckstack img { display:block; width:70px !important; height:auto !important; max-width:none !important; max-height:none !important; }
+        #showndecks.r20dk-on .controls { display:none !important; }
+        #showndecks.r20dk-on .adeck.r20dk-hov .controls { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; right:auto !important; z-index:20; width:96px !important; height:auto !important; padding:4px !important; overflow:visible !important; background:#fff !important; border:1px solid #e3dee2; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
+        #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:clip; font-size:12px; line-height:20px; text-align:left !important; }
+        #showndecks.r20dk-on .control:first-child { padding:0 6px; font-weight:700; color:#222; }
+        #showndecks.r20dk-on .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
+        #showndecks.r20dk-on .control a:hover { background:#eaf1fb; }
+        #showndecks.r20dk-on .control:has(> a.removedcardspile), #showndecks.r20dk-on .control:has(> a.discardpile) { display:none !important; }
+        /* 매크로 줄: 두 줄로 쌓고 넘치면 줄 안에서 세로 스크롤 · 길게 누르면 들림 */
+        body.r20mb-on #macrobar { height:auto !important; max-height:66px !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:thin; }
+        /* flex 로 하면 jQuery UI 가 세로 목록으로 여겨 옆으로 끌어도 안 바뀐다 → inline-block 을 줄바꿈 */
+        body.r20mb-on #macrobar_macros { display:block !important; width:auto !important; white-space:normal !important; padding:2px 0 0; }
+        body.r20mb-on #macrobar_macros .macrobox { display:inline-block !important; vertical-align:top; width:auto !important; margin:0 4px 4px 0 !important; float:none !important; }
+        body.r20mb-on #macrobar_macros .macrobox > button { height:26px !important; max-width:180px; margin:0 !important; padding:0 10px !important; border-radius:13px !important; font-size:12px !important; line-height:24px !important; white-space:nowrap; overflow:hidden; text-overflow:clip; box-shadow:0 1px 2px rgba(0,0,0,0.25); }
+        body.r20mb-on #macrobar_macros .macrobox > .handle { display:none !important; }     /* 단추 전체를 길게 눌러 끄니 손잡이는 필요 없다 */
+        body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(184,33,95,0.55); }
+        body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
+        body.r20mb-on #macrobar_macros.r20mb-drag > .macrobox:not(.ui-sortable-helper):not(.ui-sortable-placeholder) { opacity:0.55; }
+        body.r20mb-on #macrobar_macros > .ui-sortable-placeholder { display:inline-block !important; visibility:visible !important; width:3px !important; min-width:3px; height:26px !important; padding:0 !important; border-radius:2px; background:#ffd84d; box-shadow:0 0 6px #ffd84d; }
+        .context-menu > button[data-r20tm="choose"] { position:relative; }
+        /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
+        body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
+        body.r20sc-on #vm_zoom_buttons button { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
+        body.r20sc-on #vm_zoom_buttons .level { font-size:11px !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; }
+        body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { display:flex !important; flex-direction:column !important; align-items:center !important; width:auto !important; height:auto !important; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { order:1; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > :last-child { order:2; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > .zoomButtonsInner { order:3; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .plus { order:1; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .level { order:2; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .sliderSection { order:3; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:4; }
+        /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
+        body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
+        .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
+        .r20ta-pop .r20ta-h { padding:4px 10px 2px; color:#8a8a90; font-size:10px; font-weight:700; }
+        .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:clip; cursor:pointer; }
+        .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
+        .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
+        .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
+        .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
+        .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
+        .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
+        .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
+        .ui-dialog.r20cs .sidechoice img, .ui-dialog.r20cs .sidechoice video { position:absolute !important; inset:0 !important; display:block !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; object-fit:contain !important; pointer-events:none; }
+        .ui-dialog.r20cs .sidechoice::after { content:counter(side); position:absolute; left:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:10px; font-weight:700; line-height:15px; }
+        .ui-dialog.r20cs .sidechoice:hover { outline:2px solid #9cc1ea; outline-offset:-2px; }
+        .ui-dialog.r20cs .sidechoice[data-selected="true"] { outline:3px solid #1867c7; outline-offset:-3px; }
+        .ui-dialog.r20cs .sidechoice.r20cs-cur::before { content:"현재"; position:absolute; right:4px; top:4px; z-index:1; padding:0 5px; border-radius:7px; background:#fff; color:#1867c7; font-size:9px; font-weight:700; line-height:14px; }
+        .r20cs-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid #e5e5e5; font-size:12px; color:#333; }
+        .r20cs-bar .r20cs-info { color:#6b6b6b; font-size:11px; }
+        .r20cs-bar .r20cs-flex { flex:1; }
+        .r20cs-bar label { display:flex; align-items:center; gap:4px; margin:0; font-size:11px; font-weight:normal; color:#555; }
+        .r20cs-bar input { width:58px !important; height:24px !important; margin:0 !important; padding:0 6px !important; font-size:12px !important; }
+        .r20cs-zoom { display:flex; gap:2px; }
+        .r20cs-zoom button { width:24px; height:22px; padding:0; border:1px solid #ccc; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
+        .r20cs-zoom button:hover { background:#ebebeb; color:#222; }
+`);
+addFeature("sidePicker", sidePicker);
+addFeature("tokenMenu", tokenMenu);
+addFeature("tokenActs", tokenActs);
+addFeature("deckView", deckView);
+addFeature("screenUI", screenUI);
+addFeature("pagePanel", pagePanel);
+addFeature("macroBar", macroBar);
+addBundle({ place: "main", order: 3, label: "토큰 · 카드 · 화면 정리", sub: "토큰 메뉴 · 면 선택 격자 · 토큰 클릭 메뉴 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
+    members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"]] });
+
+// ══════════ 묶음 4 · 그림 · 매크로 · 빠른 저널 ══════════
+
+// ───────── 그림 라이브러리 · 이 방의 이미지: 페이지·캐릭터·핸드아웃·굴림표·덱에 쓰인 그림을 한곳에서 본다 ─────────
+// 맵에 놓기는 Roll20 라이브러리 항목과 같은 모양(.draggableresult + data-fullsizeurl)으로 만들어 Roll20 드롭을 그대로 쓴다
+// → 계정 라이브러리에는 아무것도 추가되지 않는다. (보는 동안 라이브러리 정리 영역은 숨겨 실수로 넣는 일도 막는다)
+const roomImages = (() => {
+    const KINDS = [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]];
+    const OWN = { table: 0, deck: 1, char: 2, handout: 3, page: 4 };
+    const SEARCH_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+    const esc = escAttr;
+    const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다 → 크기 부분을 뺀 주소로 같은 그림을 묶는다
+    const sized = sizedUrl;
+    const keyOf = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
+
+    let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
+    let mode = localStorage.getItem("r20_ri_mode") === "room" ? "room" : "lib";
+    let src = "all", q = "", groups = [], items = new Map(), unread = 0, shown = 0;
+    let loading = null, root = null, ro = null, wasVisible = false, dragBase = null;
+    const opened = new Set();       // 펼친 묶음 이름 (기본은 모두 접힘, 검색 중엔 모두 펼침)
+
+    // ── 모으기: 불러온 페이지의 토큰(여러 면 포함) · 캐릭터 아바타/기본 토큰 · 핸드아웃 · 굴림표 항목 · 덱 카드 ──
+    const gather = () => {
+        const C = window.Campaign, items = new Map();
+        let groups = [], unread = 0;
+        if (!C) return { items, groups, unread };
+        const group = (kind, name, key) => { const g = { kind, name, key, list: [], has: new Set() }; groups.push(g); return g; };
+        const add = (g, url, name, use) => {
+            if (typeof url !== "string" || !/^(?:https?:)?\/\//i.test(url)) return;
+            const k = keyOf(url);
+            let it = items.get(k);
+            if (!it) items.set(k, it = { k, url, name: "", img: "", uses: [] });
+            if (!it.name && name) it.name = name;
+            if (use.kind === "page" && !it.img) it.img = url;       // 토큰의 imgsrc 는 그대로 다시 쓸 수 있다
+            if (!it.uses.some(u => u.kind === use.kind && u.id === use.id)) it.uses.push(use);
+            if (!g.has.has(it)) { g.has.add(it); g.list.push(it); }
+        };
+        const pages = C.pages?.models || [], act = typeof C.activePage === "function" ? C.activePage() : null;
+        [act, ...pages.filter(p => p !== act)].forEach(p => {
+            if (!p) return;
+            if (!p.thegraphics) { unread++; return; }
+            const name = p.get("name") || "(이름 없는 페이지)";
+            const g = group("page", (p === act ? "지금 페이지 · " : "페이지 · ") + name, "page:" + p.id), use = { kind: "page", id: p.id, label: "페이지 · " + name };
+            p.thegraphics.models.forEach(m => {
+                const nm = m.get("name") || "";
+                add(g, m.get("imgsrc"), nm, use);
+                String(m.get("sides") || "").split("|").forEach(s => { try { if (s) add(g, decodeURIComponent(s), nm, use); } catch (e) {} });
+            });
+        });
+        const chars = group("char", "캐릭터", "char");
+        (C.characters?.models || []).forEach(m => {
+            const name = m.get("name") || "", use = { kind: "char", id: m.id, label: "캐릭터 · " + name };
+            add(chars, m.get("avatar"), name, use);
+            try { add(chars, JSON.parse(m.get("defaulttoken") || "null")?.imgsrc, name, use); } catch (e) {}
+        });
+        const hos = group("handout", "핸드아웃", "handout");
+        (C.handouts?.models || []).forEach(m => {
+            const name = m.get("name") || "";
+            add(hos, m.get("avatar"), name, { kind: "handout", id: m.id, label: "핸드아웃 · " + name });
+        });
+        (C.rollabletables?.models || []).forEach(t => {
+            const name = t.get("name") || "", g = group("table", "굴림표 · " + name, "table:" + t.id), use = { kind: "table", id: t.id, label: "굴림표 · " + name };
+            (t.tableitems?.models || []).forEach(m => add(g, m.get("avatar"), m.get("name") || name, use));
+        });
+        (C.decks?.models || []).forEach(d => {
+            const name = d.get("name") || "", g = group("deck", "덱 · " + name, "deck:" + d.id), use = { kind: "deck", id: d.id, label: "덱 · " + name };
+            add(g, d.get("avatar"), name + " 뒷면", use);
+            (d.cards?.models || []).forEach(m => { add(g, m.get("avatar"), m.get("name") || name, use); add(g, m.get("card_back"), name + " 뒷면", use); });
+        });
+        return { items, groups: groups.filter(g => g.list.length), unread };
+    };
+    const collect = () => { ({ items, groups, unread } = gather()); };
+    // 같은 그림은 한 곳에만: 굴림표 → 덱 → 캐릭터 → 핸드아웃 → 페이지 순으로 먼저 나온 묶음이 주인
+    // (굴림표 토큰을 여러 페이지에 복사해도 그림은 굴림표 묶음에만 보이고, 페이지 묶음엔 그 페이지에만 있는 그림이 남는다)
+    const ownerMap = vis => {
+        const owner = new Map();
+        vis.slice().sort((a, b) => OWN[a.g.kind] - OWN[b.g.kind]).forEach(x => x.its.forEach(it => { if (!owner.has(it)) owner.set(it, x.g); }));
+        return owner;
+    };
+
+    // ── 그리기 ──
+    const tileHtml = it => {
+        const tip = (it.name || "이름 없음") + "\n" + it.uses.map(u => u.label).join("\n");
+        return `<li class="draggableresult library-item r20ri-tile" tabindex="0" role="button" data-k="${esc(it.k)}" data-fullsizeurl="${esc(r20img(sized(it.url, "max")))}" data-grid-width="null" data-grid-height="null" title="${esc(tip)}">`
+            + `<div class="token">${previewHtml(it.url)}</div>`
+            + `<div class="namecontainer">${esc(it.name)}</div>`
+            + (it.uses.length > 1 ? `<span class="r20ri-cnt">×${it.uses.length}</span>` : "") + "</li>";
+    };
+    const foot = () => {
+        if (!root) return;
+        root.querySelector(".r20ri-sum").textContent = `총 ${shown}장`;
+        const note = root.querySelector(".r20ri-note");
+        note.hidden = !unread && !loading;
+        note.querySelector("span").textContent = loading ? `페이지 읽는 중 ${loading.done}/${loading.total}` : `아직 안 읽은 페이지 ${unread}개`;
+        note.querySelector("button").textContent = loading ? "멈추기" : "모두 읽기";
+    };
+    const render = () => {
+        if (!root) return;
+        closePop();
+        const v = norm(q), seen = new Set();
+        const vis = groups.filter(g => src === "all" || g.kind === src).map(g => ({ g,
+            its: v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list }));
+        const owner = ownerMap(vis);
+        let html = "";
+        vis.forEach(({ g, its }) => {
+            its = its.filter(it => owner.get(it) === g);
+            if (!its.length) return;
+            its.forEach(it => seen.add(it));
+            const open = !!v || opened.has(g.name);
+            html += `<section><button type="button" class="r20ri-gh" data-g="${esc(g.name)}" aria-expanded="${open}"><span aria-hidden="true">${open ? "▾" : "▸"}</span>${esc(g.name)} <small>${its.length}장</small></button>`
+                + (open ? `<ul class="r20ri-grid">${its.map(tileHtml).join("")}</ul>` : "") + "</section>";
+        });
+        root.querySelector(".r20ri-list").innerHTML = html || `<p class="r20ri-empty">${groups.length ? "찾는 그림이 없어요" : "그림이 없어요"}</p>`;
+        shown = seen.size;
+        foot();
+    };
+    const refresh = () => { collect(); render(); };
+
+    // 안 읽은 페이지: Roll20 이 페이지 복제 때 쓰는 fullyLoadPage() 로 하나씩 불러온다 (누르면 멈춤)
+    // 진행 상황은 일괄 편집기 방 이미지 탭에도 알린다 (fn(loading) — 끝나면 null)
+    const hooks = new Set();
+    const tell = () => hooks.forEach(fn => { try { fn(loading); } catch (e) {} });
+    const loadPages = async () => {
+        if (loading) { loading.stop = true; return; }
+        const todo = (window.Campaign?.pages?.models || []).filter(p => !p.thegraphics && typeof p.fullyLoadPage === "function");
+        if (!todo.length) return;
+        loading = { done: 0, total: todo.length, stop: false };
+        foot(); tell();
+        for (const p of todo) {
+            if (loading.stop) break;
+            try { await Promise.race([p.fullyLoadPage(), sleep(15000)]); } catch (e) { console.warn("[이 방의 이미지] 페이지 읽기 실패:", p.get?.("name"), e); }
+            loading.done++;
+            if (loading.done % 5 === 0) refresh(); else foot();
+            tell();
+        }
+        loading = null;
+        refresh(); tell();
+    };
+
+    // ── 끌어 놓기: 처음 마우스를 올릴 때 jQuery UI draggable 을 단다 (그림이 많아도 가볍게) ──
+    const initDrag = tile => {
+        const $ = window.jQuery;
+        if (!$?.fn?.draggable || tile.classList.contains("ui-draggable")) return;
+        if (!dragBase) {
+            // Roll20 라이브러리 항목의 start/stop(externaldrag 표시)을 그대로 빌려 쓴다
+            const ref = [...document.querySelectorAll(".draggableresult.ui-draggable")].find(e => !e.classList.contains("r20ri-tile"));
+            try { if (ref) dragBase = { ...$(ref).draggable("option") }; } catch (e) {}
+        }
+        $(tile).draggable({ ...(dragBase || {}), disabled: false, handle: false, cancel: "", helper: "clone", appendTo: "body",
+            revert: true, revertDuration: 0, distance: 3, cursorAt: { left: 32, top: 32 }, scroll: false, zIndex: 100000 });
+    };
+
+    // ── 창의 글 편집칸(핸드아웃 내용·GM 메모, 캐릭터 소개 등)에 끌어 놓기: 놓은 자리에 <img> 를 넣는다 ──
+    // Roll20 라이브러리 그림도 함께 받는다 (둘 다 .draggableresult + data-fullsizeurl)
+    const insertImg = (box, url, ev, ui) => {
+        ui.helper?.css("visibility", "hidden");     // 끌고 있는 그림이 커서 바로 밑에 있어 놓을 자리 찾기를 가린다
+        const x = ev.clientX ?? ev.originalEvent?.clientX, y = ev.clientY ?? ev.originalEvent?.clientY;
+        let r = x != null && document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+        if (!r || !box.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(box); r.collapse(false); }
+        box.focus();
+        const sel = getSelection();
+        sel.removeAllRanges(); sel.addRange(r);
+        // 편집기가 바뀐 내용을 알아채도록 붙여넣기와 같은 길(insertHTML)로 넣는다
+        if (!document.execCommand("insertHTML", false, `<img src="${esc(url)}">`)) {
+            r.insertNode(Object.assign(document.createElement("img"), { src: url }));
+            box.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    };
+    const bindEditors = () => {
+        const $ = window.jQuery;
+        if (!$?.fn?.droppable) return;
+        document.querySelectorAll('.ui-dialog [contenteditable="true"]:not(.r20ri-drop)').forEach(box => {
+            box.classList.add("r20ri-drop");
+            $(box).droppable({ accept: ".draggableresult", tolerance: "pointer", hoverClass: "r20ri-dropin",
+                drop: (e, ui) => {
+                    // 뒤에 있는 맵에 토큰으로도 놓이지 않게 Roll20 에 '처리됨' 표시
+                    const oe = e.originalEvent;
+                    if (oe) { oe.dropHandled = true; if (oe.originalEvent) oe.originalEvent.dropHandled = true; }
+                    const u = ui.draggable.attr("data-fullsizeurl");
+                    if (u) insertImg(box, u, e, ui);
+                } });
+        });
+    };
+
+    // ── 그림 메뉴 ──
+    const say = (btn, msg) => {
+        const old = btn.dataset.label || (btn.dataset.label = btn.textContent);
+        btn.textContent = msg;
+        setTimeout(() => { if (btn.isConnected) btn.textContent = old; }, 1400);
+    };
+    const ratioOf = u => new Promise(res => {
+        const im = new Image();
+        im.onload = () => res(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 1);
+        im.onerror = () => res(1);
+        im.src = u;
+    });
+    // 지금 페이지에 바로 놓기: 토큰 층은 가운데에 긴 변 2칸(140px), 맵 층은 페이지에 맞춰 가운데
+    const place = async (it, layer, btn) => {
+        const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null;
+        if (!pg?.thegraphics) return say(btn, "지금 페이지를 못 찾았어요");
+        const W = (parseFloat(pg.get("width")) || 25) * 70, H = (parseFloat(pg.get("height")) || 25) * 70;
+        const r = await ratioOf(r20img(sized(it.url, "thumb")));
+        let w, h;
+        if (layer === "map") { if (W / H > r) { h = H; w = H * r; } else { w = W; h = W / r; } }
+        else if (r >= 1) { w = 140; h = 140 / r; } else { h = 140; w = 140 * r; }
+        try {
+            pg.thegraphics.create({ imgsrc: it.img || r20img(sized(it.url, "max")), left: Math.round(W / 2), top: Math.round(H / 2),
+                width: Math.round(w), height: Math.round(h), layer, page_id: pg.id });
+            say(btn, "놓았어요");
+        } catch (e) { console.warn("[이 방의 이미지] 놓기 실패:", e); say(btn, "놓지 못했어요"); }
+    };
+    const openJournal = u => {
+        const m = (u.kind === "char" ? window.Campaign?.characters : window.Campaign?.handouts)?.get?.(u.id);
+        if (typeof m?.view?.showDialog === "function") return m.view.showDialog();
+        const li = document.querySelector(`li.journalitem[data-itemid="${CSS.escape(u.id)}"]`);
+        if (li) { if (window.jQuery) window.jQuery(li).trigger("click"); else li.click(); }
+    };
+    // 핸드아웃으로 만들기: 그림을 핸드아웃 그림으로, 이름은 그림 이름 (GM 만 보기)
+    const makeHandout = async (it, btn) => {
+        const C = window.Campaign;
+        if (typeof C?.handouts?.create !== "function") return say(btn, "핸드아웃을 만들 수 없어요");
+        let m;
+        try { m = C.handouts.create({ name: it.name || "그림", avatar: r20img(sized(it.url, "max")), inplayerjournals: "", archived: false }); }
+        catch (e) { console.warn("[이 방의 이미지] 핸드아웃 만들기 실패:", e); return say(btn, "만들지 못했어요"); }
+        if (!m?.id) return say(btn, "만들지 못했어요");
+        say(btn, "만들었어요");
+        // 저널 맨 위에 둔다 — Roll20 이 이미 넣었으면 그대로 (두 번 넣지 않게 잠깐 기다렸다 확인)
+        await sleep(400);
+        const raw = C.get?.("journalfolder") || "[]";
+        if (!raw.includes(`"${m.id}"`)) {
+            try { const tree = JSON.parse(raw); if (Array.isArray(tree)) { tree.unshift(m.id); C.save({ journalfolder: JSON.stringify(tree) }); } } catch (e) {}
+        }
+        await sleep(300);
+        openJournal({ kind: "handout", id: m.id });
+    };
+    const closePop = () => {
+        root?.querySelector(".r20ri-pop")?.remove();
+        root?.querySelectorAll(".r20ri-tile.on").forEach(t => t.classList.remove("on"));
+    };
+    const openPop = (tile, kb) => {
+        const it = items.get(tile.dataset.k);
+        if (!it) return;
+        closePop();
+        const pop = document.createElement("div");
+        pop.className = "r20ri-pop";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "그림 메뉴");
+        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
+            + `<button type="button" class="r20ri-x" data-a="close" aria-label="닫기">✕</button></div>`
+            + `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
+            + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
+            + `<button type="button" class="r20ri-mi" data-a="copy">이미지 주소 복사</button>`
+            + `<button type="button" class="r20ri-mi" data-a="handout">핸드아웃으로 만들기</button>`
+            + `<div class="r20ri-uses"><small>사용처</small>` + it.uses.map((u, i) => u.kind === "char" || u.kind === "handout"
+                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>";
+        pop._it = it;
+        root.querySelector(".r20ri-body").appendChild(pop);
+        tile.classList.add("on");
+        if (kb) pop.querySelector(".r20ri-mi").focus();
+    };
+    const onPop = (pop, b) => {
+        const it = pop._it, a = b.dataset.a;
+        if (a === "close") closePop();
+        else if (a === "objects" || a === "map") place(it, a, b);
+        else if (a === "copy") copyText(r20img(sized(it.url, "max"))).then(ok => say(b, ok ? "복사했어요" : "복사하지 못했어요"));
+        else if (a === "handout") makeHandout(it, b);
+        else if (a === "open") openJournal(it.uses[+b.dataset.i]);
+    };
+
+    // ── 틀 ──
+    const fit = () => {
+        if (!root || mode !== "room" || !root.offsetParent) { if (root && mode !== "room") root.style.height = ""; return; }
+        root.style.height = Math.max(240, window.innerHeight - root.getBoundingClientRect().top - 8) + "px";
+    };
+    const setMode = m => {
+        mode = m;
+        localStorage.setItem("r20_ri_mode", m);
+        const dlg = root?.parentNode;
+        dlg?.classList.toggle("r20ri-room", m === "room");
+        root?.querySelectorAll(".r20ri-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === m)));
+        if (m === "room") { if (dlg) dlg.scrollTop = 0; refresh(); } else closePop();
+        fit();
+    };
+    const build = () => {
+        const r = document.createElement("div");
+        r.className = "r20ri";
+        r.style.setProperty("--ri-size", size + "px");
+        r.innerHTML = `<div class="r20ri-seg" role="group" aria-label="그림 보기">`
+            + `<button type="button" data-m="lib" aria-pressed="${mode === "lib"}">내 라이브러리</button>`
+            + `<button type="button" data-m="room" aria-pressed="${mode === "room"}">이 방의 이미지</button></div>`
+            + `<div class="r20ri-body">`
+            + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="이름·사용처 검색" aria-label="이미지 검색"></label>`
+            + `<span class="r20ri-zoom"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
+            + `<div class="r20ri-chips">${KINDS.map(([k, l]) => `<button type="button" data-src="${k}" aria-pressed="${src === k}">${l}</button>`).join("")}</div>`
+            + `<div class="r20ri-note" hidden><span></span><button type="button" data-a="load"></button></div>`
+            + `<div class="r20ri-list"></div>`
+            + `<div class="r20ri-foot"><span class="r20ri-sum" title="같은 그림은 하나로 셉니다 · 그림을 끌어서 맵에 놓기"></span>`
+            + `<button type="button" data-a="openall">전부 펼치기</button><button type="button" data-a="closeall">전부 접기</button><button type="button" data-a="reload">다시 읽기</button></div></div>`;
+        const input = r.querySelector(".r20ri-q input"), list = r.querySelector(".r20ri-list");
+        let qt = null;
+        input.addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(() => { q = input.value; render(); }, 150); });
+        r.addEventListener("keydown", e => {
+            e.stopPropagation();                 // Roll20 단축키 막기
+            if (e.key === "Escape") closePop();
+            const t = e.target.closest?.(".r20ri-tile");
+            if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPop(t, true); }
+        });
+        r.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            const pop = e.target.closest(".r20ri-pop");
+            if (pop) { if (b?.dataset.a) onPop(pop, b); return; }
+            const t = e.target.closest(".r20ri-tile");
+            if (t) return t.classList.contains("on") ? closePop() : openPop(t);
+            if (!b) return closePop();
+            if (b.dataset.g != null) {
+                if (q) return;                                    // 검색 중엔 모두 펼쳐 둔다
+                if (opened.has(b.dataset.g)) opened.delete(b.dataset.g); else opened.add(b.dataset.g);
+                render();
+            } else if (b.dataset.m) setMode(b.dataset.m);
+            else if (b.dataset.src) {
+                src = b.dataset.src;
+                r.querySelectorAll(".r20ri-chips button").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+                render();
+            } else if (b.dataset.d) {
+                size = Math.max(48, Math.min(160, size + Number(b.dataset.d) * 16));
+                localStorage.setItem("r20_ri_size", size);
+                r.style.setProperty("--ri-size", size + "px");
+            } else if (b.dataset.a === "load") loadPages();
+            else if (b.dataset.a === "reload") refresh();
+            else if (b.dataset.a === "openall") { groups.forEach(g => opened.add(g.name)); render(); }
+            else if (b.dataset.a === "closeall") { opened.clear(); render(); }
+        });
+        list.addEventListener("mouseover", e => { const t = e.target.closest(".r20ri-tile"); if (t) initDrag(t); });
+        // 안 열리는 그림: 다른 크기·원래 주소로 → 그래도 안 되면 빈 칸 (error 는 버블링되지 않아 캡처로 받는다 · 메뉴 그림도 함께)
+        r.addEventListener("error", e => {
+            const m = e.target;
+            if ((m.tagName === "IMG" || m.tagName === "VIDEO") && !nextPreview(m)) m.classList.add("r20ri-broken");
+        }, true);
+        return r;
+    };
+    // 탭이 보이게 될 때마다 새로 모은다 (다른 탭에서 토큰·카드를 바꿨을 수 있다)
+    const onResize = () => {
+        const vis = !!root?.offsetParent;
+        if (vis && !wasVisible && mode === "room") refresh();
+        wasVisible = vis;
+        fit();
+    };
+    const inject = () => {
+        if (!btnVisible.artroom) return;
+        bindEditors();
+        const dlg = document.getElementById("imagedialog");
+        if (!dlg || root?.parentNode === dlg) return;
+        root = build();
+        dlg.prepend(root);
+        dlg.classList.toggle("r20ri-room", mode === "room");
+        ro?.disconnect();
+        ro = new ResizeObserver(onResize);
+        ro.observe(dlg);
+        wasVisible = false;
+        onResize();
+    };
+    const setEnabled = on => {
+        if (on) return inject();
+        ro?.disconnect(); ro = null;
+        root?.parentNode?.classList.remove("r20ri-room");
+        root?.remove(); root = null;
+    };
+    window.addEventListener("resize", fit);
+    return { inject, setEnabled, gather, ownerMap, sized, loadPages, onPages: fn => hooks.add(fn), loadingNow: () => loading };
+})();
+
+// ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
+// 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
+const queryPicker = (() => {
+    let size = Math.max(80, Math.min(260, parseInt(localStorage.getItem("r20_qp_size"), 10) || 140));
+    // 값 → 그림 주소: 전체 주소이거나, imgur 그림 ID 만 고르는 꼴(https://imgur.com/?{…|이름,oTmvLxD|…}.png)
+    // ID 판별: 5~8자 영문·숫자 섞임 — 'Attack' 같은 보통 낱말·숫자만은 뺀다
+    const imgurId = v => /^[A-Za-z0-9]{5,8}$/.test(v) && /[A-Za-z]/.test(v) && !/^[A-Z]?[a-z]+$|^[A-Z]+$/.test(v);
+    const imgOf = v => /^https?:\/\/\S+$/i.test(v) ? v : imgurId(v) ? `https://i.imgur.com/${v}.png` : "";
+    const labelOf = o => o.textContent.trim();
+    // '—————' 같은 항목은 묶음 구분선으로
+    const isDivider = o => !imgOf(o.value) && /^[\s—–\-─━=_~·.]{3,}$/.test(o.textContent);
+    // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
+    const thumbOf = url => {
+        const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
+        return m ? `https://i.imgur.com/${m[1]}m${m[2] || ".png"}` : r20img(url);
+    };
+    const choose = dlg => {
+        const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
+        (btns.find(b => /submit/i.test(b.textContent)) || btns[0])?.click();
+    };
+    const mark = (dlg, sel) => dlg.querySelectorAll(".r20qp-tile").forEach(b => {
+        const on = +b.dataset.i === sel.selectedIndex;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+    });
+
+    const textPic = o => {
+        const sp = document.createElement("span");
+        sp.className = "r20qp-img";
+        sp.textContent = labelOf(o);
+        return sp;
+    };
+    const tile = (o, i) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "r20qp-tile"; b.dataset.i = i; b.title = labelOf(o);
+        let pic;
+        const url = imgOf(o.value);
+        if (url) {
+            pic = document.createElement("img");
+            pic.className = "r20qp-img";
+            pic.alt = ""; pic.loading = "lazy"; pic.draggable = false;
+            const thumb = thumbOf(url);
+            let retried = thumb === url;
+            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 이름 칸으로
+            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = url; } else pic.replaceWith(textPic(o)); });
+            pic.src = thumb;
+        } else pic = textPic(o);
+        const lb = document.createElement("span");
+        lb.className = "r20qp-lb"; lb.textContent = labelOf(o);
+        b.append(pic, lb);
+        return b;
+    };
+
+    const enhance = (dlg, sel) => {
+        dlg.classList.add("r20qp");
+        dlg._r20qpSel = sel;
+        dlg.style.setProperty("--qp-size", size + "px");
+        const box = document.createElement("div");
+        box.className = "r20qp-box";
+        box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
+            + '<span class="r20qp-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
+            + '<div class="r20qp-grid"></div>';
+        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input");
+        let sec = null;
+        const newSec = () => { sec = document.createElement("div"); sec.className = "r20qp-sec"; grid.appendChild(sec); };
+        newSec();
+        [...sel.options].forEach((o, i) => {
+            if (isDivider(o)) { if (sec.childElementCount) newSec(); return; }
+            sec.appendChild(tile(o, i));
+        });
+        if (!sec.childElementCount) sec.remove();
+        (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
+
+        grid.addEventListener("click", e => {
+            const b = e.target.closest(".r20qp-tile");
+            if (!b) return;
+            sel.selectedIndex = +b.dataset.i;
+            sel.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        grid.addEventListener("dblclick", e => { if (e.target.closest(".r20qp-tile")) choose(dlg); });
+        sel.addEventListener("change", () => mark(dlg, sel));
+        q.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키·Enter 제출 막기
+        q.addEventListener("input", () => {
+            const v = q.value.replace(/\s+/g, "").toLowerCase();
+            grid.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = !!v && !b.title.replace(/\s+/g, "").toLowerCase().includes(v); });
+            grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.children].some(b => !b.hidden); });
+            grid.classList.toggle("searching", !!v);
+        });
+        box.querySelectorAll(".r20qp-zoom button").forEach(b => b.addEventListener("click", () => {
+            size = Math.max(80, Math.min(260, size + Number(b.dataset.d) * 30));
+            localStorage.setItem("r20_qp_size", size);
+            dlg.style.setProperty("--qp-size", size + "px");
+        }));
+        mark(dlg, sel);
+        // 창을 키워서 화면 가운데로
+        const w = Math.min(720, window.innerWidth - 40);
+        dlg.style.width = w + "px";
+        dlg.style.left = Math.max(10, (window.innerWidth - w) / 2) + "px";
+        dlg.style.top = Math.max(10, (window.innerHeight - dlg.offsetHeight) / 2) + "px";
+        grid.querySelector(".r20qp-tile.on")?.scrollIntoView({ block: "nearest" });
+    };
+
+    const inject = () => {
+        if (!btnVisible.qpick) return;
+        document.querySelectorAll(".ui-dialog").forEach(dlg => {
+            if (!dlg.classList.contains("vtt-macro-selection-ui-dialog")
+                && dlg.querySelector(".ui-dialog-title")?.textContent.trim() !== "Macro Options") return;
+            const sel = dlg.querySelector(".ui-dialog-content select");
+            if (!sel || dlg._r20qpSel === sel) return;
+            // 이미지 고르기가 아닌 질문은 그대로: 그림 항목이 2개 이상이고 (구분선 빼고) 절반 이상일 때만
+            const opts = [...sel.options].filter(o => !isDivider(o)), imgs = opts.filter(o => imgOf(o.value)).length;
+            if (imgs < 2 || imgs * 2 < opts.length) return;
+            dlg.querySelector(".r20qp-box")?.remove();      // Roll20 이 창을 다른 질문에 다시 쓴 경우
+            enhance(dlg, sel);
+        });
+    };
+    return { inject };
+})();
+
+// ───────── 빠른 저널: 말하는 사람 줄 ⚙ 왼쪽 단추 → 캐릭터 아이콘 격자에서 골라 말하는 사람 바꾸기 (끌어서 순서 바꾸기) ─────────
+const quickJournal = (() => {
+    const inject = () => {
+        const gear = document.getElementById("custom-settings-btn");
+        if (!btnVisible.journal || !gear || document.getElementById("custom-journal-toggle")) return;
+        const speakingAsSelect = document.getElementById("speakingas");
+        let charList = [];
+        const journalBtn = document.createElement("button");
         journalBtn.id = "custom-journal-toggle";
         journalBtn.type = "button";
-        journalBtn.innerText = "저널";
-        journalBtn.style.cssText = sharedBtnStyle + `background-color: ${CONFIG.inactiveBg} !important; color: ${CONFIG.inactiveText} !important; border-color: ${CONFIG.inactiveBorder} !important;`;
-        if (!btnVisible.journal) journalBtn.style.display = "none";
+        journalBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>';
+        journalBtn.title = "빠른 저널";
+        journalBtn.setAttribute("aria-label", "빠른 저널");
+        journalBtn.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;"
+            + `background-color: ${CONFIG.inactiveBg} !important; color: ${CONFIG.inactiveText} !important; border-color: ${CONFIG.inactiveBorder} !important;`;
 
-        popup = document.createElement("div");
+        const popup = document.createElement("div");
         popup.id = "custom-journal-popup";
 
         const header = document.createElement("div");
@@ -984,7 +3219,6 @@ function applyCocofoliaLayout() {
             updateList(searchInput.value);
         };
 
-// DOM -”-
 
         journalBtn.onclick = (e) => {
             e.preventDefault(); e.stopPropagation();
@@ -1048,704 +3282,39 @@ function applyCocofoliaLayout() {
         popup.appendChild(resizeHandle);
 
         document.body.appendChild(popup);
-    }
-
-    leftBtnGroup.id = "custom-left-group";
-    leftBtnGroup.appendChild(sadamBtn);
-    leftBtnGroup.appendChild(toggleBtn);
-    // 저널(빠른 저널) 단추는 말하는 사람 줄의 ⚙ 왼쪽에 아이콘으로
-    const gearBtn = document.getElementById("custom-settings-btn");
-    if (gearBtn) {
-        journalBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>';
-        journalBtn.title = "빠른 저널";
-        journalBtn.setAttribute("aria-label", "빠른 저널");
-        journalBtn.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;"
-            + `background-color: ${CONFIG.inactiveBg} !important; color: ${CONFIG.inactiveText} !important; border-color: ${CONFIG.inactiveBorder} !important;`
-            + (btnVisible.journal ? "" : "display: none;");
-        journalBtn.dataset.disp = "flex";
-        gearBtn.before(journalBtn);
-    } else leftBtnGroup.appendChild(journalBtn);
-
-    buttonRow.appendChild(leftBtnGroup);
-    buttonRow.appendChild(sendBtn);
-
-    const resizer = document.createElement("div");
-    resizer.id = "custom-resizer";
-    resizer.style.cssText = `
-        width: 100%;
-        height: 4px;
-        cursor: ns-resize;
-        background: transparent;
-        border-top: 1px solid #ddd;
-        margin-bottom: 0;
-        z-index: 2000;
-        position: relative;
-    `;
-
-    let targetHeight = 90;
-    let isApplying = false;
-
-    const applyTextareaHeight = () => {
-        if (isApplying) return;
-        isApplying = true;
-        textarea.style.setProperty("height", targetHeight + "px", "important");
-        textarea.style.setProperty("min-height", targetHeight + "px", "important");
-        isApplying = false;
+        // 말하는 사람 줄: [저널] [캡처 단추들] [⚙]
+        (document.getElementById("custom-capture-copy") || gear).before(journalBtn);
     };
-    applyTextareaHeight();
+    const setEnabled = on => {
+        if (on) return inject();
+        document.getElementById("custom-journal-toggle")?.remove();
+        document.getElementById("custom-journal-popup")?.remove();
+    };
+    return { inject, setEnabled };
+})();
 
-    textarea.style.setProperty("resize", "none", "important");
-    textarea.style.setProperty("width", "100%", "important");
-    textarea.style.setProperty("margin", "0", "important");
-    textarea.style.setProperty("box-sizing", "border-box", "important");
-
-    new MutationObserver(applyTextareaHeight).observe(textarea, {
-        attributes: true,
-        attributeFilter: ["style"]
-    });
-
-    resizer.addEventListener("mousedown", function (e) {
-        e.preventDefault();
-        const startY = e.clientY;
-        const startHeight = targetHeight;
-        document.body.style.setProperty("user-select", "none", "important");
-        function doDrag(e) {
-            const newHeight = startHeight + (startY - e.clientY);
-            if (newHeight > 50) { targetHeight = newHeight; applyTextareaHeight(); }
-        }
-        function stopDrag() {
-            document.body.style.removeProperty("user-select");
-            window.removeEventListener("mousemove", doDrag);
-            window.removeEventListener("mouseup", stopDrag);
-        }
-        window.addEventListener("mousemove", doDrag);
-        window.addEventListener("mouseup", stopDrag);
-    });
-
-    container.appendChild(buttonRow);
-    container.appendChild(resizer);
-    container.appendChild(textarea);
-    container.classList.add("layout-applied-v11");
-    renderCustomButtons();
-}
-
-function applyDescPrefix(text) {
-    const stripped = text.startsWith(CONFIG.prefix) ? text.slice(CONFIG.prefix.length) : text;
-    if (!stripped.trim() || stripped.startsWith("/")) return text;
-    return CONFIG.prefix + stripped;
-}
-
-// 오너 사담 · 캐릭터 사담 공통 글자 모양
-const SADAM_STYLE = "text-decoration:none; font-size:11px; color:#aaaaaa;";
-
-function applySadamPrefix(text) {
-    const trimmed = text.trim();
-    if (!trimmed || trimmed.startsWith("/")) return text;
-    return `/o [${trimmed}](#"style="${SADAM_STYLE}")`;
-}
-
-function applyCharSadamPrefix(text) {
-    const trimmed = text.trim();
-    if (!trimmed || trimmed.startsWith("/")) return text;
-    return `[${trimmed}](#"style="${SADAM_STYLE}")`;
-}
-
-function applyActivePrefix(text) {
-	text = text.trimStart();
-    if (activeCustomBtn) {
-        const content = activeCustomBtn.content;
-        const match = content.match(/^([\s\S]*?)\?\{[^}]*\}([\s\S]*)$/);
-        if (match) return match[1] + text + match[2];
-        return content;
-    }
-
-    let baseText = text;
-    const asRegex = /^\/as\s+"[^"]+"\s*/i;
-    if (asRegex.test(baseText)) baseText = baseText.replace(asRegex, "");
-
-    if (isDescMode) return applyDescPrefix(baseText);
-    if (isSadamMode) {
-        if (btnVisible.charsadam) return applyCharSadamPrefix(baseText);
-        else return applySadamPrefix(baseText);
-    }
-
-    const speakingAsSelect = document.getElementById("speakingas");
-    const nameInput = document.getElementById("custom-speaker-name");
-    if (speakingAsSelect && nameInput) {
-        const originalName = speakingAsSelect.options[speakingAsSelect.selectedIndex]?.text || "";
-        const customName = nameInput.value.trim();
-        const trimmedText = baseText.trim();
-        if (customName !== "" && customName !== originalName && !trimmedText.startsWith("/")) {
-            return `/as "${customName}" ${baseText}`;
-        }
-    }
-    return baseText;
-}
-
-document.addEventListener("keydown", (e) => {
-    const target = e.target;
-    if (target.tagName === "TEXTAREA" && target.classList.contains("ui-autocomplete-input")) {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            target.value = applyActivePrefix(target.value);
-            target.dispatchEvent(new Event("input", { bubbles: true }));
-            const sendBtn = document.getElementById("chatSendBtn");
-            if (sendBtn) sendBtn.click();
-        }
-        if (e.key === "ArrowUp") {
-            setTimeout(() => {
-                let val = target.value;
-                val = val.replace(/^\/as\s+"[^"]+"\s*/i, "");
-                val = val.replace(/^\/desc\s+/i, "");
-
-                // 오너·캐릭터 사담 (예전 글자 모양으로 보낸 것도 포함)
-                const sadamMatch = val.match(/^(?:\/o\s+)?\[(.*?)\]\(#"style="[^"]*"\)/i);
-                if (sadamMatch) val = sadamMatch[1];
-
-                if (target.value !== val) target.value = val;
-            }, 10);
-        }
-    }
-}, true);
-
-document.addEventListener("mousedown", (e) => {
-    if (e.target.id === "chatSendBtn" || e.target.closest("#chatSendBtn")) {
-        const textarea = document.querySelector("#textchat-input textarea");
-        if (textarea) {
-            textarea.value = applyActivePrefix(textarea.value);
-            textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-    }
-}, true);
-
-// 예전 버전 사본이 먼저 넣은 스타일이 있으면 이 버전 것으로 바꾼다
-const oldAddonStyle = document.getElementById("r20-addon-style");
-if (oldAddonStyle && !oldAddonStyle.dataset.aio) warnDuplicate();
-if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
-    const style = oldAddonStyle || document.createElement("style");
-    style.id = "r20-addon-style";
-    style.dataset.aio = "1";
-    style.innerHTML = `
-        #r20-ac-box { position:fixed; z-index:100000; min-width:220px; max-width:360px; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:12px; color:#333; display:none; }
-        #r20-ac-box.show { display:block; }
-        .r20-ac-item { display:flex; align-items:baseline; gap:6px; padding:4px 8px; cursor:pointer; border-bottom:1px solid #f0f0f0; white-space:nowrap; }
-        .r20-ac-item b { font-weight:700; overflow:hidden; text-overflow:clip; }
-        .r20-ac-item small { color:#999; font-size:10px; overflow:hidden; text-overflow:clip; }
-        .r20-ac-item.on, .r20-ac-item:hover { background:#e6f7ff; }
-        .r20-bgm-pv { cursor:pointer; margin-right:4px; font-size:12px; opacity:0.55; text-decoration:none !important; user-select:none; }
-        .r20-bgm-pv:hover, .r20-bgm-pv:focus-visible { opacity:1; }
-        .r20-bgm-pv.on { opacity:1; filter:drop-shadow(0 0 2px #1867c7); }
-        body.r20-bgm-off .r20-bgm-pv { display:none; }
-
-        #r20be { position:fixed; z-index:10005; display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); background:#fff; border:1px solid #b5b5b5; border-radius:4px; box-shadow:0 8px 24px rgba(0,0,0,0.22); font-family:sans-serif; font-size:12px; color:#333; resize:both; overflow:hidden; box-sizing:border-box; }
-        /* Roll20(Bootstrap)의 .show { display:block !important } 와 겹치지 않게 전용 클래스를 쓴다 */
-        #r20be.r20be-show { display:flex !important; }
-        #r20be *, #r20be *::before, #r20be *::after { box-sizing:border-box; }
-        #r20be [hidden] { display:none !important; }
-        #r20be button:focus-visible, #r20be input:focus-visible, #r20be select:focus-visible, #r20be textarea:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
-        #r20be .r20be-head { display:flex; align-items:center; gap:10px; height:36px; padding:0 6px 0 10px; background:#f0f0f0; border-bottom:1px solid #dcdcdc; cursor:move; user-select:none; flex-shrink:0; }
-        #r20be .r20be-head strong { font-size:12px; color:#555; }
-        #r20be .r20be-ver { margin-left:-6px; color:#999; font-size:10px; }
-        #r20be .r20be-seg { display:flex; gap:2px; padding:2px; background:#e2e2e2; border-radius:4px; }
-        #r20be .r20be-seg button { border:0; background:transparent; height:24px; padding:0 12px; font-size:12px; font-weight:700; color:#555; border-radius:3px; cursor:pointer; }
-        #r20be .r20be-seg button.on { background:#1867c7; color:#fff; }
-        #r20be .r20be-flex { flex:1; }
-        #r20be .r20be-ico { display:inline-flex; flex-shrink:0; }
-        #r20be .r20be-ib { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border:0; background:transparent; border-radius:3px; cursor:pointer; color:#6b6b6b; padding:0; flex-shrink:0; }
-        #r20be .r20be-ib:hover { background:#e6e6e6; color:#333; }
-        #r20be .r20be-tools { position:relative; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 8px; border-bottom:1px solid #e6e6e6; flex-shrink:0; }
-        #r20be .r20be-chips { display:flex; flex-wrap:wrap; gap:4px; }
-        #r20be .r20be-in { width:100%; height:28px; margin:0; padding:0 8px; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333; font-size:12px; box-shadow:none; }
-        #r20be .r20be-in:focus { border-color:#1867c7; outline:none; }
-        #r20be .r20be-search { flex:1 1 160px; max-width:240px; width:auto; }
-        #r20be .r20be-chip { height:24px; padding:0 9px; border:1px solid #d4d4d4; border-radius:12px; background:#fff; color:#555; font-size:11px; cursor:pointer; }
-        #r20be .r20be-chip.on { border-color:#1867c7; background:#eef5fd; color:#1867c7; font-weight:700; }
-        #r20be .r20be-badge { padding:3px 8px; border-radius:10px; background:#fff4e5; color:#b45309; font-size:11px; font-weight:700; }
-        #r20be .r20be-pri { height:26px; padding:0 14px; border:0; border-radius:3px; background:#1867c7; color:#fff; font-size:12px; font-weight:700; cursor:pointer; }
-        #r20be .r20be-pri:hover { background:#1455a4; }
-        #r20be .r20be-pri:disabled { background:#b9cde6; cursor:default; }
-        #r20be .r20be-sec { display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 10px; border:1px solid #d4d4d4; border-radius:3px; background:#fff; color:#444; font-size:12px; cursor:pointer; }
-        #r20be .r20be-sec:hover { background:#f2f2f2; }
-        #r20be .r20be-sec:disabled { background:#fff; color:#aaa; cursor:default; }
-        #r20be .r20be-sec.on { background:#333; border-color:#333; color:#fff; }
-        #r20be .r20be-sec.danger { color:#b91c1c; }
-        #r20be .r20be-menu { position:absolute; top:34px; z-index:2; display:flex; flex-direction:column; min-width:130px; padding:4px 0; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); }
-        #r20be .r20be-menu button { padding:6px 12px; border:0; background:transparent; color:#333; font-size:12px; text-align:left; cursor:pointer; }
-        #r20be .r20be-menu button:hover { background:#eef6ff; }
-        #r20be .r20be-menu button:disabled { background:transparent; color:#aaa; cursor:default; }
-        #r20be .r20be-body { flex:1 1 0; min-height:0; display:flex; overflow:hidden; }
-        #r20be .r20be-col { position:relative; min-height:0; display:flex; }
-        #r20be .r20be-col.tree { flex:0 0 300px; min-width:200px; max-width:calc(100% - 280px); border-right:1px solid #e6e6e6; }
-        #r20be .r20be-split { position:absolute; top:0; bottom:0; right:-4px; z-index:5; width:8px; cursor:col-resize; touch-action:none; }
-        #r20be .r20be-split:hover, #r20be .r20be-split:focus-visible, #r20be .r20be-split.on { background:rgba(24,103,199,0.22); outline:none; }
-        #r20be .r20be-col.pane { flex:1; min-width:0; }
-        /* 기본 스크롤바 대신 직접 만든 스크롤바(.r20be-sb)를 쓴다 */
-        #r20be .r20be-tree, #r20be .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:none; }
-        #r20be .r20be-tree::-webkit-scrollbar, #r20be .r20be-pane::-webkit-scrollbar { display:none; }
-        #r20be .r20be-tree { padding-right:14px; }
-        #r20be .r20be-pane { padding:14px 26px 14px 16px; }
-        #r20be .r20be-sb { position:absolute; top:3px; right:3px; bottom:3px; width:10px; border-radius:5px; background:#ededed; cursor:pointer; }
-        #r20be .r20be-sb-th { position:absolute; top:0; left:1px; right:1px; min-height:24px; border-radius:4px; background:#b0b0b0; cursor:grab; }
-        #r20be .r20be-sb-th:hover, #r20be .r20be-sb-th.drag { background:#888; }
-        #r20be .r20be-row { display:flex; align-items:center; gap:3px; min-height:28px; padding-right:6px; border-bottom:1px solid #f2f2f2; }
-        #r20be .r20be-row:hover { background:#f3f8fe; }
-        #r20be .r20be-row.chk { background:#eef5fd; }
-        #r20be .r20be-row.sel { background:#dcebfb; }
-        #r20be .r20be-row.del .r20be-nm span { color:#999; text-decoration:line-through; }
-        #r20be .r20be-row.drop-in { outline:2px solid #1867c7; outline-offset:-2px; }
-        #r20be .r20be-row.drop-before { box-shadow:inset 0 2px 0 #1867c7; }
-        #r20be .r20be-sp { width:22px; flex-shrink:0; }
-        #r20be .r20be-cb { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; padding:0; border:1px solid #b8b8b8; border-radius:3px; background:#fff; color:#fff; cursor:pointer; flex-shrink:0; }
-        #r20be .r20be-cb svg { visibility:hidden; }
-        #r20be .r20be-cb.on { background:#1867c7; border-color:#1867c7; }
-        #r20be .r20be-cb.on svg { visibility:visible; }
-        #r20be .r20be-nm { flex:1; min-width:0; display:flex; align-items:center; gap:5px; height:26px; padding:0 4px; border:0; background:transparent; color:#222; font-size:12px; text-align:left; cursor:pointer; }
-        #r20be .r20be-nm span { overflow:hidden; text-overflow:clip; white-space:nowrap; }
-        #r20be .r20be-nm svg { flex-shrink:0; }
-        #r20be .r20be-dot { width:7px; height:7px; border-radius:50%; background:#c2410c; flex-shrink:0; }
-        #r20be .r20be-meta { color:#6b6b6b; font-size:10px; white-space:nowrap; flex-shrink:0; }
-        #r20be .r20be-vw { display:flex; gap:2px; padding:2px; background:#ececec; border-radius:4px; }
-        #r20be .r20be-vw button { display:flex; align-items:center; justify-content:center; width:26px; height:22px; padding:0; border:0; border-radius:3px; background:transparent; color:#555; cursor:pointer; }
-        #r20be .r20be-vw button.on { background:#fff; color:#1867c7; box-shadow:0 0 0 1px #c9d9ee; }
-        #r20be .r20be-zm { display:flex; gap:2px; }
-        #r20be .r20be-zm button { width:22px; height:22px; padding:0; border:1px solid #d4d4d4; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
-        #r20be .r20be-zm button:hover { background:#f2f2f2; color:#222; }
-        #r20be .r20be-tree.r20be-icons { padding:2px 10px 12px; }
-        #r20be .r20be-igh { display:flex; align-items:center; gap:6px; padding:10px 4px 4px; font-size:11px; font-weight:700; color:#555; }
-        #r20be .r20be-igh span { min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
-        #r20be .r20be-igh small { font-weight:400; color:#6b6b6b; }
-        #r20be .r20be-igh::after { content:""; flex:1; height:1px; background:#eee; }
-        #r20be .r20be-igrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:4px; }
-        #r20be .r20be-row.r20be-tile { position:relative; display:block; min-height:0; padding:0; border:0; border-radius:8px; }
-        #r20be .r20be-tile.sel { box-shadow:inset 0 0 0 2px #1867c7; }
-        #r20be .r20be-tl { display:flex; flex-direction:column; align-items:center; gap:5px; width:100%; padding:6px 4px 8px; border:0; border-radius:8px; background:transparent; cursor:pointer; }
-        #r20be .r20be-pic { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; background:#e9e9e9; color:#888; font-size:calc(var(--be-icon, 84px) * 0.32); font-weight:700; }
-        #r20be .r20be-tn { width:100%; font-size:11px; line-height:1.35; color:#222; text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; overflow-wrap:anywhere; }
-        #r20be .r20be-tile .r20be-cb { position:absolute; left:9px; top:9px; width:18px; height:18px; border-radius:4px; }
-        #r20be .r20be-tile .r20be-dot { position:absolute; right:9px; top:9px; box-shadow:0 0 0 2px #fff; }
-        #r20be .r20be-tile.del .r20be-tn { color:#999; text-decoration:line-through; }
-        #r20be .r20be-tile.del .r20be-pic { opacity:0.4; }
-        #r20be .r20be-inl { flex:1; min-width:0; height:24px; }
-        #r20be .r20be-pane-in { display:flex; flex-direction:column; gap:12px; min-height:100%; }
-        #r20be .r20be-ph { display:flex; align-items:center; gap:8px; }
-        #r20be .r20be-ph strong { font-size:14px; }
-        #r20be .r20be-tag { padding:2px 7px; border-radius:9px; font-size:10px; font-weight:700; }
-        #r20be .r20be-tag.del { background:#fde8e8; color:#b91c1c; }
-        #r20be .r20be-tag.new { background:#e7f6ec; color:#15803d; }
-        #r20be .r20be-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
-        #r20be .r20be-fld { display:block; margin:0; font-weight:normal; }
-        #r20be .r20be-lb { display:block; margin-bottom:4px; color:#555; font-size:11px; font-weight:700; }
-        #r20be .r20be-ed { flex:1 0 auto; min-height:240px; display:flex; flex-direction:column; border:1px solid #ccc; border-radius:4px; overflow:hidden; }
-        #r20be .r20be-ctabs { display:flex; padding:0 4px; border-bottom:1px solid #e6e6e6; flex-shrink:0; }
-        #r20be .r20be-ctab { height:28px; padding:0 10px; border:0; border-bottom:2px solid transparent; background:transparent; color:#6b6b6b; font-size:12px; font-weight:700; cursor:pointer; }
-        #r20be .r20be-ctab.on { border-bottom-color:#1867c7; color:#1867c7; }
-        #r20be .r20be-ta { flex:1 0 auto; width:100%; min-height:200px; overflow:hidden; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
-        #r20be .r20be-ta.mono { font-family:Consolas, monospace; font-size:12px; }
-        #r20be .r20be-warn { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:6px 10px; border-bottom:1px solid #fde4c8; background:#fff7ed; color:#92400e; font-size:11px; }
-        #r20be .r20be-note, #r20be .r20be-empty { margin:0; color:#6b6b6b; font-size:12px; }
-        #r20be .r20be-empty { padding:24px 8px; text-align:center; }
-        #r20be .r20be-chk { display:flex; align-items:center; gap:6px; margin:0; font-size:12px; font-weight:normal; }
-        #r20be .r20be-chk input { margin:0; }
-        #r20be .r20be-range { width:100%; margin:0; }
-        #r20be .r20be-pv { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #e6e6e6; border-radius:4px; background:#fafafa; }
-        #r20be .r20be-prev { border:1px solid #e6e6e6; border-radius:4px; overflow:hidden; }
-        #r20be .r20be-prev > div { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; padding:5px 10px; border-top:1px solid #f0f0f0; }
-        #r20be .r20be-prev > div:first-child { border-top:0; background:#f6f6f6; color:#555; font-size:11px; font-weight:700; }
-        #r20be .r20be-prev span { overflow:hidden; text-overflow:clip; white-space:nowrap; }
-        #r20be .r20be-prev .chg { color:#1867c7; font-weight:700; }
-        #r20be .r20be-prev .same { color:#8a8a8a; }
-        #r20be .r20be-acts { display:flex; gap:8px; }
-        /* 굴림표 */
-        #r20be .r20be-trow { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
-        #r20be .r20be-trow .r20be-fld { width:240px; }
-        #r20be .r20be-trow .r20be-chk { height:28px; }
-        #r20be .r20be-add { display:flex; gap:8px; align-items:flex-start; }
-        #r20be .r20be-add textarea { flex:1; height:72px; padding:6px 8px; resize:vertical; }
-        #r20be .r20be-tbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 10px; border:1px solid #dbe7f6; border-radius:6px; background:#eef5fd; font-size:12px; }
-        #r20be .r20be-tbar .prev { color:#1867c7; font-weight:700; }
-        #r20be .r20be-sepv { width:1px; height:18px; background:#c9d9ee; }
-        #r20be .r20be-tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; }
-        #r20be .r20be-tgrid > .r20be-empty { grid-column:1 / -1; }
-        #r20be .r20be-card { position:relative; display:flex; flex-direction:column; gap:4px; padding:5px; border:1px solid #e3e3e3; border-radius:8px; background:#fff; }
-        #r20be .r20be-card.chk { border-color:#1867c7; background:#f1f7fe; }
-        #r20be .r20be-card.dirty { box-shadow:inset 0 0 0 1px #f0b27a; }
-        #r20be .r20be-thumb { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; padding:0; border:0; border-radius:6px; background:#f2f2f2; color:#888; font-size:11px; overflow:hidden; cursor:pointer; }
-        #r20be .r20be-thumb img, #r20be .r20be-thumb video { width:100%; height:100%; object-fit:cover; }
-        #r20be .r20be-thumb.none { border:1px dashed #d4d4d4; background:#fafafa; }
-        #r20be .r20be-card .r20be-thumb { position:relative; }
-        #r20be .r20be-thumb .r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
-        #r20be .r20be-tbar.idle { border-color:#eee; background:#fafafa; }
-        #r20be .r20be-tgrid.r20be-imgs { grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:6px; }
-        #r20be .r20be-imgs .r20be-card { gap:3px; padding:4px; }
-        #r20be .r20be-ithumb { background:#f1f1f1; }
-        #r20be .r20be-ithumb img, #r20be .r20be-ithumb video { object-fit:contain; }
-        #r20be .r20be-inm { overflow:hidden; padding:0 2px; color:#333; font-size:11px; white-space:nowrap; text-overflow:clip; }
-        #r20be .r20be-icnt { position:absolute; right:8px; top:8px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
-        #r20be .r20be-isend { display:flex; flex-direction:column; gap:8px; }
-        #r20be .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
-        #r20be .r20be-isend .r20be-chk[hidden] { display:none; }
-        #r20be .r20be-broken { visibility:hidden; }
-        #r20be .r20be-ov { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(30,30,30,0.35); }
-        #r20be .r20be-dlg { width:min(440px, calc(100% - 32px)); display:flex; flex-direction:column; gap:10px; padding:16px; background:#fff; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
-        #r20be .r20be-dlg > strong { font-size:14px; }
-        #r20be .r20be-mlist { display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; }
-        #r20be .r20be-mrow { display:flex; align-items:center; gap:8px; margin:0; padding:6px 8px; border:1px solid #e6e6e6; border-radius:4px; font-size:12px; font-weight:normal; cursor:pointer; }
-        #r20be .r20be-mrow input { margin:0; }
-        #r20be .r20be-mrow span { flex:1; min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
-        #r20be .r20be-mrow small { color:#6b6b6b; }
-        #r20be .r20be-mrow:has(input:checked) { border-color:#1867c7; background:#eef5fd; }
-        #r20be .r20be-msum { font-size:12px; font-weight:700; color:#1867c7; }
-        #r20be .r20be-dlg.wide { width:min(640px, calc(100% - 32px)); max-height:calc(100% - 32px); overflow-y:auto; }
-        #r20be .r20be-tsplit { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; }
-        #r20be .r20be-tprev { height:220px; overflow-y:auto; border:1px solid #e6e6e6; border-radius:4px; }
-        #r20be .r20be-tprev > div { display:grid; grid-template-columns:minmax(0, 1fr) 52px 48px; gap:6px; align-items:center; height:24px; padding:0 8px; border-bottom:1px solid #f0f0f0; font-size:11px; }
-        #r20be .r20be-tprev > div > span:first-child { overflow:hidden; text-overflow:clip; white-space:nowrap; }
-        #r20be .r20be-tprev > div > span:not(:first-child) { color:#6b6b6b; text-align:right; }
-        #r20be .r20be-tsplit textarea { height:196px; padding:6px 8px; resize:none; }
-        #r20be .r20be-dlg textarea.mono { height:180px; padding:6px 8px; font-family:ui-monospace, Consolas, monospace; resize:vertical; }
-        #r20be .r20be-mprev { max-height:96px; overflow-y:auto; padding:8px; border:1px solid #e6e6e6; border-radius:4px; background:#fafafa; font-family:ui-monospace, Consolas, monospace; font-size:11px; line-height:1.5; word-break:break-all; user-select:text; }
-        #r20be .r20be-cb2 { position:absolute; left:9px; top:9px; display:flex; align-items:center; justify-content:center; width:18px; height:18px; padding:0; border:1px solid #b8b8b8; border-radius:4px; background:#fff; color:#fff; cursor:pointer; }
-        #r20be .r20be-cb2 svg { visibility:hidden; }
-        #r20be .r20be-cb2.on { background:#1867c7; border-color:#1867c7; }
-        #r20be .r20be-cb2.on svg { visibility:visible; }
-        #r20be .r20be-mini { height:24px; padding:0 6px; font-size:11px; }
-        #r20be .r20be-wl { display:flex; align-items:center; gap:4px; margin:0; color:#6b6b6b; font-size:10px; font-weight:normal; }
-        #r20be .r20be-wl input { width:52px; }
-        #r20be .r20be-foot { display:flex; align-items:center; min-height:26px; padding:3px 10px; border-top:1px solid #e6e6e6; background:#f7f7f7; color:#555; font-size:11px; flex-shrink:0; }
-        #r20be .r20be-foot.ok { color:#15803d; font-weight:700; }
-        #r20be .r20be-foot.err { color:#b91c1c; font-weight:700; }
-        @media (max-width: 640px) {
-            #r20be .r20be-body { flex-direction:column; }
-            #r20be .r20be-col.tree { flex:0 0 40% !important; max-width:none; border-right:0; border-bottom:1px solid #e6e6e6; }
-            #r20be .r20be-split { display:none; }
-            #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
-        }
-        /* 주크박스 한 줄 보기: Roll20 요소는 그대로 두고 배치·크기만 바꾼다 (.playbackcontrol 을 풀어 한 줄 flex 로) */
-        body.r20jb-on #jukebox .instructions { display:none !important; }
-        body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
-        .r20jb-step { display:none; }
-        body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
-        body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
-        body.r20jb-on #jukebox #addnewjukeboxfolder { height:auto !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
-        body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
-        /* 재생목록 머리줄: 폴더째 재생 버튼만 */
-        /* 재생목록 줄 높이를 26px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder { min-height:0 !important; margin:0 !important; padding:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder::before, body.r20jb-on #jukeboxfolderroot li.dd-folder::after, body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content::after { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { height:26px !important; margin-top:0 !important; margin-bottom:0 !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.playstyle, body.r20jb-on #jukeboxfolderroot .playlistcontrols a.exportplaylist { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play { display:inline-flex !important; align-items:center; justify-content:center; width:22px; margin:0 !important; color:#777 !important; text-decoration:none !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
-        /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content { min-height:18px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .folder-title { font-size:10px !important; line-height:18px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-list { display:none !important; }
-        /* 빈 재생목록의 자리표시(끌어 넣기용)는 남기되 높이만 줄인다 */
-        body.r20jb-on #jukeboxfolderroot li.dd-item-dummy { min-height:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
-        /* 곡 줄 */
-        body.r20jb-on #jukebox li.jukeboxitem { position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        /* 끌기 손잡이(☰)는 곡 줄 바로 왼쪽에 붙이고, 줄에 마우스를 올렸을 때만 보인다 */
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:12px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; transform:none !important; overflow:hidden !important; text-indent:0 !important; font-size:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:grab; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { content:"☰" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:#999 !important; opacity:0; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::after { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem:hover > .dd-handle::before { opacity:1; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
-        body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:12px; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { font-size:12px !important; line-height:26px !important; }
-        /* 볼륨: 슬라이더 대신 ◂ 값 ▸ */
-        body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:auto !important; height:26px; margin:0 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
-        .r20jb-vol, .r20jb-loop { display:none; }
-        body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
-        .r20jb-tip { position:fixed; z-index:100005; max-width:260px; padding:4px 8px; border-radius:4px; background:rgba(20,20,22,0.94); color:#fff; font-size:11px; line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
-        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-loop { display:inline-flex; }
-        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20-bgm-pv { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop.on { color:#3d7cc9; font-weight:700; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol { display:inline-flex; align-items:center; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button { width:8px; height:22px; margin:0; padding:0; border:0; background:none; color:#aaa; font-size:9px; line-height:22px; cursor:pointer; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button:hover { color:#222; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol span { width:16px; color:#777; font-size:10px; text-align:center; font-variant-numeric:tabular-nums; }
-        /* 메뉴(⋮)는 숨기고 그 자리를 제목이 쓴다 (삭제 등은 일괄 편집기에서) */
-        body.r20jb-on #jukebox li.jukeboxitem .jukeboxitem-menu { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play:hover { color:#222 !important; }
-        /* 저널 한 줄 보기: 항목 = 작은 동그란 아바타 + 이름 (폴더 계층은 10px 씩만 들여쓴다) */
-        body.r20jb-on #journalfolderroot .dd-list .dd-list { clear:both; margin:0 !important; padding:0 0 0 12px !important; }
-        body.r20jb-on #journalfolderroot li.dd-item { margin:0 !important; padding:0 !important; }
-        /* Roll20 이 들여쓰기·간격에 쓰는 값(오프셋·text-indent 등)을 모두 0 으로 */
-        body.r20jb-on #journalfolderroot ol.dd-list, body.r20jb-on #journalfolderroot li.dd-item, body.r20jb-on #journalfolderroot .dd-content, body.r20jb-on #journalfolderroot .folder-title, body.r20jb-on #journalfolderroot li.journalitem .token, body.r20jb-on #journalfolderroot li.journalitem .name, body.r20jb-on #journalfolderroot li.journalitem .namecontainer { text-indent:0 !important; left:auto !important; transform:none !important; }
-        /* 폴더 ± 버튼은 줄 왼쪽 16px 안에 고정 */
-        body.r20jb-on #journalfolderroot li.dd-folder { position:relative !important; }
-        body.r20jb-on #journalfolderroot li.dd-folder > button[data-action] { position:absolute !important; left:0 !important; top:0 !important; float:none !important; width:16px !important; height:26px !important; margin:0 !important; line-height:26px !important; z-index:2; }
-        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 16px !important; }
-        body.r20jb-on #journalfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
-        /* 폴더 끌기 손잡이(투명)가 줄 높이를 늘리지 않게 흐름에서 뺀다 */
-        body.r20jb-on #journalfolderroot li.dd-folder > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; float:none !important; height:26px !important; margin:0 !important; }
-        body.r20jb-on #journalfolderroot li.dd-folder { min-height:0 !important; }
-        body.r20jb-on #journalfolderroot li.dd-folder::before, body.r20jb-on #journalfolderroot li.dd-folder::after, body.r20jb-on #journalfolderroot li.dd-folder > .dd-content::after { display:none !important; }
-        body.r20jb-on #journalfolderroot li.journalitem { min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20jb-on #journalfolderroot li.journalitem > .dd-content { display:flex !important; align-items:center !important; gap:6px; float:none !important; position:relative !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; }
-        body.r20jb-on #journalfolderroot li.journalitem .token { float:none !important; position:static !important; flex:0 0 18px; width:18px !important; height:18px !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:50%; overflow:hidden; background:none !important; }
-        body.r20jb-on #journalfolderroot li.journalitem .token img { width:18px !important; height:18px !important; max-width:none !important; margin:0 !important; border-radius:50%; object-fit:cover; }
-        body.r20jb-on #journalfolderroot li.journalitem .name { flex:1 1 auto; min-width:0; display:flex !important; align-items:center; gap:4px; float:none !important; position:static !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20jb-on #journalfolderroot li.journalitem .namecontainer { flex:1 1 auto; min-width:0; float:none !important; position:static !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
-        body.r20jb-on #journalfolderroot li.journalitem .playerdots { flex-shrink:0; margin:0 !important; font-size:12px !important; line-height:1 !important; }
-        body.r20jb-on #journalfolderroot li.journalitem .sourcefooter:empty { display:none !important; }
-        /* 재생 중인 곡 */
-        /* 페이지 창 슬림 (body.r20pg-on) — Roll20 Vue 스타일 위에 덮어쓴다 */
-        body.r20pg-on .vtt-page-card-menu .page-card-menu-header { padding:0 !important; }
-        body.r20pg-on .vtt-page-card-menu .page-card-menu-header > .horizontal-wrapper:first-child { min-height:0 !important; height:46px !important; padding:0 10px 0 14px !important; border-bottom:1px solid #efeff2; align-items:center !important; }
-        body.r20pg-on .vtt-page-card-menu .current-page-wrapper { display:flex !important; align-items:center !important; gap:10px !important; }
-        body.r20pg-on .vtt-page-card-menu .current-page { display:flex !important; align-items:center !important; gap:8px !important; }
-        body.r20pg-on .vtt-page-card-menu .current-page__thumbnail { width:auto !important; height:24px !important; max-width:40px; border-radius:4px !important; object-fit:cover; }
-        body.r20pg-on .vtt-page-card-menu .current-page__title { font-size:14px !important; font-weight:700 !important; color:#222 !important; }
-        body.r20pg-on .vtt-page-card-menu .current-page-settings { display:inline-flex !important; align-items:center !important; gap:5px !important; height:28px !important; padding:0 10px !important; border-radius:6px !important; color:#555 !important; font-size:12px !important; cursor:pointer; }
-        body.r20pg-on .vtt-page-card-menu .current-page-settings:hover { background:#f1f1f3 !important; color:#222 !important; }
-        body.r20pg-on .vtt-page-card-menu .current-page-settings__text { font-size:12px !important; font-weight:400 !important; color:inherit !important; }
-        body.r20pg-on .vtt-page-card-menu .party-box-outer { min-height:0 !important; height:32px !important; padding:0 8px !important; border:0 !important; border-radius:7px !important; background:transparent !important; box-shadow:none !important; }
-        body.r20pg-on .vtt-page-card-menu .party-box-outer:hover { background:#f1f1f3 !important; }
-        body.r20pg-on .vtt-page-card-menu .party-ribbon img { height:20px !important; width:auto !important; }
-        body.r20pg-on .vtt-page-card-menu .player-icon { width:22px !important; height:22px !important; min-width:0 !important; border-width:2px !important; }
-        body.r20pg-on .vtt-page-card-menu .party-page-name { font-size:12px !important; }
-        body.r20pg-on .vtt-page-card-menu .party-page-members { font-size:10px !important; color:#8a8a90 !important; }
-        body.r20pg-on .vtt-page-card-menu .page-card-menu-header .btn-cancel { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#666 !important; box-shadow:none !important; }
-        body.r20pg-on .vtt-page-card-menu .page-card-menu-header .btn-cancel:hover { background:#f1f1f3 !important; color:#222 !important; }
-        body.r20pg-on .vtt-page-card-menu .input-row { min-height:0 !important; height:44px !important; gap:8px !important; padding:0 14px !important; margin:0 !important; align-items:center !important; }
-        body.r20pg-on .vtt-page-card-menu .folder__add { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#555 !important; box-shadow:none !important; }
-        body.r20pg-on .vtt-page-card-menu .folder__add:hover { background:#f1f1f3 !important; }
-        body.r20pg-on .vtt-page-card-menu .page-search-input .el-input__wrapper { height:30px !important; min-height:0 !important; padding:0 10px !important; border-radius:7px !important; background:#f4f4f6 !important; box-shadow:none !important; }
-        body.r20pg-on .vtt-page-card-menu .page-search-input .el-input__inner { height:28px !important; font-size:12px !important; }
-        body.r20pg-on .vtt-page-card-menu .page-search-input .grimoire__roll20-icon { --v7353a950:14px !important; color:#888 !important; }
-        body.r20pg-on .vtt-page-card-menu .create-page button { height:28px !important; min-height:0 !important; padding:0 10px !important; font-size:12px !important; }
-        body.r20pg-on .vtt-page-card-menu .create-page__label { font-size:12px !important; font-weight:700 !important; }
-        body.r20pg-on .vtt-page-card-menu .r20pg-zoom { display:flex; gap:2px; flex-shrink:0; }
-        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button { width:24px; height:24px; margin:0; padding:0; border:1px solid #e1e1e5; border-radius:5px; background:#fff; color:#666; font-size:13px; line-height:1; cursor:pointer; }
-        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button:hover { background:#f4f4f6; color:#222; }
-        body.r20pg-on .vtt-page-card-menu .breadcrumb-wrapper { min-height:0 !important; height:32px !important; font-size:12px !important; color:#8a8a90 !important; }
-        body.r20pg-on .vtt-page-card-menu .breadcrumb-item { font-size:12px !important; color:#8a8a90 !important; }
-        body.r20pg-on .vtt-page-card-menu .breadcrumb-item:last-of-type { color:#333 !important; font-weight:700 !important; }
-        body.r20pg-on .vtt-page-card-menu .page-tree-view-collapse-title { font-size:10px !important; font-weight:700 !important; letter-spacing:0.04em; color:#8a8a90 !important; }
-        body.r20pg-on .vtt-page-card-menu .all-btn { height:28px !important; padding:0 8px !important; border-radius:6px !important; font-size:12px !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node { min-height:0 !important; height:28px !important; margin:0 !important; padding:0 4px !important; border:0 !important; border-radius:6px !important; background:transparent !important; box-shadow:none !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node:hover { background:#f4f4f6 !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node.active { background:#fbe9f1 !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node-button { height:28px !important; min-height:0 !important; padding:0 4px !important; font-size:12px !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node-icon .grimoire__roll20-icon { --v7353a950:14px !important; font-size:14px !important; color:#9a9aa3 !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node.active .node-icon .grimoire__roll20-icon { color:#b8215f !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node-name { font-size:12px !important; font-weight:400 !important; color:#333 !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node.active .node-name { font-weight:700 !important; color:#8f1849 !important; }
-        body.r20pg-on .vtt-page-card-menu .tree-view .node-children-count { min-width:0 !important; padding:0 !important; border:0 !important; background:none !important; color:#9a9aa0 !important; font-size:11px !important; font-weight:400 !important; }
-        body.r20pg-on .vtt-page-card-menu .page-container { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--r20pg-size, 150px), 1fr)) !important; gap:12px 10px !important; padding:4px 16px 16px !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card-wrapper.page-card { width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card { position:relative !important; flex:1 1 auto !important; min-width:0 !important; width:100% !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
-        body.r20pg-on .vtt-page-card-menu .card-thumbnail-container { position:relative !important; width:100% !important; height:auto !important; aspect-ratio:16/10; border-radius:6px !important; overflow:hidden !important; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06); }
-        body.r20pg-on .vtt-page-card-menu .card-thumbnail { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; border-radius:0 !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .card-thumbnail-container { box-shadow:0 0 0 2px #e7b3c9 !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container { box-shadow:0 0 0 2px #b8215f !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card.selected .card-thumbnail-container::before { content:"현재"; position:absolute; left:5px; top:5px; z-index:3; padding:0 6px; border-radius:8px; background:#b8215f; color:#fff; font-size:9px; font-weight:700; line-height:15px; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-title { min-height:0 !important; height:auto !important; margin:0 !important; padding:5px 1px 0 !important; text-align:left !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-title .el-text { font-size:16px !important; font-weight:400 !important; color:#333 !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-controls { position:absolute !important; top:4px !important; right:4px !important; left:auto !important; bottom:auto !important; z-index:3; display:flex !important; gap:2px; width:auto !important; height:auto !important; margin:0 !important; padding:1px 3px !important; border-radius:5px; background:rgba(255,255,255,0.92) !important; opacity:0; transition:opacity 0.12s; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-controls > span:first-child { display:none !important; }
-        body.r20pg-on .vtt-page-card-menu .vtt-page-card:hover .vtt-page-controls, body.r20pg-on .vtt-page-card-menu .vtt-page-card:focus-within .vtt-page-controls { opacity:1; }
-
-        /* 페이지 설정 창(세부 정보): Roll20 공용 .block-submenu 중 페이지 설정 칸이 든 창에만 */
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) { border-radius:10px !important; box-shadow:0 6px 24px rgba(0,0,0,0.18) !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header { min-height:0 !important; height:42px !important; padding:0 8px 0 14px !important; border-bottom:1px solid #efeff2 !important; align-items:center !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .title { margin:0 !important; font-size:13px !important; font-weight:700 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .buttons-container button { width:28px !important; height:28px !important; padding:0 !important; border:0 !important; border-radius:6px !important; background:transparent !important; color:#666 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-header .buttons-container button:hover { background:#f1f1f3 !important; color:#222 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-body { padding:0 14px 10px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .section.tabs { min-height:0 !important; margin:0 0 4px !important; padding:6px 0 0 !important; border-bottom:1px solid #efeff2; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__button { height:auto !important; padding:4px 0 7px !important; font-size:12px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__label { font-size:12px !important; font-weight:700 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .section { padding-top:6px !important; padding-bottom:6px !important; margin:0 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .title-wrapper { min-height:0 !important; margin:0 0 4px !important; padding:0 !important; gap:4px !important; align-items:center !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) h4.title, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .large-title { margin:6px 0 4px !important; font-size:12px !important; font-weight:700 !important; color:#333 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) h5, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .title.subheader, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .smallerTitle { margin:0 !important; font-size:11px !important; font-weight:400 !important; color:#6b6b70 !important; line-height:1.4 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .info-icon { --v7353a950:12px !important; color:#b0b0b6 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer { min-height:0 !important; height:auto !important; gap:4px !important; padding-top:0 !important; align-items:center !important; flex-wrap:nowrap !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top { display:grid !important; grid-template-columns:minmax(0, 1.3fr) minmax(0, 1fr) !important; gap:8px !important; padding:6px 0 4px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top > div { width:auto !important; min-width:0 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top .el-input, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pagename-top .el-select { width:100% !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-input__wrapper, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-select__wrapper { min-height:0 !important; height:28px !important; padding:0 8px !important; border-radius:6px !important; box-shadow:0 0 0 1px #e1e1e5 inset !important; background:#fff !important; font-size:12px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-input__inner, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-select__selected-item { height:26px !important; font-size:12px !important; line-height:26px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper { flex:1 1 0 !important; min-width:0 !important; width:auto !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper.disabled { flex:0.8 1 0 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper .__container, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .flex-wrapper .label { width:100% !important; min-width:0 !important; margin:0 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox { display:flex !important; align-items:center !important; width:100% !important; min-width:0 !important; height:28px !important; margin:0 !important; padding:0 !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; overflow:hidden; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox.disabled { background:#f6f6f8 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox .__box { flex:1 1 auto !important; width:100% !important; min-width:0 !important; height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; background:transparent !important; font-size:12px !important; text-align:right !important; box-shadow:none !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox.disabled .__box { color:#9a9aa0 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .pillBox .append { flex-shrink:0 !important; height:auto !important; margin:0 !important; padding:0 7px 0 2px !important; border:0 !important; background:transparent !important; color:#8a8a90 !important; font-size:10px !important; white-space:nowrap; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer > .el-button.is-link { border:0 !important; background:transparent !important; box-shadow:none !important; flex:0 0 14px !important; width:14px !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; opacity:0.45; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .rowspacer > .el-button.is-link img { width:12px !important; height:12px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-divider, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .divider-svg { margin:8px 0 !important; border-color:#f0f0f3 !important; background:#f0f0f3; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .hug-edges { width:100% !important; min-height:0 !important; margin:0 !important; padding-top:4px !important; padding-bottom:4px !important; align-items:center !important; font-size:12px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .text-tool-color { display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; gap:8px !important; width:100% !important; margin:0 !important; padding:2px 0 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .text-tool-color h5 { font-size:12px !important; color:#333 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .color-picker-trigger { width:22px !important; height:22px !important; border-radius:5px !important; box-shadow:0 0 0 1px #e1e1e5 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .switch-label h5 { font-size:12px !important; color:#333 !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .el-switch { height:22px !important; transform:scale(0.8); transform-origin:right center; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .vtt-button, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .button--delete-archive { height:28px !important; min-height:0 !important; padding:0 10px !important; border-radius:6px !important; font-size:12px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-labels, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-input-units { font-size:10px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .horizontal-slider-input-box { height:26px !important; font-size:12px !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer { min-height:0 !important; height:48px !important; padding:0 12px !important; border-top:1px solid #efeff2 !important; background:#fafafb !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer-content { gap:6px !important; align-items:center !important; }
-        body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .block-submenu-footer .grimoire__button { height:28px !important; min-height:0 !important; padding:0 14px !important; border-radius:6px !important; font-size:12px !important; }
-
-        /* 모음 탭(매크로 · 덱 · 목록에서 뽑기): 저널처럼 한 줄씩 가늘게 */
-        body.r20jb-on #deckstables .content > p { display:none !important; }
-        body.r20jb-on #deckstables .content > .clear { height:6px !important; }
-        body.r20jb-on #deckstables .content > hr { margin:4px 0 !important; }
-        body.r20jb-on #deckstables .content > h3 { margin:6px 0 4px !important; font-size:13px !important; line-height:24px !important; }
-        body.r20jb-on #deckstables .content > button.btn { height:auto !important; margin:6px 0 0 !important; padding:2px 8px !important; font-size:11px !important; line-height:1.4 !important; }
-        body.r20jb-on #deckstables .content > label { font-size:11px !important; font-weight:normal !important; }
-        body.r20jb-on #deckstables table.table { width:100% !important; margin:0 !important; border-collapse:collapse !important; }
-        body.r20jb-on #deckstables table.table thead { display:none !important; }
-        body.r20jb-on #deckstables table.table td { height:26px; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none !important; font-size:12px !important; line-height:26px !important; vertical-align:middle !important; white-space:nowrap; }
-        body.r20jb-on #deckstables table.table tr:hover td { background:rgba(24,103,199,0.06) !important; }
-        body.r20jb-on #deckstables table.table td.name { width:100%; max-width:0; overflow:hidden; text-overflow:clip; cursor:pointer; }
-        body.r20jb-on #deckstables td.name a.rollmacro { display:inline-block; width:16px; margin:0 2px 0 0 !important; color:#999 !important; font-size:12px !important; text-align:center; text-decoration:none !important; }
-        body.r20jb-on #deckstables td.name a.rollmacro:hover { color:#222 !important; }
-        body.r20jb-on #deckstables td.bartoggle label { display:inline-flex !important; align-items:center; gap:2px; margin:0 !important; font-size:10px !important; font-weight:normal !important; color:#999 !important; line-height:26px !important; }
-        body.r20jb-on #deckstables td.bartoggle input { margin:0 !important; }
-        body.r20jb-on #deckstables tr.deck > td:nth-child(2), body.r20jb-on #deckstables tr.rollabletable > td:nth-child(2) { color:#999 !important; font-size:10px !important; text-align:right; }
-        body.r20jb-on #deckstables td.actions { text-align:right !important; }
-        body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:20px !important; vertical-align:middle; }
-        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
-        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play[data-isplaying="true"] { color:#1867c7 !important; }
-        /* 면 선택(Choose Side): 슬라이더 대신 썸네일 격자, 번호는 CSS counter 로 붙인다 */
-        .ui-dialog.r20cs .sideslider { display:none !important; }
-        .ui-dialog.r20cs-drive .sideslider { display:block !important; position:fixed !important; left:0 !important; top:0 !important; width:1000px !important; height:10px !important; visibility:hidden !important; }
-        body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
-        .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
-        .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
-        /* 덱 창: 반투명 판에 카드 더미만 (폭 70px, 높이는 그림 비율대로). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
-        /* Roll20 은 메뉴를 판 안 40px 폭에 넣어서 글자가 한 자씩 꺾였다 → position:fixed 로 판 밖에 (자리는 deckView 가 잡는다) */
-        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:8px; box-sizing:border-box; scrollbar-width:thin; }
-        #showndecks.r20dk-on .adeck { width:auto !important; height:auto !important; margin:0 0 6px !important; padding:0 !important; float:none !important; }
-        #showndecks.r20dk-on .adeck:last-child { margin-bottom:0 !important; }
-        #showndecks.r20dk-on .deckstack { left:0 !important; margin:0 !important; width:70px !important; height:auto !important; }
-        #showndecks.r20dk-on .deckstack .allback, #showndecks.r20dk-on .deckstack .nextcard > div { width:70px !important; height:auto !important; }
-        #showndecks.r20dk-on .deckstack img { display:block; width:70px !important; height:auto !important; max-width:none !important; max-height:none !important; }
-        #showndecks.r20dk-on .controls { display:none !important; }
-        #showndecks.r20dk-on .adeck.r20dk-hov .controls { display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; right:auto !important; z-index:20; width:96px !important; height:auto !important; padding:4px !important; overflow:visible !important; background:#fff !important; border:1px solid #e3dee2; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.25); }
-        #showndecks.r20dk-on .control { overflow:hidden; white-space:nowrap; text-overflow:clip; font-size:12px; line-height:20px; text-align:left !important; }
-        #showndecks.r20dk-on .control:first-child { padding:0 6px; font-weight:700; color:#222; }
-        #showndecks.r20dk-on .control a { display:block; padding:0 6px; border-radius:4px; color:#2f6fc1; text-decoration:none; }
-        #showndecks.r20dk-on .control a:hover { background:#eaf1fb; }
-        #showndecks.r20dk-on .control:has(> a.removedcardspile), #showndecks.r20dk-on .control:has(> a.discardpile) { display:none !important; }
-        /* 매크로 줄: 두 줄로 쌓고 넘치면 줄 안에서 세로 스크롤 · 길게 누르면 들림 */
-        body.r20mb-on #macrobar { height:auto !important; max-height:66px !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:thin; }
-        /* flex 로 하면 jQuery UI 가 세로 목록으로 여겨 옆으로 끌어도 안 바뀐다 → inline-block 을 줄바꿈 */
-        body.r20mb-on #macrobar_macros { display:block !important; width:auto !important; white-space:normal !important; padding:2px 0 0; }
-        body.r20mb-on #macrobar_macros .macrobox { display:inline-block !important; vertical-align:top; width:auto !important; margin:0 4px 4px 0 !important; float:none !important; }
-        body.r20mb-on #macrobar_macros .macrobox > button { height:26px !important; max-width:180px; margin:0 !important; padding:0 10px !important; border-radius:13px !important; font-size:12px !important; line-height:24px !important; white-space:nowrap; overflow:hidden; text-overflow:clip; box-shadow:0 1px 2px rgba(0,0,0,0.25); }
-        body.r20mb-on #macrobar_macros .macrobox > .handle { display:none !important; }     /* 단추 전체를 길게 눌러 끄니 손잡이는 필요 없다 */
-        body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(184,33,95,0.55); }
-        body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
-        body.r20mb-on #macrobar_macros.r20mb-drag > .macrobox:not(.ui-sortable-helper):not(.ui-sortable-placeholder) { opacity:0.55; }
-        body.r20mb-on #macrobar_macros > .ui-sortable-placeholder { display:inline-block !important; visibility:visible !important; width:3px !important; min-width:3px; height:26px !important; padding:0 !important; border-radius:2px; background:#ffd84d; box-shadow:0 0 6px #ffd84d; }
-        /* 이모지 팔레트 (입력칸 위) */
-        #r20-emoji { position:fixed; z-index:10005; display:flex; flex-direction:column; background:#fff; border:1px solid #ddd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.22); overflow:hidden; font-family:sans-serif; color:#333; }
-        #r20-emoji[hidden] { display:none; }
-        #r20-emoji .q { flex-shrink:0; width:auto; height:28px; margin:8px 8px 4px; padding:0 10px; border:1px solid #ddd; border-radius:14px; font-size:12px; outline:none; box-sizing:border-box; box-shadow:none; }
-        #r20-emoji .q:focus { border-color:#1867c7; }
-        #r20-emoji .tabs { flex-shrink:0; display:flex; padding:0 4px; border-bottom:1px solid #eee; }
-        #r20-emoji .tabs button { flex:1; min-width:0; height:28px; margin:0; padding:0; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; font-size:15px; cursor:pointer; opacity:0.55; }
-        #r20-emoji .tabs button.txt { font-size:11px; font-weight:700; color:#555; }
-        #r20-emoji .tabs button[aria-selected="true"] { opacity:1; border-bottom-color:#1867c7; }
-        #r20-emoji .tabs button:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
-        #r20-emoji .head { flex-shrink:0; padding:4px 10px 2px; font-size:11px; font-weight:700; color:#888; }
-        #r20-emoji .grid { flex:1; min-height:0; overflow-y:auto; padding:2px 6px 8px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:2px; scrollbar-width:thin; }
-        #r20-emoji .it { margin:0; border:0; border-radius:6px; background:none; color:#333; cursor:pointer; }
-        #r20-emoji .it.e { width:34px; height:34px; padding:0; font-size:21px; line-height:34px; }
-        #r20-emoji .it.t { height:28px; padding:0 8px; background:#f6f6f8; font-size:13px; white-space:nowrap; }
-        #r20-emoji .it:hover, #r20-emoji .it:focus-visible { background:#eaf1fb; outline:none; }
-        #r20-emoji .empty { padding:12px 6px; font-size:12px; color:#999; }
-        #r20-emoji .add { flex-shrink:0; display:flex; gap:4px; margin:0; padding:6px 8px; border-top:1px solid #eee; }
-        #r20-emoji .add[hidden] { display:none; }
-        #r20-emoji .add input { min-width:0; height:26px; margin:0; padding:0 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; box-sizing:border-box; box-shadow:none; }
-        #r20-emoji .add .at { flex:1.4; }
-        #r20-emoji .add .an { flex:1; }
-        #r20-emoji .add button { flex-shrink:0; height:26px; margin:0; padding:0 10px; border:0; border-radius:4px; background:#1867c7; color:#fff; font-size:12px; cursor:pointer; }
-        /* 맵 촬영 단추 (화면 제어 줄 맨 아래) */
-        #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
-        #r20-mapshot:hover { color:#b8215f; }
-        #r20-mapshot:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
-        #r20-mapshot[data-state=ok] { color:#2e8b57; }
-        #r20-mapshot[data-state=warn] { color:#c98a00; }
-        #r20-mapshot[data-state=bad] { color:#c0392b; }
-        #r20-mapshot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
-        .context-menu > button[data-r20tm="choose"] { position:relative; }
-        /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
-        body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
-        body.r20sc-on #vm_zoom_buttons button { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
-        body.r20sc-on #vm_zoom_buttons .level { font-size:11px !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; }
-        body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { display:flex !important; flex-direction:column !important; align-items:center !important; width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { order:1; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > :last-child { order:2; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > .zoomButtonsInner { order:3; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .plus { order:1; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .level { order:2; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .sliderSection { order:3; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:4; }
-        /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
-        body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
-        .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
-        .r20ta-pop .r20ta-h { padding:4px 10px 2px; color:#8a8a90; font-size:10px; font-weight:700; }
-        .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:clip; cursor:pointer; }
-        .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
-        /* 대화 캡처: 고르는 동안 메시지를 눌러 고르고, 고른 것은 왼쪽 막대 + 옅은 배경 */
-        #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
-        #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 #e7b3c9 !important; }
-        #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 #b8215f !important; background-color:rgba(184,33,95,0.08) !important; }
-        #custom-sadam-toggle { display:inline-flex; align-items:center; justify-content:center; }
-        #custom-capture-copy:disabled { cursor:default; }
-        #custom-capture-copy b { font:700 10px/1 sans-serif; }
-        #custom-capture-copy .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
-        @keyframes r20cap-spin { to { transform:rotate(360deg); } }
-        .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
-        .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
-        .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
-        .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
-        .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
-        .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
-        .ui-dialog.r20cs .sidechoice img, .ui-dialog.r20cs .sidechoice video { position:absolute !important; inset:0 !important; display:block !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; object-fit:contain !important; pointer-events:none; }
-        .ui-dialog.r20cs .sidechoice::after { content:counter(side); position:absolute; left:4px; bottom:4px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:10px; font-weight:700; line-height:15px; }
-        .ui-dialog.r20cs .sidechoice:hover { outline:2px solid #9cc1ea; outline-offset:-2px; }
-        .ui-dialog.r20cs .sidechoice[data-selected="true"] { outline:3px solid #1867c7; outline-offset:-3px; }
-        .ui-dialog.r20cs .sidechoice.r20cs-cur::before { content:"현재"; position:absolute; right:4px; top:4px; z-index:1; padding:0 5px; border-radius:7px; background:#fff; color:#1867c7; font-size:9px; font-weight:700; line-height:14px; }
-        .r20cs-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid #e5e5e5; font-size:12px; color:#333; }
-        .r20cs-bar .r20cs-info { color:#6b6b6b; font-size:11px; }
-        .r20cs-bar .r20cs-flex { flex:1; }
-        .r20cs-bar label { display:flex; align-items:center; gap:4px; margin:0; font-size:11px; font-weight:normal; color:#555; }
-        .r20cs-bar input { width:58px !important; height:24px !important; margin:0 !important; padding:0 6px !important; font-size:12px !important; }
-        .r20cs-zoom { display:flex; gap:2px; }
-        .r20cs-zoom button { width:24px; height:22px; padding:0; border:1px solid #ccc; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
-        .r20cs-zoom button:hover { background:#ebebeb; color:#222; }
-        body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
-        body button.r20be-open:hover { background:#f2f2f2; }
+addCss(`
+        #custom-journal-popup { position:fixed; width:190px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); z-index:10002; display:none; flex-direction:column; overflow:hidden; font-family:sans-serif; color:#333; }
+        /* Roll20(Bootstrap)의 .show { display:block !important } 보다 앞서도록 !important */
+        #custom-journal-popup.show { display:flex !important; }
+        .cj-header { display:flex; align-items:center; justify-content:space-between; padding:4px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; cursor:move; user-select:none; }
+        .cj-close-btn { background:none; border:none; cursor:pointer; font-size:13px; color:#999; padding:0 2px; line-height:1; }
+        .cj-close-btn:hover { color:#333; }
+        .cj-zoom { display:flex; gap:2px; margin-left:auto; margin-right:6px; }
+        .cj-zoom button { width:20px; height:18px; padding:0; border:1px solid #ddd; border-radius:3px; background:#fff; color:#666; font-size:12px; line-height:1; cursor:pointer; }
+        .cj-zoom button:hover { background:#ebebeb; color:#333; }
+        .cj-item.cj-drag-over-left { box-shadow:inset 3px 0 0 #1867c7 !important; }
+        .cj-item.cj-drag-over-right { box-shadow:inset -3px 0 0 #1867c7 !important; }
+        .cj-search-container { padding:5px 6px; border-bottom:1px solid #eeeeee; background:#f9f9f9; flex-shrink:0; }
+        .cj-search-input { width:100%; box-sizing:border-box; padding:4px 6px; border:1px solid #cccccc; border-radius:3px; outline:none; font-size:12px; }
+        /* 아이콘 격자: 이름은 마우스를 올리면 툴팁으로 */
+        .cj-list-container { overflow-y:auto; flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(calc(var(--cj-size, 50px) + 4px), 1fr)); gap:4px; padding:6px; align-content:start; }
+        .cj-resize-handle { height:8px; cursor:se-resize; background:linear-gradient(135deg, transparent 40%, #ccc 40%, #ccc 50%, transparent 50%, transparent 60%, #ccc 60%, #ccc 70%, transparent 70%); background-size:8px 8px; background-position:bottom right; background-repeat:no-repeat; flex-shrink:0; }
+        .cj-item { display:flex; align-items:center; justify-content:center; aspect-ratio:1; padding:2px; border-radius:10px; cursor:pointer; transition:background-color 0.1s ease; user-select:none; }
+        .cj-item:hover { background-color:#e6f7ff; }
+        .cj-item.cj-selected { background-color:#dcebfb; box-shadow:inset 0 0 0 2px #1867c7; }
+        .cj-avatar { width:var(--cj-size, 50px); height:var(--cj-size, 50px); min-width:var(--cj-size, 50px); border-radius:8px; object-fit:cover; background-color:#eeeeee; pointer-events:none; }
+        .cj-avatar.cj-initial { display:flex; justify-content:center; align-items:center; font-size:calc(var(--cj-size, 50px) * 0.32); font-weight:700; color:#888; }
         .ui-dialog.r20qp .r20qp-bar { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
         .ui-dialog.r20qp .r20qp-bar input { flex:1; min-width:0; height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid #ccc; border-radius:4px; font-size:12px !important; box-sizing:border-box; }
         .ui-dialog.r20qp .r20qp-zoom { display:flex; gap:2px; }
@@ -1764,9 +3333,6 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid #ddd !important; border-radius:3px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         .ui-dialog.r20qp img.r20qp-img { padding:0; }
         .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:clip; }
-        body.r20be-off button.r20be-open { display:none; }
-        .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
-        .r20be-mini:hover { background:#ebebeb; color:#333; }
         #imagedialog .r20ri { display:flex; flex-direction:column; color:#333; font-size:12px; }
         #imagedialog .r20ri button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
         #imagedialog .r20ri-seg { display:flex; flex-shrink:0; gap:2px; margin:4px 0 6px; padding:2px; border-radius:7px; background:#efeff2; }
@@ -1822,409 +3388,14 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
         #imagedialog .r20ri-foot { display:flex; flex-shrink:0; align-items:center; gap:6px; height:34px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
         #imagedialog .r20ri-foot button { padding:0 7px; }
         #imagedialog .r20ri-sum { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; }
-    `;
-    document.head.appendChild(style);
-}
+`);
+addFeature("roomImages", roomImages);
+addFeature("queryPicker", queryPicker);
+addFeature("quickJournal", quickJournal);
+addBundle({ place: "main", order: 4, label: "그림 · 매크로 · 빠른 저널", sub: "이 방의 이미지 · 매크로 선택 썸네일 · 빠른 저널 단추",
+    members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
 
-// ───────── 자동완성: 시트 인법/마법 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
-// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] } — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
-// 레코드 키: name, group(유파), type, skill, range, target, cost, charge, effect, flavor, recite
-// type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
-const autofill = (() => {
-    const MAX = 8;
-    // 시스템별 "레코드 키 → 시트 필드명(접두어 뒤)"
-    const FIELDS = {
-        insane:      { name: "Name", type: "Types", skill: "Assigned_Skill", effect: "Effect" },
-        shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect" },
-        magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" }
-    };
-    // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
-    const NAME_RE = /^attr_((?:Ninpo|Magic)_(?:\d+_)?)Name$/;
-
-    const norm = s => String(s ?? "").replace(/^\s*\d+\.\s*/, "").replace(/\s+/g, "").toLowerCase();
-    const normCache = new Map();
-    const getList = sys => {
-        const list = window.NIRE_RULEDATA?.[sys];
-        if (!Array.isArray(list)) return null;
-        if (!normCache.has(list)) normCache.set(list, list.map(r => norm(r.name)));
-        return list;
-    };
-
-    // Roll20 CSP 가 외부 <script> 는 막지만 fetch 는 허락한다 → 주소에서 글로 받아 JSON 부분만 읽는다.
-    // 홈페이지 PHP 가 Access-Control-Allow-Origin: https://app.roll20.net 을 내야 한다.
-    const URL_KEY = "r20_ruledata_url";
-    let status = window.NIRE_RULEDATA ? "ok" : "none";     // none · loading · ok · badkey · fail
-    const getUrl = () => localStorage.getItem(URL_KEY) || "";
-    const statusText = () => {
-        if (status === "ok") return Object.values(window.NIRE_RULEDATA || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0) + "개";
-        return { loading: "불러오는 중…", badkey: "열쇠가 맞지 않음", fail: "불러오기 실패" }[status] || "데이터 없음";
-    };
-    const setStatus = st => { status = st; document.dispatchEvent(new CustomEvent("r20-ruledata")); };
-    const load = async () => {
-        const url = getUrl();
-        if (!url) return;
-        setStatus("loading");
-        try {
-            const res = await fetch(url, { cache: "no-cache" });
-            const text = await res.text();
-            const at = text.indexOf("window.NIRE_RULEDATA");
-            if (!res.ok || at < 0) {
-                console.warn("[자동완성] 데이터가 아닌 응답:", res.status, text.slice(0, 200));
-                return setStatus(/열쇠/.test(text) ? "badkey" : "fail");
-            }
-            window.NIRE_RULEDATA = JSON.parse(text.slice(text.indexOf("=", at) + 1).trim().replace(/;\s*$/, ""));
-            normCache.clear();
-            setStatus("ok");
-        } catch (e) {
-            console.warn("[자동완성] 데이터 불러오기 실패 — 홈페이지 PHP 의 Access-Control-Allow-Origin 헤더를 확인하세요.", e);
-            setStatus("fail");
-        }
-    };
-    // '// @require  https://…' 줄을 통째로 붙여 넣어도 주소만 쓴다
-    const setUrl = v => {
-        const url = (String(v).match(/https?:\/\/\S+/) || [""])[0];
-        if (url) { localStorage.setItem(URL_KEY, url); load(); }
-        else { localStorage.removeItem(URL_KEY); setStatus(window.NIRE_RULEDATA ? "ok" : "none"); }
-        return url;
-    };
-    if (!window.NIRE_RULEDATA) load();
-
-    let box = null, input = null, items = [], sel = 0, filling = false;
-
-    const ensureBox = () => {
-        if (box) return box;
-        box = document.createElement("div");
-        box.id = "r20-ac-box";
-        box.setAttribute("role", "listbox");
-        // mousedown 기본동작을 막아 이름칸 포커스를 유지
-        box.addEventListener("mousedown", e => {
-            e.preventDefault();
-            const el = e.target.closest(".r20-ac-item");
-            if (el) apply(items[+el.dataset.i]);
-        });
-        document.body.appendChild(box);
-        return box;
-    };
-
-    const close = () => {
-        if (box) box.classList.remove("show");
-        input = null; items = [];
-    };
-
-    const ctx = el => {
-        const m = el.name?.match(NAME_RE);
-        if (!m || el.disabled) return null;
-        const base = m[1];
-        const row = el.closest(".repitem") || (() => {
-            let p = el.parentElement;
-            for (let i = 0; p && i < 6; i++, p = p.parentElement)
-                if (p.querySelector(`[name="attr_${base}Effect"]`)) return p;
-            return null;
-        })();
-        if (!row) return null;
-        const sys = base.startsWith("Magic") ? "magicalogia"
-            : row.querySelector(`[name="attr_${base}Clan"]`) ? "shinobigami" : "insane";
-        return { base, row, sys };
-    };
-
-    const search = (sys, q) => {
-        const list = getList(sys);
-        if (!list || !q) return [];
-        const names = normCache.get(list);
-        const head = [], mid = [];
-        for (let i = 0; i < list.length && head.length < MAX; i++) {
-            const n = names[i];
-            if (n.startsWith(q)) head.push(list[i]);
-            else if (mid.length < MAX && n.includes(q)) mid.push(list[i]);
-        }
-        return head.concat(mid).slice(0, MAX);
-    };
-
-    const render = () => {
-        ensureBox().innerHTML = "";
-        items.forEach((r, i) => {
-            const it = document.createElement("div");
-            it.className = "r20-ac-item" + (i === sel ? " on" : "");
-            it.dataset.i = i;
-            it.setAttribute("role", "option");
-            const b = document.createElement("b");
-            b.textContent = r.name;
-            const s = document.createElement("small");
-            s.textContent = [r.group, r.type, r.skill].filter(Boolean).join(" · ");
-            it.append(b, s);
-            box.appendChild(it);
-        });
-        const rc = input.getBoundingClientRect();
-        // 시트 iframe 안의 칸이면 iframe 위치만큼 옮겨서 맨 위 화면 좌표로 바꾼다
-        let ox = 0, oy = 0;
-        for (let w = input.ownerDocument.defaultView; w?.frameElement; w = w.parent) {
-            const fr = w.frameElement.getBoundingClientRect();
-            ox += fr.left + w.frameElement.clientLeft; oy += fr.top + w.frameElement.clientTop;
-        }
-        const top = rc.top + oy, bottom = rc.bottom + oy;
-        box.style.left = Math.min(rc.left + ox, window.innerWidth - 230) + "px";
-        box.style.minWidth = Math.max(220, rc.width) + "px";
-        // 아래 공간이 부족하면 위로 띄운다
-        const below = window.innerHeight - bottom;
-        box.style.top = below > 270 ? (bottom + 2) + "px" : "auto";
-        box.style.bottom = below > 270 ? "auto" : (window.innerHeight - top + 2) + "px";
-        box.classList.add("show");
-        box.children[sel]?.scrollIntoView({ block: "nearest" });
-    };
-
-    const pickOption = (select, label) => {
-        const want = norm(label);
-        if (!want) return null;
-        const opts = [...select.options];
-        return opts.find(o => norm(o.textContent) === want)
-            || opts.find(o => norm(o.value) === want || norm(o.value) === `@{${want}}`)
-            || null;
-    };
-
-    const setField = (el, value) => {
-        if (el.tagName === "SELECT") {
-            const opt = pickOption(el, value);
-            if (!opt) { console.warn("[자동완성] 드롭다운에 없는 값:", value, el.name); return; }
-            el.value = opt.value;
-        } else {
-            el.value = value;
-        }
-        const Ev = el.ownerDocument.defaultView?.Event || Event;
-        el.dispatchEvent(new Ev("input", { bubbles: true }));
-        el.dispatchEvent(new Ev("change", { bubbles: true }));
-    };
-
-    const apply = rec => {
-        const c = rec && input && ctx(input);
-        if (!c) return close();
-        const map = FIELDS[c.sys];
-        const data = { ...rec };
-        // 플레이버 칸이 없는 시트는 효과 뒤에 붙인다
-        if (data.flavor && !map.flavor) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
-        filling = true;
-        for (const [key, field] of Object.entries(map)) {
-            if (data[key] == null || data[key] === "") continue;
-            // 같은 name 의 표시용 <span> 이 앞에 있는 시트가 있어 입력 요소만 고른다
-            const el = c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
-            if (el) setField(el, String(data[key]));
-        }
-        filling = false;
-        close();
-    };
-
-    const onInput = e => {
-        if (!btnVisible.autofill || filling) return;
-        const c = ctx(e.target);
-        if (!c) return;
-        const found = search(c.sys, norm(e.target.value));
-        if (!found.length) return close();
-        input = e.target;
-        input.setAttribute("autocomplete", "off");
-        items = found; sel = 0;
-        render();
-    };
-
-    const onKey = e => {
-        if (!input || e.target !== input || !box?.classList.contains("show")) return;
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            sel = (sel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
-            render();
-        } else if (e.key === "Tab") {
-            apply(items[sel]);   // 포커스 이동은 그대로 둔다
-            return;
-        } else if (e.key === "Enter") {
-            apply(items[sel]);
-        } else if (e.key === "Escape") {
-            close();
-        } else return;
-        e.preventDefault(); e.stopPropagation();
-    };
-
-    // 이름칸이 들어 있는 영역(또는 그 시트 iframe 을 품은 창)이 스크롤될 때만 닫는다 (채팅 자동 스크롤 등은 무시)
-    const onScroll = e => {
-        if (!input) return;
-        const fe = input.ownerDocument.defaultView?.frameElement;
-        if (e.target.contains?.(input) || (fe && e.target.contains?.(fe))) close();
-    };
-
-    const onFocusOut = e => { if (e.target === input) close(); };
-
-    // 캐릭터 시트는 같은 출처의 iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다.
-    // document.write 로 다시 그려지면 문서는 그대로인데 리스너만 지워지므로, 기록해 두지 않고 매번 다시 건다
-    // (같은 함수를 다시 addEventListener 하면 중복되지 않는다)
-    const hook = doc => {
-        if (!doc) return;
-        doc.addEventListener("input", onInput, true);
-        doc.addEventListener("keydown", onKey, true);
-        doc.addEventListener("focusout", onFocusOut, true);
-        doc.addEventListener("scroll", onScroll, true);
-        doc.defaultView?.addEventListener("resize", close);
-    };
-    const hookFrame = f => { try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ } };
-    hook(document);
-    const framesSeen = new WeakSet();
-    const inject = () => {
-        document.querySelectorAll("iframe").forEach(f => {
-            if (!framesSeen.has(f)) {
-                framesSeen.add(f);
-                f.addEventListener("load", () => hookFrame(f));
-            }
-            hookFrame(f);
-        });
-    };
-    // 시트 칸을 누르면 맨 위 창이 포커스를 잃는다 → 그 순간 그 iframe 에 다시 건다
-    window.addEventListener("blur", () => setTimeout(() => {
-        const a = document.activeElement;
-        if (a?.tagName === "IFRAME") hookFrame(a);
-    }, 0));
-
-    return { close, inject, getUrl, setUrl, statusText };
-})();
-
-// ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
-// 브라우저 Audio 로 재생하므로 Roll20 동기화(참가자 재생)와 무관하다.
-const bgmPreview = (() => {
-    let audio = null, curId = null, failedId = null;
-    const listeners = new Set();
-    const notify = () => listeners.forEach(fn => fn());
-    // 참가자가 듣게 될 크기 그대로: 트랙 볼륨(0~100)을 따른다
-    const trackVol = track => { const v = Number(track.get("volume")); return isFinite(v) ? Math.min(1, Math.max(0, v / 100)) : 0.5; };
-    const fmt = t => isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}` : "-:--";
-
-    // My Audio 트랙 주소는 vtt.bundle 의 재생 주소 형식을 따른다 (track_id 앞부분 = 오디오 ID)
-    const trackUrl = track => {
-        const tid = String(track.get("track_id") || "");
-        if (/^https?:\/\//.test(tid)) return tid;
-        if (track.get("source") !== "My Audio" || !tid) return null;
-        return `${window.IS_EMBEDDED ? "/.proxy" : ""}/audio_library/play/${window.campaign_id}/${tid.split(/[-#]/)[0]}`;
-    };
-
-    // 주크박스 목록은 Roll20이 자주 다시 그리므로 요소 대신 트랙 ID로 찾는다
-    const markBtn = on => {
-        if (!curId) return;
-        document.querySelectorAll(`li.jukeboxitem[data-itemid="${CSS.escape(curId)}"] .r20-bgm-pv`)
-            .forEach(b => b.classList.toggle("on", on));
-    };
-
-    function stop() {
-        if (audio) { audio.pause(); audio.removeAttribute("src"); audio.load(); audio = null; }
-        markBtn(false);
-        curId = null;
-        notify();
-    }
-
-    // vol(0~1)을 주면 그 크기로, 없으면 트랙 볼륨으로 재생
-    const play = (id, vol) => {
-        const track = window.Jukebox?.playlist?.get(id);
-        if (!track) { console.warn("[BGM 미리듣기] 트랙을 찾지 못함:", id); return; }
-        stop();
-        failedId = null;
-        const url = trackUrl(track);
-        if (!url) { console.warn("[BGM 미리듣기] 지원하지 않는 음원:", track.attributes); failedId = id; notify(); return; }
-        curId = id;
-        const a = audio = new Audio(url);
-        a.volume = vol ?? trackVol(track);
-        // 정지된 이전 Audio 의 늦은 이벤트는 무시
-        a.addEventListener("timeupdate", () => { if (a === audio) notify(); });
-        a.addEventListener("ended", () => { if (a === audio) stop(); });
-        a.addEventListener("error", () => {
-            if (a !== audio) return;
-            console.warn("[BGM 미리듣기] 재생 실패:", url, track.attributes);
-            failedId = id;
-            stop();
-        });
-        a.play().catch(() => {});
-        markBtn(true);
-        notify();
-    };
-    // 편집기에 보여줄 상태 글자
-    const status = id => audio && curId === id ? `재생 중 ${fmt(audio.currentTime)} / ${fmt(audio.duration)}`
-        : failedId === id ? "재생 실패 (콘솔 확인)" : "";
-
-    const inject = () => {
-        if (!btnVisible.bgm) return;
-        document.querySelectorAll("li.jukeboxitem .playbackcontrol:not(:has(> .r20-bgm-pv))").forEach(pc => {
-            const a = document.createElement("a");
-            a.className = "r20-bgm-pv";
-            a.textContent = "🎧";
-            a.title = "미리듣기 (나만 듣기)";
-            a.setAttribute("role", "button");
-            a.tabIndex = 0;
-            pc.insertBefore(a, pc.querySelector("a.play"));
-            if (audio && pc.closest("li.jukeboxitem")?.dataset.itemid === curId) a.classList.add("on");
-        });
-    };
-
-    const onToggle = e => {
-        const btn = e.target.closest?.(".r20-bgm-pv");
-        if (!btn) return;
-        e.preventDefault(); e.stopPropagation();
-        const li = btn.closest("li.jukeboxitem");
-        if (!li) return;
-        if (audio && curId === li.dataset.itemid) stop();
-        else play(li.dataset.itemid);
-    };
-    document.addEventListener("click", e => {
-        // Roll20 전체 재생을 누르면 미리듣기는 끈다
-        if (audio && e.target.closest?.("li.jukeboxitem a.play")) stop();
-        onToggle(e);
-    }, true);
-    document.addEventListener("mousedown", e => { if (e.target.closest?.(".r20-bgm-pv")) e.stopPropagation(); }, true);
-    document.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") onToggle(e); }, true);
-
-    const setEnabled = on => {
-        document.body.classList.toggle("r20-bgm-off", !on);
-        if (on) inject(); else stop();
-    };
-    setEnabled(btnVisible.bgm);
-
-    return {
-        inject, setEnabled, play, stop, status,
-        current: () => audio ? curId : null,
-        setVolume: (id, v) => { if (audio && curId === id) audio.volume = v; },
-        onChange: fn => listeners.add(fn)
-    };
-})();
-
-// Roll20 은 예전 S3 그림 주소(s3.amazonaws.com/files.d20.io/…)를 files.d20.io 로 바꿔 보여 준다 → 미리보기도 같게
-const r20img = u => String(u || "").replace(/^(?:https?:)?\/\/s3\.amazonaws\.com\/files\.d20\.io\//i, "https://files.d20.io/");
-const copyText = async text => {
-    try { await navigator.clipboard.writeText(text); return true; } catch (e) {
-        const ta = document.createElement("textarea");
-        ta.value = text; ta.style.cssText = "position:fixed;left:-9999px";
-        document.body.append(ta); ta.select();
-        const ok = document.execCommand("copy"); ta.remove(); return ok;
-    }
-};
-// 주크박스 곡 태그: Roll20 곡의 tags 칸 (방 데이터라 방을 복사하면 같이 가고, 주크박스는 GM 만 본다)
-const tagList = s => String(s || "").split(/[\s,]+/).map(t => t.replace(/^#/, "")).filter(Boolean);
-// ── 그림 미리보기 공통 (일괄 편집기 · 이 방의 이미지) ──
-// files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다
-const VARIANT = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
-const sizedUrl = (u, s) => VARIANT.test(u) ? u.replace(VARIANT, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
-const escAttr = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-// 움직이는 그림 중 webm·mp4 는 <img> 로 그릴 수 없어 <video> 로 (Roll20 도 움직이는 그림은 med.webm 을 쓴다)
-const isAnimVideo = u => /\.(?:webm|mp4)(?:[?#]|$)/i.test(String(u || ""));
-// 미리보기 주소 후보: 앞에서부터 열어 보고 안 열리면 다음 것 (움직이는 png·gif 는 thumb 가 없는 경우가 있다)
-const previewAlts = (u, sizes = ["thumb", "med", "max"]) =>
-    [...new Set(sizes.flatMap(s => { const v = sizedUrl(u, s); return [r20img(v), v]; }).concat(r20img(u), u))].filter(Boolean);
-const previewHtml = (u, cls = "") => {
-    const vid = isAnimVideo(u), list = previewAlts(u, vid ? ["med", "max"] : undefined).map(x => vid ? x + "#t=0.1" : x);      // #t: 첫 장면을 보여 준다
-    const a = `src="${escAttr(list[0])}" data-alts="${escAttr(list.slice(1).join("\n"))}"`;
-    return vid ? `<video class="r20-anim ${cls}" ${a} muted loop playsinline preload="metadata"></video>`
-        : `<img class="${cls}" ${a} alt="" loading="lazy" draggable="false">`;
-};
-// 안 열린 미리보기: 다음 후보로 바꾼다 (더 없으면 false)
-const nextPreview = m => {
-    const alts = (m.dataset.alts || "").split("\n").filter(Boolean);
-    if (!alts.length) return false;
-    m.dataset.alts = alts.slice(1).join("\n");
-    m.src = alts[0];
-    return true;
-};
-// 움직이는 그림 미리보기는 마우스를 올린 동안만 재생 (여러 개가 한꺼번에 돌아 무거워지지 않게)
-document.addEventListener("mouseover", e => { if (e.target.matches?.("video.r20-anim")) e.target.play().catch(() => {}); });
-document.addEventListener("mouseout", e => { if (e.target.matches?.("video.r20-anim")) e.target.pause(); });
+// ══════════ 묶음 5 · 일괄 편집기 ══════════
 
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
@@ -2386,7 +3557,7 @@ const bulkEditor = (() => {
     }));
 
     // 방 이미지: '이 방의 이미지'와 같은 모음 (편집 대상이 아니라 덱·굴림표 탭으로 보내는 곳)
-    const buildImages = () => ({ ...flatTab("images", []), data: roomImages.gather(), gsel: "" });
+    const buildImages = () => ({ ...flatTab("images", []), data: FEAT.roomImages.gather(), gsel: "" });
     const buildTab = which => {
         if (which === "images") return buildImages();
         if (which === "tables") return buildTables();
@@ -2720,20 +3891,21 @@ const bulkEditor = (() => {
     // 미리듣기 칸: 재생 상태가 바뀔 때마다 _sync 로 글자만 갱신 (버튼 포커스 유지)
     const pvBlock = n => {
         const label = el("span", {}), note = el("span", { class: "r20be-note" });
+        const pv = FEAT.bgmPreview;
         const btn = el("button", { type: "button", class: "r20be-sec", onclick: () => {
-            if (bgmPreview.current() === n.id) bgmPreview.stop(); else bgmPreview.play(n.id, n.cur.vol / 100);
+            if (pv.current() === n.id) pv.stop(); else pv.play(n.id, n.cur.vol / 100);
         } }, ico("phones"), label);
         const box = el("div", { class: "r20be-pv" }, btn, note);
         box._sync = () => {
-            const on = bgmPreview.current() === n.id;
+            const on = pv.current() === n.id;
             btn.classList.toggle("on", on);
             label.textContent = on ? "미리듣기 정지" : "미리듣기 (나만)";
-            note.textContent = bgmPreview.status(n.id) || "참가자에게는 들리지 않음";
+            note.textContent = pv.status(n.id) || "참가자에게는 들리지 않음";
         };
         box._sync();
         return box;
     };
-    bgmPreview.onChange(() => ui?.pane.querySelector(".r20be-pv")?._sync?.());
+    FEAT.bgmPreview?.onChange(() => ui?.pane.querySelector(".r20be-pv")?._sync?.());     // 미리듣기 묶음이 없으면 칸도 없다
 
     const trackPane = n => {
         const t = cur();
@@ -2751,12 +3923,12 @@ const bulkEditor = (() => {
                     oninput: e => {
                         setField(n, "vol", Number(e.target.value));
                         volLb.textContent = `볼륨 ${e.target.value}%`;
-                        bgmPreview.setVolume(n.id, e.target.value / 100);      // 미리듣기 중이면 바로 반영
+                        FEAT.bgmPreview?.setVolume(n.id, e.target.value / 100);      // 미리듣기 중이면 바로 반영
                         refreshRow(n);
                     } })),
             el("label", { class: "r20be-chk" },
                 el("input", { type: "checkbox", checked: n.cur.loop, onchange: e => { setField(n, "loop", e.target.checked); refreshRow(n); } }), "반복 재생"),
-            n.isNew ? null : pvBlock(n));
+            n.isNew || !FEAT.bgmPreview ? null : pvBlock(n));
     };
 
     const groupPane = n => {
@@ -3124,7 +4296,7 @@ const bulkEditor = (() => {
             .map(g => ({ g, its: q && !normQ(g.name).includes(q) ? g.list.filter(hit) : g.list })).filter(x => x.its.length);
     };
     // '전체'는 같은 그림을 한 번만 (주인 묶음 순서대로), 묶음을 고르면 그 묶음에서 쓰는 그림 전부
-    const imgAll = vis => { const own = roomImages.ownerMap(vis); return vis.flatMap(({ g, its }) => its.filter(it => own.get(it) === g)); };
+    const imgAll = vis => { const own = FEAT.roomImages.ownerMap(vis); return vis.flatMap(({ g, its }) => its.filter(it => own.get(it) === g)); };
     const imgList = t => { const vis = imgGroups(t), x = vis.find(v => v.g.key === t.gsel); return x ? x.its : imgAll(vis); };
     const IMG_ICON = { page: "grid", char: "char", handout: "handout", table: "rtable", deck: "deck" };
     const renderImgTree = () => {
@@ -3139,7 +4311,8 @@ const bulkEditor = (() => {
         updateBar();
     };
     const drawPagesBtn = () => {
-        const l = roomImages.loadingNow(), t = S.images;
+        if (!FEAT.roomImages) return;       // 그림 묶음이 없으면 단추도 없다 (처음부터 숨김)
+        const l = FEAT.roomImages.loadingNow(), t = S.images;
         ui.pagesBtn.hidden = S.tab !== "images" || (!l && !t?.data.unread);
         ui.pagesBtn.textContent = l ? `페이지 읽는 중 ${l.done}/${l.total} · 멈추기` : `안 읽은 페이지 ${t?.data.unread || 0}개 읽기`;
     };
@@ -3191,7 +4364,7 @@ const bulkEditor = (() => {
     };
     // 고른 그림 보내기: 덱 카드 · 굴림표 항목은 그 탭에 '저장 안 한 변경'으로 넣는다 (기존 편집과 같이 [저장] 때 반영)
     const openImgSend = (mode, sel) => {
-        const full = it => r20img(roomImages.sized(it.url, "max"));
+        const full = it => r20img(FEAT.roomImages.sized(it.url, "max"));
         const ensure = which => {
             if (!S[which]) { if (which === "decks" ? !decksColl() : !tablesColl()) return null; S[which] = buildTab(which); }
             return S[which];
@@ -3283,7 +4456,7 @@ const bulkEditor = (() => {
                 const out = el("textarea", { class: "r20be-in mono", readOnly: true, "aria-label": "결과", style: "height:120px" });
                 const qRow = el("label", { class: "r20be-chk" }, "질문 문구", qIn);
                 const make = () => {
-                    const urls = sel.map(it => r20img(roomImages.sized(it.url, size.value)));
+                    const urls = sel.map(it => r20img(FEAT.roomImages.sized(it.url, size.value)));
                     qRow.hidden = fmt.value !== "q";
                     out.value = fmt.value === "q" ? `?{${qEsc(qIn.value)}|` + sel.map((it, i) => `${qEsc(it.name || "그림 " + (i + 1))},${urls[i]}`).join("|") + "}" : urls.join("\n");
                 };
@@ -4030,7 +5203,7 @@ const bulkEditor = (() => {
         ui.segT = el("button", { type: "button", onclick: () => switchTab("tables") }, "굴림표");
         ui.segM = el("button", { type: "button", onclick: () => switchTab("macros") }, "매크로");
         ui.segD = el("button", { type: "button", onclick: () => switchTab("decks") }, "덱");
-        ui.segI = el("button", { type: "button", onclick: () => switchTab("images") }, "방 이미지");
+        ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");     // 그림 묶음이 없으면 탭도 없다
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
@@ -4057,11 +5230,11 @@ const bulkEditor = (() => {
         ui.zoom = el("span", { class: "r20be-zm", hidden: true },
             el("button", { type: "button", "aria-label": "아이콘 작게", onclick: () => zoom(-1) }, "−"),
             el("button", { type: "button", "aria-label": "아이콘 크게", onclick: () => zoom(1) }, "+"));
-        ui.pagesBtn = el("button", { type: "button", class: "r20be-sec", hidden: true, onclick: () => roomImages.loadPages() });
+        ui.pagesBtn = el("button", { type: "button", class: "r20be-sec", hidden: true, onclick: () => FEAT.roomImages?.loadPages() });
         // 페이지를 읽는 동안 묶음 목록을 늘리고, 다 읽으면 격자도 새로
-        roomImages.onPages(l => {
+        FEAT.roomImages?.onPages(l => {
             if (!ui.root.classList.contains("r20be-show") || S.tab !== "images" || !S.images) return;
-            if (!l || l.done % 5 === 0) { S.images.data = roomImages.gather(); renderTree(); if (!l) renderPane(); }
+            if (!l || l.done % 5 === 0) { S.images.data = FEAT.roomImages.gather(); renderTree(); if (!l) renderPane(); }
             drawPagesBtn();
         });
         ui.revert = el("button", { type: "button", class: "r20be-sec", onclick: revert }, "되돌리기");
@@ -4112,1638 +5285,489 @@ const bulkEditor = (() => {
     return { inject, setEnabled, open, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
 })();
 
-// ───────── 한 줄 보기: 주크박스 곡 · 저널 항목을 한 줄씩 ('지금 재생 중'은 Roll20 원래 상자 그대로) ─────────
-// 재생·반복·볼륨·메뉴는 Roll20 요소를 그대로 쓰고 CSS 로 배치만 바꾼다 (body.r20jb-on)
-const jukeboxRow = (() => {
-    let bound = false;
-    const trackOf = li => window.Jukebox?.playlist?.get(li.dataset.itemid);
-    const volOf = li => Number(trackOf(li)?.get("volume") ?? li.querySelector(".volume input.slider")?.value ?? 0);
-
-    // ◂ ▸ 조절 단위(%)는 주크박스 위 칸에서 그때그때 바꾼다 (수동 페이드용)
-    let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
-    // Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
-    const step = (li, dir) => {
-        const now = volOf(li);
-        const v = Math.max(0, Math.min(100, dir > 0 ? Math.floor(now / STEP) * STEP + STEP : Math.ceil(now / STEP) * STEP - STEP));
-        const slider = li.querySelector(".volume input.slider");
-        if (slider) {
-            slider.value = v;
-            slider.dispatchEvent(new Event("input", { bubbles: true }));
-            slider.dispatchEvent(new Event("change", { bubbles: true }));
+addCss(`
+        #r20be { position:fixed; z-index:10005; display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); background:#fff; border:1px solid #b5b5b5; border-radius:4px; box-shadow:0 8px 24px rgba(0,0,0,0.22); font-family:sans-serif; font-size:12px; color:#333; resize:both; overflow:hidden; box-sizing:border-box; }
+        /* Roll20(Bootstrap)의 .show { display:block !important } 와 겹치지 않게 전용 클래스를 쓴다 */
+        #r20be.r20be-show { display:flex !important; }
+        #r20be *, #r20be *::before, #r20be *::after { box-sizing:border-box; }
+        #r20be [hidden] { display:none !important; }
+        #r20be button:focus-visible, #r20be input:focus-visible, #r20be select:focus-visible, #r20be textarea:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
+        #r20be .r20be-head { display:flex; align-items:center; gap:10px; height:36px; padding:0 6px 0 10px; background:#f0f0f0; border-bottom:1px solid #dcdcdc; cursor:move; user-select:none; flex-shrink:0; }
+        #r20be .r20be-head strong { font-size:12px; color:#555; }
+        #r20be .r20be-ver { margin-left:-6px; color:#999; font-size:10px; }
+        #r20be .r20be-seg { display:flex; gap:2px; padding:2px; background:#e2e2e2; border-radius:4px; }
+        #r20be .r20be-seg button { border:0; background:transparent; height:24px; padding:0 12px; font-size:12px; font-weight:700; color:#555; border-radius:3px; cursor:pointer; }
+        #r20be .r20be-seg button.on { background:#1867c7; color:#fff; }
+        #r20be .r20be-flex { flex:1; }
+        #r20be .r20be-ico { display:inline-flex; flex-shrink:0; }
+        #r20be .r20be-ib { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border:0; background:transparent; border-radius:3px; cursor:pointer; color:#6b6b6b; padding:0; flex-shrink:0; }
+        #r20be .r20be-ib:hover { background:#e6e6e6; color:#333; }
+        #r20be .r20be-tools { position:relative; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 8px; border-bottom:1px solid #e6e6e6; flex-shrink:0; }
+        #r20be .r20be-chips { display:flex; flex-wrap:wrap; gap:4px; }
+        #r20be .r20be-in { width:100%; height:28px; margin:0; padding:0 8px; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333; font-size:12px; box-shadow:none; }
+        #r20be .r20be-in:focus { border-color:#1867c7; outline:none; }
+        #r20be .r20be-search { flex:1 1 160px; max-width:240px; width:auto; }
+        #r20be .r20be-chip { height:24px; padding:0 9px; border:1px solid #d4d4d4; border-radius:12px; background:#fff; color:#555; font-size:11px; cursor:pointer; }
+        #r20be .r20be-chip.on { border-color:#1867c7; background:#eef5fd; color:#1867c7; font-weight:700; }
+        #r20be .r20be-badge { padding:3px 8px; border-radius:10px; background:#fff4e5; color:#b45309; font-size:11px; font-weight:700; }
+        #r20be .r20be-pri { height:26px; padding:0 14px; border:0; border-radius:3px; background:#1867c7; color:#fff; font-size:12px; font-weight:700; cursor:pointer; }
+        #r20be .r20be-pri:hover { background:#1455a4; }
+        #r20be .r20be-pri:disabled { background:#b9cde6; cursor:default; }
+        #r20be .r20be-sec { display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 10px; border:1px solid #d4d4d4; border-radius:3px; background:#fff; color:#444; font-size:12px; cursor:pointer; }
+        #r20be .r20be-sec:hover { background:#f2f2f2; }
+        #r20be .r20be-sec:disabled { background:#fff; color:#aaa; cursor:default; }
+        #r20be .r20be-sec.on { background:#333; border-color:#333; color:#fff; }
+        #r20be .r20be-sec.danger { color:#b91c1c; }
+        #r20be .r20be-menu { position:absolute; top:34px; z-index:2; display:flex; flex-direction:column; min-width:130px; padding:4px 0; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); }
+        #r20be .r20be-menu button { padding:6px 12px; border:0; background:transparent; color:#333; font-size:12px; text-align:left; cursor:pointer; }
+        #r20be .r20be-menu button:hover { background:#eef6ff; }
+        #r20be .r20be-menu button:disabled { background:transparent; color:#aaa; cursor:default; }
+        #r20be .r20be-body { flex:1 1 0; min-height:0; display:flex; overflow:hidden; }
+        #r20be .r20be-col { position:relative; min-height:0; display:flex; }
+        #r20be .r20be-col.tree { flex:0 0 300px; min-width:200px; max-width:calc(100% - 280px); border-right:1px solid #e6e6e6; }
+        #r20be .r20be-split { position:absolute; top:0; bottom:0; right:-4px; z-index:5; width:8px; cursor:col-resize; touch-action:none; }
+        #r20be .r20be-split:hover, #r20be .r20be-split:focus-visible, #r20be .r20be-split.on { background:rgba(24,103,199,0.22); outline:none; }
+        #r20be .r20be-col.pane { flex:1; min-width:0; }
+        /* 기본 스크롤바 대신 직접 만든 스크롤바(.r20be-sb)를 쓴다 */
+        #r20be .r20be-tree, #r20be .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:none; }
+        #r20be .r20be-tree::-webkit-scrollbar, #r20be .r20be-pane::-webkit-scrollbar { display:none; }
+        #r20be .r20be-tree { padding-right:14px; }
+        #r20be .r20be-pane { padding:14px 26px 14px 16px; }
+        #r20be .r20be-sb { position:absolute; top:3px; right:3px; bottom:3px; width:10px; border-radius:5px; background:#ededed; cursor:pointer; }
+        #r20be .r20be-sb-th { position:absolute; top:0; left:1px; right:1px; min-height:24px; border-radius:4px; background:#b0b0b0; cursor:grab; }
+        #r20be .r20be-sb-th:hover, #r20be .r20be-sb-th.drag { background:#888; }
+        #r20be .r20be-row { display:flex; align-items:center; gap:3px; min-height:28px; padding-right:6px; border-bottom:1px solid #f2f2f2; }
+        #r20be .r20be-row:hover { background:#f3f8fe; }
+        #r20be .r20be-row.chk { background:#eef5fd; }
+        #r20be .r20be-row.sel { background:#dcebfb; }
+        #r20be .r20be-row.del .r20be-nm span { color:#999; text-decoration:line-through; }
+        #r20be .r20be-row.drop-in { outline:2px solid #1867c7; outline-offset:-2px; }
+        #r20be .r20be-row.drop-before { box-shadow:inset 0 2px 0 #1867c7; }
+        #r20be .r20be-sp { width:22px; flex-shrink:0; }
+        #r20be .r20be-cb { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; padding:0; border:1px solid #b8b8b8; border-radius:3px; background:#fff; color:#fff; cursor:pointer; flex-shrink:0; }
+        #r20be .r20be-cb svg { visibility:hidden; }
+        #r20be .r20be-cb.on { background:#1867c7; border-color:#1867c7; }
+        #r20be .r20be-cb.on svg { visibility:visible; }
+        #r20be .r20be-nm { flex:1; min-width:0; display:flex; align-items:center; gap:5px; height:26px; padding:0 4px; border:0; background:transparent; color:#222; font-size:12px; text-align:left; cursor:pointer; }
+        #r20be .r20be-nm span { overflow:hidden; text-overflow:clip; white-space:nowrap; }
+        #r20be .r20be-nm svg { flex-shrink:0; }
+        #r20be .r20be-dot { width:7px; height:7px; border-radius:50%; background:#c2410c; flex-shrink:0; }
+        #r20be .r20be-meta { color:#6b6b6b; font-size:10px; white-space:nowrap; flex-shrink:0; }
+        #r20be .r20be-vw { display:flex; gap:2px; padding:2px; background:#ececec; border-radius:4px; }
+        #r20be .r20be-vw button { display:flex; align-items:center; justify-content:center; width:26px; height:22px; padding:0; border:0; border-radius:3px; background:transparent; color:#555; cursor:pointer; }
+        #r20be .r20be-vw button.on { background:#fff; color:#1867c7; box-shadow:0 0 0 1px #c9d9ee; }
+        #r20be .r20be-zm { display:flex; gap:2px; }
+        #r20be .r20be-zm button { width:22px; height:22px; padding:0; border:1px solid #d4d4d4; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
+        #r20be .r20be-zm button:hover { background:#f2f2f2; color:#222; }
+        #r20be .r20be-tree.r20be-icons { padding:2px 10px 12px; }
+        #r20be .r20be-igh { display:flex; align-items:center; gap:6px; padding:10px 4px 4px; font-size:11px; font-weight:700; color:#555; }
+        #r20be .r20be-igh span { min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
+        #r20be .r20be-igh small { font-weight:400; color:#6b6b6b; }
+        #r20be .r20be-igh::after { content:""; flex:1; height:1px; background:#eee; }
+        #r20be .r20be-igrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:4px; }
+        #r20be .r20be-row.r20be-tile { position:relative; display:block; min-height:0; padding:0; border:0; border-radius:8px; }
+        #r20be .r20be-tile.sel { box-shadow:inset 0 0 0 2px #1867c7; }
+        #r20be .r20be-tl { display:flex; flex-direction:column; align-items:center; gap:5px; width:100%; padding:6px 4px 8px; border:0; border-radius:8px; background:transparent; cursor:pointer; }
+        #r20be .r20be-pic { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; background:#e9e9e9; color:#888; font-size:calc(var(--be-icon, 84px) * 0.32); font-weight:700; }
+        #r20be .r20be-tn { width:100%; font-size:11px; line-height:1.35; color:#222; text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; overflow-wrap:anywhere; }
+        #r20be .r20be-tile .r20be-cb { position:absolute; left:9px; top:9px; width:18px; height:18px; border-radius:4px; }
+        #r20be .r20be-tile .r20be-dot { position:absolute; right:9px; top:9px; box-shadow:0 0 0 2px #fff; }
+        #r20be .r20be-tile.del .r20be-tn { color:#999; text-decoration:line-through; }
+        #r20be .r20be-tile.del .r20be-pic { opacity:0.4; }
+        #r20be .r20be-inl { flex:1; min-width:0; height:24px; }
+        #r20be .r20be-pane-in { display:flex; flex-direction:column; gap:12px; min-height:100%; }
+        #r20be .r20be-ph { display:flex; align-items:center; gap:8px; }
+        #r20be .r20be-ph strong { font-size:14px; }
+        #r20be .r20be-tag { padding:2px 7px; border-radius:9px; font-size:10px; font-weight:700; }
+        #r20be .r20be-tag.del { background:#fde8e8; color:#b91c1c; }
+        #r20be .r20be-tag.new { background:#e7f6ec; color:#15803d; }
+        #r20be .r20be-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+        #r20be .r20be-fld { display:block; margin:0; font-weight:normal; }
+        #r20be .r20be-lb { display:block; margin-bottom:4px; color:#555; font-size:11px; font-weight:700; }
+        #r20be .r20be-ed { flex:1 0 auto; min-height:240px; display:flex; flex-direction:column; border:1px solid #ccc; border-radius:4px; overflow:hidden; }
+        #r20be .r20be-ctabs { display:flex; padding:0 4px; border-bottom:1px solid #e6e6e6; flex-shrink:0; }
+        #r20be .r20be-ctab { height:28px; padding:0 10px; border:0; border-bottom:2px solid transparent; background:transparent; color:#6b6b6b; font-size:12px; font-weight:700; cursor:pointer; }
+        #r20be .r20be-ctab.on { border-bottom-color:#1867c7; color:#1867c7; }
+        #r20be .r20be-ta { flex:1 0 auto; width:100%; min-height:200px; overflow:hidden; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
+        #r20be .r20be-ta.mono { font-family:Consolas, monospace; font-size:12px; }
+        #r20be .r20be-warn { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:6px 10px; border-bottom:1px solid #fde4c8; background:#fff7ed; color:#92400e; font-size:11px; }
+        #r20be .r20be-note, #r20be .r20be-empty { margin:0; color:#6b6b6b; font-size:12px; }
+        #r20be .r20be-empty { padding:24px 8px; text-align:center; }
+        #r20be .r20be-chk { display:flex; align-items:center; gap:6px; margin:0; font-size:12px; font-weight:normal; }
+        #r20be .r20be-chk input { margin:0; }
+        #r20be .r20be-range { width:100%; margin:0; }
+        #r20be .r20be-pv { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #e6e6e6; border-radius:4px; background:#fafafa; }
+        #r20be .r20be-prev { border:1px solid #e6e6e6; border-radius:4px; overflow:hidden; }
+        #r20be .r20be-prev > div { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; padding:5px 10px; border-top:1px solid #f0f0f0; }
+        #r20be .r20be-prev > div:first-child { border-top:0; background:#f6f6f6; color:#555; font-size:11px; font-weight:700; }
+        #r20be .r20be-prev span { overflow:hidden; text-overflow:clip; white-space:nowrap; }
+        #r20be .r20be-prev .chg { color:#1867c7; font-weight:700; }
+        #r20be .r20be-prev .same { color:#8a8a8a; }
+        #r20be .r20be-acts { display:flex; gap:8px; }
+        /* 굴림표 */
+        #r20be .r20be-trow { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
+        #r20be .r20be-trow .r20be-fld { width:240px; }
+        #r20be .r20be-trow .r20be-chk { height:28px; }
+        #r20be .r20be-add { display:flex; gap:8px; align-items:flex-start; }
+        #r20be .r20be-add textarea { flex:1; height:72px; padding:6px 8px; resize:vertical; }
+        #r20be .r20be-tbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 10px; border:1px solid #dbe7f6; border-radius:6px; background:#eef5fd; font-size:12px; }
+        #r20be .r20be-tbar .prev { color:#1867c7; font-weight:700; }
+        #r20be .r20be-sepv { width:1px; height:18px; background:#c9d9ee; }
+        #r20be .r20be-tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; }
+        #r20be .r20be-tgrid > .r20be-empty { grid-column:1 / -1; }
+        #r20be .r20be-card { position:relative; display:flex; flex-direction:column; gap:4px; padding:5px; border:1px solid #e3e3e3; border-radius:8px; background:#fff; }
+        #r20be .r20be-card.chk { border-color:#1867c7; background:#f1f7fe; }
+        #r20be .r20be-card.dirty { box-shadow:inset 0 0 0 1px #f0b27a; }
+        #r20be .r20be-thumb { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; padding:0; border:0; border-radius:6px; background:#f2f2f2; color:#888; font-size:11px; overflow:hidden; cursor:pointer; }
+        #r20be .r20be-thumb img, #r20be .r20be-thumb video { width:100%; height:100%; object-fit:cover; }
+        #r20be .r20be-thumb.none { border:1px dashed #d4d4d4; background:#fafafa; }
+        #r20be .r20be-card .r20be-thumb { position:relative; }
+        #r20be .r20be-thumb .r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:4px; background:#ccc; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+        #r20be .r20be-tbar.idle { border-color:#eee; background:#fafafa; }
+        #r20be .r20be-tgrid.r20be-imgs { grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:6px; }
+        #r20be .r20be-imgs .r20be-card { gap:3px; padding:4px; }
+        #r20be .r20be-ithumb { background:#f1f1f1; }
+        #r20be .r20be-ithumb img, #r20be .r20be-ithumb video { object-fit:contain; }
+        #r20be .r20be-inm { overflow:hidden; padding:0 2px; color:#333; font-size:11px; white-space:nowrap; text-overflow:clip; }
+        #r20be .r20be-icnt { position:absolute; right:8px; top:8px; padding:0 5px; border-radius:7px; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; font-weight:700; line-height:14px; }
+        #r20be .r20be-isend { display:flex; flex-direction:column; gap:8px; }
+        #r20be .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
+        #r20be .r20be-isend .r20be-chk[hidden] { display:none; }
+        #r20be .r20be-broken { visibility:hidden; }
+        #r20be .r20be-ov { position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center; background:rgba(30,30,30,0.35); }
+        #r20be .r20be-dlg { width:min(440px, calc(100% - 32px)); display:flex; flex-direction:column; gap:10px; padding:16px; background:#fff; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3); }
+        #r20be .r20be-dlg > strong { font-size:14px; }
+        #r20be .r20be-mlist { display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; }
+        #r20be .r20be-mrow { display:flex; align-items:center; gap:8px; margin:0; padding:6px 8px; border:1px solid #e6e6e6; border-radius:4px; font-size:12px; font-weight:normal; cursor:pointer; }
+        #r20be .r20be-mrow input { margin:0; }
+        #r20be .r20be-mrow span { flex:1; min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
+        #r20be .r20be-mrow small { color:#6b6b6b; }
+        #r20be .r20be-mrow:has(input:checked) { border-color:#1867c7; background:#eef5fd; }
+        #r20be .r20be-msum { font-size:12px; font-weight:700; color:#1867c7; }
+        #r20be .r20be-dlg.wide { width:min(640px, calc(100% - 32px)); max-height:calc(100% - 32px); overflow-y:auto; }
+        #r20be .r20be-tsplit { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; }
+        #r20be .r20be-tprev { height:220px; overflow-y:auto; border:1px solid #e6e6e6; border-radius:4px; }
+        #r20be .r20be-tprev > div { display:grid; grid-template-columns:minmax(0, 1fr) 52px 48px; gap:6px; align-items:center; height:24px; padding:0 8px; border-bottom:1px solid #f0f0f0; font-size:11px; }
+        #r20be .r20be-tprev > div > span:first-child { overflow:hidden; text-overflow:clip; white-space:nowrap; }
+        #r20be .r20be-tprev > div > span:not(:first-child) { color:#6b6b6b; text-align:right; }
+        #r20be .r20be-tsplit textarea { height:196px; padding:6px 8px; resize:none; }
+        #r20be .r20be-dlg textarea.mono { height:180px; padding:6px 8px; font-family:ui-monospace, Consolas, monospace; resize:vertical; }
+        #r20be .r20be-mprev { max-height:96px; overflow-y:auto; padding:8px; border:1px solid #e6e6e6; border-radius:4px; background:#fafafa; font-family:ui-monospace, Consolas, monospace; font-size:11px; line-height:1.5; word-break:break-all; user-select:text; }
+        #r20be .r20be-cb2 { position:absolute; left:9px; top:9px; display:flex; align-items:center; justify-content:center; width:18px; height:18px; padding:0; border:1px solid #b8b8b8; border-radius:4px; background:#fff; color:#fff; cursor:pointer; }
+        #r20be .r20be-cb2 svg { visibility:hidden; }
+        #r20be .r20be-cb2.on { background:#1867c7; border-color:#1867c7; }
+        #r20be .r20be-cb2.on svg { visibility:visible; }
+        #r20be .r20be-mini { height:24px; padding:0 6px; font-size:11px; }
+        #r20be .r20be-wl { display:flex; align-items:center; gap:4px; margin:0; color:#6b6b6b; font-size:10px; font-weight:normal; }
+        #r20be .r20be-wl input { width:52px; }
+        #r20be .r20be-foot { display:flex; align-items:center; min-height:26px; padding:3px 10px; border-top:1px solid #e6e6e6; background:#f7f7f7; color:#555; font-size:11px; flex-shrink:0; }
+        #r20be .r20be-foot.ok { color:#15803d; font-weight:700; }
+        #r20be .r20be-foot.err { color:#b91c1c; font-weight:700; }
+        @media (max-width: 640px) {
+            #r20be .r20be-body { flex-direction:column; }
+            #r20be .r20be-col.tree { flex:0 0 40% !important; max-width:none; border-right:0; border-bottom:1px solid #e6e6e6; }
+            #r20be .r20be-split { display:none; }
+            #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
         }
-        const m = trackOf(li);
-        if (m && Number(m.get("volume")) !== v) m.save({ volume: v });
-        const label = li.querySelector(".r20jb-vol span");
-        if (label) label.textContent = v;
-    };
+        body button.r20be-open { display:inline-flex; align-items:center; gap:4px; margin:6px 0; padding:3px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; }
+        body button.r20be-open:hover { background:#f2f2f2; }
+        body.r20be-off button.r20be-open { display:none; }
+        .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
+        .r20be-mini:hover { background:#ebebeb; color:#333; }
+`);
+addFeature("bulkEditor", bulkEditor);
+addBundle({ place: "main", order: 5, label: "일괄 편집기", sub: "",
+    members: [["bulk", "bulkEditor"]],
+    extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
 
-    const addVolume = () => {
-        document.querySelectorAll("#jukebox li.jukeboxitem .volume:not(:has(> .r20jb-vol))").forEach(vol => {
-            const box = document.createElement("span");
-            box.className = "r20jb-vol";
-            box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 올리기">▸</button>';
-            box.querySelector("span").textContent = Math.round(volOf(vol.closest("li.jukeboxitem")));
-            vol.appendChild(box);
-        });
-    };
-    // 반복 재생: Roll20 곡 모델의 loop 값을 직접 켜고 끈다 (Roll20 쪽 체크박스 모양에 기대지 않게)
-    const setLoop = (b, on) => {
-        b.classList.toggle("on", on);
-        b.setAttribute("aria-pressed", String(on));
-        b.title = on ? "반복 재생 중 · 누르면 끄기" : "반복 안 함 · 누르면 켜기";
-    };
-    const addLoop = () => {
-        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content:not(:has(> .r20jb-loop))").forEach(c => {
-            const b = document.createElement("button");
-            b.type = "button"; b.className = "r20jb-loop"; b.textContent = "↻";
-            b.setAttribute("aria-label", "반복 재생");
-            setLoop(b, !!trackOf(c.closest("li.jukeboxitem"))?.get("loop"));
-            c.appendChild(b);
-        });
-    };
-    // 태그: 제목 줄 자리는 차지하지 않고, 제목에 마우스를 올리면 바로 검은 말풍선으로 (띄어쓰기·쉼표로 나눔)
-    const tagText = m => tagList(m?.get("tags")).map(x => "#" + x).join(" ");
-    const addTags = () => {
-        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content > .title").forEach(ti => {
-            const txt = tagText(trackOf(ti.closest("li.jukeboxitem")));
-            if (txt) { if (ti.dataset.r20jbTags !== txt) ti.dataset.r20jbTags = txt; }
-            else if (ti.dataset.r20jbTags) delete ti.dataset.r20jbTags;
-        });
-    };
-    let tip = null;
-    const TAGGED = "#jukebox .title[data-r20jb-tags]";
-    document.addEventListener("mouseover", e => {
-        const ti = btnVisible.jbrow && e.target.closest?.(TAGGED);
-        if (!ti) return;
-        if (!tip) { tip = document.createElement("div"); tip.className = "r20jb-tip"; tip.setAttribute("role", "tooltip"); }
-        tip.textContent = ti.dataset.r20jbTags;
-        document.body.appendChild(tip);
-        const r = ti.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-        tip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
-        tip.style.top = (r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
-    });
-    document.addEventListener("mouseout", e => { const ti = e.target.closest?.(TAGGED); if (ti && !ti.contains(e.relatedTarget)) tip?.remove(); });
-    document.addEventListener("wheel", () => tip?.remove(), { capture: true, passive: true });
-    // 트랙이 없는 재생목록은 구분선으로 쓴다 → 표시만 붙이고 모양은 CSS.
-    // 화면이 아니라 Roll20 폴더 구조로 판단해서, 접혀 있는 목록도 틀리지 않는다
-    let sepRaw = null, sepIds = new Set();
-    const markSeps = () => {
-        const raw = window.Campaign?.get?.("jukeboxfolder") || "[]";
-        if (raw !== sepRaw) {
-            sepRaw = raw;
-            sepIds = new Set();
-            let list = [];
-            try { list = JSON.parse(raw); } catch (e) {}
-            const walk = l => (Array.isArray(l) ? l : []).forEach(x => { if (x && typeof x === "object") { if (!(x.i || []).length) sepIds.add(x.id); walk(x.i); } });
-            walk(list);
-        }
-        document.querySelectorAll("#jukeboxfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
-            const on = sepIds.has(f.dataset.globalfolderid);
-            if (f.classList.contains("r20jb-sep") !== on) f.classList.toggle("r20jb-sep", on);
-        });
-    };
-    const addStepControl = () => {
-        const host = document.querySelector("#jukebox .secondarycontrols");
-        if (!host || host.querySelector(".r20jb-step")) return;
-        const wrap = document.createElement("label");
-        wrap.className = "r20jb-step";
-        wrap.title = "◂ ▸ 를 누를 때 바뀌는 볼륨 크기";
-        wrap.append("볼륨 ±");
-        const inp = document.createElement("input");
-        inp.type = "number"; inp.min = "1"; inp.max = "50"; inp.value = STEP;
-        inp.setAttribute("aria-label", "볼륨 조절 단위(%)");
-        inp.addEventListener("input", () => {
-            const v = parseInt(inp.value, 10);
-            if (v >= 1 && v <= 50) { STEP = v; localStorage.setItem("r20jb_step", v); }
-        });
-        inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
-        wrap.append(inp, "%");
-        host.appendChild(wrap);
-    };
+// ══════════ 묶음 6 · 시트 자동완성 ══════════
 
-    let watched = null;
-    const inject = () => {
-        if (!btnVisible.jbrow) return;
-        addStepControl();
-        // Roll20 이 곡 줄을 다시 그리면 화면에 그려지기 전에 바로 다시 붙인다 (슬라이더·버튼 깜빡임 방지)
-        const jb = document.getElementById("jukebox");
-        if (jb && watched !== jb) {
-            watched = jb;
-            new MutationObserver(() => {
-                if (!btnVisible.jbrow) return;
-                addVolume();
-                addLoop();
-                addTags();
-                markSeps();
-                bgmPreview.inject();
-            }).observe(jb, { childList: true, subtree: true });
-        }
-        // 다른 곳(일괄 편집기 등)에서 볼륨이 바뀌면 숫자도 맞춘다
-        if (!bound && window.Jukebox?.playlist?.on) {
-            bound = true;
-            window.Jukebox.playlist.on("change:volume", m => {
-                const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
-                if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
-            });
-            window.Jukebox.playlist.on("change:tags", () => addTags());
-            window.Jukebox.playlist.on("change:loop", m => {
-                const b = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-loop`);
-                if (b) setLoop(b, !!m.get("loop"));
-            });
-        }
-        addVolume();
-        addLoop();
-        addTags();
-        markSeps();
+// ───────── 자동완성: 시트 인법/마법 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
+// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] } — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
+// 레코드 키: name, group(유파), type, skill, range, target, cost, charge, effect, flavor, recite
+// type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
+const autofill = (() => {
+    const MAX = 8;
+    // 시스템별 "레코드 키 → 시트 필드명(접두어 뒤)"
+    const FIELDS = {
+        insane:      { name: "Name", type: "Types", skill: "Assigned_Skill", effect: "Effect" },
+        shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect" },
+        magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" }
     };
-    document.addEventListener("click", e => {
-        const lb = e.target.closest?.(".r20jb-loop");
-        if (lb) {
-            e.preventDefault(); e.stopPropagation();
-            const m = trackOf(lb.closest("li.jukeboxitem"));
-            if (!m) return;
-            const on = !m.get("loop");
-            m.save({ loop: on });
-            setLoop(lb, on);
-            return;
-        }
-        const btn = e.target.closest?.(".r20jb-vol button");
-        if (!btn) return;
-        e.preventDefault(); e.stopPropagation();
-        step(btn.closest("li.jukeboxitem"), Number(btn.dataset.dir));
-    }, true);
+    // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
+    const NAME_RE = /^attr_((?:Ninpo|Magic)_(?:\d+_)?)Name$/;
 
-    const setEnabled = on => {
-        document.body.classList.toggle("r20jb-on", on);
-        if (on) inject();
-    };
-    setEnabled(btnVisible.jbrow);
-    return { inject, setEnabled };
-})();
-
-// ───────── 면 선택: 다면 토큰의 Choose Side 창을 썸네일 격자로 (슬라이더 대신 눌러서 고르기) ─────────
-// Roll20 창과 이미지는 그대로 두고, 고른 면에 맞춰 Roll20 슬라이더를 움직인 뒤 원래 [Choose] 로 적용한다
-const sidePicker = (() => {
-    let size = Math.max(48, Math.min(220, parseInt(localStorage.getItem("r20_cs_size"), 10) || 96));
-    const choicesOf = dlg => [...dlg.querySelectorAll(".sidechoices > .sidechoice")];
-
-    const select = (dlg, idx) => {
-        const list = choicesOf(dlg);
-        if (idx < 0 || idx >= list.length) return;
-        const $ = window.$ || window.jQuery, sl = dlg.querySelector(".sideslider");
-        let done = false;
-        // Roll20 의 [Choose] 는 setTokenSide(tt) — tt 는 창에 걸린 'slide' 이벤트 처리기만 바꾼다.
-        // 그래서 값만 넣지 않고, 끌었을 때처럼 slide 이벤트를 보내 그 처리기를 태운다
-        if ($ && sl) {
-            try {
-                const min = $(sl).slider("option", "min"), max = $(sl).slider("option", "max");
-                if (typeof min === "number" && typeof max === "number") {
-                    const v = max - min === list.length - 1 ? min + idx : Math.round(min + idx * (max - min) / Math.max(1, list.length - 1));
-                    $(sl).slider("value", v);
-                    $(sl).trigger("slide", { value: v, handle: sl.querySelector(".ui-slider-handle") });
-                    done = $(sl).slider("value") === v;
-                }
-            } catch (e) { /* 슬라이더를 만든 jQuery 가 아님 → 아래 마우스 방식 */ }
-        }
-        // 아니면 슬라이더 막대를 그 자리에서 누른 것처럼 마우스 이벤트를 보내 Roll20 처리기를 그대로 태운다
-        // (숨겨 둔 슬라이더는 잠깐 보이지 않게 펼쳐 위치를 잰다 · 값 범위는 0 ~ 면 수-1)
-        if (!done && sl && list.length > 1) {
-            dlg.classList.add("r20cs-drive");
-            try {
-                const r = sl.getBoundingClientRect();
-                const o = { bubbles: true, cancelable: true, view: window, button: 0, clientX: r.left + (idx / (list.length - 1)) * r.width, clientY: r.top + r.height / 2 };
-                sl.dispatchEvent(new MouseEvent("mousedown", { ...o, buttons: 1 }));
-                sl.dispatchEvent(new MouseEvent("mouseup", o));
-            } finally { dlg.classList.remove("r20cs-drive"); }
-        }
-        list.forEach((c, i) => c.setAttribute("data-selected", String(i === idx)));
-        const bar = dlg.querySelector(".r20cs-bar");
-        if (bar) {
-            bar.querySelector(".r20cs-num").textContent = `${idx + 1}번`;
-            bar.querySelector("input").value = idx + 1;
-        }
-    };
-    const choose = dlg => {
-        const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
-        (btns.find(b => /choose/i.test(b.textContent)) || btns[0])?.click();
-    };
-
-    const enhance = dlg => {
-        const list = choicesOf(dlg), cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
-        dlg.classList.add("r20cs");
-        dlg._r20csFirst = list[0];
-        dlg.style.setProperty("--cs-size", size + "px");
-        list[cur]?.classList.add("r20cs-cur");
-        const bar = document.createElement("div");
-        bar.className = "r20cs-bar";
-        bar.innerHTML = '<strong class="r20cs-num"></strong><span class="r20cs-info"></span><span class="r20cs-flex"></span>'
-            + '<label>번호로 가기 <input type="number" min="1" aria-label="번호로 가기"></label>'
-            + '<span class="r20cs-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span>';
-        bar.querySelector(".r20cs-num").textContent = `${cur + 1}번`;
-        bar.querySelector(".r20cs-info").textContent = `/ 전체 ${list.length}면 · 지금 ${cur + 1}번 · 더블클릭하면 바로 적용`;
-        const inp = bar.querySelector("input");
-        inp.max = list.length;
-        inp.value = cur + 1;
-        inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") choose(dlg); });
-        inp.addEventListener("input", () => {
-            const n = parseInt(inp.value, 10);
-            if (n >= 1 && n <= list.length) { select(dlg, n - 1); list[n - 1].scrollIntoView({ block: "nearest" }); }
-        });
-        bar.querySelectorAll(".r20cs-zoom button").forEach(b => b.addEventListener("click", () => {
-            size = Math.max(48, Math.min(220, size + Number(b.dataset.d) * 16));
-            localStorage.setItem("r20_cs_size", size);
-            dlg.style.setProperty("--cs-size", size + "px");
-        }));
-        dlg.querySelector(".ui-dialog-titlebar")?.after(bar);
-        // 창을 키워서 화면 가운데로
-        const w = Math.min(760, window.innerWidth - 40);
-        dlg.style.width = w + "px";
-        dlg.style.left = Math.max(10, (window.innerWidth - w) / 2) + "px";
-        dlg.style.top = Math.max(10, (window.innerHeight - dlg.offsetHeight) / 2) + "px";
-        list[cur]?.scrollIntoView({ block: "center" });
-    };
-
-    // 토큰 메뉴에서 이전·다음·처음·마지막 면을 고르면: Roll20 의 면 선택 창이 뜨는 대로 보이지 않게 골라 적용한다
-    let auto = null, autoTimer = null;
-    const endAuto = () => {
-        auto = null; clearTimeout(autoTimer);
-        setTimeout(() => document.body.classList.remove("r20cs-auto"), 300);      // 닫히는 창이 번쩍이지 않게
-    };
-    const startAuto = act => {
-        auto = act;
-        document.body.classList.add("r20cs-auto");
-        clearTimeout(autoTimer);
-        autoTimer = setTimeout(() => { if (auto) { console.warn("[토큰 메뉴] 면 선택 창이 뜨지 않음"); endAuto(); } }, 3000);
-    };
-    const runAuto = () => {
-        const dlg = [...document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)")].find(d => getComputedStyle(d).display !== "none");
-        if (!dlg) return;
-        const list = choicesOf(dlg), n = list.length, cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
-        const to = { prev: (cur - 1 + n) % n, next: (cur + 1) % n, first: 0, last: n - 1 }[auto];
-        endAuto();
-        select(dlg, to);
-        choose(dlg);
-    };
-
-    const inject = () => {
-        if (auto) return runAuto();
-        if (!btnVisible.sidepick) return;
-        document.querySelectorAll(".ui-dialog:has(.sidechoices > .sidechoice)").forEach(dlg => {
-            const first = dlg.querySelector(".sidechoices > .sidechoice");
-            if (dlg.classList.contains("r20cs")) {
-                if (dlg._r20csFirst === first) return;
-                // Roll20 이 같은 창을 다른 토큰으로 다시 쓴 경우: 새로 꾸민다
-                dlg.querySelector(".r20cs-bar")?.remove();
-                dlg.querySelectorAll(".r20cs-cur").forEach(c => c.classList.remove("r20cs-cur"));
-            }
-            enhance(dlg);
-        });
-    };
-    const pick = (e, apply) => {
-        const c = e.target.closest?.(".ui-dialog.r20cs .sidechoice");
-        if (!c) return;
-        const dlg = c.closest(".ui-dialog");
-        select(dlg, choicesOf(dlg).indexOf(c));
-        if (apply) choose(dlg);
-    };
-    document.addEventListener("click", e => pick(e, false), true);
-    document.addEventListener("dblclick", e => pick(e, true), true);
-    return { inject, startAuto };
-})();
-
-// ───────── 토큰 메뉴: 여러 면 토큰에 면 선택 · 이전 면 · 다음 면, '여러 면' 안에 처음 면 · 마지막 면 ─────────
-// 토큰 선택(d20 엔진)에 손댈 수 없어서, 새 단추는 Roll20 의 원래 '면 선택'을 대신 눌러 창을 열고 sidePicker 가 보이지 않게 고른다
-// + 메뉴 정리: 카드 메뉴 · 파티 · 레이어 · 편집 묶음(▸)과 순서. Roll20 항목은 옮기지 않고 숨기기만 하며(flex order 로 순서),
-//   묶음 안 단추는 숨겨 둔 원래 항목을 대신 누른다
-const tokenMenu = (() => {
-    const RE = { multi: /^(여러 면|Multi-?Sided)$/i, choose: /^(면 선택|Choose Side)$/i, random: /^(무작위 면|Random Side)$/i };
-    const labelEl = b => b.querySelector(":scope > .submenu-button-outer span[style*='text-align']");
-    const label = b => labelEl(b)?.textContent.trim() || "";
-    const multiOf = menu => [...menu.querySelectorAll(":scope > button")].find(b => RE.multi.test(label(b)));
-    const origChoose = multi => [...multi.querySelectorAll(":scope > .submenu > button:not([data-r20tm])")].find(b => RE.choose.test(label(b)));
-    // Roll20 단추를 본떠(같은 스타일) 새 단추를 만든다
-    const makeBtn = (tpl, text, act) => {
-        const b = tpl.cloneNode(true);
-        b.querySelector(":scope > .submenu")?.replaceChildren();
-        b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
-        labelEl(b).textContent = text;
-        b.classList.remove("disabled", "r20tm-hide");
-        b.dataset.r20tm = act;
-        return b;
-    };
-    // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]
-    const LAYOUT = [
-        { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
-        { one: "카드 뒤집기" },
-        { g: "파티", icon: "모두에게 핑", items: [["모두에게 핑"], ["시선 집중 핑"], ["파티 정의"], ["파티 배치"], ["핀 놓기"], ["턴 추가"]] },
-        { g: "레이어", icon: "레이어 변경", items: [["레이어 변경>토큰", "토큰 레이어로"], ["레이어 변경>GM", "GM 레이어로"], ["레이어 변경>맵", "맵 레이어로"],
-            ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"]] },
-        { faces: true },
-        { one: "여러 면" },
-        { one: "고급 변환" },
-        { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"]] }
-    ];
-    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP;
-    const leftIcon = b => b.querySelector(":scope > .submenu-button-outer .submenu-button-inner .grimoire__roll20-icon");
-    // 같은 이름이 먼저, 없으면 앞부분이 같은 것 ('위치 고정 해제' 같은 바뀐 이름)
-    const findIn = (menu, name) => {
-        const tops = [...menu.querySelectorAll(":scope > button")].filter(b => !ours(b));
-        return tops.find(b => label(b) === name) || tops.find(b => label(b).startsWith(name)) || null;
-    };
-    const hoverOpen = b => ["mouseenter", "mouseover"].forEach(t => b.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
-    // 묶음 안 단추: Roll20 하위 메뉴 항목(고급 변환 안의 '그룹 생성'처럼 글자만 있는 단추)을 본떠 만들고,
-    // 누르면 숨겨 둔 원래 항목을 누른다. 꺼짐 상태는 원래 항목을 따른다
-    let ITEM = null;            // 본뜰 Roll20 하위 메뉴 항목 (하위 메뉴가 처음 그려질 때 잡아 둔다)
-    const grabItem = menu => {
-        const it = ITEM ? null : menu.querySelector(":scope > button > .submenu > button:not([data-r20tm]):not([data-r20tm-p])");
-        if (it && labelEl(it)) ITEM = it.cloneNode(true);
-    };
-    const proxyBtn = (src, path, text) => {
-        const b = (ITEM || src).cloneNode(true);
-        b.removeAttribute("data-r20tm-hide"); b.removeAttribute("data-r20tm-hov"); b.style.order = "";
-        b.querySelector(":scope > .submenu")?.replaceChildren();
-        b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
-        b.querySelectorAll(".grimoire__roll20-icon, svg").forEach(x => x.remove());
-        labelEl(b).textContent = text;
-        b.classList.toggle("disabled", src.classList.contains("disabled"));
-        b.dataset.r20tmP = path;
-        return b;
-    };
-    // 마우스를 올리면 열고, 벗어나면 잠깐(0.3초) 기다렸다 닫는다 — 메뉴와 하위 메뉴 사이 틈을 지나가도 닫히지 않게.
-    // 다른 머리에 올리면 앞의 것은 바로 닫는다
-    let closeNow = null;
-    const hoverKeep = (el, open, close, fly) => {
-        let t = 0;
-        const shut = () => { clearTimeout(t); if (closeNow === shut) closeNow = null; close(); };
-        el.addEventListener("mouseenter", () => {
-            clearTimeout(t);
-            if (closeNow && closeNow !== shut) closeNow();
-            closeNow = shut;
-            open();
-        });
-        el.addEventListener("mouseleave", () => { clearTimeout(t); t = setTimeout(shut, 300); });
-        fly?.addEventListener("mouseenter", () => clearTimeout(t));
-        fly?.addEventListener("mouseleave", () => { clearTimeout(t); t = setTimeout(shut, 300); });
-    };
-    // 묶음 머리: 하위 메뉴가 있는 Roll20 단추(화살표 포함)를 본뜨고, 아이콘은 대표 항목 것으로
-    const makeGroup = (menu, L, present, tpl) => {
-        const g = tpl.cloneNode(true);
-        g.removeAttribute("data-r20tm-hide"); g.removeAttribute("data-r20tm-hov"); g.classList.remove("disabled");
-        g.dataset.r20tmG = L.g;
-        labelEl(g).textContent = L.g;
-        const ic = leftIcon(findIn(menu, L.icon) || tpl), gi = leftIcon(g);
-        if (ic && gi) gi.replaceWith(ic.cloneNode(true));
-        // 하위 메뉴는 머리 안이 아니라 메뉴 판에 따로 붙여 띄운다 (머리 안의 .submenu 는 Roll20 이 자리를 다시 잡아 버린다)
-        const tsub = g.querySelector(":scope > .submenu");
-        const sub = document.createElement("div");
-        if (tsub) { for (const at of tsub.attributes) if (at.name.startsWith("data-v-")) sub.setAttribute(at.name, ""); tsub.remove(); }
-        sub.className = "submenu r20tm-sub";
-        sub.style.display = "none";
-        g._r20tmFly = sub;
-        menu.appendChild(sub);
-        const build = () => sub.replaceChildren(...present.map(([path, text]) => proxyBtn(findIn(menu, path.split(">")[0]), path, text || path)));
-        build();
-        // 메뉴에 transform · zoom 이 걸려 있으면 left/top 값이 곧 화면 좌표가 아니다 (기준점이 옮겨지고 배율이 붙는다)
-        // → 두 번 놓아 보고 실제로 놓인 화면 좌표에서 이동·배율을 구해, 원하는 화면 좌표가 되는 값을 넣는다 (!important: Roll20 CSS 를 이기도록)
-        const place = () => {
-            const put = (x, y) => { sub.style.setProperty("left", x + "px", "important"); sub.style.setProperty("top", y + "px", "important"); };
-            put(0, 0);
-            const a = sub.getBoundingClientRect();
-            put(100, 100);
-            const b = sub.getBoundingClientRect();
-            const sx = (b.left - a.left) / 100 || 1, sy = (b.top - a.top) / 100 || 1;
-            const m = menu.getBoundingClientRect(), r = g.getBoundingClientRect(), w = a.width, h = a.height;
-            const pad = (parseFloat(getComputedStyle(sub).paddingTop) || 0) * sy;
-            const want = { x: m.right + 4 + w > innerWidth - 4 ? m.left - w - 4 : m.right + 4, y: Math.max(4, Math.min(r.top - pad, innerHeight - h - 4)) };
-            put((want.x - a.left) / sx, (want.y - a.top) / sy);
-        };
-        // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥에 띄우고, 첫 항목을 이 줄 높이에 맞춘다.
-        // (Roll20 하위 메뉴에서 자리를 읽어 따라 하면 여는 방식·움직임에 따라 어긋나서, 자리는 정해진 규칙으로만 계산한다)
-        hoverKeep(g, () => {
-            if (ITEM && !sub.dataset.real) { sub.dataset.real = "1"; build(); }       // 하위 메뉴 항목 모양을 잡았으면 그 모양으로
-            sub.removeAttribute("style");
-            Object.assign(sub.style, { display: "flex", flexDirection: "column", zIndex: "100001" });
-            ["position:fixed", "margin:0", "transition:none", "animation:none", "transform:none", "translate:none"].forEach(kv => { const [k, v] = kv.split(":"); sub.style.setProperty(k, v, "important"); });
-            const mcs = getComputedStyle(menu);
-            if (PANEL) Object.assign(sub.style, PANEL);
-            else if (getComputedStyle(sub).backgroundColor === "rgba(0, 0, 0, 0)")
-                Object.assign(sub.style, { backgroundColor: mcs.backgroundColor, border: mcs.border, borderRadius: mcs.borderRadius, boxShadow: mcs.boxShadow, padding: mcs.padding });
-            place();
-            // 바로 옆 Roll20 하위 메뉴(고급 변환 · 여러 면)가 닫히는 동안 화면 기준이 잠깐 바뀌어 어긋날 수 있다 → 조금 뒤 다시 맞춘다
-            [60, 250].forEach(ms => setTimeout(() => { if (sub.style.display !== "none") place(); }, ms));
-        }, () => { sub.style.display = "none"; }, sub);
-        return g;
-    };
-    // Roll20 하위 메뉴(▸)는 눌러야 열린다 → 마우스를 올리면 대신 눌러 열고, 벗어나면 닫는다
-    const subOf = b => b.querySelector(":scope > .submenu");
-    const isOpen = b => { const sb = subOf(b); return !!sb && getComputedStyle(sb).display !== "none"; };
-    const toggleR20 = b => (b.querySelector(":scope > .submenu-button-outer") || b).click();
-    // 모양만 읽는다: 숨겨 둔 '레이어 변경'을 한 번 열어 하위 메뉴 항목 본(ITEM)을 잡고,
-    // 화면에 열린 Roll20 하위 메뉴에서 판 모양(PANEL: 배경·테두리·둥글기·그림자·여백)을 읽는다
-    let PANEL = null, learning = false, probed = false;
-    const learnLook = b => {
-        const sb = subOf(b), menu = b.closest(".context-menu");
-        grabItem(menu);
-        if (PANEL || !sb || !isOpen(b)) return;
-        const cs = getComputedStyle(sb);
-        if (cs.backgroundColor !== "rgba(0, 0, 0, 0)")
-            PANEL = { backgroundColor: cs.backgroundColor, border: cs.border, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, padding: cs.padding, minWidth: cs.minWidth };
-    };
-    const learnOpen = async menu => {
-        if (probed || learning) return;
-        const b = [...menu.querySelectorAll(":scope > button[data-r20tm-hide]")].find(x => x.querySelector(":scope > .submenu-button-outer .submenu-button-icon"));
-        if (!b) return;
-        learning = true;
-        toggleR20(b);
-        await new Promise(r => setTimeout(r, 40));
-        const sb = subOf(b);
-        if (sb && sb.style.display !== "none") { grabItem(menu); toggleR20(b); probed = true; }        // 다시 닫는다
-        learning = false;
-    };
-    const hoverR20 = menu => menu.querySelectorAll(":scope > button").forEach(b => {
-        if (ours(b) || b.dataset.r20tmHov || !b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")) return;
-        b.dataset.r20tmHov = "1";
-        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnLook(b), 300); }, () => { if (isOpen(b)) toggleR20(b); });
-    });
-    const arrange = menu => {
-        if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
-        hoverR20(menu);
-        const tpl = findIn(menu, "레이어 변경") || findIn(menu, "고급 변환") || findIn(menu, "여러 면");
-        const used = new Set();
-        LAYOUT.forEach((L, i) => {
-            const order = (i + 1) * 10;
-            if (L.one) { const b = findIn(menu, L.one); if (b) { b.style.order = order; used.add(b); } return; }
-            if (L.faces) { menu.querySelectorAll(":scope > button[data-r20tm]").forEach((b, k) => { b.style.order = order + k; }); return; }
-            const present = L.items.filter(([path]) => findIn(menu, path.split(">")[0]));
-            present.forEach(([path]) => { const b = findIn(menu, path.split(">")[0]); b.setAttribute("data-r20tm-hide", ""); used.add(b); });
-            let gb = menu.querySelector(`:scope > button[data-r20tm-g="${L.g}"]`);
-            if (!present.length) { gb?._r20tmFly?.remove(); gb?.remove(); return; }
-            if (!gb && tpl) gb = menu.appendChild(makeGroup(menu, L, present, tpl));
-            if (gb) gb.style.order = order;
-        });
-        learnOpen(menu);
-        menu.classList.add("r20tm-arranged");
-        menu.querySelectorAll(":scope > button").forEach(b => { if (!ours(b) && !used.has(b)) b.style.order = 900; });       // 목록에 없는 것은 맨 아래
-    };
-    const inject = () => {
-        document.querySelectorAll(".context-menu").forEach(menu => {
-            faces(menu);
-            if (btnVisible.tokmenu) arrange(menu);      // 면 단추를 붙인 뒤에 순서를 매긴다
-        });
-    };
-    const faces = menu => {
-        {   // (예전 inject 본문 — 들여쓰기 유지)
-            const multi = btnVisible.tokmenu && multiOf(menu);
-            // 여러 면 토큰이 아니게 다시 그려졌으면 붙였던 단추를 걷는다
-            if (!multi) { menu.querySelectorAll("button[data-r20tm]").forEach(b => b.remove()); menu.querySelectorAll(".r20tm-hide").forEach(b => b.classList.remove("r20tm-hide")); return; }
-            const sub = [...multi.querySelectorAll(":scope > .submenu > button:not([data-r20tm])")];
-            const choose = sub.find(b => RE.choose.test(label(b))), random = sub.find(b => RE.random.test(label(b)));
-            const tpl = random || choose;
-            if (!tpl) return;
-            if (!menu.querySelector(":scope > button[data-r20tm]")) {
-                // 면 선택 ‹ › : 줄을 누르면 고르는 창, ‹ › 는 이전 · 다음 면
-                const row = makeBtn(tpl, "면 선택", "choose"), nav = document.createElement("span");
-                nav.className = "r20tm-nav";
-                nav.innerHTML = '<span role="button" data-r20tm-nav="prev" title="이전 면" aria-label="이전 면">‹</span><span role="button" data-r20tm-nav="next" title="다음 면" aria-label="다음 면">›</span>';
-                row.appendChild(nav);
-                multi.before(row);
-            }
-            if (!multi.querySelector(":scope > .submenu > button[data-r20tm]"))
-                tpl.after(makeBtn(tpl, "처음 면", "first"), makeBtn(tpl, "마지막 면", "last"));
-            choose?.classList.add("r20tm-hide");       // 원래 '면 선택'은 위로 올렸으므로 숨긴다 (누르는 데는 쓴다)
-        }
-    };
-    document.addEventListener("click", async e => {
-        const hdr = e.isTrusted && e.target.closest?.(".context-menu > button[data-r20tm-hov]");
-        if (hdr && !e.target.closest(".submenu") && isOpen(hdr)) { e.preventDefault(); e.stopPropagation(); return; }
-        const p = e.target.closest?.("button[data-r20tm-p]");
-        if (!p && e.target.closest?.("button[data-r20tm-g]")) { e.preventDefault(); e.stopPropagation(); return; }
-        if (p) {
-            e.preventDefault(); e.stopPropagation();
-            if (p.classList.contains("disabled")) return;
-            const [parent, child] = p.dataset.r20tmP.split(">"), orig = findIn(p.closest(".context-menu"), parent);
-            if (!orig) return;
-            if (!child) { orig.click(); return; }
-            // 하위 메뉴 항목: 원래 묶음에 마우스를 올린 것처럼 해서 그리게 한 뒤 누른다
-            const item = () => [...orig.querySelectorAll(":scope > .submenu > button")].find(x => label(x) === child);
-            if (!item()) { hoverOpen(orig); await new Promise(r => setTimeout(r, 80)); }
-            item()?.click();
-            return;
-        }
-        const b = e.target.closest?.("button[data-r20tm]");
-        if (!b) return;
-        e.preventDefault(); e.stopPropagation();
-        const multi = multiOf(b.closest(".context-menu"));
-        let orig = multi && origChoose(multi);
-        if (!orig && multi) {
-            // 하위 메뉴가 아직 안 그려졌으면 '여러 면'에 마우스를 올린 것처럼 해서 그리게 한다
-            ["mouseenter", "mouseover"].forEach(t => multi.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
-            await new Promise(r => setTimeout(r, 80));
-            orig = origChoose(multi);
-        }
-        if (!orig) { console.warn("[토큰 메뉴] '면 선택'을 찾지 못함"); return; }
-        const act = e.target.closest("[data-r20tm-nav]")?.dataset.r20tmNav || b.dataset.r20tm;
-        if (act !== "choose") sidePicker.startAuto(act);
-        orig.click();
-    }, true);
-    new MutationObserver(ms => {
-        if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.classList.contains("context-menu") || n.querySelector(".context-menu"))))) inject();
-    }).observe(document.body, { childList: true, subtree: true });
-    return { inject };
-})();
-
-// ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
-// 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
-const queryPicker = (() => {
-    let size = Math.max(80, Math.min(260, parseInt(localStorage.getItem("r20_qp_size"), 10) || 140));
-    // 값 → 그림 주소: 전체 주소이거나, imgur 그림 ID 만 고르는 꼴(https://imgur.com/?{…|이름,oTmvLxD|…}.png)
-    // ID 판별: 5~8자 영문·숫자 섞임 — 'Attack' 같은 보통 낱말·숫자만은 뺀다
-    const imgurId = v => /^[A-Za-z0-9]{5,8}$/.test(v) && /[A-Za-z]/.test(v) && !/^[A-Z]?[a-z]+$|^[A-Z]+$/.test(v);
-    const imgOf = v => /^https?:\/\/\S+$/i.test(v) ? v : imgurId(v) ? `https://i.imgur.com/${v}.png` : "";
-    const labelOf = o => o.textContent.trim();
-    // '—————' 같은 항목은 묶음 구분선으로
-    const isDivider = o => !imgOf(o.value) && /^[\s—–\-─━=_~·.]{3,}$/.test(o.textContent);
-    // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
-    const thumbOf = url => {
-        const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
-        return m ? `https://i.imgur.com/${m[1]}m${m[2] || ".png"}` : r20img(url);
-    };
-    const choose = dlg => {
-        const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
-        (btns.find(b => /submit/i.test(b.textContent)) || btns[0])?.click();
-    };
-    const mark = (dlg, sel) => dlg.querySelectorAll(".r20qp-tile").forEach(b => {
-        const on = +b.dataset.i === sel.selectedIndex;
-        b.classList.toggle("on", on);
-        b.setAttribute("aria-pressed", String(on));
-    });
-
-    const textPic = o => {
-        const sp = document.createElement("span");
-        sp.className = "r20qp-img";
-        sp.textContent = labelOf(o);
-        return sp;
-    };
-    const tile = (o, i) => {
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "r20qp-tile"; b.dataset.i = i; b.title = labelOf(o);
-        let pic;
-        const url = imgOf(o.value);
-        if (url) {
-            pic = document.createElement("img");
-            pic.className = "r20qp-img";
-            pic.alt = ""; pic.loading = "lazy"; pic.draggable = false;
-            const thumb = thumbOf(url);
-            let retried = thumb === url;
-            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 이름 칸으로
-            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = url; } else pic.replaceWith(textPic(o)); });
-            pic.src = thumb;
-        } else pic = textPic(o);
-        const lb = document.createElement("span");
-        lb.className = "r20qp-lb"; lb.textContent = labelOf(o);
-        b.append(pic, lb);
-        return b;
-    };
-
-    const enhance = (dlg, sel) => {
-        dlg.classList.add("r20qp");
-        dlg._r20qpSel = sel;
-        dlg.style.setProperty("--qp-size", size + "px");
-        const box = document.createElement("div");
-        box.className = "r20qp-box";
-        box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
-            + '<span class="r20qp-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
-            + '<div class="r20qp-grid"></div>';
-        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input");
-        let sec = null;
-        const newSec = () => { sec = document.createElement("div"); sec.className = "r20qp-sec"; grid.appendChild(sec); };
-        newSec();
-        [...sel.options].forEach((o, i) => {
-            if (isDivider(o)) { if (sec.childElementCount) newSec(); return; }
-            sec.appendChild(tile(o, i));
-        });
-        if (!sec.childElementCount) sec.remove();
-        (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
-
-        grid.addEventListener("click", e => {
-            const b = e.target.closest(".r20qp-tile");
-            if (!b) return;
-            sel.selectedIndex = +b.dataset.i;
-            sel.dispatchEvent(new Event("change", { bubbles: true }));
-        });
-        grid.addEventListener("dblclick", e => { if (e.target.closest(".r20qp-tile")) choose(dlg); });
-        sel.addEventListener("change", () => mark(dlg, sel));
-        q.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키·Enter 제출 막기
-        q.addEventListener("input", () => {
-            const v = q.value.replace(/\s+/g, "").toLowerCase();
-            grid.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = !!v && !b.title.replace(/\s+/g, "").toLowerCase().includes(v); });
-            grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.children].some(b => !b.hidden); });
-            grid.classList.toggle("searching", !!v);
-        });
-        box.querySelectorAll(".r20qp-zoom button").forEach(b => b.addEventListener("click", () => {
-            size = Math.max(80, Math.min(260, size + Number(b.dataset.d) * 30));
-            localStorage.setItem("r20_qp_size", size);
-            dlg.style.setProperty("--qp-size", size + "px");
-        }));
-        mark(dlg, sel);
-        // 창을 키워서 화면 가운데로
-        const w = Math.min(720, window.innerWidth - 40);
-        dlg.style.width = w + "px";
-        dlg.style.left = Math.max(10, (window.innerWidth - w) / 2) + "px";
-        dlg.style.top = Math.max(10, (window.innerHeight - dlg.offsetHeight) / 2) + "px";
-        grid.querySelector(".r20qp-tile.on")?.scrollIntoView({ block: "nearest" });
-    };
-
-    const inject = () => {
-        if (!btnVisible.qpick) return;
-        document.querySelectorAll(".ui-dialog").forEach(dlg => {
-            if (!dlg.classList.contains("vtt-macro-selection-ui-dialog")
-                && dlg.querySelector(".ui-dialog-title")?.textContent.trim() !== "Macro Options") return;
-            const sel = dlg.querySelector(".ui-dialog-content select");
-            if (!sel || dlg._r20qpSel === sel) return;
-            // 이미지 고르기가 아닌 질문은 그대로: 그림 항목이 2개 이상이고 (구분선 빼고) 절반 이상일 때만
-            const opts = [...sel.options].filter(o => !isDivider(o)), imgs = opts.filter(o => imgOf(o.value)).length;
-            if (imgs < 2 || imgs * 2 < opts.length) return;
-            dlg.querySelector(".r20qp-box")?.remove();      // Roll20 이 창을 다른 질문에 다시 쓴 경우
-            enhance(dlg, sel);
-        });
-    };
-    return { inject };
-})();
-
-// ───────── 페이지 창 슬림: Roll20 페이지 창(.vtt-page-card-menu)의 겉모양만 가늘고 가볍게 (body.r20pg-on) ─────────
-// 누르기 · 끌기 · 메뉴 등 동작은 Roll20 그대로. 카드 크기만 −/+ 단추로 바꾼다
-const pagePanel = (() => {
-    let size = Math.max(90, Math.min(260, parseInt(localStorage.getItem("r20_pg_size"), 10) || 150));
-    const apply = menu => menu.style.setProperty("--r20pg-size", size + "px");
-    const inject = () => {
-        if (!btnVisible.pageslim) return;
-        document.querySelectorAll(".vtt-page-card-menu").forEach(menu => {
-            apply(menu);
-            const row = menu.querySelector(".input-row");
-            if (!row || row.querySelector(".r20pg-zoom")) return;       // Vue 가 다시 그리면 다시 단다
-            const z = document.createElement("span");
-            z.className = "r20pg-zoom";
-            z.innerHTML = '<button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button>';
-            z.addEventListener("click", e => {
-                const b = e.target.closest("button[data-d]");
-                if (!b) return;
-                size = Math.max(90, Math.min(260, size + Number(b.dataset.d) * 30));
-                localStorage.setItem("r20_pg_size", size);
-                document.querySelectorAll(".vtt-page-card-menu").forEach(apply);
-            });
-            const create = [...row.children].find(c => c.querySelector(".create-page"));
-            row.insertBefore(z, create || null);
-        });
-    };
-    const setEnabled = on => {
-        document.body.classList.toggle("r20pg-on", on);
-        if (!on) document.querySelectorAll(".r20pg-zoom").forEach(z => z.remove());
-        else inject();
-    };
-    setEnabled(btnVisible.pageslim);
-    return { inject, setEnabled };
-})();
-
-// ───────── 그림 라이브러리 · 이 방의 이미지: 페이지·캐릭터·핸드아웃·굴림표·덱에 쓰인 그림을 한곳에서 본다 ─────────
-// 맵에 놓기는 Roll20 라이브러리 항목과 같은 모양(.draggableresult + data-fullsizeurl)으로 만들어 Roll20 드롭을 그대로 쓴다
-// → 계정 라이브러리에는 아무것도 추가되지 않는다. (보는 동안 라이브러리 정리 영역은 숨겨 실수로 넣는 일도 막는다)
-const roomImages = (() => {
-    const KINDS = [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]];
-    const OWN = { table: 0, deck: 1, char: 2, handout: 3, page: 4 };
-    const SEARCH_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
-    const esc = escAttr;
-    const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
-    // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다 → 크기 부분을 뺀 주소로 같은 그림을 묶는다
-    const sized = sizedUrl;
-    const keyOf = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
-
-    let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
-    let mode = localStorage.getItem("r20_ri_mode") === "room" ? "room" : "lib";
-    let src = "all", q = "", groups = [], items = new Map(), unread = 0, shown = 0;
-    let loading = null, root = null, ro = null, wasVisible = false, dragBase = null;
-    const opened = new Set();       // 펼친 묶음 이름 (기본은 모두 접힘, 검색 중엔 모두 펼침)
-
-    // ── 모으기: 불러온 페이지의 토큰(여러 면 포함) · 캐릭터 아바타/기본 토큰 · 핸드아웃 · 굴림표 항목 · 덱 카드 ──
-    const gather = () => {
-        const C = window.Campaign, items = new Map();
-        let groups = [], unread = 0;
-        if (!C) return { items, groups, unread };
-        const group = (kind, name, key) => { const g = { kind, name, key, list: [], has: new Set() }; groups.push(g); return g; };
-        const add = (g, url, name, use) => {
-            if (typeof url !== "string" || !/^(?:https?:)?\/\//i.test(url)) return;
-            const k = keyOf(url);
-            let it = items.get(k);
-            if (!it) items.set(k, it = { k, url, name: "", img: "", uses: [] });
-            if (!it.name && name) it.name = name;
-            if (use.kind === "page" && !it.img) it.img = url;       // 토큰의 imgsrc 는 그대로 다시 쓸 수 있다
-            if (!it.uses.some(u => u.kind === use.kind && u.id === use.id)) it.uses.push(use);
-            if (!g.has.has(it)) { g.has.add(it); g.list.push(it); }
-        };
-        const pages = C.pages?.models || [], act = typeof C.activePage === "function" ? C.activePage() : null;
-        [act, ...pages.filter(p => p !== act)].forEach(p => {
-            if (!p) return;
-            if (!p.thegraphics) { unread++; return; }
-            const name = p.get("name") || "(이름 없는 페이지)";
-            const g = group("page", (p === act ? "지금 페이지 · " : "페이지 · ") + name, "page:" + p.id), use = { kind: "page", id: p.id, label: "페이지 · " + name };
-            p.thegraphics.models.forEach(m => {
-                const nm = m.get("name") || "";
-                add(g, m.get("imgsrc"), nm, use);
-                String(m.get("sides") || "").split("|").forEach(s => { try { if (s) add(g, decodeURIComponent(s), nm, use); } catch (e) {} });
-            });
-        });
-        const chars = group("char", "캐릭터", "char");
-        (C.characters?.models || []).forEach(m => {
-            const name = m.get("name") || "", use = { kind: "char", id: m.id, label: "캐릭터 · " + name };
-            add(chars, m.get("avatar"), name, use);
-            try { add(chars, JSON.parse(m.get("defaulttoken") || "null")?.imgsrc, name, use); } catch (e) {}
-        });
-        const hos = group("handout", "핸드아웃", "handout");
-        (C.handouts?.models || []).forEach(m => {
-            const name = m.get("name") || "";
-            add(hos, m.get("avatar"), name, { kind: "handout", id: m.id, label: "핸드아웃 · " + name });
-        });
-        (C.rollabletables?.models || []).forEach(t => {
-            const name = t.get("name") || "", g = group("table", "굴림표 · " + name, "table:" + t.id), use = { kind: "table", id: t.id, label: "굴림표 · " + name };
-            (t.tableitems?.models || []).forEach(m => add(g, m.get("avatar"), m.get("name") || name, use));
-        });
-        (C.decks?.models || []).forEach(d => {
-            const name = d.get("name") || "", g = group("deck", "덱 · " + name, "deck:" + d.id), use = { kind: "deck", id: d.id, label: "덱 · " + name };
-            add(g, d.get("avatar"), name + " 뒷면", use);
-            (d.cards?.models || []).forEach(m => { add(g, m.get("avatar"), m.get("name") || name, use); add(g, m.get("card_back"), name + " 뒷면", use); });
-        });
-        return { items, groups: groups.filter(g => g.list.length), unread };
-    };
-    const collect = () => { ({ items, groups, unread } = gather()); };
-    // 같은 그림은 한 곳에만: 굴림표 → 덱 → 캐릭터 → 핸드아웃 → 페이지 순으로 먼저 나온 묶음이 주인
-    // (굴림표 토큰을 여러 페이지에 복사해도 그림은 굴림표 묶음에만 보이고, 페이지 묶음엔 그 페이지에만 있는 그림이 남는다)
-    const ownerMap = vis => {
-        const owner = new Map();
-        vis.slice().sort((a, b) => OWN[a.g.kind] - OWN[b.g.kind]).forEach(x => x.its.forEach(it => { if (!owner.has(it)) owner.set(it, x.g); }));
-        return owner;
-    };
-
-    // ── 그리기 ──
-    const tileHtml = it => {
-        const tip = (it.name || "이름 없음") + "\n" + it.uses.map(u => u.label).join("\n");
-        return `<li class="draggableresult library-item r20ri-tile" tabindex="0" role="button" data-k="${esc(it.k)}" data-fullsizeurl="${esc(r20img(sized(it.url, "max")))}" data-grid-width="null" data-grid-height="null" title="${esc(tip)}">`
-            + `<div class="token">${previewHtml(it.url)}</div>`
-            + `<div class="namecontainer">${esc(it.name)}</div>`
-            + (it.uses.length > 1 ? `<span class="r20ri-cnt">×${it.uses.length}</span>` : "") + "</li>";
-    };
-    const foot = () => {
-        if (!root) return;
-        root.querySelector(".r20ri-sum").textContent = `총 ${shown}장`;
-        const note = root.querySelector(".r20ri-note");
-        note.hidden = !unread && !loading;
-        note.querySelector("span").textContent = loading ? `페이지 읽는 중 ${loading.done}/${loading.total}` : `아직 안 읽은 페이지 ${unread}개`;
-        note.querySelector("button").textContent = loading ? "멈추기" : "모두 읽기";
-    };
-    const render = () => {
-        if (!root) return;
-        closePop();
-        const v = norm(q), seen = new Set();
-        const vis = groups.filter(g => src === "all" || g.kind === src).map(g => ({ g,
-            its: v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list }));
-        const owner = ownerMap(vis);
-        let html = "";
-        vis.forEach(({ g, its }) => {
-            its = its.filter(it => owner.get(it) === g);
-            if (!its.length) return;
-            its.forEach(it => seen.add(it));
-            const open = !!v || opened.has(g.name);
-            html += `<section><button type="button" class="r20ri-gh" data-g="${esc(g.name)}" aria-expanded="${open}"><span aria-hidden="true">${open ? "▾" : "▸"}</span>${esc(g.name)} <small>${its.length}장</small></button>`
-                + (open ? `<ul class="r20ri-grid">${its.map(tileHtml).join("")}</ul>` : "") + "</section>";
-        });
-        root.querySelector(".r20ri-list").innerHTML = html || `<p class="r20ri-empty">${groups.length ? "찾는 그림이 없어요" : "그림이 없어요"}</p>`;
-        shown = seen.size;
-        foot();
-    };
-    const refresh = () => { collect(); render(); };
-
-    // 안 읽은 페이지: Roll20 이 페이지 복제 때 쓰는 fullyLoadPage() 로 하나씩 불러온다 (누르면 멈춤)
-    // 진행 상황은 일괄 편집기 방 이미지 탭에도 알린다 (fn(loading) — 끝나면 null)
-    const hooks = new Set();
-    const tell = () => hooks.forEach(fn => { try { fn(loading); } catch (e) {} });
-    const loadPages = async () => {
-        if (loading) { loading.stop = true; return; }
-        const todo = (window.Campaign?.pages?.models || []).filter(p => !p.thegraphics && typeof p.fullyLoadPage === "function");
-        if (!todo.length) return;
-        loading = { done: 0, total: todo.length, stop: false };
-        foot(); tell();
-        for (const p of todo) {
-            if (loading.stop) break;
-            try { await Promise.race([p.fullyLoadPage(), sleep(15000)]); } catch (e) { console.warn("[이 방의 이미지] 페이지 읽기 실패:", p.get?.("name"), e); }
-            loading.done++;
-            if (loading.done % 5 === 0) refresh(); else foot();
-            tell();
-        }
-        loading = null;
-        refresh(); tell();
-    };
-
-    // ── 끌어 놓기: 처음 마우스를 올릴 때 jQuery UI draggable 을 단다 (그림이 많아도 가볍게) ──
-    const initDrag = tile => {
-        const $ = window.jQuery;
-        if (!$?.fn?.draggable || tile.classList.contains("ui-draggable")) return;
-        if (!dragBase) {
-            // Roll20 라이브러리 항목의 start/stop(externaldrag 표시)을 그대로 빌려 쓴다
-            const ref = [...document.querySelectorAll(".draggableresult.ui-draggable")].find(e => !e.classList.contains("r20ri-tile"));
-            try { if (ref) dragBase = { ...$(ref).draggable("option") }; } catch (e) {}
-        }
-        $(tile).draggable({ ...(dragBase || {}), disabled: false, handle: false, cancel: "", helper: "clone", appendTo: "body",
-            revert: true, revertDuration: 0, distance: 3, cursorAt: { left: 32, top: 32 }, scroll: false, zIndex: 100000 });
-    };
-
-    // ── 창의 글 편집칸(핸드아웃 내용·GM 메모, 캐릭터 소개 등)에 끌어 놓기: 놓은 자리에 <img> 를 넣는다 ──
-    // Roll20 라이브러리 그림도 함께 받는다 (둘 다 .draggableresult + data-fullsizeurl)
-    const insertImg = (box, url, ev, ui) => {
-        ui.helper?.css("visibility", "hidden");     // 끌고 있는 그림이 커서 바로 밑에 있어 놓을 자리 찾기를 가린다
-        const x = ev.clientX ?? ev.originalEvent?.clientX, y = ev.clientY ?? ev.originalEvent?.clientY;
-        let r = x != null && document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
-        if (!r || !box.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(box); r.collapse(false); }
-        box.focus();
-        const sel = getSelection();
-        sel.removeAllRanges(); sel.addRange(r);
-        // 편집기가 바뀐 내용을 알아채도록 붙여넣기와 같은 길(insertHTML)로 넣는다
-        if (!document.execCommand("insertHTML", false, `<img src="${esc(url)}">`)) {
-            r.insertNode(Object.assign(document.createElement("img"), { src: url }));
-            box.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-    };
-    const bindEditors = () => {
-        const $ = window.jQuery;
-        if (!$?.fn?.droppable) return;
-        document.querySelectorAll('.ui-dialog [contenteditable="true"]:not(.r20ri-drop)').forEach(box => {
-            box.classList.add("r20ri-drop");
-            $(box).droppable({ accept: ".draggableresult", tolerance: "pointer", hoverClass: "r20ri-dropin",
-                drop: (e, ui) => {
-                    // 뒤에 있는 맵에 토큰으로도 놓이지 않게 Roll20 에 '처리됨' 표시
-                    const oe = e.originalEvent;
-                    if (oe) { oe.dropHandled = true; if (oe.originalEvent) oe.originalEvent.dropHandled = true; }
-                    const u = ui.draggable.attr("data-fullsizeurl");
-                    if (u) insertImg(box, u, e, ui);
-                } });
-        });
-    };
-
-    // ── 그림 메뉴 ──
-    const say = (btn, msg) => {
-        const old = btn.dataset.label || (btn.dataset.label = btn.textContent);
-        btn.textContent = msg;
-        setTimeout(() => { if (btn.isConnected) btn.textContent = old; }, 1400);
-    };
-    const ratioOf = u => new Promise(res => {
-        const im = new Image();
-        im.onload = () => res(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 1);
-        im.onerror = () => res(1);
-        im.src = u;
-    });
-    // 지금 페이지에 바로 놓기: 토큰 층은 가운데에 긴 변 2칸(140px), 맵 층은 페이지에 맞춰 가운데
-    const place = async (it, layer, btn) => {
-        const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null;
-        if (!pg?.thegraphics) return say(btn, "지금 페이지를 못 찾았어요");
-        const W = (parseFloat(pg.get("width")) || 25) * 70, H = (parseFloat(pg.get("height")) || 25) * 70;
-        const r = await ratioOf(r20img(sized(it.url, "thumb")));
-        let w, h;
-        if (layer === "map") { if (W / H > r) { h = H; w = H * r; } else { w = W; h = W / r; } }
-        else if (r >= 1) { w = 140; h = 140 / r; } else { h = 140; w = 140 * r; }
-        try {
-            pg.thegraphics.create({ imgsrc: it.img || r20img(sized(it.url, "max")), left: Math.round(W / 2), top: Math.round(H / 2),
-                width: Math.round(w), height: Math.round(h), layer, page_id: pg.id });
-            say(btn, "놓았어요");
-        } catch (e) { console.warn("[이 방의 이미지] 놓기 실패:", e); say(btn, "놓지 못했어요"); }
-    };
-    const openJournal = u => {
-        const m = (u.kind === "char" ? window.Campaign?.characters : window.Campaign?.handouts)?.get?.(u.id);
-        if (typeof m?.view?.showDialog === "function") return m.view.showDialog();
-        const li = document.querySelector(`li.journalitem[data-itemid="${CSS.escape(u.id)}"]`);
-        if (li) { if (window.jQuery) window.jQuery(li).trigger("click"); else li.click(); }
-    };
-    // 핸드아웃으로 만들기: 그림을 핸드아웃 그림으로, 이름은 그림 이름 (GM 만 보기)
-    const makeHandout = async (it, btn) => {
-        const C = window.Campaign;
-        if (typeof C?.handouts?.create !== "function") return say(btn, "핸드아웃을 만들 수 없어요");
-        let m;
-        try { m = C.handouts.create({ name: it.name || "그림", avatar: r20img(sized(it.url, "max")), inplayerjournals: "", archived: false }); }
-        catch (e) { console.warn("[이 방의 이미지] 핸드아웃 만들기 실패:", e); return say(btn, "만들지 못했어요"); }
-        if (!m?.id) return say(btn, "만들지 못했어요");
-        say(btn, "만들었어요");
-        // 저널 맨 위에 둔다 — Roll20 이 이미 넣었으면 그대로 (두 번 넣지 않게 잠깐 기다렸다 확인)
-        await sleep(400);
-        const raw = C.get?.("journalfolder") || "[]";
-        if (!raw.includes(`"${m.id}"`)) {
-            try { const tree = JSON.parse(raw); if (Array.isArray(tree)) { tree.unshift(m.id); C.save({ journalfolder: JSON.stringify(tree) }); } } catch (e) {}
-        }
-        await sleep(300);
-        openJournal({ kind: "handout", id: m.id });
-    };
-    const closePop = () => {
-        root?.querySelector(".r20ri-pop")?.remove();
-        root?.querySelectorAll(".r20ri-tile.on").forEach(t => t.classList.remove("on"));
-    };
-    const openPop = (tile, kb) => {
-        const it = items.get(tile.dataset.k);
-        if (!it) return;
-        closePop();
-        const pop = document.createElement("div");
-        pop.className = "r20ri-pop";
-        pop.setAttribute("role", "dialog");
-        pop.setAttribute("aria-label", "그림 메뉴");
-        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
-            + `<button type="button" class="r20ri-x" data-a="close" aria-label="닫기">✕</button></div>`
-            + `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
-            + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
-            + `<button type="button" class="r20ri-mi" data-a="copy">이미지 주소 복사</button>`
-            + `<button type="button" class="r20ri-mi" data-a="handout">핸드아웃으로 만들기</button>`
-            + `<div class="r20ri-uses"><small>사용처</small>` + it.uses.map((u, i) => u.kind === "char" || u.kind === "handout"
-                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>";
-        pop._it = it;
-        root.querySelector(".r20ri-body").appendChild(pop);
-        tile.classList.add("on");
-        if (kb) pop.querySelector(".r20ri-mi").focus();
-    };
-    const onPop = (pop, b) => {
-        const it = pop._it, a = b.dataset.a;
-        if (a === "close") closePop();
-        else if (a === "objects" || a === "map") place(it, a, b);
-        else if (a === "copy") copyText(r20img(sized(it.url, "max"))).then(ok => say(b, ok ? "복사했어요" : "복사하지 못했어요"));
-        else if (a === "handout") makeHandout(it, b);
-        else if (a === "open") openJournal(it.uses[+b.dataset.i]);
-    };
-
-    // ── 틀 ──
-    const fit = () => {
-        if (!root || mode !== "room" || !root.offsetParent) { if (root && mode !== "room") root.style.height = ""; return; }
-        root.style.height = Math.max(240, window.innerHeight - root.getBoundingClientRect().top - 8) + "px";
-    };
-    const setMode = m => {
-        mode = m;
-        localStorage.setItem("r20_ri_mode", m);
-        const dlg = root?.parentNode;
-        dlg?.classList.toggle("r20ri-room", m === "room");
-        root?.querySelectorAll(".r20ri-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === m)));
-        if (m === "room") { if (dlg) dlg.scrollTop = 0; refresh(); } else closePop();
-        fit();
-    };
-    const build = () => {
-        const r = document.createElement("div");
-        r.className = "r20ri";
-        r.style.setProperty("--ri-size", size + "px");
-        r.innerHTML = `<div class="r20ri-seg" role="group" aria-label="그림 보기">`
-            + `<button type="button" data-m="lib" aria-pressed="${mode === "lib"}">내 라이브러리</button>`
-            + `<button type="button" data-m="room" aria-pressed="${mode === "room"}">이 방의 이미지</button></div>`
-            + `<div class="r20ri-body">`
-            + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="이름·사용처 검색" aria-label="이미지 검색"></label>`
-            + `<span class="r20ri-zoom"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
-            + `<div class="r20ri-chips">${KINDS.map(([k, l]) => `<button type="button" data-src="${k}" aria-pressed="${src === k}">${l}</button>`).join("")}</div>`
-            + `<div class="r20ri-note" hidden><span></span><button type="button" data-a="load"></button></div>`
-            + `<div class="r20ri-list"></div>`
-            + `<div class="r20ri-foot"><span class="r20ri-sum" title="같은 그림은 하나로 셉니다 · 그림을 끌어서 맵에 놓기"></span>`
-            + `<button type="button" data-a="openall">전부 펼치기</button><button type="button" data-a="closeall">전부 접기</button><button type="button" data-a="reload">다시 읽기</button></div></div>`;
-        const input = r.querySelector(".r20ri-q input"), list = r.querySelector(".r20ri-list");
-        let qt = null;
-        input.addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(() => { q = input.value; render(); }, 150); });
-        r.addEventListener("keydown", e => {
-            e.stopPropagation();                 // Roll20 단축키 막기
-            if (e.key === "Escape") closePop();
-            const t = e.target.closest?.(".r20ri-tile");
-            if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPop(t, true); }
-        });
-        r.addEventListener("click", e => {
-            const b = e.target.closest("button");
-            const pop = e.target.closest(".r20ri-pop");
-            if (pop) { if (b?.dataset.a) onPop(pop, b); return; }
-            const t = e.target.closest(".r20ri-tile");
-            if (t) return t.classList.contains("on") ? closePop() : openPop(t);
-            if (!b) return closePop();
-            if (b.dataset.g != null) {
-                if (q) return;                                    // 검색 중엔 모두 펼쳐 둔다
-                if (opened.has(b.dataset.g)) opened.delete(b.dataset.g); else opened.add(b.dataset.g);
-                render();
-            } else if (b.dataset.m) setMode(b.dataset.m);
-            else if (b.dataset.src) {
-                src = b.dataset.src;
-                r.querySelectorAll(".r20ri-chips button").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
-                render();
-            } else if (b.dataset.d) {
-                size = Math.max(48, Math.min(160, size + Number(b.dataset.d) * 16));
-                localStorage.setItem("r20_ri_size", size);
-                r.style.setProperty("--ri-size", size + "px");
-            } else if (b.dataset.a === "load") loadPages();
-            else if (b.dataset.a === "reload") refresh();
-            else if (b.dataset.a === "openall") { groups.forEach(g => opened.add(g.name)); render(); }
-            else if (b.dataset.a === "closeall") { opened.clear(); render(); }
-        });
-        list.addEventListener("mouseover", e => { const t = e.target.closest(".r20ri-tile"); if (t) initDrag(t); });
-        // 안 열리는 그림: 다른 크기·원래 주소로 → 그래도 안 되면 빈 칸 (error 는 버블링되지 않아 캡처로 받는다 · 메뉴 그림도 함께)
-        r.addEventListener("error", e => {
-            const m = e.target;
-            if ((m.tagName === "IMG" || m.tagName === "VIDEO") && !nextPreview(m)) m.classList.add("r20ri-broken");
-        }, true);
-        return r;
-    };
-    // 탭이 보이게 될 때마다 새로 모은다 (다른 탭에서 토큰·카드를 바꿨을 수 있다)
-    const onResize = () => {
-        const vis = !!root?.offsetParent;
-        if (vis && !wasVisible && mode === "room") refresh();
-        wasVisible = vis;
-        fit();
-    };
-    const inject = () => {
-        if (!btnVisible.artroom) return;
-        bindEditors();
-        const dlg = document.getElementById("imagedialog");
-        if (!dlg || root?.parentNode === dlg) return;
-        root = build();
-        dlg.prepend(root);
-        dlg.classList.toggle("r20ri-room", mode === "room");
-        ro?.disconnect();
-        ro = new ResizeObserver(onResize);
-        ro.observe(dlg);
-        wasVisible = false;
-        onResize();
-    };
-    const setEnabled = on => {
-        if (on) return inject();
-        ro?.disconnect(); ro = null;
-        root?.parentNode?.classList.remove("r20ri-room");
-        root?.remove(); root = null;
-    };
-    window.addEventListener("resize", fit);
-    return { inject, setEnabled, gather, ownerMap, sized, loadPages, onPages: fn => hooks.add(fn), loadingNow: () => loading };
-})();
-
-// ───────── 화면 배치: 햄버거(≡) 밑에 페이지 메뉴 버튼, 그 밑에 화면 제어(보기 · 중앙 · 확대 · 배율 · 축소)를 세로로 (body.r20sc-on) ─────────
-// Roll20 요소는 그대로 두고 자리·모양만 바꾼다
-const screenUI = (() => {
-    const Z_KEYS = ["position", "left", "right", "top", "width", "height"];
-    // 햄버거 바로 밑부터 차례로 쌓고, 오른쪽 끝을 햄버거에 맞춘다
-    const place = () => {
-        const hb = document.getElementById("sidebarcontrol");
-        if (!hb) return;
-        const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
-        let y = r.bottom + 4;
-        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
-        els.push(document.getElementById("r20-mapshot"));
-        els.forEach(el => {
-            if (!el) return;
-            const set = (k, v) => el.style.setProperty(k, v, "important");
-            set("position", "fixed"); set("left", "auto");
-            if (el.id === "vm_zoom_buttons") { set("width", "auto"); set("height", "auto"); }
-            set("top", Math.round(y) + "px");
-            set("right", Math.round(innerWidth - edge) + "px");
-            y += el.getBoundingClientRect().height + 4;
-        });
-    };
-    let watched = null, watchedSide = null;
-    const inject = () => {
-        if (!btnVisible.screenui && !btnVisible.mapshot) return;
-        place();
-        const side = document.getElementById("rightsidebar");
-        if (side && watchedSide !== side) {
-            watchedSide = side;
-            new ResizeObserver(() => place()).observe(side);
-        }
-        // 채팅·저널을 여닫으면 햄버거가 움직인다 → 따라간다
-        const hb = document.getElementById("sidebarcontrol");
-        if (hb && watched !== hb) {
-            watched = hb;
-            new MutationObserver(() => place()).observe(hb, { attributes: true, attributeFilter: ["style", "class"] });
-            hb.addEventListener("click", () => [60, 300, 700].forEach(ms => setTimeout(() => place(), ms)));
-        }
-    };
-    const setEnabled = on => {
-        document.body.classList.toggle("r20sc-on", on);
-        if (on) return inject();
-        ["vm_zoom_buttons", "page-button"].forEach(id => { const el = document.getElementById(id); if (el) Z_KEYS.forEach(k => el.style.removeProperty(k)); });
-        place();
-    };
-    window.addEventListener("resize", () => place());
-    setEnabled(btnVisible.screenui);
-    return { inject, setEnabled, place };
-})();
-
-// ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
-// 위쪽 토큰 액션 줄(#secondary-toolbar 의 ul.tokenactions)은 숨기고, 메뉴 항목은 그 줄의 원래 단추를 대신 누른다
-const tokenActs = (() => {
-    let down = null, pop = null;
-    const barEl = () => document.getElementById("secondary-toolbar");
-    const shown = el => !!el && getComputedStyle(el).display !== "none";
-    // 우리가 줄을 숨기는 것(visibility)과 상관없이, Roll20 이 줄·단추를 실제로 보여 주고 있는지로 판단한다
-    // (빈 곳을 누르면 선택이 풀려 Roll20 이 줄을 감춘다 → 메뉴를 띄우지 않는다)
-    const actions = () => {
-        const b = barEl(), ul = b?.querySelector("ul.tokenactions");
-        if (!ul) return [];
-        const hid = b.classList.contains("r20ta-hide");
-        if (hid) b.classList.remove("r20ta-hide");
-        const live = ul.getClientRects().length > 0 && getComputedStyle(ul).visibility !== "hidden" && +getComputedStyle(b).opacity > 0;
-        const list = live ? [...ul.querySelectorAll("button")].filter(x => x.getClientRects().length > 0) : [];
-        if (hid) b.classList.add("r20ta-hide");
+    const norm = s => String(s ?? "").replace(/^\s*\d+\.\s*/, "").replace(/\s+/g, "").toLowerCase();
+    const normCache = new Map();
+    const getList = sys => {
+        const list = window.NIRE_RULEDATA?.[sys];
+        if (!Array.isArray(list)) return null;
+        if (!normCache.has(list)) normCache.set(list, list.map(r => norm(r.name)));
         return list;
     };
-    const close = () => { pop?.remove(); pop = null; };
-    const open = (at, list) => {
-        close();
-        pop = document.createElement("div");
-        pop.className = "r20ta-pop";
-        pop.setAttribute("role", "menu");
-        pop.setAttribute("aria-label", "토큰 액션");
-        pop.innerHTML = '<div class="r20ta-h">토큰 액션</div>';
-        list.forEach(orig => {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.setAttribute("role", "menuitem");
-            b.textContent = orig.textContent.trim() || "(이름 없음)";
-            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); close(); orig.click(); });
-            pop.appendChild(b);
-        });
-        document.body.appendChild(pop);
-        const w = pop.offsetWidth, h = pop.offsetHeight;
-        pop.style.left = Math.max(4, Math.min(at.x + 10, innerWidth - w - 4)) + "px";
-        pop.style.top = Math.max(4, Math.min(at.y + 10, innerHeight - h - 4)) + "px";
-    };
-    // 위쪽 줄에 토큰 액션만 있을 때는 줄을 숨긴다 (그리기 도구 설정 등 다른 줄은 그대로)
-    const inject = () => {
-        const b = barEl();
-        if (!b) return;
-        const ul = b.querySelector("ul.tokenactions");
-        const others = [...b.querySelectorAll("ul.mode")].some(u => u !== ul && shown(u));
-        b.classList.toggle("r20ta-hide", btnVisible.tokact && !!ul && !others);
-        if (pop && !actions().length) close();         // 선택이 풀리면 메뉴도 닫는다
-    };
-    document.addEventListener("pointerdown", e => {
-        if (pop && !pop.contains(e.target)) close();
-        down = btnVisible.tokact && e.button === 0 && e.target.closest?.("#editor-wrapper") ? { x: e.clientX, y: e.clientY } : null;
-    }, true);
-    document.addEventListener("pointerup", e => {
-        if (!down || e.button !== 0) return;
-        const at = { x: e.clientX, y: e.clientY }, moved = Math.hypot(at.x - down.x, at.y - down.y) > 4;
-        down = null;
-        if (moved) return;                  // 끌어서 옮긴 것은 메뉴를 띄우지 않는다
-        setTimeout(() => { const list = actions(); if (list.length) open(at, list); }, 150);     // Roll20 이 선택·토큰 액션을 갱신한 뒤
-    }, true);
-    document.addEventListener("keydown", e => { if (pop && e.key === "Escape") close(); }, true);
-    document.addEventListener("contextmenu", close, true);
-    document.addEventListener("wheel", () => pop && close(), { capture: true, passive: true });
-    const setEnabled = on => {
-        document.body.classList.toggle("r20ta-on", on);
-        if (!on) { close(); barEl()?.classList.remove("r20ta-hide"); }
-        else inject();
-    };
-    setEnabled(btnVisible.tokact);
-    return { inject, setEnabled };
-})();
 
-// ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
-// 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
-const chatCapture = (() => {
-    let on = false, last = null;
-    const logEl = () => document.querySelector("#textchat .content");
-    const msgs = () => [...(logEl()?.querySelectorAll(":scope > .message") || [])];
-    const picked = () => msgs().filter(m => m.classList.contains("r20cap-sel"));
-    const ICON = {
-        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
-        x: '<path d="M18 6 6 18M6 6l12 12"/>',
-        copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
-        ok: '<path d="M20 6 9 17l-5-5"/>',
-        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+    // Roll20 CSP 가 외부 <script> 는 막지만 fetch 는 허락한다 → 주소에서 글로 받아 JSON 부분만 읽는다.
+    // 홈페이지 PHP 가 Access-Control-Allow-Origin: https://app.roll20.net 을 내야 한다.
+    const URL_KEY = "r20_ruledata_url";
+    let status = window.NIRE_RULEDATA ? "ok" : "none";     // none · loading · ok · badkey · fail
+    const getUrl = () => localStorage.getItem(URL_KEY) || "";
+    const statusText = () => {
+        if (status === "ok") return Object.values(window.NIRE_RULEDATA || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0) + "개";
+        return { loading: "불러오는 중…", badkey: "열쇠가 맞지 않음", fail: "불러오기 실패" }[status] || "데이터 없음";
     };
-    const svg = k => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-    let busy = false, note = "", noteT = 0;
-    const capBtn = () => document.getElementById("custom-capture-toggle");
-    const copyBtn = () => document.getElementById("custom-capture-copy");
-    const paint = (b, bg, fg) => { b.style.setProperty("background-color", bg, "important"); b.style.setProperty("color", fg, "important"); };
-    const IDLE_BG = "rgba(136,136,136,0.07)", IDLE_FG = "#aaa";
-    const update = () => {
-        const mb = capBtn(), cb = copyBtn();
-        if (!mb || !cb) return;
-        const n = picked().length;
-        cb.style.display = on ? "flex" : "none";
-        cb.disabled = !n || busy;
-        cb.innerHTML = svg(busy ? "load" : "copy") + (n ? `<b>${n}</b>` : "");
-        paint(cb, n ? CONFIG.activeBg : IDLE_BG, n ? CONFIG.activeText : IDLE_FG);
-        mb.innerHTML = svg(note || (on ? "x" : "cam"));
-        paint(mb, on ? "rgba(24,103,199,0.12)" : IDLE_BG, note === "ok" ? "#2e8b57" : note === "bad" ? "#c0392b" : on ? CONFIG.activeBg : IDLE_FG);
-        const tip = note === "ok" ? "클립보드에 복사했어요" : note === "bad" ? "복사하지 못했어요 — 다시 눌러 주세요"
-            : on ? "캡처 그만두기 (Esc)" : "대화 캡처: 메시지를 눌러 고르고(Shift: 범위) 이미지로 복사";
-        mb.title = tip; mb.setAttribute("aria-label", tip);
-    };
-    const blink = k => { clearTimeout(noteT); note = k; update(); noteT = setTimeout(() => { note = ""; update(); }, 1400); };
-    const start = () => {
-        if (on) return;
-        on = true; last = null;
-        document.getElementById("textchat")?.classList.add("r20cap-on");
-        update();
-    };
-    const stop = () => {
-        on = false;
-        document.getElementById("textchat")?.classList.remove("r20cap-on");
-        msgs().forEach(m => m.classList.remove("r20cap-sel"));
-        update();
-    };
-    // 고르는 동안 메시지를 누르면 고르기만 한다 (링크·단추 등 Roll20 동작은 막는다)
-    document.addEventListener("click", e => {
-        if (!on) return;
-        const m = e.target.closest?.("#textchat .content > .message");
-        if (!m) return;
-        e.preventDefault(); e.stopPropagation();
-        const list = msgs();
-        if (e.shiftKey && last && list.includes(last)) {
-            const a = list.indexOf(last), z = list.indexOf(m);
-            list.slice(Math.min(a, z), Math.max(a, z) + 1).forEach(x => x.classList.add("r20cap-sel"));
-        } else m.classList.toggle("r20cap-sel");
-        last = m;
-        update();
-    }, true);
-    // Shift+클릭이 글자를 끌어 고르지 않게
-    document.addEventListener("mousedown", e => { if (on && e.target.closest?.("#textchat .content > .message")) e.preventDefault(); }, true);
-    document.addEventListener("keydown", e => { if (on && e.key === "Escape") stop(); }, true);
-
-    // ── 그리기 ──
-    // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
-    const INHERIT = new Set(["color", "font-family", "font-size", "font-style", "font-variant", "font-weight", "font-stretch", "line-height", "letter-spacing",
-        "word-spacing", "text-align", "text-indent", "text-transform", "text-shadow", "white-space", "word-break", "overflow-wrap", "visibility", "direction",
-        "list-style-type", "list-style-position", "list-style-image", "quotes", "tab-size", "hyphens", "font-kerning", "font-feature-settings",
-        "font-variation-settings", "-webkit-text-fill-color", "-webkit-text-stroke-color", "-webkit-text-stroke-width", "text-rendering",
-        "border-collapse", "border-spacing", "caption-side", "empty-cells", "cursor"]);
-    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor)/;
-    let sandbox = null;
-    const defaults = new Map();
-    const defaultsOf = el => {
-        const key = el.namespaceURI + ":" + el.tagName;
-        if (defaults.has(key)) return defaults.get(key);
-        if (!sandbox) { sandbox = document.createElement("div"); sandbox.style.cssText = "all:initial;position:fixed;left:-99999px;top:0;visibility:hidden"; document.body.appendChild(sandbox); }
-        const d = document.createElementNS(el.namespaceURI, el.tagName);
-        sandbox.appendChild(d);
-        const cs = getComputedStyle(d), map = {};
-        for (let i = 0; i < cs.length; i++) map[cs[i]] = cs.getPropertyValue(cs[i]);
-        d.remove();
-        defaults.set(key, map);
-        return map;
-    };
-    const styleText = (cs, parentCs, def) => {
-        const out = [];
-        for (let i = 0; i < cs.length; i++) {
-            const p = cs[i];
-            if (SKIP.test(p)) continue;
-            const v = cs.getPropertyValue(p);
-            if (INHERIT.has(p) ? (!parentCs || v !== parentCs.getPropertyValue(p)) : v !== def[p]) out.push(`${p}:${v}`);
-        }
-        return out.join(";");
-    };
-    // 그림 · 글꼴은 주소 대신 데이터로 넣어야 이미지 안에 보인다 (못 가져오면 비워 둔다)
-    const dataCache = new Map();
-    const toData = url => {
-        if (!url || url.startsWith("data:")) return Promise.resolve(url);
-        const get = u => fetch(u, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
-            .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
-            .catch(() => null);
-        // s3.amazonaws.com/files.d20.io 주소는 CORS 가 막혀 있어 files.d20.io 로 먼저 받는다
-        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null)));
-        return dataCache.get(url);
-    };
-    const inlineUrls = async css => {
-        const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map(m => m[1]).filter(u => !u.startsWith("data:"));
-        for (const u of new Set(urls)) {
-            const d = await toData(new URL(u, location.href).href);
-            css = css.split(u).join(d || "");
-        }
-        return css;
-    };
-    // 쓰인 글꼴의 @font-face 를 찾아 데이터로 넣는다 (다른 곳 스타일시트는 읽을 수 없어 건너뛴다)
-    const fontFaces = async families => {
-        const want = new Set([...families].flatMap(f => f.split(",")).map(f => f.trim().replace(/^["']|["']$/g, "").toLowerCase()));
-        const out = [];
-        for (const sh of document.styleSheets) {
-            let rules;
-            try { rules = sh.cssRules; } catch (e) { continue; }
-            for (const r of rules || []) {
-                if (!(r instanceof CSSFontFaceRule)) continue;
-                const fam = r.style.getPropertyValue("font-family").trim().replace(/^["']|["']$/g, "").toLowerCase();
-                if (!want.has(fam)) continue;
-                let css = r.cssText;
-                const base = sh.href || location.href;
-                css = css.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/g, (m0, u) => `url("${new URL(u, base).href}")`);
-                out.push(await inlineUrls(css));
+    const setStatus = st => { status = st; document.dispatchEvent(new CustomEvent("r20-ruledata")); };
+    const load = async () => {
+        const url = getUrl();
+        if (!url) return;
+        setStatus("loading");
+        try {
+            const res = await fetch(url, { cache: "no-cache" });
+            const text = await res.text();
+            const at = text.indexOf("window.NIRE_RULEDATA");
+            if (!res.ok || at < 0) {
+                console.warn("[자동완성] 데이터가 아닌 응답:", res.status, text.slice(0, 200));
+                return setStatus(/열쇠/.test(text) ? "badkey" : "fail");
             }
-        }
-        return out.join("\n");
-    };
-    const render = async list => {
-        const lg = logEl();
-        const wrap = document.createElement("div"), lgCs = getComputedStyle(lg), rules = [], families = new Set([lgCs.fontFamily]);
-        let pn = 0;
-        // 맨 바깥: 채팅창 글꼴·색·배경을 그대로 (투명하면 흰 바탕)
-        const bg = [lg, lg.parentElement, document.getElementById("textchat")].map(x => x && getComputedStyle(x).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)") || "#fff";
-        wrap.setAttribute("style", styleText(lgCs, null, defaultsOf(wrap)) + `;width:${lg.clientWidth}px;background-color:${bg};margin:0;padding:0;overflow:hidden;height:auto;max-height:none;position:static;inset:auto;transform:none`);
-        const walk = (orig, parentCs) => {
-            const cl = orig.cloneNode(false);
-            if (orig.nodeType !== 1) return cl;
-            const cs = getComputedStyle(orig);
-            families.add(cs.fontFamily);
-            cl.removeAttribute("id");
-            cl.setAttribute("style", styleText(cs, parentCs, defaultsOf(orig)));
-            // ::before · ::after 는 복제에 없으니 규칙으로 따로 적는다
-            ["::before", "::after"].forEach(ps => {
-                const pcs = getComputedStyle(orig, ps), c = pcs.getPropertyValue("content");
-                if (!c || c === "none" || c === "normal") return;
-                const cls = "r20cp" + (++pn);
-                cl.classList.add(cls);
-                const body = [];
-                for (let i = 0; i < pcs.length; i++) if (!SKIP.test(pcs[i])) body.push(`${pcs[i]}:${pcs.getPropertyValue(pcs[i])}`);
-                rules.push(`.${cls}${ps}{${body.join(";")}}`);
-            });
-            orig.childNodes.forEach(ch => cl.appendChild(walk(ch, cs)));
-            if (orig.tagName === "IMG") { cl.setAttribute("data-src", orig.currentSrc || orig.src); cl.removeAttribute("srcset"); cl.removeAttribute("loading"); }
-            return cl;
-        };
-        // 고른 표시는 빼고 계산된 스타일을 읽는다
-        document.getElementById("textchat")?.classList.remove("r20cap-on");
-        list.forEach(m => m.classList.remove("r20cap-sel"));
-        try { list.forEach(m => wrap.appendChild(walk(m, lgCs))); }
-        finally { list.forEach(m => m.classList.add("r20cap-sel")); if (on) document.getElementById("textchat")?.classList.add("r20cap-on"); }
-        // 그림 · 배경 그림 → 데이터
-        for (const img of wrap.querySelectorAll("img[data-src]")) {
-            const d = await toData(img.getAttribute("data-src"));
-            img.removeAttribute("data-src");
-            if (d) img.setAttribute("src", d); else { img.removeAttribute("src"); img.style.visibility = "hidden"; }
-        }
-        for (const el of [wrap, ...wrap.querySelectorAll("[style*='url(']")]) el.setAttribute("style", await inlineUrls(el.getAttribute("style")));
-        const style = document.createElement("style");
-        style.textContent = (await fontFaces(families)) + "\n" + (await inlineUrls(rules.join("\n")));
-        wrap.prepend(style);
-        // 높이는 실제로 놓아 보고 잰다
-        const meas = document.createElement("div");
-        meas.style.cssText = "position:fixed;left:-99999px;top:0;visibility:hidden";
-        meas.appendChild(wrap);
-        document.body.appendChild(meas);
-        const w = Math.ceil(wrap.getBoundingClientRect().width), h = Math.ceil(wrap.getBoundingClientRect().height);
-        meas.remove();
-        const xml = new XMLSerializer().serializeToString(wrap);
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="100%" height="100%">${xml}</foreignObject></svg>`;
-        const img = new Image();
-        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-        await img.decode();
-        const scale = h * 2 <= 16000 ? 2 : Math.max(0.5, 16000 / h);       // 선명하게, 너무 길면 줄여서
-        const cv = document.createElement("canvas");
-        cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
-        const ctx = cv.getContext("2d");
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, 0, 0, w, h);
-        return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("toBlob 실패")), "image/png"));
-    };
-    const copy = async () => {
-        const list = picked();
-        if (!list.length || busy) return;
-        busy = true; update();
-        try {
-            // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 만들어지는 대로 넘긴다)
-            await navigator.clipboard.write([new ClipboardItem({ "image/png": render(list) })]);
-            busy = false;
-            stop();
-            blink("ok");
+            window.NIRE_RULEDATA = JSON.parse(text.slice(text.indexOf("=", at) + 1).trim().replace(/;\s*$/, ""));
+            normCache.clear();
+            setStatus("ok");
         } catch (e) {
-            console.warn("[대화 캡처] 실패:", e);
-            busy = false;
-            blink("bad");
+            console.warn("[자동완성] 데이터 불러오기 실패 — 홈페이지 PHP 의 Access-Control-Allow-Origin 헤더를 확인하세요.", e);
+            setStatus("fail");
         }
     };
-    // 말하는 사람 줄: [저널] [복사(고른 개수) — 고르는 동안만] [캡처 ↔ 그만두기] [⚙]
-    const inject = () => {
-        const gear = document.getElementById("custom-settings-btn");
-        if (!btnVisible.capture || !gear || capBtn()) return;
-        const mk = id => {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.id = id;
-            b.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; cursor: pointer;";
-            b.addEventListener("click", e => {
-                e.preventDefault(); e.stopPropagation();
-                if (id === "custom-capture-copy") return copy();
-                clearTimeout(noteT); note = "";
-                on ? stop() : start();
-            });
-            return b;
-        };
-        const cb = mk("custom-capture-copy");
-        cb.style.width = "auto"; cb.style.padding = "0 5px";
-        cb.title = "고른 메시지를 이미지로 클립보드에 복사";
-        cb.setAttribute("aria-label", "이미지로 복사");
-        gear.before(cb, mk("custom-capture-toggle"));
-        update();
+    // '// @require  https://…' 줄을 통째로 붙여 넣어도 주소만 쓴다
+    const setUrl = v => {
+        const url = (String(v).match(/https?:\/\/\S+/) || [""])[0];
+        if (url) { localStorage.setItem(URL_KEY, url); load(); }
+        else { localStorage.removeItem(URL_KEY); setStatus(window.NIRE_RULEDATA ? "ok" : "none"); }
+        return url;
     };
-    const setEnabled = v => {
-        if (v) return inject();
-        if (on) stop();
-        capBtn()?.remove(); copyBtn()?.remove();
-    };
-    return { inject, setEnabled };
-})();
+    if (!window.NIRE_RULEDATA) load();
 
-// ───────── 덱 창: 반투명 판 · 카드 최대 100px · 메뉴는 마우스를 올릴 때 카드 왼쪽에 (#showndecks.r20dk-on — 모양은 CSS) ─────────
-const deckView = (() => {
-    let hov = null, t = 0;
-    const place = ad => {
-        const c = ad.querySelector(".controls"), st = ad.querySelector(".deckstack");
-        if (!c || !st) return;
-        const r = st.getBoundingClientRect(), w = c.offsetWidth, h = c.offsetHeight;
-        const x = r.left - w - 6 >= 4 ? r.left - w - 6 : r.right + 6;
-        c.style.setProperty("left", Math.round(x) + "px", "important");
-        c.style.setProperty("top", Math.round(Math.max(4, Math.min(r.top, innerHeight - h - 4))) + "px", "important");
+    let box = null, input = null, items = [], sel = 0, filling = false;
+
+    const ensureBox = () => {
+        if (box) return box;
+        box = document.createElement("div");
+        box.id = "r20-ac-box";
+        box.setAttribute("role", "listbox");
+        // mousedown 기본동작을 막아 이름칸 포커스를 유지
+        box.addEventListener("mousedown", e => {
+            e.preventDefault();
+            const el = e.target.closest(".r20-ac-item");
+            if (el) apply(items[+el.dataset.i]);
+        });
+        document.body.appendChild(box);
+        return box;
     };
-    const close = () => { clearTimeout(t); t = 0; hov?.classList.remove("r20dk-hov"); hov = null; };
-    // 카드 → 메뉴로 옮겨 가는 틈에서 닫히지 않게 조금 기다린다
-    document.addEventListener("mouseover", e => {
-        if (!btnVisible.deckview) return;
-        const ad = e.target.closest?.("#showndecks.r20dk-on .adeck");
-        if (!ad) { if (hov && !t) t = setTimeout(close, 250); return; }
-        clearTimeout(t); t = 0;
-        if (hov === ad) return;
+
+    const close = () => {
+        if (box) box.classList.remove("show");
+        input = null; items = [];
+    };
+
+    const ctx = el => {
+        const m = el.name?.match(NAME_RE);
+        if (!m || el.disabled) return null;
+        const base = m[1];
+        const row = el.closest(".repitem") || (() => {
+            let p = el.parentElement;
+            for (let i = 0; p && i < 6; i++, p = p.parentElement)
+                if (p.querySelector(`[name="attr_${base}Effect"]`)) return p;
+            return null;
+        })();
+        if (!row) return null;
+        const sys = base.startsWith("Magic") ? "magicalogia"
+            : row.querySelector(`[name="attr_${base}Clan"]`) ? "shinobigami" : "insane";
+        return { base, row, sys };
+    };
+
+    const search = (sys, q) => {
+        const list = getList(sys);
+        if (!list || !q) return [];
+        const names = normCache.get(list);
+        const head = [], mid = [];
+        for (let i = 0; i < list.length && head.length < MAX; i++) {
+            const n = names[i];
+            if (n.startsWith(q)) head.push(list[i]);
+            else if (mid.length < MAX && n.includes(q)) mid.push(list[i]);
+        }
+        return head.concat(mid).slice(0, MAX);
+    };
+
+    const render = () => {
+        ensureBox().innerHTML = "";
+        items.forEach((r, i) => {
+            const it = document.createElement("div");
+            it.className = "r20-ac-item" + (i === sel ? " on" : "");
+            it.dataset.i = i;
+            it.setAttribute("role", "option");
+            const b = document.createElement("b");
+            b.textContent = r.name;
+            const s = document.createElement("small");
+            s.textContent = [r.group, r.type, r.skill].filter(Boolean).join(" · ");
+            it.append(b, s);
+            box.appendChild(it);
+        });
+        const rc = input.getBoundingClientRect();
+        // 시트 iframe 안의 칸이면 iframe 위치만큼 옮겨서 맨 위 화면 좌표로 바꾼다
+        let ox = 0, oy = 0;
+        for (let w = input.ownerDocument.defaultView; w?.frameElement; w = w.parent) {
+            const fr = w.frameElement.getBoundingClientRect();
+            ox += fr.left + w.frameElement.clientLeft; oy += fr.top + w.frameElement.clientTop;
+        }
+        const top = rc.top + oy, bottom = rc.bottom + oy;
+        box.style.left = Math.min(rc.left + ox, window.innerWidth - 230) + "px";
+        box.style.minWidth = Math.max(220, rc.width) + "px";
+        // 아래 공간이 부족하면 위로 띄운다
+        const below = window.innerHeight - bottom;
+        box.style.top = below > 270 ? (bottom + 2) + "px" : "auto";
+        box.style.bottom = below > 270 ? "auto" : (window.innerHeight - top + 2) + "px";
+        box.classList.add("show");
+        box.children[sel]?.scrollIntoView({ block: "nearest" });
+    };
+
+    const pickOption = (select, label) => {
+        const want = norm(label);
+        if (!want) return null;
+        const opts = [...select.options];
+        return opts.find(o => norm(o.textContent) === want)
+            || opts.find(o => norm(o.value) === want || norm(o.value) === `@{${want}}`)
+            || null;
+    };
+
+    const setField = (el, value) => {
+        if (el.tagName === "SELECT") {
+            const opt = pickOption(el, value);
+            if (!opt) { console.warn("[자동완성] 드롭다운에 없는 값:", value, el.name); return; }
+            el.value = opt.value;
+        } else {
+            el.value = value;
+        }
+        const Ev = el.ownerDocument.defaultView?.Event || Event;
+        el.dispatchEvent(new Ev("input", { bubbles: true }));
+        el.dispatchEvent(new Ev("change", { bubbles: true }));
+    };
+
+    const apply = rec => {
+        const c = rec && input && ctx(input);
+        if (!c) return close();
+        const map = FIELDS[c.sys];
+        const data = { ...rec };
+        // 플레이버 칸이 없는 시트는 효과 뒤에 붙인다
+        if (data.flavor && !map.flavor) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
+        filling = true;
+        for (const [key, field] of Object.entries(map)) {
+            if (data[key] == null || data[key] === "") continue;
+            // 같은 name 의 표시용 <span> 이 앞에 있는 시트가 있어 입력 요소만 고른다
+            const el = c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
+            if (el) setField(el, String(data[key]));
+        }
+        filling = false;
         close();
-        hov = ad;
-        ad.classList.add("r20dk-hov");
-        place(ad);
-    });
-    document.addEventListener("scroll", e => { if (hov && e.target.id === "showndecks") close(); }, true);
-    const inject = () => {
-        const sd = document.getElementById("showndecks");
-        if (!sd) return;
-        sd.classList.toggle("r20dk-on", btnVisible.deckview);
     };
-    return { inject, setEnabled: () => inject() };
+
+    const onInput = e => {
+        if (!btnVisible.autofill || filling) return;
+        const c = ctx(e.target);
+        if (!c) return;
+        const found = search(c.sys, norm(e.target.value));
+        if (!found.length) return close();
+        input = e.target;
+        input.setAttribute("autocomplete", "off");
+        items = found; sel = 0;
+        render();
+    };
+
+    const onKey = e => {
+        if (!input || e.target !== input || !box?.classList.contains("show")) return;
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            sel = (sel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+            render();
+        } else if (e.key === "Tab") {
+            apply(items[sel]);   // 포커스 이동은 그대로 둔다
+            return;
+        } else if (e.key === "Enter") {
+            apply(items[sel]);
+        } else if (e.key === "Escape") {
+            close();
+        } else return;
+        e.preventDefault(); e.stopPropagation();
+    };
+
+    // 이름칸이 들어 있는 영역(또는 그 시트 iframe 을 품은 창)이 스크롤될 때만 닫는다 (채팅 자동 스크롤 등은 무시)
+    const onScroll = e => {
+        if (!input) return;
+        const fe = input.ownerDocument.defaultView?.frameElement;
+        if (e.target.contains?.(input) || (fe && e.target.contains?.(fe))) close();
+    };
+
+    const onFocusOut = e => { if (e.target === input) close(); };
+
+    // 캐릭터 시트는 같은 출처의 iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다.
+    // document.write 로 다시 그려지면 문서는 그대로인데 리스너만 지워지므로, 기록해 두지 않고 매번 다시 건다
+    // (같은 함수를 다시 addEventListener 하면 중복되지 않는다)
+    const hook = doc => {
+        if (!doc) return;
+        doc.addEventListener("input", onInput, true);
+        doc.addEventListener("keydown", onKey, true);
+        doc.addEventListener("focusout", onFocusOut, true);
+        doc.addEventListener("scroll", onScroll, true);
+        doc.defaultView?.addEventListener("resize", close);
+    };
+    const hookFrame = f => { try { hook(f.contentDocument); } catch (e) { /* 다른 출처 */ } };
+    hook(document);
+    const framesSeen = new WeakSet();
+    const inject = () => {
+        document.querySelectorAll("iframe").forEach(f => {
+            if (!framesSeen.has(f)) {
+                framesSeen.add(f);
+                f.addEventListener("load", () => hookFrame(f));
+            }
+            hookFrame(f);
+        });
+    };
+    // 시트 칸을 누르면 맨 위 창이 포커스를 잃는다 → 그 순간 그 iframe 에 다시 건다
+    window.addEventListener("blur", () => setTimeout(() => {
+        const a = document.activeElement;
+        if (a?.tagName === "IFRAME") hookFrame(a);
+    }, 0));
+
+    const setEnabled = on => { if (!on) close(); };
+    return { close, inject, getUrl, setUrl, statusText, setEnabled };
 })();
 
-// ───────── 맵 아래 매크로 줄: 두 줄로 쌓기 + 길게(0.4초) 눌러 끌면 순서 바꾸기 (body.r20mb-on) ─────────
-// 순서 바꾸기·저장은 Roll20 의 sortable 그대로이고, 시작 조건(delay)만 바꾼다
-const macroBar = (() => {
-    let bound = null, orig = null;
-    const inject = () => {
-        document.body.classList.toggle("r20mb-on", btnVisible.macrobar);
-        const list = document.getElementById("macrobar_macros"), jq = window.jQuery || window.$;
-        if (!list || !jq?.fn?.sortable || !list.classList.contains("ui-sortable")) return;
-        const $l = jq(list);
-        if (bound !== list) {
-            bound = list;
-            orig = { delay: $l.sortable("option", "delay") || 0, cancel: $l.sortable("option", "cancel") };
-            $l.on("sortstart.r20mb", () => list.classList.add("r20mb-drag")).on("sortstop.r20mb", () => list.classList.remove("r20mb-drag"));
-        }
-        // jQuery UI 는 기본으로 <button> 에서 시작한 끌기를 무시한다 → 켜져 있을 땐 단추를 잡아도 끌리게
-        const want = btnVisible.macrobar ? { delay: 400, cancel: "input,textarea,select,option" } : orig;
-        if ($l.sortable("option", "delay") !== want.delay || $l.sortable("option", "cancel") !== want.cancel) $l.sortable("option", want);
-        // 두 줄이 되며 아래로 넘치면 아래쪽에 붙인다
-        const mb = document.getElementById("macrobar");
-        if (btnVisible.macrobar && mb && mb.getBoundingClientRect().bottom > innerHeight - 2) {
-            mb.style.setProperty("top", "auto", "important");
-            mb.style.setProperty("bottom", "12px", "important");
-        }
-    };
-    return { inject, setEnabled: () => inject() };
-})();
+addCss(`
+        #r20-ac-box { position:fixed; z-index:100000; min-width:220px; max-width:360px; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.18); font-family:sans-serif; font-size:12px; color:#333; display:none; }
+        #r20-ac-box.show { display:block; }
+        .r20-ac-item { display:flex; align-items:baseline; gap:6px; padding:4px 8px; cursor:pointer; border-bottom:1px solid #f0f0f0; white-space:nowrap; }
+        .r20-ac-item b { font-weight:700; overflow:hidden; text-overflow:clip; }
+        .r20-ac-item small { color:#999; font-size:10px; overflow:hidden; text-overflow:clip; }
+        .r20-ac-item.on, .r20-ac-item:hover { background:#e6f7ff; }
+`);
+addFeature("autofill", autofill);
+// 자동완성 줄: 이름 옆에 데이터 상태(개수 · 불러오는 중 · 실패), 아래 칸에 데이터 주소
+addBundle({ place: "main", order: 6, label: "시트 자동완성", sub: "",
+    members: [["autofill", "autofill"]],
+    extra: row => {
+        const name = row.querySelector(".cs-name");
+        const show = () => { name.textContent = `시트 자동완성 (${autofill.statusText()})`; };
+        show();
+        document.addEventListener("r20-ruledata", show);
+        const rdRow = document.createElement("div");
+        rdRow.className = "cs-row cs-rd";
+        const rdInp = document.createElement("input");
+        rdInp.type = "text";
+        rdInp.placeholder = "데이터 주소 붙여넣기";
+        rdInp.setAttribute("aria-label", "자동완성 데이터 주소");
+        rdInp.value = autofill.getUrl();
+        rdInp.addEventListener("change", () => { rdInp.value = autofill.setUrl(rdInp.value); });
+        rdRow.appendChild(rdInp);
+        return [rdRow];
+    } });
 
-// ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
-// 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
-const mapShot = (() => {
-    const ICON = {
-        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
-        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
-        ok: '<path d="M20 6 9 17l-5-5"/>',
-        warn: '<path d="M20 6 9 17l-5-5"/><circle cx="19" cy="19" r="2" fill="currentColor"/>',
-        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
-    };
-    const svg = k => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-    const btn = () => document.getElementById("r20-mapshot");
-    let busy = false, noteT = 0;
-    const show = (k, tip) => {
-        const b = btn();
-        if (!b) return;
-        b.innerHTML = svg(k);
-        b.dataset.state = k;
-        b.title = tip;
-        b.setAttribute("aria-label", tip);
-    };
-    const idle = () => show("cam", "맵 촬영: 맵·토큰 레이어를 이미지로 클립보드에 복사");
-    const note = (k, tip) => { clearTimeout(noteT); show(k, tip); noteT = setTimeout(idle, 3000); };
-    // Roll20 은 fetch 로 그림 서버에 못 가게 막혀 있어서 <img crossOrigin> 으로 받는다.
-    // s3.amazonaws.com/files.d20.io 주소는 CORS 가 안 될 수 있어 files.d20.io 로 먼저 받아 보고,
-    // 그다음 원래 주소, 마지막으로 (CORS 없이 캐시된 경우를 피해) 주소 끝을 바꿔 받는다
-    const loadOne = u => new Promise(res => {
-        const im = new Image();
-        im.crossOrigin = "anonymous";
-        im.onload = () => res(im);
-        im.onerror = () => res(null);
-        im.src = u;
-    });
-    let failed = [];
-    const load = async u => {
-        for (const c of new Set([r20img(u), u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])) {
-            const im = await loadOne(c);
-            if (im) return im;
-        }
-        failed.push(u);
-        return null;
-    };
-    const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
-    const usable = c => c && c !== "transparent" && c !== "none";
-    // 펜 선: path 는 [["M",x,y],["L",x,y],["Q",..],["C",..]] — 점들의 가운데가 (left, top) 에 오도록 놓는다
-    const drawPath = (ctx, p) => {
-        let cmds;
-        try { cmds = JSON.parse(p.get("path") || "[]"); } catch (e) { return; }
-        if (!Array.isArray(cmds) || !cmds.length) return;
-        const xs = [], ys = [];
-        cmds.forEach(([, ...a]) => a.forEach((v, i) => (i % 2 ? ys : xs).push(+v)));
-        if (!xs.length) return;
-        ctx.save();
-        ctx.translate(num(p, "left"), num(p, "top"));
-        ctx.rotate(num(p, "rotation") * Math.PI / 180);
-        ctx.scale(num(p, "scaleX", 1), num(p, "scaleY", 1));
-        ctx.translate(-(Math.min(...xs) + Math.max(...xs)) / 2, -(Math.min(...ys) + Math.max(...ys)) / 2);
-        ctx.beginPath();
-        cmds.forEach(([c, ...a]) => {
-            a = a.map(Number);
-            if (c === "M") ctx.moveTo(a[0], a[1]);
-            else if (c === "L") ctx.lineTo(a[0], a[1]);
-            else if (c === "Q") ctx.quadraticCurveTo(a[0], a[1], a[2], a[3]);
-            else if (c === "C") ctx.bezierCurveTo(a[0], a[1], a[2], a[3], a[4], a[5]);
-            else if (c === "Z" || c === "z") ctx.closePath();
-        });
-        if (usable(p.get("fill"))) { ctx.fillStyle = p.get("fill"); ctx.fill(); }
-        const sw = num(p, "stroke_width", 0);
-        if (sw > 0 && usable(p.get("stroke"))) { ctx.lineWidth = sw; ctx.strokeStyle = p.get("stroke"); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
-        ctx.restore();
-    };
-    const drawImg = (ctx, g, im) => {
-        const w = num(g, "width"), h = num(g, "height");
-        ctx.save();
-        ctx.translate(num(g, "left"), num(g, "top"));
-        ctx.rotate(num(g, "rotation") * Math.PI / 180);
-        ctx.scale(g.get("fliph") ? -1 : 1, g.get("flipv") ? -1 : 1);
-        ctx.globalAlpha = Math.max(0, Math.min(1, num(g, "baseOpacity", 1)));
-        ctx.drawImage(im, -w / 2, -h / 2, w, h);
-        ctx.restore();
-    };
-    const render = async () => {
-        const pg = Campaign.activePage?.() || Campaign.pages?.get(Campaign.get("playerpageid"));
-        if (!pg?.thegraphics) throw new Error("페이지를 아직 불러오지 않았어요");
-        const W = num(pg, "width", 25) * 70, H = num(pg, "height", 25) * 70;
-        const k = Math.min(1, 8192 / Math.max(W, H));             // 브라우저 캔버스 한도 안으로
-        const z = new Map(String(pg.get("zorder") || "").split(",").map((id, i) => [id, i]));
-        const objs = [...pg.thegraphics.models.filter(g => g.get("imgsrc")), ...(pg.thepaths?.models || [])];
-        // 맵 레이어 먼저, 그다음 토큰 레이어. 같은 레이어 안에서는 Roll20 의 앞뒤 순서(zorder)대로
-        const list = ["map", "objects"].flatMap(layer => objs.filter(o => o.get("layer") === layer)
-            .sort((a, b) => (z.get(a.id) ?? num(a, "z_index", 1e9)) - (z.get(b.id) ?? num(b, "z_index", 1e9))));
-        failed = [];
-        const imgs = await Promise.all(list.map(o => o.get("imgsrc") ? load(o.get("imgsrc")) : null));
-        if (failed.length) console.warn(`[맵 촬영] 그림 ${failed.length}/${list.length}개를 못 불러옴`, failed.slice(0, 20));
-        const cv = document.createElement("canvas");
-        cv.width = Math.round(W * k); cv.height = Math.round(H * k);
-        const ctx = cv.getContext("2d");
-        ctx.scale(k, k);
-        ctx.fillStyle = pg.get("background_color") || "#ffffff";
-        ctx.fillRect(0, 0, W, H);
-        let miss = 0;
-        list.forEach((o, i) => {
-            if (!o.get("imgsrc")) return drawPath(ctx, o);
-            if (imgs[i]) drawImg(ctx, o, imgs[i]); else miss++;
-        });
-        const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("이미지를 만들지 못했어요")), "image/png"));
-        return { blob, miss };
-    };
-    const shoot = async () => {
-        if (busy) return;
-        busy = true;
-        clearTimeout(noteT);
-        show("load", "맵을 그리는 중…");
-        let info = null;
-        try {
-            // 누른 순간에 클립보드 쓰기를 시작해야 브라우저가 허락한다 (그림은 다 그려지는 대로 넘긴다)
-            await navigator.clipboard.write([new ClipboardItem({ "image/png": render().then(r => (info = r).blob) })]);
-            note(info.miss ? "warn" : "ok", info.miss ? `복사했어요 — 그림 ${info.miss}개는 불러오지 못해 빠졌어요` : "맵 이미지를 클립보드에 복사했어요");
-        } catch (e) {
-            console.warn("[맵 촬영] 실패:", e);
-            note("bad", "복사하지 못했어요 — " + (e?.message || e));
-        }
-        busy = false;
-    };
-    const inject = () => {
-        if (!btnVisible.mapshot || btn() || !document.getElementById("sidebarcontrol")) return;
-        const b = document.createElement("button");
-        b.type = "button";
-        b.id = "r20-mapshot";
-        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); shoot(); });
-        document.body.appendChild(b);
-        idle();
-        screenUI.place();
-    };
-    const setEnabled = v => {
-        if (v) return inject();
-        btn()?.remove();
-    };
-    return { inject, setEnabled };
-})();
+// ══════════ 채팅 단추 · 이모지 팔레트 ══════════
 
 // ───────── 이모지 팔레트: 전송 왼쪽 단추 → 입력칸 위에 이모지 · 텍스트 이모티콘 · 내 것(직접 등록) ─────────
 // 누르면 커서 자리에 넣고 팔레트는 열어 둔다. 우클릭: 내 것에 넣기/빼기. 최근 쓴 것·내 것은 이 브라우저에 저장
@@ -5924,12 +5948,60 @@ const emojiPalette = (() => {
     return { inject, setEnabled };
 })();
 
+addCss(`
+        /* 이모지 팔레트 (입력칸 위) */
+        #r20-emoji { position:fixed; z-index:10005; display:flex; flex-direction:column; background:#fff; border:1px solid #ddd; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.22); overflow:hidden; font-family:sans-serif; color:#333; }
+        #r20-emoji[hidden] { display:none; }
+        #r20-emoji .q { flex-shrink:0; width:auto; height:28px; margin:8px 8px 4px; padding:0 10px; border:1px solid #ddd; border-radius:14px; font-size:12px; outline:none; box-sizing:border-box; box-shadow:none; }
+        #r20-emoji .q:focus { border-color:#1867c7; }
+        #r20-emoji .tabs { flex-shrink:0; display:flex; padding:0 4px; border-bottom:1px solid #eee; }
+        #r20-emoji .tabs button { flex:1; min-width:0; height:28px; margin:0; padding:0; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; font-size:15px; cursor:pointer; opacity:0.55; }
+        #r20-emoji .tabs button.txt { font-size:11px; font-weight:700; color:#555; }
+        #r20-emoji .tabs button[aria-selected="true"] { opacity:1; border-bottom-color:#1867c7; }
+        #r20-emoji .tabs button:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
+        #r20-emoji .head { flex-shrink:0; padding:4px 10px 2px; font-size:11px; font-weight:700; color:#888; }
+        #r20-emoji .grid { flex:1; min-height:0; overflow-y:auto; padding:2px 6px 8px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:2px; scrollbar-width:thin; }
+        #r20-emoji .it { margin:0; border:0; border-radius:6px; background:none; color:#333; cursor:pointer; }
+        #r20-emoji .it.e { width:34px; height:34px; padding:0; font-size:21px; line-height:34px; }
+        #r20-emoji .it.t { height:28px; padding:0 8px; background:#f6f6f8; font-size:13px; white-space:nowrap; }
+        #r20-emoji .it:hover, #r20-emoji .it:focus-visible { background:#eaf1fb; outline:none; }
+        #r20-emoji .empty { padding:12px 6px; font-size:12px; color:#999; }
+        #r20-emoji .add { flex-shrink:0; display:flex; gap:4px; margin:0; padding:6px 8px; border-top:1px solid #eee; }
+        #r20-emoji .add[hidden] { display:none; }
+        #r20-emoji .add input { min-width:0; height:26px; margin:0; padding:0 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; box-sizing:border-box; box-shadow:none; }
+        #r20-emoji .add .at { flex:1.4; }
+        #r20-emoji .add .an { flex:1; }
+        #r20-emoji .add button { flex-shrink:0; height:26px; margin:0; padding:0 10px; border:0; border-radius:4px; background:#1867c7; color:#fff; font-size:12px; cursor:pointer; }
+`);
+addFeature("emojiPalette", emojiPalette);
+addBundle({ place: "chat", order: 1, label: "이모지 팔레트", sub: "", members: [["emoji", "emojiPalette"]] });
+
+// ══════════ 시작 ══════════
+
+// 스타일은 바탕 CSS + 묶음마다 등록한 CSS 를 한 번에 넣는다
+// (예전 버전 사본이 먼저 넣은 스타일이 있으면 알리고 이 버전 것으로 바꾼다)
+const oldAddonStyle = document.getElementById("r20-addon-style");
+if (oldAddonStyle && !oldAddonStyle.dataset.aio) warnDuplicate();
+if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
+    const style = oldAddonStyle || document.createElement("style");
+    style.id = "r20-addon-style";
+    style.dataset.aio = "1";
+    style.textContent = [CORE_CSS, ...CSS_PARTS].join("\n");
+    document.head.appendChild(style);
+}
+// 한 기능이 오류를 내도 나머지는 계속 붙도록 하나씩 따로 돌린다
+const injectAll = () => {
+    try { applyCocofoliaLayout(); } catch (e) { console.warn("[올인원] 채팅 입력칸 오류", e); }
+    for (const [name, mod] of Object.entries(FEAT)) {
+        try { mod.inject?.(); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
+    }
+};
 let _layoutTimer = null;
-const observer = new MutationObserver(() => {
+new MutationObserver(() => {
     clearTimeout(_layoutTimer);
-    _layoutTimer = setTimeout(() => { applyCocofoliaLayout(); autofill.inject(); bgmPreview.inject(); bulkEditor.inject(); jukeboxRow.inject(); sidePicker.inject(); tokenMenu.inject(); queryPicker.inject(); pagePanel.inject(); roomImages.inject(); screenUI.inject(); tokenActs.inject(); chatCapture.inject(); deckView.inject(); macroBar.inject(); mapShot.inject(); emojiPalette.inject(); }, 100);
-});
-observer.observe(document.body, { childList: true, subtree: true });
-applyCocofoliaLayout();
+    _layoutTimer = setTimeout(injectAll, 100);
+}).observe(document.body, { childList: true, subtree: true });
+injectAll();
+
 
 })();
