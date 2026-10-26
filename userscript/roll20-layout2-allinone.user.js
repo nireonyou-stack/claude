@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.10
+// @version      1.20.11
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.10";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.11";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -976,6 +976,38 @@ const CORE_CSS = `
 
 // ══════════ 묶음 1 · 주크박스 · 저널 목록 간소화 ══════════
 
+// ───────── 주크박스 감시 (미리듣기 · 한 줄 보기가 같이 씀) ─────────
+// #jukebox 하나만 지켜보다가 새로 그려진 곡 줄만 골라 넘긴다 (전체를 다시 훑지 않게).
+// 받는 쪽: fn(곡 줄 목록, 재생목록 구조가 바뀌었을 수 있음)
+const jbWatch = (() => {
+    const subs = new Set();
+    const OWN = ".r20jb-vol, .r20jb-loop, .r20-bgm-pv, .r20jb-step";       // 우리가 붙인 것은 무시
+    let watched = null;
+    const all = () => [...document.querySelectorAll("#jukebox li.jukeboxitem")];
+    const run = (lis, folders) => subs.forEach(fn => { try { fn(lis, folders); } catch (e) { console.warn("[올인원] 주크박스 처리 오류", e); } });
+    const ensure = () => {
+        const jb = document.getElementById("jukebox");
+        if (!jb || jb === watched) return;
+        watched = jb;
+        // 화면에 그려지기 전에 바로 붙인다 (슬라이더·버튼 깜빡임 방지)
+        new MutationObserver(recs => timed("주크박스 감시", () => {
+            const lis = new Set();
+            let folders = false;
+            for (const r of recs) for (const n of r.addedNodes) {
+                if (n.nodeType !== 1 || n.matches(OWN)) continue;
+                const li = r.target.closest?.("li.jukeboxitem");
+                if (li) { lis.add(li); continue; }
+                if (n.matches("li.jukeboxitem")) lis.add(n);
+                n.querySelectorAll("li.jukeboxitem").forEach(x => lis.add(x));
+                if (n.matches("li.dd-item, ol, #jukeboxfolderroot") || n.querySelector("li.dd-folder")) folders = true;
+            }
+            if (lis.size || folders) run([...lis], folders);
+        })).observe(jb, { childList: true, subtree: true });
+        run(all(), true);
+    };
+    return { on: fn => subs.add(fn), ensure, all };
+})();
+
 // ───────── BGM 미리듣기: 주크박스 트랙을 전체 재생 전에 GM 본인만 로컬로 들어본다 ─────────
 // 브라우저 Audio 로 재생하므로 Roll20 동기화(참가자 재생)와 무관하다.
 const bgmPreview = (() => {
@@ -1036,9 +1068,9 @@ const bgmPreview = (() => {
     const status = id => audio && curId === id ? `재생 중 ${fmt(audio.currentTime)} / ${fmt(audio.duration)}`
         : failedId === id ? "재생 실패 (콘솔 확인)" : "";
 
-    const inject = () => {
-        if (!btnVisible.bgm) return;
-        document.querySelectorAll("li.jukeboxitem .playbackcontrol:not(:has(> .r20-bgm-pv))").forEach(pc => {
+    const decorate = li => {
+        li.querySelectorAll(".playbackcontrol").forEach(pc => {
+            if (pc.querySelector(":scope > .r20-bgm-pv")) return;
             const a = document.createElement("a");
             a.className = "r20-bgm-pv";
             a.textContent = "🎧";
@@ -1046,9 +1078,11 @@ const bgmPreview = (() => {
             a.setAttribute("role", "button");
             a.tabIndex = 0;
             pc.insertBefore(a, pc.querySelector("a.play"));
-            if (audio && pc.closest("li.jukeboxitem")?.dataset.itemid === curId) a.classList.add("on");
+            if (audio && li.dataset.itemid === curId) a.classList.add("on");
         });
     };
+    jbWatch.on(lis => { if (btnVisible.bgm) lis.forEach(decorate); });
+    const inject = () => { if (btnVisible.bgm) jbWatch.ensure(); };
 
     const onToggle = e => {
         const btn = e.target.closest?.(".r20-bgm-pv");
@@ -1069,7 +1103,7 @@ const bgmPreview = (() => {
 
     const setEnabled = on => {
         document.body.classList.toggle("r20-bgm-off", !on);
-        if (on) inject(); else stop();
+        if (on) { inject(); jbWatch.all().forEach(decorate); } else stop();
     };
     setEnabled(btnVisible.bgm);
 
@@ -1106,14 +1140,25 @@ const jukeboxRow = (() => {
         if (label) label.textContent = v;
     };
 
-    const addVolume = () => {
-        document.querySelectorAll("#jukebox li.jukeboxitem .volume:not(:has(> .r20jb-vol))").forEach(vol => {
+    // 곡 줄 하나에 ◂ ▸ 볼륨 · ↻ 반복 · 태그 말풍선을 붙인다 (이미 있으면 건너뜀)
+    const decorate = li => {
+        li.querySelectorAll(".volume").forEach(vol => {
+            if (vol.querySelector(":scope > .r20jb-vol")) return;
             const box = document.createElement("span");
             box.className = "r20jb-vol";
             box.innerHTML = '<button type="button" data-dir="-1" aria-label="볼륨 내리기">◂</button><span></span><button type="button" data-dir="1" aria-label="볼륨 올리기">▸</button>';
-            box.querySelector("span").textContent = Math.round(volOf(vol.closest("li.jukeboxitem")));
+            box.querySelector("span").textContent = Math.round(volOf(li));
             vol.appendChild(box);
         });
+        const c = li.querySelector(":scope > .dd-content");
+        if (c && !c.querySelector(":scope > .r20jb-loop")) {
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "r20jb-loop"; b.textContent = "↻";
+            b.setAttribute("aria-label", "반복 재생");
+            setLoop(b, !!trackOf(li)?.get("loop"));
+            c.appendChild(b);
+        }
+        tagOne(li);
     };
     // 반복 재생: Roll20 곡 모델의 loop 값을 직접 켜고 끈다 (Roll20 쪽 체크박스 모양에 기대지 않게)
     const setLoop = (b, on) => {
@@ -1121,24 +1166,13 @@ const jukeboxRow = (() => {
         b.setAttribute("aria-pressed", String(on));
         b.title = on ? "반복 재생 중 · 누르면 끄기" : "반복 안 함 · 누르면 켜기";
     };
-    const addLoop = () => {
-        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content:not(:has(> .r20jb-loop))").forEach(c => {
-            const b = document.createElement("button");
-            b.type = "button"; b.className = "r20jb-loop"; b.textContent = "↻";
-            b.setAttribute("aria-label", "반복 재생");
-            setLoop(b, !!trackOf(c.closest("li.jukeboxitem"))?.get("loop"));
-            c.appendChild(b);
-        });
-    };
     // 태그: 제목 줄 자리는 차지하지 않고, 제목에 마우스를 올리면 바로 검은 말풍선으로 (띄어쓰기·쉼표로 나눔)
     const tagText = m => tagList(m?.get("tags")).map(x => "#" + x).join(" ");
-    const addTags = () => {
-        document.querySelectorAll("#jukebox li.jukeboxitem > .dd-content > .title").forEach(ti => {
-            const txt = tagText(trackOf(ti.closest("li.jukeboxitem")));
-            if (txt) { if (ti.dataset.r20jbTags !== txt) ti.dataset.r20jbTags = txt; }
-            else if (ti.dataset.r20jbTags) delete ti.dataset.r20jbTags;
-        });
-    };
+    const tagOne = li => li.querySelectorAll(":scope > .dd-content > .title").forEach(ti => {
+        const txt = tagText(trackOf(li));
+        if (txt) { if (ti.dataset.r20jbTags !== txt) ti.dataset.r20jbTags = txt; }
+        else if (ti.dataset.r20jbTags) delete ti.dataset.r20jbTags;
+    });
     let tip = null;
     const TAGGED = "#jukebox .title[data-r20jb-tags]";
     document.addEventListener("mouseover", e => {
@@ -1166,15 +1200,39 @@ const jukeboxRow = (() => {
             const walk = l => (Array.isArray(l) ? l : []).forEach(x => { if (x && typeof x === "object") { if (!(x.i || []).length) sepIds.add(x.id); walk(x.i); } });
             walk(list);
         }
+        let changed = false;
         document.querySelectorAll("#jukeboxfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
             const on = sepIds.has(f.dataset.globalfolderid);
-            if (f.classList.contains("r20jb-sep") !== on) f.classList.toggle("r20jb-sep", on);
-            // 안의 곡을 재생목록 제목 글자 자리까지 들여 쓰도록 실제 위치를 잰다 (Roll20 여백이 바뀌어도 맞게)
-            const t = !on && f.querySelector(":scope > .dd-content .folder-title");
-            if (!t || !t.offsetWidth) return;
-            const ind = Math.round(t.getBoundingClientRect().left - f.getBoundingClientRect().left) + "px";
-            if (f.style.getPropertyValue("--r20jb-ind") !== ind) f.style.setProperty("--r20jb-ind", ind);
+            if (f.classList.contains("r20jb-sep") !== on) { f.classList.toggle("r20jb-sep", on); changed = true; }
         });
+        watchRoot();
+        if (changed) { measured = false; if (rootShown) measureSoon(); }
+    };
+    // 안의 곡을 재생목록 제목 글자 자리까지 들여 쓰도록 실제 위치를 한 번 잰다 (Roll20 여백이 바뀌어도 맞게).
+    // 위치 읽기는 화면 계산을 강제하므로, 목록이 보일 때(ResizeObserver) 한 번만 재서 #jukeboxfolderroot 에 넣는다
+    let measured = false, rootShown = false, roRoot = null, mPending = false;
+    const measure = () => {
+        mPending = false;
+        const root = document.getElementById("jukeboxfolderroot");
+        if (measured || !btnVisible.jbrow || !root) return;
+        const t = root.querySelector("li.dd-folder:not(.r20jb-sep) > .dd-content .folder-title");
+        const r = t?.getBoundingClientRect();
+        if (!r?.width) return;
+        const ind = Math.round(r.left - t.closest("li.dd-folder").getBoundingClientRect().left) + "px";
+        if (root.style.getPropertyValue("--r20jb-ind") !== ind) root.style.setProperty("--r20jb-ind", ind);
+        measured = true;
+    };
+    const measureSoon = () => { if (!mPending) { mPending = true; requestAnimationFrame(measure); } };
+    const ro = new ResizeObserver(es => {
+        rootShown = es[es.length - 1].contentRect.width > 0;
+        if (rootShown && !measured) measure();
+    });
+    const watchRoot = () => {
+        const root = document.getElementById("jukeboxfolderroot");
+        if (!root || root === roRoot) return;
+        if (roRoot) ro.unobserve(roRoot);
+        roRoot = root; measured = false; rootShown = false;
+        ro.observe(root);
     };
     const addStepControl = () => {
         const host = document.querySelector("#jukebox .secondarycontrols");
@@ -1195,23 +1253,16 @@ const jukeboxRow = (() => {
         host.appendChild(wrap);
     };
 
-    let watched = null;
+    // Roll20 이 곡 줄을 다시 그리면 그 줄만 다시 붙인다
+    jbWatch.on((lis, folders) => {
+        if (!btnVisible.jbrow) return;
+        lis.forEach(decorate);
+        if (folders) markSeps();
+    });
     const inject = () => {
         if (!btnVisible.jbrow) return;
         addStepControl();
-        // Roll20 이 곡 줄을 다시 그리면 화면에 그려지기 전에 바로 다시 붙인다 (슬라이더·버튼 깜빡임 방지)
-        const jb = document.getElementById("jukebox");
-        if (jb && watched !== jb) {
-            watched = jb;
-            new MutationObserver(() => timed("jukeboxRow (주크박스 감시)", () => {
-                if (!btnVisible.jbrow) return;
-                addVolume();
-                addLoop();
-                addTags();
-                markSeps();
-                bgmPreview.inject();
-            })).observe(jb, { childList: true, subtree: true });
-        }
+        jbWatch.ensure();
         // 다른 곳(일괄 편집기 등)에서 볼륨이 바뀌면 숫자도 맞춘다
         if (!bound && window.Jukebox?.playlist?.on) {
             bound = true;
@@ -1219,16 +1270,17 @@ const jukeboxRow = (() => {
                 const label = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-vol span`);
                 if (label) label.textContent = Math.round(Number(m.get("volume")) || 0);
             });
-            window.Jukebox.playlist.on("change:tags", () => addTags());
+            window.Jukebox.playlist.on("change:tags", m => {
+                const li = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"]`);
+                if (li) tagOne(li);
+            });
             window.Jukebox.playlist.on("change:loop", m => {
                 const b = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(m.id)}"] .r20jb-loop`);
                 if (b) setLoop(b, !!m.get("loop"));
             });
+            // 빈 재생목록(구분선) 판단은 Roll20 폴더 구조가 바뀔 때도 다시
+            window.Campaign?.on?.("change:jukeboxfolder", markSeps);
         }
-        addVolume();
-        addLoop();
-        addTags();
-        markSeps();
         journalTools(true);
     };
     // 곡 줄을 0.4초 누르고 있으면 숨겨 둔 Roll20 끌기 손잡이에 mousedown 을 대신 보내 순서 바꾸기를 시작한다
@@ -1306,7 +1358,8 @@ const jukeboxRow = (() => {
     };
     const setEnabled = on => {
         document.body.classList.toggle("r20jb-on", on);
-        if (on) inject(); else journalTools(false);
+        if (on) { inject(); jbWatch.all().forEach(decorate); markSeps(); measured = false; if (rootShown) measureSoon(); }
+        else journalTools(false);
     };
     setEnabled(btnVisible.jbrow);
     return { inject, setEnabled };
@@ -2170,10 +2223,20 @@ const tokenMenu = (() => {
         menu.classList.add("r20tm-arranged");
         menu.querySelectorAll(":scope > button").forEach(b => { if (!ours(b) && !used.has(b)) b.style.order = 900; });       // 목록에 없는 것은 맨 아래
     };
+    // 메뉴가 지난번 정리한 그대로면(같은 단추 요소 · 단추 수 · Roll20 단추 이름) 다시 훑지 않는다
+    const sigOf = menu => {
+        const tops = [...menu.querySelectorAll(":scope > button")];
+        if (tops.some(b => !b._r20tmSeen)) return null;        // 새로 그려진 단추가 있으면 다시
+        return btnVisible.tokmenu + "|" + menu.getElementsByTagName("button").length + "|" + tops.map(b => ours(b) ? "" : label(b)).join("|");
+    };
     const inject = () => {
         document.querySelectorAll(".context-menu").forEach(menu => {
+            const sig = sigOf(menu);
+            if (sig !== null && menu._r20tmSig === sig) { if (btnVisible.tokmenu) learnOpen(menu); return; }
             faces(menu);
             if (btnVisible.tokmenu) arrange(menu);      // 면 단추를 붙인 뒤에 순서를 매긴다
+            menu.querySelectorAll(":scope > button").forEach(b => { b._r20tmSeen = true; });
+            menu._r20tmSig = sigOf(menu);
         });
     };
     const faces = menu => {
@@ -2396,7 +2459,7 @@ const screenUI = (() => {
 // 누르기 · 끌기 · 메뉴 등 동작은 Roll20 그대로. 카드 크기만 −/+ 단추로 바꾼다
 const pagePanel = (() => {
     let size = Math.max(90, Math.min(260, parseInt(localStorage.getItem("r20_pg_size"), 10) || 150));
-    const apply = menu => menu.style.setProperty("--r20pg-size", size + "px");
+    const apply = menu => { if (menu.style.getPropertyValue("--r20pg-size") !== size + "px") menu.style.setProperty("--r20pg-size", size + "px"); };
     const inject = () => {
         if (!btnVisible.pageslim) return;
         document.querySelectorAll(".vtt-page-card-menu").forEach(menu => {
@@ -3121,10 +3184,10 @@ const queryPicker = (() => {
             if (!dlg.classList.contains("vtt-macro-selection-ui-dialog")
                 && dlg.querySelector(".ui-dialog-title")?.textContent.trim() !== "Macro Options") return;
             const sel = dlg.querySelector(".ui-dialog-content select");
-            if (!sel || dlg._r20qpSel === sel) return;
+            if (!sel || dlg._r20qpSel === sel || dlg._r20qpNo === sel) return;
             // 이미지 고르기가 아닌 질문은 그대로: 그림 항목이 2개 이상이고 (구분선 빼고) 절반 이상일 때만
             const opts = [...sel.options].filter(o => !isDivider(o)), imgs = opts.filter(o => imgOf(o.value)).length;
-            if (imgs < 2 || imgs * 2 < opts.length) return;
+            if (imgs < 2 || imgs * 2 < opts.length) { dlg._r20qpNo = sel; return; }
             dlg.querySelector(".r20qp-box")?.remove();      // Roll20 이 창을 다른 질문에 다시 쓴 경우
             enhance(dlg, sel);
         });
@@ -5830,8 +5893,10 @@ const autofill = (() => {
     // 캐릭터 시트는 같은 출처의 iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다.
     // document.write 로 다시 그려지면 문서는 그대로인데 리스너만 지워지므로, 기록해 두지 않고 매번 다시 건다
     // (같은 함수를 다시 addEventListener 하면 중복되지 않는다)
+    const hooked = new WeakSet();
     const hook = doc => {
-        if (!doc) return;
+        if (!doc || hooked.has(doc)) return;
+        hooked.add(doc);
         doc.addEventListener("input", onInput, true);
         doc.addEventListener("keydown", onKey, true);
         doc.addEventListener("focusout", onFocusOut, true);
