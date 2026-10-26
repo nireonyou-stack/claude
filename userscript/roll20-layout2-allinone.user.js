@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.7
+// @version      1.20.8
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.7";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.8";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1311,6 +1311,8 @@ addCss(`
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { width:16px !important; height:26px !important; margin:0 0 0 2px !important; padding:0 !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; left:0 !important; width:100% !important; text-align:center; font-size:12px !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
+        /* 재생목록 안 곡: 제목 글자 위치(22px)까지 들여 쓰고, +/− 가운데에서 내려오는 세로 선으로 묶음을 보인다 */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:10px !important; padding-left:12px !important; border-left:1px solid rgba(128,128,128,0.28) !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
         /* 재생목록 줄의 재생 · 섞기 · 내보내기 단추는 빼고 제목을 끝까지 (재생은 곡 줄에서) */
