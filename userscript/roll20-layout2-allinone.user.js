@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.21.1
+// @version      1.21.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.21.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.21.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1757,10 +1757,11 @@ const chatCapture = (() => {
 })();
 
 // ───────── 로그 백업: 채팅을 홈페이지 '세션 로그' 문법 글로 바꿔 클립보드에 (그림은 주소만 · 명단은 따로) ─────────
-// 범위는 기본이 채팅 전체, '시작 · 끝 찍기'로 자른다. 채팅 아카이브 페이지에서도 같은 판을 띄운다(archive)
+// 채팅 아카이브 페이지(/campaigns/chatarchive)에만 단추를 띄운다(archive). 편집기 화면에는 아무것도 안 붙인다.
+// 범위는 기본이 아카이브 전체, '시작 · 끝 찍기'로 자른다.
 // 첫 줄 [R20] = 홈페이지가 이 글에서는 '굴림 · 장면 표' 같은 낱말로 줄 종류를 추측하지 않는다
 const logBackup = (() => {
-    const SEL = IS_ARCHIVE ? ".content > .message" : "#textchat .content > .message";
+    const SEL = ".content > .message";
     const msgs = () => [...document.querySelectorAll(SEL)];
     let pop = null, ra = null, rb = null, mode = null, noWhisper = true;       // ra · rb: 시작 · 끝 메시지 (null = 처음 · 끝)
     const ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>';
@@ -1822,7 +1823,7 @@ const logBackup = (() => {
         else if ((tag === "I" || tag === "EM") && s.trim() && !s.includes("\n")) s = `*${s}*`;
         const st = (tag === "A" || tag === "SPAN") && el.getAttribute("style");
         if (st) s = deco(st, s);
-        else if (tag === "A" && /^https?:/i.test(el.getAttribute("href") || "") && s.trim()) s = `[[링크:${urlSafe(el.getAttribute("href"))}|${tokSafe(s)}]]`;
+        // 꾸밈 없는 링크는 걷고 글자 · 그림만 남긴다 (Roll20 은 채팅 그림을 같은 주소 링크로 감싼다)
         if (BLOCK.test(tag)) s = "\n" + s + "\n";
         else if (tag === "TD" || tag === "TH") s = " " + s + " ";
         return s;
@@ -1956,13 +1957,7 @@ const logBackup = (() => {
     // ── 판 ──
     const place = () => {
         if (!pop) return;
-        if (IS_ARCHIVE) { Object.assign(pop.style, { right: "16px", bottom: "64px", width: "320px" }); return; }
-        const c = document.getElementById("textchat-input");
-        if (!c) return;
-        const r = c.getBoundingClientRect();
-        pop.style.width = Math.round(Math.max(240, Math.min(330, r.width - 8))) + "px";
-        pop.style.right = Math.round(innerWidth - r.right + 4) + "px";
-        pop.style.bottom = Math.round(innerHeight - r.top + 4) + "px";
+        Object.assign(pop.style, { right: "16px", bottom: "64px", width: "320px" });
     };
     const build = () => {
         pop = document.createElement("div");
@@ -2008,7 +2003,12 @@ const logBackup = (() => {
     document.addEventListener("keydown", e => { if (isOpen() && e.key === "Escape") { if (mode) { mode = null; refresh(); } else close(); } }, true);
     window.addEventListener("resize", () => isOpen() && place());
 
-    const mkBtn = () => {
+    // 채팅 아카이브 페이지: 오른쪽 아래 떠 있는 단추 하나 (설정에서 이 묶음을 끄면 안 띄운다)
+    const archive = () => {
+        if (!btnVisible.logbak) return;
+        const st = document.createElement("style");
+        st.textContent = LB_CSS;
+        document.head.appendChild(st);
         const b = document.createElement("button");
         b.type = "button";
         b.id = "custom-logbak-toggle";
@@ -2016,31 +2016,10 @@ const logBackup = (() => {
         b.setAttribute("aria-label", "로그 백업");
         b.innerHTML = ICON;
         b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); isOpen() ? close() : open(); });
-        return b;
-    };
-    // 말하는 사람 줄: … [캡처] [로그 백업] [⚙]
-    const inject = () => {
-        const gear = document.getElementById("custom-settings-btn");
-        if (!btnVisible.logbak || !gear || btn()) return;
-        const b = mkBtn();
-        b.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; background: rgba(136,136,136,0.07); color: #aaa;";
-        gear.before(b);
-    };
-    const setEnabled = v => {
-        if (v) return inject();
-        close();
-        btn()?.remove();
-    };
-    // 채팅 아카이브 페이지: 오른쪽 아래 떠 있는 단추 하나
-    const archive = () => {
-        const st = document.createElement("style");
-        st.textContent = LB_CSS;
-        document.head.appendChild(st);
-        const b = mkBtn();
         b.classList.add("r20lb-float");
         document.body.appendChild(b);
     };
-    return { inject, setEnabled, archive, convert };
+    return { archive, convert };
 })();
 
 const LB_CSS = `
@@ -2081,7 +2060,6 @@ const LB_CSS = `
         .r20lb-float { position:fixed; right:16px; bottom:16px; z-index:10006; width:40px; height:40px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid #ccc; border-radius:50%; background:#fff; color:#8a3d9e; box-shadow:0 2px 8px rgba(0,0,0,.2); cursor:pointer; }
         .r20lb-float svg { width:18px; height:18px; }
 `;
-addCss(LB_CSS);
 
 // ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
 // 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
@@ -2249,7 +2227,7 @@ addCss(`
 addFeature("chatCapture", chatCapture);
 addFeature("mapShot", mapShot);
 addFeature("logBackup", logBackup);
-addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵시트 촬영 · 로그 백업", sub: "",
+addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵시트 촬영 · 로그 백업", sub: "로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
     members: [["capture", "chatCapture"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
 
 // ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
