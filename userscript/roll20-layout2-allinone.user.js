@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.6
+// @version      1.20.7
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.6";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.7";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1293,6 +1293,14 @@ addCss(`
         body.r20jb-on #journal .searchbox .r20jn-tools > *, body.r20jb-on #journal .searchbox .r20jn-tools #journal-creation-controls { float:none !important; margin:0 !important; }
         body.r20jb-on #journal .searchbox .r20jn-tools #journal-creation-controls { display:flex; gap:3px; }
         body.r20jb-on #journal .searchbox .r20jn-tools :is(.btn, .grimoire__button) { padding:0 7px !important; }
+        body.r20jb-on #journal .searchbox .r20jn-tools .grimoire__button { min-width:0 !important; width:auto !important; }
+        body.r20jb-on #journal .searchbox .r20jn-tools .grimoire__button span[style*="margin-left"] { margin-left:2px !important; }
+        body.r20jb-on #journal .content.searchbox { container:r20jn / inline-size; }
+        @container r20jn (max-width: 340px) {
+            #journal .searchbox .r20jn-tools { gap:2px !important; }
+            #journal .searchbox .r20jn-tools :is(.btn, .grimoire__button) { padding:0 5px !important; }
+            #journal .searchbox button.r20be-open { gap:0 !important; padding:0 6px !important; font-size:0 !important; }
+        }
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):hover { background:#f2f2f2 !important; }
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):focus-visible { outline:2px solid #1867c7 !important; outline-offset:1px; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
@@ -1300,21 +1308,16 @@ addCss(`
         /* 재생목록 줄 높이를 26px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
         body.r20jb-on #jukeboxfolderroot li.dd-folder { min-height:0 !important; margin:0 !important; padding:0 !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder::before, body.r20jb-on #jukeboxfolderroot li.dd-folder::after, body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content::after { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { height:26px !important; margin-top:0 !important; margin-bottom:0 !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { width:16px !important; height:26px !important; margin:0 0 0 2px !important; padding:0 !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; left:0 !important; width:100% !important; text-align:center; font-size:12px !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding-top:0 !important; padding-bottom:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:flex !important; align-items:center; flex-shrink:0; float:none !important; position:static !important; margin:0 !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.playstyle, body.r20jb-on #jukeboxfolderroot .playlistcontrols a.exportplaylist { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play { display:inline-flex !important; align-items:center; justify-content:center; width:22px; margin:0 !important; color:#777 !important; text-decoration:none !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:26px !important; }
-        body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
+        /* 재생목록 줄의 재생 · 섞기 · 내보내기 단추는 빼고 제목을 끝까지 (재생은 곡 줄에서) */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:none !important; }
         /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content .folder-title { margin-left:-18px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content { cursor:pointer; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content { min-height:18px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .folder-title { font-size:10px !important; line-height:18px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-list { display:none !important; }
@@ -1332,17 +1335,17 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 2px 0 0 !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 1px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:12px; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:11px; padding:0 !important; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { font-size:12px !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:10px; padding:0 !important; color:#777 !important; text-decoration:none !important; }
+        body.r20jb-on #jukebox li.jukeboxitem a.play .pictos { margin:0 !important; padding:0 !important; font-size:11px !important; line-height:26px !important; }
         /* 볼륨: 슬라이더 대신 ◂ 값 ▸ */
         body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:auto !important; height:26px; margin:0 !important; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
         .r20jb-vol, .r20jb-loop { display:none; }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:11px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
         .r20jb-tip { position:fixed; z-index:100005; max-width:260px; padding:4px 8px; border-radius:4px; background:rgba(20,20,22,0.94); color:#fff; font-size:11px; line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-loop { display:inline-flex; }
@@ -5349,7 +5352,7 @@ const bulkEditor = (() => {
             // 예전 버전 사본이 단 버튼이면 지우고 이 버전 것으로 단다
             host.querySelectorAll(".r20be-open:not([data-aio])").forEach(b => { b.remove(); warnDuplicate(); });
             if (host.querySelector(".r20be-open")) return;
-            (host.querySelector(".content") || host).prepend(el("button", { type: "button", class: "r20be-open", "data-aio": "1",
+            (host.querySelector(".content") || host).prepend(el("button", { type: "button", class: "r20be-open", "data-aio": "1", title: "일괄 편집", "aria-label": "일괄 편집",
                 onclick: e => { e.preventDefault(); e.stopPropagation(); open(tab); } }, el("span", { html: ICON.pen }), "일괄 편집"));
         });
     };
