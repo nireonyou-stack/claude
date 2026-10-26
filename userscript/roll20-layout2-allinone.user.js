@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.12
+// @version      1.20.13
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.12";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.13";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -890,38 +890,6 @@ const addCss = css => CSS_PARTS.push(css);
 // all: 다음 번엔 전부 (처음 · 설정을 바꾼 뒤)
 const DIRTY = { all: true, set: new Set() };
 
-// ── 성능 측정: 콘솔에 r20aioPerf() (또는 r20aioPerf(초)) → 그동안 기능마다 걸린 시간을 모아 보여 준다 ──
-const PERF = { on: false, t: {}, n: {}, runs: 0, muts: 0, recs: 0, long: 0, longN: 0 };
-const timed = (name, fn) => {
-    if (!PERF.on) return fn();
-    const t0 = performance.now();
-    try { return fn(); } finally { PERF.t[name] = (PERF.t[name] || 0) + performance.now() - t0; PERF.n[name] = (PERF.n[name] || 0) + 1; }
-};
-window.r20aioPerf = (sec = 90) => {
-    if (PERF.on) return console.log("[올인원 측정] 이미 재는 중이에요");
-    Object.assign(PERF, { on: true, t: {}, n: {}, runs: 0, muts: 0, recs: 0, long: 0, longN: 0 });
-    let po = null;
-    try { po = new PerformanceObserver(l => l.getEntries().forEach(e => { PERF.long += e.duration; PERF.longN++; })); po.observe({ type: "longtask" }); } catch (e) {}
-    console.log(`[올인원 측정] ${sec}초 동안 잽니다. 평소처럼 써 주세요 (채팅 · 주크박스 · 저널 · 토큰 · 덱 …)`);
-    setTimeout(() => {
-        PERF.on = false;
-        po?.disconnect();
-        const rows = Object.keys(PERF.t).map(k => ({ 기능: k, 합계ms: +PERF.t[k].toFixed(1), 횟수: PERF.n[k], 평균ms: +(PERF.t[k] / PERF.n[k]).toFixed(2) })).sort((a, b) => b.합계ms - a.합계ms);
-        const ours = rows.reduce((a, r) => a + r.합계ms, 0);
-        const head = `측정 ${sec}초 · 화면 변화 ${PERF.muts}번(${PERF.recs}건) · 전체 다시 붙이기 ${PERF.runs}번 · 스크립트 합계 ${ours.toFixed(0)}ms · 브라우저가 멈칫한 긴 작업 ${PERF.longN}번 ${PERF.long.toFixed(0)}ms`;
-        console.log("[올인원 측정] " + head);
-        console.table(rows);
-        const text = head + "\n" + rows.map(r => `${r.기능}\t${r.합계ms}ms\t${r.횟수}회\t평균 ${r.평균ms}ms`).join("\n");
-        const box = document.createElement("textarea");
-        box.value = text;
-        box.style.cssText = "position:fixed;left:10px;top:10px;width:520px;height:300px;z-index:2147483647;font:11px monospace";
-        box.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") box.remove(); });
-        document.body.appendChild(box);
-        box.select();
-        navigator.clipboard?.writeText(text).then(() => console.log("[올인원 측정] 결과를 클립보드에 복사했어요 (왼쪽 위 상자는 Esc 로 닫기)"), () => console.log("[올인원 측정] 왼쪽 위 상자에서 Ctrl+C 로 복사해 주세요"));
-    }, sec * 1000);
-};
-
 const CORE_CSS = `
         #custom-settings-popup { position:fixed; width:300px; background:#ffffff; border:1px solid #cccccc; border-radius:4px; box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:#333; overflow-y:auto; max-height:70vh; }
         #custom-settings-popup.show { display:flex !important; }
@@ -994,7 +962,7 @@ const jbWatch = (() => {
         if (!jb || jb === watched) return;
         watched = jb;
         // 화면에 그려지기 전에 바로 붙인다 (슬라이더·버튼 깜빡임 방지)
-        new MutationObserver(recs => timed("주크박스 감시", () => {
+        new MutationObserver(recs => {
             const lis = new Set();
             let folders = false;
             for (const r of recs) for (const n of r.addedNodes) {
@@ -1006,7 +974,7 @@ const jbWatch = (() => {
                 if (n.matches("li.dd-item, ol, #jukeboxfolderroot") || n.querySelector("li.dd-folder")) folders = true;
             }
             if (lis.size || folders) run([...lis], folders);
-        })).observe(jb, { childList: true, subtree: true });
+        }).observe(jb, { childList: true, subtree: true });
         run(all(), true);
     };
     return { on: fn => subs.add(fn), ensure, all };
@@ -2299,9 +2267,9 @@ const tokenMenu = (() => {
         if (act !== "choose") sidePicker.startAuto(act);
         orig.click();
     }, true);
-    new MutationObserver(ms => timed("tokenMenu (메뉴 감시)", () => {
+    new MutationObserver(ms => {
         if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.classList.contains("context-menu") || n.querySelector(".context-menu"))))) inject();
-    })).observe(document.body, { childList: true, subtree: true });
+    }).observe(document.body, { childList: true, subtree: true });
     return { inject, watch: ".context-menu" };
 })();
 
@@ -6186,13 +6154,12 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
 }
 // 한 기능이 오류를 내도 나머지는 계속 붙도록 하나씩 따로 돌린다
 const injectAll = () => {
-    if (PERF.on) PERF.runs++;
-    try { timed("채팅 입력칸", applyCocofoliaLayout); } catch (e) { console.warn("[올인원] 채팅 입력칸 오류", e); }
+    try { applyCocofoliaLayout(); } catch (e) { console.warn("[올인원] 채팅 입력칸 오류", e); }
     const all = DIRTY.all;
     DIRTY.all = false;
     for (const [name, mod] of Object.entries(FEAT)) {
         if (mod.watch && !all && !DIRTY.set.delete(name)) continue;
-        try { timed(name, () => mod.inject?.()); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
+        try { mod.inject?.(); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
     }
 };
 const markDirty = recs => {
@@ -6207,8 +6174,7 @@ const markDirty = recs => {
 };
 let _layoutTimer = null;
 new MutationObserver(recs => {
-    if (PERF.on) { PERF.muts++; PERF.recs += recs.length; }
-    timed("변화 살피기", () => markDirty(recs));
+    markDirty(recs);
     clearTimeout(_layoutTimer);
     _layoutTimer = setTimeout(injectAll, 100);
 }).observe(document.body, { childList: true, subtree: true });
