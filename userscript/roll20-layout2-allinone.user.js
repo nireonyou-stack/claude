@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.14
+// @version      1.21.0
 // @match        https://app.roll20.net/editor*
+// @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
 // ==/UserScript==
@@ -19,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.14";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.21.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -60,8 +61,11 @@ const btnVisible = {
     deckview:  localStorage.getItem("r20_show_deckview") !== "false",
     macrobar:  localStorage.getItem("r20_show_macrobar") !== "false",
     mapshot:   localStorage.getItem("r20_show_mapshot") !== "false",
-    emoji:     localStorage.getItem("r20_show_emoji") !== "false"
+    emoji:     localStorage.getItem("r20_show_emoji") !== "false",
+    logbak:    localStorage.getItem("r20_show_logbak") !== "false"
 };
+// 채팅 아카이브 페이지에서는 로그 백업만 띄운다 (나머지는 편집기 화면용 — 맨 아래 시작 부분에서 갈린다)
+const IS_ARCHIVE = location.pathname.startsWith("/campaigns/chatarchive");
 
 const sharedBtnStyle = `
     border-radius: 4px !important;
@@ -1734,6 +1738,319 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
+// ───────── 로그 백업: 채팅을 홈페이지 '세션 로그' 문법 글로 바꿔 클립보드에 (그림은 주소만 · 명단은 따로) ─────────
+// 범위는 기본이 채팅 전체, '시작 · 끝 찍기'로 자른다. 채팅 아카이브 페이지에서도 같은 판을 띄운다(archive)
+// 첫 줄 [R20] = 홈페이지가 이 글에서는 '굴림 · 장면 표' 같은 낱말로 줄 종류를 추측하지 않는다
+const logBackup = (() => {
+    const SEL = IS_ARCHIVE ? ".content > .message" : "#textchat .content > .message";
+    const msgs = () => [...document.querySelectorAll(SEL)];
+    let pop = null, ra = null, rb = null, mode = null, noWhisper = true;       // ra · rb: 시작 · 끝 메시지 (null = 처음 · 끝)
+    const ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>';
+    const btn = () => document.getElementById("custom-logbak-toggle");
+
+    // ── 바꾸기 ──
+    const abs = u => { try { return r20img(new URL(u, location.href).href); } catch (e) { return ""; } };
+    const tokSafe = s => String(s).replace(/\]\]/g, "] ]").replace(/\|/g, "¦");            // [[…|…]] 문법을 깨지 않게
+    const urlSafe = u => u.replace(/\]/g, "%5D").replace(/\|/g, "%7C");
+    const SKIP = new Set(["avatar", "tstamp", "by", "spacer", "flyout", "clear"]);
+    const BLOCK = /^(DIV|P|TR|TABLE|TBODY|THEAD|UL|OL|LI|H[1-6]|SECTION|BLOCKQUOTE|PRE|HR|DL|DT|DD)$/;
+    // 꾸민 글자([글](#" style="…") 등): 홈페이지가 받는 속성만 남긴다 (같은 목록을 홈페이지도 거른다)
+    const KEEP = new Set(["color", "background", "background-color", "font-size", "font-weight", "font-style", "font-family", "text-align", "text-decoration",
+        "text-shadow", "letter-spacing", "line-height", "padding", "margin", "border", "border-radius", "box-shadow", "display"]);
+    const parseStyle = st => {
+        const o = {};
+        String(st || "").split(";").forEach(d => { const i = d.indexOf(":"); if (i > 0) { const k = d.slice(0, i).trim().toLowerCase(), v = d.slice(i + 1).trim(); if (k && v) o[k] = v; } });
+        return o;
+    };
+    const SADAM = parseStyle(SADAM_STYLE);
+    const isSadam = o => ["font-size", "color"].every(k => (o[k] || "").replace(/\s/g, "").toLowerCase() === SADAM[k].toLowerCase());
+    const styleOf = o => Object.entries(o).filter(([k, v]) => KEEP.has(k)
+            && !(k === "text-decoration" && v === "none") && !(k === "display" && v === "inline")
+            && !/url\s*\(|expression|javascript|[<>{}\\\]|]/i.test(v))
+        .map(([k, v]) => `${k}:${v.replace(/"/g, "'")}`).join(";");
+    let styles = null;          // 바꾸는 동안 쓴 꾸밈 (같은 것이 여러 번이면 맨 위에 한 번만 적고 이름으로 부른다)
+    const deco = (st, inner) => {
+        if (!inner.trim()) return inner;
+        const o = parseStyle(st);
+        if (isSadam(o)) return `((${inner}))`;
+        const s = styleOf(o);
+        if (!s) return inner;
+        if (/^color:#[0-9a-f]{3,6}$/i.test(s)) return `[[색:${s.slice(6)}]]${inner}[[/색]]`;
+        let i = styles.indexOf(s);
+        if (i < 0) i = styles.push(s) - 1;
+        return `[[꾸밈:\u0001${i}\u0001]]${inner}[[/꾸밈]]`;
+    };
+    const rollChip = el => {
+        const d = (el.getAttribute("title") || "").replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+            .replace(/^\s*Rolling\s+/i, "").replace(/\s+/g, " ").trim();
+        const r = el.textContent.trim();
+        return d ? `[[굴림:${tokSafe(r)}|${tokSafe(d)}]]` : `[[굴림:${tokSafe(r)}]]`;
+    };
+    // 노드 → 글 (줄바꿈은 \n). tpl: 롤템플릿 안 (꾸밈 그림 · 숨긴 칸은 뺀다)
+    const text = (node, tpl) => {
+        if (node.nodeType === 3) return node.nodeValue.replace(/[\s ]+/g, " ");
+        if (node.nodeType !== 1) return "";
+        const el = node, tag = el.tagName;
+        if ([...el.classList].some(c => SKIP.has(c)) || /^(SCRIPT|STYLE|INPUT|BUTTON|TEXTAREA|SELECT)$/.test(tag)) return "";
+        if (tpl && getComputedStyle(el).display === "none") return "";
+        if (tag === "BR") return "\n";
+        if (el.classList.contains("inlinerollresult")) return rollChip(el);
+        if (tag === "IMG") { const u = abs(el.getAttribute("src")); return tpl || !/^https?:/.test(u) ? "" : `[[그림:${urlSafe(u)}]]`; }
+        let s = [...el.childNodes].map(n => text(n, tpl)).join("");
+        if ((tag === "B" || tag === "STRONG") && s.trim() && !s.includes("\n")) s = `**${s}**`;
+        else if ((tag === "I" || tag === "EM") && s.trim() && !s.includes("\n")) s = `*${s}*`;
+        const st = (tag === "A" || tag === "SPAN") && el.getAttribute("style");
+        if (st) s = deco(st, s);
+        else if (tag === "A" && /^https?:/i.test(el.getAttribute("href") || "") && s.trim()) s = `[[링크:${urlSafe(el.getAttribute("href"))}|${tokSafe(s)}]]`;
+        if (BLOCK.test(tag)) s = "\n" + s + "\n";
+        else if (tag === "TD" || tag === "TH") s = " " + s + " ";
+        return s;
+    };
+    // 여러 줄로 나눌 때 줄마다 꾸밈 · 사담 짝을 닫고 다음 줄에서 다시 연다 (홈페이지는 줄 묶음마다 따로 그린다)
+    const PAIR = /\[\[(?:꾸밈|색):[^\]]*\]\]|\[\[\/(?:꾸밈|색)\]\]|\(\(|\)\)/g;
+    const closeOf = t => t === "((" ? "))" : t.startsWith("[[꾸밈") ? "[[/꾸밈]]" : "[[/색]]";
+    const splitLines = s => {
+        const out = [];
+        let open = [];
+        for (const raw of s.split("\n")) {
+            const line = raw.replace(/\s+/g, " ").trim();
+            if (!line) continue;
+            const st = [...open];
+            for (const [t] of line.matchAll(PAIR)) { if (t === "((" || !t.startsWith("[[/") && t !== "))") st.push(t); else st.pop(); }
+            out.push(open.join("") + line + st.slice().reverse().map(closeOf).join(""));
+            open = st;
+        }
+        return out;
+    };
+    const smallAv = u => { const a = abs(u); return a ? sizedUrl(a, "thumb") : ""; };
+
+    const convert = list => {
+        styles = [];
+        const out = [], cast = new Map();
+        let who = "", lastWho = null;
+        const block = s => { out.push(s); lastWho = null; };
+        // 이름은 말하는 사람이 바뀔 때만. 홈페이지가 다른 줄로 오해할 수 있는 줄(: 이 있거나 :::, /, [, (( 로 시작)은 이름을 붙인다
+        const say = (name, s) => splitLines(s).forEach(l => {
+            const need = lastWho !== name || /[:：]/.test(l) || /^(:::|\/|\[|\(\()/.test(l);
+            out.push(need ? `${name}: ${l}` : l);
+            lastWho = name;
+        });
+        const imgsOnly = el => {
+            const imgs = [...el.querySelectorAll("img")].filter(i => !i.closest(".avatar"));
+            return imgs.length && !text(el).replace(/\[\[그림:[^\]]*\]\]/g, "").trim() ? imgs.map(i => abs(i.getAttribute("src"))).filter(u => /^https?:/.test(u)) : null;
+        };
+        for (const m of list) {
+            const c = m.classList;
+            if (noWhisper && (c.contains("whisper") || c.contains("private"))) continue;
+            if (c.contains("system")) continue;
+            const by = m.querySelector(":scope > .by");
+            if (by) {
+                who = by.textContent.replace(/[:：]\s*$/, "").trim() || who;
+                const av = m.querySelector(":scope > .avatar img")?.getAttribute("src");
+                if (who && av && !cast.has(who)) cast.set(who, smallAv(av));
+            }
+            const name = who || "?";
+            const tpl = m.querySelector("[class^='sheet-rolltemplate-'], [class*=' sheet-rolltemplate-']");
+            if (tpl) {
+                // 줄마다 '항목: 값'. 굴림 칩만 있는 줄은 앞 줄 끝에 붙인다
+                const rows = [];
+                splitLines(text(tpl, true))
+                    .forEach(x => { if (/^(\[\[굴림:[^\]]*\]\]\s*)+$/.test(x) && rows.length) rows[rows.length - 1] += " " + x; else rows.push(x); });
+                block(`[ROLL:${name}]`); rows.forEach(r => out.push(r)); block("[/ROLL]");
+                continue;
+            }
+            if (c.contains("rollresult")) {
+                const f = (m.querySelector(".formula:not(.formattedformula)")?.textContent || "").replace(/^\s*rolling\s+/i, "").trim();
+                const d = (m.querySelector(".formattedformula")?.textContent || "").replace(/\s+/g, "").trim();
+                const r = (m.querySelector(".rolled")?.textContent || "").trim();
+                block(`[ROLL:${name}]`); out.push(`${tokSafe(f)} [[굴림:${tokSafe(r)}${d ? "|" + tokSafe(d) : ""}]]`); block("[/ROLL]");
+                continue;
+            }
+            const only = imgsOnly(m);
+            if (only) { only.forEach(u => block(`[CG: ${urlSafe(u)}]`)); continue; }
+            const body = [...m.childNodes].map(n => text(n)).join("");
+            if (c.contains("desc")) { splitLines(body).forEach(l => out.push("/desc " + l)); lastWho = null; }
+            else if (c.contains("emote")) { splitLines(body).forEach(l => out.push(":::" + l)); lastWho = null; }
+            else say(name, body);
+        }
+        // 두 번 넘게 쓴 긴 꾸밈은 맨 위에 [[꾸밈정의:s1|…]] 로 한 번만
+        const used = styles.map((s, i) => ({ s, n: out.reduce((a, l) => a + l.split(`\u0001${i}\u0001`).length - 1, 0) }));
+        const defs = [];
+        const name = used.map(({ s, n }) => n > 1 && s.length > 20 ? (defs.push(`[[꾸밈정의:s${defs.length + 1}|${s}]]`), "s" + defs.length) : s);
+        const lines = ["[R20]", ...defs, ...out].map(l => l.replace(/\u0001(\d+)\u0001/g, (x, i) => name[i]));
+        return { text: lines.join("\n"), lines: lines.length, cast: [...cast].map(([n, u]) => `${n.replace(/\|/g, "¦")} | ${u}`).join("\n") };
+    };
+
+    // ── 범위 ──
+    const range = () => {
+        const all = msgs();
+        let i = ra && all.includes(ra) ? all.indexOf(ra) : 0, j = rb && all.includes(rb) ? all.indexOf(rb) : all.length - 1;
+        if (i > j) [i, j] = [j, i];
+        return { all, list: all.slice(i, j + 1), i, j };
+    };
+    const paintRange = () => {
+        const { all, i, j } = range(), show = isOpen();
+        all.forEach((m, k) => {
+            m.classList.toggle("r20lb-out", show && (k < i || k > j));
+            m.classList.toggle("r20lb-a", show && m === ra);
+            m.classList.toggle("r20lb-b", show && m === rb);
+        });
+        document.body.classList.toggle("r20lb-pick", show && !!mode);
+    };
+    const kb = n => n >= 1024 ? (n / 1024).toFixed(n >= 10240 ? 0 : 1) + "KB" : n + "B";
+    let cache = null;
+    const refresh = () => {
+        if (!pop) return;
+        const { all, list } = range(), whole = list.length === all.length;
+        cache = convert(list);
+        pop.querySelector(".st").textContent = `${cache.lines.toLocaleString()}줄 · ${kb(new TextEncoder().encode(cache.text).length)}`;
+        pop.querySelector(".hint").textContent = mode === "a" ? "채팅에서 시작할 메시지를 누르세요" : mode === "b" ? "채팅에서 끝낼 메시지를 누르세요"
+            : whole ? `채팅 전체 (${all.length.toLocaleString()}개)` : `${list.length.toLocaleString()}개 메시지`;
+        pop.querySelectorAll(".rg button[data-k]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.k === mode)));
+        const sw = pop.querySelector(".sw");
+        sw.setAttribute("aria-checked", String(noWhisper));
+        const castEl = pop.querySelector(".cast");
+        castEl.replaceChildren(...cache.cast.split("\n").filter(Boolean).map(l => {
+            const [n, u] = l.split(" | "), row = document.createElement("div"), im = document.createElement("img"), b = document.createElement("b"), s = document.createElement("span");
+            im.src = u; im.alt = ""; im.loading = "lazy"; b.textContent = n; s.textContent = u.replace(/^https?:\/\//, "");
+            row.append(im, b, s);
+            return row;
+        }));
+        pop.querySelector(".nocast").hidden = !!cache.cast;
+        paintRange();
+    };
+    const flash = (b, msg) => { const t = b.textContent; b.textContent = msg; b.disabled = true; setTimeout(() => { b.textContent = t; b.disabled = false; }, 1400); };
+
+    // ── 판 ──
+    const place = () => {
+        if (!pop) return;
+        if (IS_ARCHIVE) { Object.assign(pop.style, { right: "16px", bottom: "64px", width: "320px" }); return; }
+        const c = document.getElementById("textchat-input");
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        pop.style.width = Math.round(Math.max(240, Math.min(330, r.width - 8))) + "px";
+        pop.style.right = Math.round(innerWidth - r.right + 4) + "px";
+        pop.style.bottom = Math.round(innerHeight - r.top + 4) + "px";
+    };
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "r20-logbak";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "로그 백업");
+        pop.innerHTML = '<div class="hd"><b>📜 로그 백업</b><span class="st"></span><button type="button" class="x" aria-label="닫기">✕</button></div>'
+            + '<div class="bd"><div class="rg"><span>범위</span><button type="button" data-k="a">▶ 시작 찍기</button><button type="button" data-k="b">끝 찍기 ■</button><button type="button" data-k="all">전체</button></div>'
+            + '<div class="hint" aria-live="polite"></div>'
+            + '<button type="button" class="sw" role="switch"><i aria-hidden="true"></i>귓속말 · GM 굴림 빼기</button>'
+            + '<div class="lbl">명단 (홈페이지 글쓰기 \'명단 붙여넣기\'에)</div><div class="cast"></div><div class="nocast">아바타가 있는 사람이 없어요</div>'
+            + '<div class="go"><button type="button" class="pri" data-go="log">로그 복사</button><button type="button" data-go="cast">명단 복사</button></div></div>';
+        pop.addEventListener("click", async e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.classList.contains("x")) return close();
+            if (b.classList.contains("sw")) { noWhisper = !noWhisper; return refresh(); }
+            const k = b.dataset.k, go = b.dataset.go;
+            if (k === "all") { ra = rb = null; mode = null; return refresh(); }
+            if (k) { mode = mode === k ? null : k; return refresh(); }
+            if (go) {
+                refresh();
+                const ok = await copyText(go === "log" ? cache.text : cache.cast);
+                flash(b, ok ? "복사했어요" : "복사 실패");
+            }
+        });
+        document.body.appendChild(pop);
+    };
+    const isOpen = () => !!pop && !pop.hidden;
+    const paintBtn = () => { const b = btn(); if (!b) return; b.style.color = isOpen() ? "#8a3d9e" : ""; b.setAttribute("aria-expanded", String(isOpen())); };
+    const open = () => { if (!pop) build(); pop.hidden = false; place(); refresh(); paintBtn(); };
+    const close = () => { if (!pop) return; pop.hidden = true; mode = null; paintRange(); paintBtn(); };
+    // 찍는 동안 메시지를 누르면 시작 · 끝만 정한다 (Roll20 동작은 막는다)
+    document.addEventListener("click", e => {
+        if (!mode || !isOpen()) return;
+        const m = e.target.closest?.(SEL);
+        if (!m) return;
+        e.preventDefault(); e.stopPropagation();
+        if (mode === "a") ra = m; else rb = m;
+        mode = null;
+        refresh();
+    }, true);
+    document.addEventListener("keydown", e => { if (isOpen() && e.key === "Escape") { if (mode) { mode = null; refresh(); } else close(); } }, true);
+    window.addEventListener("resize", () => isOpen() && place());
+
+    const mkBtn = () => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "custom-logbak-toggle";
+        b.title = "로그 백업: 채팅을 홈페이지 세션 로그 글로";
+        b.setAttribute("aria-label", "로그 백업");
+        b.innerHTML = ICON;
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); isOpen() ? close() : open(); });
+        return b;
+    };
+    // 말하는 사람 줄: … [캡처] [로그 백업] [⚙]
+    const inject = () => {
+        const gear = document.getElementById("custom-settings-btn");
+        if (!btnVisible.logbak || !gear || btn()) return;
+        const b = mkBtn();
+        b.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; background: rgba(136,136,136,0.07); color: #aaa;";
+        gear.before(b);
+    };
+    const setEnabled = v => {
+        if (v) return inject();
+        close();
+        btn()?.remove();
+    };
+    // 채팅 아카이브 페이지: 오른쪽 아래 떠 있는 단추 하나
+    const archive = () => {
+        const st = document.createElement("style");
+        st.textContent = LB_CSS;
+        document.head.appendChild(st);
+        const b = mkBtn();
+        b.classList.add("r20lb-float");
+        document.body.appendChild(b);
+    };
+    return { inject, setEnabled, archive, convert };
+})();
+
+const LB_CSS = `
+        #r20-logbak { position:fixed; z-index:10006; display:flex; flex-direction:column; max-height:70vh; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:#333; }
+        #r20-logbak[hidden] { display:none; }
+        #r20-logbak .hd { display:flex; align-items:center; gap:6px; padding:6px 8px; border-bottom:1px solid #eee; }
+        #r20-logbak .hd b { font-size:12px; }
+        #r20-logbak .st { flex:1; color:#888; font-size:11px; }
+        #r20-logbak button { height:22px; margin:0; padding:0 9px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font:700 11px/20px sans-serif; cursor:pointer; }
+        #r20-logbak button:focus-visible { outline:2px solid #8a3d9e; outline-offset:1px; }
+        #r20-logbak button[aria-pressed=true] { background:#8a3d9e; border-color:#8a3d9e; color:#fff; }
+        #r20-logbak button:disabled { opacity:.7; cursor:default; }
+        #r20-logbak .x { padding:0 6px; }
+        #r20-logbak .bd { display:flex; flex-direction:column; gap:6px; padding:6px 8px 8px; overflow-y:auto; }
+        #r20-logbak .rg { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+        #r20-logbak .rg span, #r20-logbak .lbl { color:#888; font-size:11px; }
+        #r20-logbak .hint { min-height:18px; color:#8a3d9e; font-size:11px; }
+        #r20-logbak .sw { display:flex; align-items:center; gap:6px; align-self:flex-start; padding:0; border:0; background:none; font-weight:400; }
+        #r20-logbak .sw i { position:relative; width:26px; height:14px; border-radius:7px; background:#c8c8cc; }
+        #r20-logbak .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
+        #r20-logbak .sw[aria-checked=true] i { background:#1867c7; }
+        #r20-logbak .sw[aria-checked=true] i::after { left:14px; }
+        #r20-logbak .cast > div { display:flex; align-items:center; gap:6px; min-width:0; font-size:11px; }
+        #r20-logbak .cast img { width:18px; height:18px; flex-shrink:0; border-radius:4px; object-fit:cover; background:#eee; }
+        #r20-logbak .cast b { flex-shrink:0; }
+        #r20-logbak .cast span { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#aaa; font-size:10.5px; }
+        #r20-logbak .nocast { color:#aaa; font-size:11px; }
+        #r20-logbak .go { display:flex; gap:5px; margin-top:2px; }
+        #r20-logbak .go .pri { background:#1867c7; border-color:#1867c7; color:#fff; }
+        /* 범위: 밖은 흐리게, 시작 · 끝에 표시 */
+        .message.r20lb-out { opacity:.3; }
+        .message.r20lb-a, .message.r20lb-b { position:relative; }
+        .message.r20lb-a::before, .message.r20lb-b::after { position:absolute; right:4px; z-index:1; padding:0 6px; border-radius:8px; background:#8a3d9e; color:#fff; font:700 9.5px/15px sans-serif; pointer-events:none; }
+        .message.r20lb-a::before { content:"▶ 여기부터"; top:-2px; }
+        .message.r20lb-b::after { content:"여기까지 ■"; bottom:-2px; }
+        body.r20lb-pick .message { cursor:crosshair; }
+        body.r20lb-pick .message:hover { outline:2px dashed #8a3d9e; outline-offset:-2px; }
+        .r20lb-float { position:fixed; right:16px; bottom:16px; z-index:10006; width:40px; height:40px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid #ccc; border-radius:50%; background:#fff; color:#8a3d9e; box-shadow:0 2px 8px rgba(0,0,0,.2); cursor:pointer; }
+        .r20lb-float svg { width:18px; height:18px; }
+`;
+addCss(LB_CSS);
+
 // ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
 // 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
 const mapShot = (() => {
@@ -1899,8 +2216,9 @@ addCss(`
 `);
 addFeature("chatCapture", chatCapture);
 addFeature("mapShot", mapShot);
-addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵시트 촬영", sub: "",
-    members: [["capture", "chatCapture"], ["mapshot", "mapShot"]] });
+addFeature("logBackup", logBackup);
+addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵시트 촬영 · 로그 백업", sub: "",
+    members: [["capture", "chatCapture"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
 
 // ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
 
@@ -6156,6 +6474,8 @@ addBundle({ place: "chat", order: 1, label: "이모지 팔레트", sub: "", memb
 
 // 스타일은 바탕 CSS + 묶음마다 등록한 CSS 를 한 번에 넣는다
 // (예전 버전 사본이 먼저 넣은 스타일이 있으면 알리고 이 버전 것으로 바꾼다)
+// 채팅 아카이브 페이지: 로그 백업 단추만 (묶음을 뺀 판이면 아무것도 안 한다)
+if (IS_ARCHIVE) { FEAT.logBackup?.archive(); return; }
 const oldAddonStyle = document.getElementById("r20-addon-style");
 if (oldAddonStyle && !oldAddonStyle.dataset.aio) warnDuplicate();
 if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
