@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.3
+// @version      1.20.4
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1237,9 +1237,10 @@ addCss(`
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
-        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) .btn { height:24px !important; min-height:0 !important; padding:0 10px !important; border:1px solid #ccc !important; border-radius:4px !important; background:#fff !important; background-image:none !important; box-shadow:none !important; text-shadow:none !important; color:#333 !important; font-size:11px !important; font-weight:700 !important; line-height:22px !important; vertical-align:middle; }
-        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) .btn:hover { background:#f2f2f2 !important; }
-        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) .btn:focus-visible { outline:2px solid #1867c7 !important; outline-offset:1px; }
+        /* Roll20 새 단추(grimoire__button, 예: 저널 '+ 캐릭터')도 같이. 높이는 테두리 포함 24px */
+        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button) { box-sizing:border-box !important; height:24px !important; min-height:0 !important; padding:0 10px !important; border:1px solid #ccc !important; border-radius:4px !important; background:#fff !important; background-image:none !important; box-shadow:none !important; text-shadow:none !important; color:#333 !important; font-size:11px !important; font-weight:700 !important; line-height:22px !important; vertical-align:middle; }
+        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):hover { background:#f2f2f2 !important; }
+        body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):focus-visible { outline:2px solid #1867c7 !important; outline-offset:1px; }
         body.r20jb-on #jukeboxfolderroot .dd-list .dd-list { clear:both; padding-left:0 !important; margin-left:0 !important; }
         /* 재생목록 머리줄: 폴더째 재생 버튼만 */
         /* 재생목록 줄 높이를 26px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
@@ -5493,6 +5494,7 @@ addCss(`
         }
         body button.r20be-open { display:inline-flex; align-items:center; gap:4px; height:24px; margin:6px 0; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; cursor:pointer; box-sizing:border-box; }
         body button.r20be-open:hover { background:#f2f2f2; }
+        #jukebox button.r20be-open { margin-top:2px; margin-left:3px; }     /* 옆 '오디오 관리'와 높이 맞춤 */
         body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid #ddd; border-radius:3px; background:#f5f5f5; color:#555; font-size:11px; cursor:pointer; }
         .r20be-mini:hover { background:#ebebeb; color:#333; }
