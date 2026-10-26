@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.20.4
+// @version      1.20.5
 // @match        https://app.roll20.net/editor*
 // @grant        none
 // 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.
@@ -19,7 +19,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.20.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.20.5";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1193,6 +1193,35 @@ const jukeboxRow = (() => {
         addTags();
         markSeps();
     };
+    // 곡 줄을 0.4초 누르고 있으면 숨겨 둔 Roll20 끌기 손잡이에 mousedown 을 대신 보내 순서 바꾸기를 시작한다
+    // (그 뒤 움직임·놓기는 실제 마우스 그대로 Roll20 이 처리). 단추·볼륨·미리듣기 위에서는 시작하지 않는다
+    let lp = null;
+    const endLp = () => { clearTimeout(lp?.t); document.querySelectorAll("#jukebox li.r20jb-lift").forEach(x => x.classList.remove("r20jb-lift")); };
+    document.addEventListener("mousedown", e => {
+        if (!btnVisible.jbrow || e.button !== 0 || !e.isTrusted) return;
+        const li = e.target.closest?.("#jukebox li.jukeboxitem");
+        const handle = li?.querySelector(":scope > .dd-handle");
+        if (!handle || e.target.closest("a, button, input, label, .r20-bgm-pv")) return;
+        endLp();
+        lp = { x: e.clientX, y: e.clientY, fired: false };
+        lp.t = setTimeout(() => {
+            lp.fired = true;
+            li.classList.add("r20jb-lift");
+            handle.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window, clientX: lp.x, clientY: lp.y, button: 0, buttons: 1 }));
+        }, 400);
+    }, true);
+    document.addEventListener("mousemove", e => { if (lp && !lp.fired && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 6) { endLp(); lp = null; } }, true);
+    document.addEventListener("mouseup", () => {
+        if (!lp) return;
+        endLp();
+        // 끌고 놓은 뒤 따라오는 click 은 버린다 (놓은 자리의 재생 단추 등이 눌리지 않게)
+        if (lp.fired) {
+            const kill = ev => { ev.stopPropagation(); ev.preventDefault(); };
+            document.addEventListener("click", kill, { capture: true, once: true });
+            setTimeout(() => document.removeEventListener("click", kill, true), 300);       // click 이 안 따라오면 다음 클릭을 막지 않게
+        }
+        lp = null;
+    }, true);
     document.addEventListener("click", e => {
         // 재생목록 제목 줄을 누르면 Roll20 의 +/− 단추를 대신 눌러 하위 트랙을 펼치거나 접는다 (구분선은 그대로)
         const head = btnVisible.jbrow && e.target.closest?.("#jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content");
@@ -1257,7 +1286,7 @@ addCss(`
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play .pictos { font-size:13px !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot .playlistcontrols a.play:hover { color:#222 !important; }
         /* 트랙 없는 재생목록 = 구분선: 접기·재생 단추 없이 다른 줄보다 왼쪽으로 (.r20jb-sep 은 jukeboxRow 가 붙인다) */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content .folder-title { margin-left:-20px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content .folder-title { margin-left:-18px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder:not(.r20jb-sep) > .dd-content { cursor:pointer; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > button[data-action] { display:none !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder.r20jb-sep > .dd-content .playlistcontrols a.play { display:none !important; }
@@ -1269,15 +1298,16 @@ addCss(`
         body.r20jb-on #jukeboxfolderroot li.dd-item-dummy > .dd-content { height:6px !important; min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
         /* 곡 줄 */
         body.r20jb-on #jukebox li.jukeboxitem { position:relative !important; min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
-        /* 끌기 손잡이(☰)는 곡 줄 바로 왼쪽에 붙이고, 줄에 마우스를 올렸을 때만 보인다 */
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:12px !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; transform:none !important; overflow:hidden !important; text-indent:0 !important; font-size:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:grab; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { content:"☰" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:#999 !important; opacity:0; }
+        /* 끌기 손잡이(☰)는 안 보이게 두고, 곡 줄을 길게 누르면 jukeboxRow 가 대신 눌러 순서 바꾸기를 시작한다 */
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:0 !important; opacity:0 !important; pointer-events:none !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; transform:none !important; overflow:hidden !important; text-indent:0 !important; font-size:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:grab; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { display:none !important; content:"" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:#999 !important; opacity:0; }
         body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::after { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem:hover > .dd-handle::before { opacity:1; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 0 0 12px !important; padding:0 2px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { -webkit-user-select:none; user-select:none; }
+        body.r20jb-on #jukebox li.jukeboxitem.r20jb-lift > .dd-content { background:rgba(24,103,199,0.1) !important; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 2px 0 0 !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 1px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:12px; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
         body.r20jb-on #jukebox li.jukeboxitem a.play { order:1; display:inline-flex !important; align-items:center; justify-content:center; width:12px; color:#777 !important; text-decoration:none !important; }
