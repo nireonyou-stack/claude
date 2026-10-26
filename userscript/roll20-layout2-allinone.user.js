@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.21.0
+// @version      1.21.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.21.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.21.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1596,8 +1596,26 @@ const chatCapture = (() => {
         const get = u => fetch(u, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
             .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
             .catch(() => null);
+        // fetch 가 막히면(Roll20 이 바깥 주소로의 연결을 막는 경우 등) 그림으로 불러 캔버스에서 데이터로 — imgur 처럼 CORS 를 허락하는 곳이면 된다.
+        // 채팅이 이미 CORS 없이 받아 둔 같은 주소는 캐시 때문에 실패할 수 있어 한 번 더 주소를 살짝 바꿔 받는다
+        const viaImg = u => new Promise(res => {
+            const im = new Image();
+            im.crossOrigin = "anonymous";
+            im.onload = () => {
+                try {
+                    const c = document.createElement("canvas");
+                    c.width = im.naturalWidth; c.height = im.naturalHeight;
+                    c.getContext("2d").drawImage(im, 0, 0);
+                    res(c.toDataURL("image/png"));
+                } catch (e) { res(null); }
+            };
+            im.onerror = () => res(null);
+            im.src = u;
+        });
+        const bust = u => u + (u.includes("?") ? "&" : "?") + "r20cap=1";
         // s3.amazonaws.com/files.d20.io 주소는 CORS 가 막혀 있어 files.d20.io 로 먼저 받는다
-        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null)));
+        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null))
+            .then(d => d || viaImg(r20img(url))).then(d => d || viaImg(bust(r20img(url)))));
         return dataCache.get(url);
     };
     const inlineUrls = async css => {
@@ -1750,7 +1768,9 @@ const logBackup = (() => {
 
     // ── 바꾸기 ──
     const abs = u => { try { return r20img(new URL(u, location.href).href); } catch (e) { return ""; } };
-    const tokSafe = s => String(s).replace(/\]\]/g, "] ]").replace(/\|/g, "¦");            // [[…|…]] 문법을 깨지 않게
+    const tokSafe = s => String(s).replace(/\[/g, "［").replace(/\]/g, "］").replace(/\|/g, "¦");     // [[…|…]] 문법을 깨지 않게 (표 굴림 1t[표이름] 등)
+    // 이모지처럼 4바이트 글자는 &#x…; 로 (홈페이지 DB 가 utf8(3바이트)이면 ???? 로 저장된다 — 홈페이지가 다시 글자로 그린다)
+    const ent = s => s.replace(/[\u{10000}-\u{10FFFF}]/gu, c => "&#x" + c.codePointAt(0).toString(16).toUpperCase() + ";");
     const urlSafe = u => u.replace(/\]/g, "%5D").replace(/\|/g, "%7C");
     const SKIP = new Set(["avatar", "tstamp", "by", "spacer", "flyout", "clear"]);
     const BLOCK = /^(DIV|P|TR|TABLE|TBODY|THEAD|UL|OL|LI|H[1-6]|SECTION|BLOCKQUOTE|PRE|HR|DL|DT|DD)$/;
@@ -1795,7 +1815,8 @@ const logBackup = (() => {
         if (tpl && getComputedStyle(el).display === "none") return "";
         if (tag === "BR") return "\n";
         if (el.classList.contains("inlinerollresult")) return rollChip(el);
-        if (tag === "IMG") { const u = abs(el.getAttribute("src")); return tpl || !/^https?:/.test(u) ? "" : `[[그림:${urlSafe(u)}]]`; }
+        // 그림은 제 줄에 — 홈페이지에서 제 크기(넓으면 칸 폭까지)로 보인다
+        if (tag === "IMG") { const u = abs(el.getAttribute("src")); return tpl || !/^https?:/.test(u) ? "" : `\n[[그림:${urlSafe(u)}]]\n`; }
         let s = [...el.childNodes].map(n => text(n, tpl)).join("");
         if ((tag === "B" || tag === "STRONG") && s.trim() && !s.includes("\n")) s = `**${s}**`;
         else if ((tag === "I" || tag === "EM") && s.trim() && !s.includes("\n")) s = `*${s}*`;
@@ -1822,7 +1843,14 @@ const logBackup = (() => {
         }
         return out;
     };
-    const smallAv = u => { const a = abs(u); return a ? sizedUrl(a, "thumb") : ""; };
+    // Roll20 사용자 아바타(/users/avatar/…)는 홈페이지에서 못 연다 → 넘겨주는 실제 그림 주소로 (못 알아내면 비워 둔다)
+    const avCache = new Map();
+    const realAv = u => {
+        if (!/\/users\/avatar\//.test(u)) return Promise.resolve(u);
+        if (!avCache.has(u)) avCache.set(u, fetch(u)        // 같은 출처라 로그인 쿠키는 그대로 가고, 넘겨받은 바깥 주소에는 안 보낸다 (CORS * 로 읽힌다)
+            .then(r => r.ok && new URL(r.url).host !== location.host ? r.url : "").catch(() => ""));
+        return avCache.get(u);
+    };
 
     const convert = list => {
         styles = [];
@@ -1835,10 +1863,6 @@ const logBackup = (() => {
             out.push(need ? `${name}: ${l}` : l);
             lastWho = name;
         });
-        const imgsOnly = el => {
-            const imgs = [...el.querySelectorAll("img")].filter(i => !i.closest(".avatar"));
-            return imgs.length && !text(el).replace(/\[\[그림:[^\]]*\]\]/g, "").trim() ? imgs.map(i => abs(i.getAttribute("src"))).filter(u => /^https?:/.test(u)) : null;
-        };
         for (const m of list) {
             const c = m.classList;
             if (noWhisper && (c.contains("whisper") || c.contains("private"))) continue;
@@ -1847,7 +1871,7 @@ const logBackup = (() => {
             if (by) {
                 who = by.textContent.replace(/[:：]\s*$/, "").trim() || who;
                 const av = m.querySelector(":scope > .avatar img")?.getAttribute("src");
-                if (who && av && !cast.has(who)) cast.set(who, smallAv(av));
+                if (who && av && !cast.has(who)) cast.set(who, abs(av));
             }
             const name = who || "?";
             const tpl = m.querySelector("[class^='sheet-rolltemplate-'], [class*=' sheet-rolltemplate-']");
@@ -1866,8 +1890,6 @@ const logBackup = (() => {
                 block(`[ROLL:${name}]`); out.push(`${tokSafe(f)} [[굴림:${tokSafe(r)}${d ? "|" + tokSafe(d) : ""}]]`); block("[/ROLL]");
                 continue;
             }
-            const only = imgsOnly(m);
-            if (only) { only.forEach(u => block(`[CG: ${urlSafe(u)}]`)); continue; }
             const body = [...m.childNodes].map(n => text(n)).join("");
             if (c.contains("desc")) { splitLines(body).forEach(l => out.push("/desc " + l)); lastWho = null; }
             else if (c.contains("emote")) { splitLines(body).forEach(l => out.push(":::" + l)); lastWho = null; }
@@ -1877,8 +1899,8 @@ const logBackup = (() => {
         const used = styles.map((s, i) => ({ s, n: out.reduce((a, l) => a + l.split(`\u0001${i}\u0001`).length - 1, 0) }));
         const defs = [];
         const name = used.map(({ s, n }) => n > 1 && s.length > 20 ? (defs.push(`[[꾸밈정의:s${defs.length + 1}|${s}]]`), "s" + defs.length) : s);
-        const lines = ["[R20]", ...defs, ...out].map(l => l.replace(/\u0001(\d+)\u0001/g, (x, i) => name[i]));
-        return { text: lines.join("\n"), lines: lines.length, cast: [...cast].map(([n, u]) => `${n.replace(/\|/g, "¦")} | ${u}`).join("\n") };
+        const lines = ["[R20]", ...defs, ...out].map(l => ent(l.replace(/\u0001(\d+)\u0001/g, (x, i) => name[i])));
+        return { text: lines.join("\n"), lines: lines.length, cast: [...cast].map(([n, u]) => [ent(n.replace(/\|/g, "¦")), u]) };
     };
 
     // ── 범위 ──
@@ -1909,15 +1931,25 @@ const logBackup = (() => {
         pop.querySelectorAll(".rg button[data-k]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.k === mode)));
         const sw = pop.querySelector(".sw");
         sw.setAttribute("aria-checked", String(noWhisper));
-        const castEl = pop.querySelector(".cast");
-        castEl.replaceChildren(...cache.cast.split("\n").filter(Boolean).map(l => {
-            const [n, u] = l.split(" | "), row = document.createElement("div"), im = document.createElement("img"), b = document.createElement("b"), s = document.createElement("span");
-            im.src = u; im.alt = ""; im.loading = "lazy"; b.textContent = n; s.textContent = u.replace(/^https?:\/\//, "");
+        const mine = cache;
+        mine.castText = Promise.all(mine.cast.map(([n, u]) => realAv(u).then(r => [n, r]))).then(list => {
+            if (cache === mine) paintCast(list);
+            return list.map(([n, u]) => `${n} | ${u}`).join("\n");
+        });
+        paintCast(mine.cast);
+        paintRange();
+    };
+    const paintCast = list => {
+        pop.querySelector(".cast").replaceChildren(...list.map(([n, u]) => {
+            const row = document.createElement("div"), im = document.createElement("img"), b = document.createElement("b"), s = document.createElement("span");
+            if (u) im.src = u;
+            im.alt = ""; im.loading = "lazy";
+            b.innerHTML = escAttr(n).replace(/&amp;(#x[0-9A-F]+;)/g, "&$1");     // &#x…; 는 글자로 보여 준다
+            s.textContent = u ? u.replace(/^https?:\/\//, "") : "(그림 없음 — 홈페이지에서 첫 글자로)";
             row.append(im, b, s);
             return row;
         }));
-        pop.querySelector(".nocast").hidden = !!cache.cast;
-        paintRange();
+        pop.querySelector(".nocast").hidden = list.length > 0;
     };
     const flash = (b, msg) => { const t = b.textContent; b.textContent = msg; b.disabled = true; setTimeout(() => { b.textContent = t; b.disabled = false; }, 1400); };
 
@@ -1941,7 +1973,7 @@ const logBackup = (() => {
             + '<div class="bd"><div class="rg"><span>범위</span><button type="button" data-k="a">▶ 시작 찍기</button><button type="button" data-k="b">끝 찍기 ■</button><button type="button" data-k="all">전체</button></div>'
             + '<div class="hint" aria-live="polite"></div>'
             + '<button type="button" class="sw" role="switch"><i aria-hidden="true"></i>귓속말 · GM 굴림 빼기</button>'
-            + '<div class="lbl">명단 (홈페이지 글쓰기 \'명단 붙여넣기\'에)</div><div class="cast"></div><div class="nocast">아바타가 있는 사람이 없어요</div>'
+            + '<div class="lbl">명단 (홈페이지 글쓰기 \'명단 붙여넣기\'에)</div><div class="cast"></div><div class="nocast">말한 사람이 없어요</div>'
             + '<div class="go"><button type="button" class="pri" data-go="log">로그 복사</button><button type="button" data-go="cast">명단 복사</button></div></div>';
         pop.addEventListener("click", async e => {
             const b = e.target.closest("button");
@@ -1953,7 +1985,7 @@ const logBackup = (() => {
             if (k) { mode = mode === k ? null : k; return refresh(); }
             if (go) {
                 refresh();
-                const ok = await copyText(go === "log" ? cache.text : cache.cast);
+                const ok = await copyText(go === "log" ? cache.text : await cache.castText);
                 flash(b, ok ? "복사했어요" : "복사 실패");
             }
         });
