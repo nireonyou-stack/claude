@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.22.0
+// @version      1.22.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.22.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.22.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4703,7 +4703,10 @@ const bulkEditor = (() => {
                 back ? imgEl(back, { class: "r20be-back" }) : null);
             c.append(thumb, cb,
                 el("input", { class: "r20be-in r20be-mini", value: it.cur.name, "aria-label": "카드 이름",
-                    oninput: e => { setItem(it, "name", e.target.value); c.classList.toggle("dirty", itemDirty(it)); changed(); } }));
+                    oninput: e => { setItem(it, "name", e.target.value); c.classList.toggle("dirty", itemDirty(it)); changed(); } }),
+                // 툴팁: Roll20 카드 창의 '툴팁'과 같은 칸 (최대 150자)
+                el("textarea", { class: "r20be-in r20be-ctip", rows: "2", maxlength: "150", placeholder: "툴팁", value: it.cur.tooltip, "aria-label": "카드 툴팁",
+                    oninput: e => { setItem(it, "tooltip", e.target.value); c.classList.toggle("dirty", itemDirty(it)); changed(); } }));
             return c;
         };
         const drawGrid = () => {
@@ -4727,6 +4730,7 @@ const bulkEditor = (() => {
             const showPrev = () => { prev.textContent = "→ " + sel.slice(0, 3).map((_, k) => fmt(k)).join(", ") + (sel.length > 3 ? " …" : ""); };
             showPrev();
             const backIn = el("input", { class: "r20be-in r20be-mini", placeholder: "뒷면 이미지 주소", "aria-label": "뒷면 이미지 주소", style: "width:170px" });
+            const tipIn = el("input", { class: "r20be-in r20be-mini", maxlength: "150", placeholder: "툴팁 (비우면 지움)", "aria-label": "고른 카드 툴팁", style: "width:150px" });
             bar.append(
                 el("span", { class: "r20be-sepv" }),
                 el("input", { class: "r20be-in r20be-mini", value: tb.pattern, "aria-label": "이름 규칙 ({n} = 번호)", style: "width:110px",
@@ -4747,6 +4751,14 @@ const bulkEditor = (() => {
                     drawGrid(); changed();
                     setStatus(`${sel.length}장 뒷면을 ${v ? "바꿨" : "덱 기본으로 돌렸"}습니다 (저장해야 Roll20에 반영)`, "ok");
                 } }, "뒷면 적용"),
+                el("span", { class: "r20be-sepv" }),
+                tipIn,
+                el("button", { type: "button", class: "r20be-sec", onclick: () => {
+                    const v = tipIn.value.trim();
+                    sel.forEach(it => setItem(it, "tooltip", v));
+                    drawGrid(); changed();
+                    setStatus(`${sel.length}장 툴팁을 ${v ? "바꿨" : "지웠"}습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "툴팁 적용"),
                 el("button", { type: "button", class: "r20be-sec danger", onclick: () => {
                     sel.forEach(it => { if (it.isNew) n.items.splice(n.items.indexOf(it), 1); else it.deleted = true; });
                     n.checkedItems.clear();
@@ -4754,15 +4766,15 @@ const bulkEditor = (() => {
                     setStatus(`${sel.length}장을 지웠습니다 (저장해야 Roll20에 반영)`, "ok");
                 } }, "선택 삭제"));
         };
-        // 한 줄에 하나: "앞면 주소" 또는 "이름 | 앞면" 또는 "이름 | 앞면 | 뒷면"
+        // 한 줄에 하나: "앞면 주소" 또는 "이름 | 앞면" 또는 "이름 | 앞면 | 뒷면" 또는 "이름 | 앞면 | 뒷면 | 툴팁"
         const addBox = el("div", { class: "r20be-add", hidden: !t.adding });
-        const ta = el("textarea", { class: "r20be-in", "aria-label": "새 카드", placeholder: "한 줄에 한 장씩 · 앞면 주소만 / 이름 | 앞면 / 이름 | 앞면 | 뒷면" });
+        const ta = el("textarea", { class: "r20be-in", "aria-label": "새 카드", placeholder: "한 줄에 한 장씩 · 앞면 주소만 / 이름 | 앞면 / 이름 | 앞면 | 뒷면 / 이름 | 앞면 | 뒷면 | 툴팁" });
         addBox.append(ta, el("button", { type: "button", class: "r20be-pri", onclick: () => {
             const lines = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
             lines.forEach(l => {
                 const p = l.split("|").map(x => x.trim());
-                const [name, avatar, back] = p.length > 1 ? [p[0], p[1], p[2] || ""] : /^https?:\/\//.test(p[0]) ? ["", p[0], ""] : [p[0], "", ""];
-                n.items.push(cardNode(null, { name, avatar, card_back: back, tooltip: "" }));
+                const [name, avatar, back, tip] = p.length > 1 ? [p[0], p[1], p[2] || "", p.slice(3).join(" | ")] : /^https?:\/\//.test(p[0]) ? ["", p[0], "", ""] : [p[0], "", "", ""];
+                n.items.push(cardNode(null, { name, avatar, card_back: back, tooltip: tip.slice(0, 150) }));
             });
             ta.value = "";
             drawGrid(); changed();
@@ -5965,6 +5977,7 @@ addCss(`
         #r20be .r20be-card { position:relative; display:flex; flex-direction:column; gap:4px; padding:5px; border:1px solid #e3e3e3; border-radius:8px; background:#fff; }
         #r20be .r20be-card.chk { border-color:#1867c7; background:#f1f7fe; }
         #r20be .r20be-card.dirty { box-shadow:inset 0 0 0 1px #f0b27a; }
+        #r20be .r20be-ctip { height:auto; min-height:38px; padding:3px 6px; font-size:11px; line-height:1.35; resize:vertical; }
         #r20be .r20be-thumb { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; padding:0; border:0; border-radius:6px; background:#f2f2f2; color:#888; font-size:11px; overflow:hidden; cursor:pointer; }
         #r20be .r20be-thumb img, #r20be .r20be-thumb video { width:100%; height:100%; object-fit:cover; }
         #r20be .r20be-thumb.none { border:1px dashed #d4d4d4; background:#fafafa; }
