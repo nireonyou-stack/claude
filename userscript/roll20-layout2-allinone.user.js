@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.21.2
+// @version      1.22.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.21.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.22.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1166,17 +1166,19 @@ const jukeboxRow = (() => {
     document.addEventListener("wheel", () => tip?.remove(), { capture: true, passive: true });
     // 트랙이 없는 재생목록은 구분선으로 쓴다 → 표시만 붙이고 모양은 CSS.
     // 화면이 아니라 Roll20 폴더 구조로 판단해서, 접혀 있는 목록도 틀리지 않는다
+    // 폴더 구조(JSON) → 안이 빈 폴더 id (주크박스 · 저널이 같이 쓴다)
+    const emptyFolders = raw => {
+        const ids = new Set();
+        let list = [];
+        try { list = JSON.parse(raw); } catch (e) {}
+        const walk = l => (Array.isArray(l) ? l : []).forEach(x => { if (x && typeof x === "object") { if (!(x.i || []).length) ids.add(x.id); walk(x.i); } });
+        walk(list);
+        return ids;
+    };
     let sepRaw = null, sepIds = new Set();
     const markSeps = () => {
         const raw = window.Campaign?.get?.("jukeboxfolder") || "[]";
-        if (raw !== sepRaw) {
-            sepRaw = raw;
-            sepIds = new Set();
-            let list = [];
-            try { list = JSON.parse(raw); } catch (e) {}
-            const walk = l => (Array.isArray(l) ? l : []).forEach(x => { if (x && typeof x === "object") { if (!(x.i || []).length) sepIds.add(x.id); walk(x.i); } });
-            walk(list);
-        }
+        if (raw !== sepRaw) { sepRaw = raw; sepIds = emptyFolders(raw); }
         let changed = false;
         document.querySelectorAll("#jukeboxfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
             const on = sepIds.has(f.dataset.globalfolderid);
@@ -1210,6 +1212,16 @@ const jukeboxRow = (() => {
         if (roRoot) ro.unobserve(roRoot);
         roRoot = root; measured = false; rootShown = false;
         ro.observe(root);
+    };
+    // 저널도 빈 폴더는 구분선으로 (폴더 몇십 개의 class 만 보므로 가볍다)
+    let jSepRaw = null, jSepIds = new Set();
+    const markJournalSeps = () => {
+        const raw = window.Campaign?.get?.("journalfolder") || "[]";
+        if (raw !== jSepRaw) { jSepRaw = raw; jSepIds = emptyFolders(raw); }
+        document.querySelectorAll("#journalfolderroot li.dd-folder[data-globalfolderid]").forEach(f => {
+            const on = jSepIds.has(f.dataset.globalfolderid);
+            if (f.classList.contains("r20jn-sep") !== on) f.classList.toggle("r20jn-sep", on);
+        });
     };
     const addStepControl = () => {
         const host = document.querySelector("#jukebox .secondarycontrols");
@@ -1257,8 +1269,10 @@ const jukeboxRow = (() => {
             });
             // 빈 재생목록(구분선) 판단은 Roll20 폴더 구조가 바뀔 때도 다시
             window.Campaign?.on?.("change:jukeboxfolder", markSeps);
+            window.Campaign?.on?.("change:journalfolder", markJournalSeps);
         }
         journalTools(true);
+        markJournalSeps();
     };
     // 곡 줄을 0.4초 누르고 있으면 숨겨 둔 Roll20 끌기 손잡이에 mousedown 을 대신 보내 순서 바꾸기를 시작한다
     // (그 뒤 움직임·놓기는 실제 마우스 그대로 Roll20 이 처리). 단추·볼륨·미리듣기 위에서는 시작하지 않는다
@@ -1387,11 +1401,11 @@ addCss(`
         /* 재생목록 줄 높이를 26px 로 맞춘다: 접기 단추(float)의 위쪽 여백·높이가 줄보다 커서 아래에 빈틈이 생기던 것 */
         body.r20jb-on #jukeboxfolderroot li.dd-folder { min-height:0 !important; margin:0 !important; padding:0 !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder::before, body.r20jb-on #jukeboxfolderroot li.dd-folder::after, body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content::after { display:none !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { width:16px !important; height:26px !important; margin:0 0 0 2px !important; padding:0 !important; line-height:26px !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { width:14px !important; height:26px !important; margin:0 0 0 2px !important; padding:0 !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before { top:0 !important; left:0 !important; width:100% !important; text-align:center; font-size:12px !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
         /* 재생목록 안 곡: 재생목록 제목 글자가 시작하는 자리부터 (--r20jb-ind 는 jukeboxRow 가 실제 위치를 재서 넣는다) */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:0 !important; padding-left:var(--r20jb-ind, 18px) !important; border-left:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:0 !important; padding-left:calc(var(--r20jb-ind, 18px) - 3px) !important; border-left:0 !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 1px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; text-indent:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
         /* 재생목록 줄의 재생 · 섞기 · 내보내기 단추는 빼고 제목을 끝까지 (재생은 곡 줄에서) */
@@ -1416,8 +1430,8 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem > .dd-content { display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 2px 0 0 !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
-        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 2px !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:11px; padding:0 !important; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
+        body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv { order:0; width:auto; min-width:12px; margin-right:2px !important; padding:0 !important; text-align:center; font-size:10px; filter:grayscale(1); opacity:0.4; }
         body.r20jb-on #jukebox li.jukeboxitem .r20-bgm-pv.on { filter:none; opacity:1; }
         /* 재생 ▶ 은 숨기고 곡 제목을 누르면 재생/정지 (jukeboxRow 가 숨긴 단추를 대신 누른다). 재생 중인 곡은 파란 제목으로 보인다 */
         body.r20jb-on #jukebox li.jukeboxitem a.play { display:none !important; }
@@ -1428,12 +1442,14 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
         .r20jb-vol, .r20jb-loop { display:none; }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:11px; height:22px; margin:0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0 2px 0 0; padding:0; border:0; background:none; color:#c6c6c6; font-size:12px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:#777; }
         .r20jb-tip { position:fixed; z-index:100005; max-width:260px; padding:4px 8px; border-radius:4px; background:rgba(20,20,22,0.94); color:#fff; font-size:11px; line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-loop { display:inline-flex; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20-bgm-pv { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop.on { color:#3d7cc9; font-weight:700; }
+        /* 곡 제목에 마우스: 마젠타 핑크 글자 + 파스텔 민트 바탕 (Roll20 의 하늘색 글자 · 노란 바탕 대신, 재생 중인 곡도) */
+        html body.r20jb-on #jukebox li.jukeboxitem > .dd-content > .title:hover { color:#d0217a !important; background:#d4f5e9 !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol { display:inline-flex; align-items:center; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button { width:8px; height:22px; margin:0; padding:0; border:0; background:none; color:#aaa; font-size:9px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-vol button:hover { color:#222; }
@@ -1448,6 +1464,13 @@ addCss(`
         /* 폴더 ± 버튼은 줄 왼쪽 16px 안에 고정 */
         body.r20jb-on #journalfolderroot li.dd-folder { position:relative !important; }
         body.r20jb-on #journalfolderroot li.dd-folder > button[data-action] { position:absolute !important; left:0 !important; top:0 !important; float:none !important; width:16px !important; height:26px !important; margin:0 !important; line-height:26px !important; z-index:2; }
+        body.r20jb-on #journalfolderroot li.dd-folder > button[data-action]::before { top:0 !important; left:0 !important; width:100% !important; text-align:center; font-size:12px !important; line-height:26px !important; }
+        /* 빈 폴더 = 구분선 (주크박스의 빈 재생목록과 같은 모양 · .r20jn-sep 은 jukeboxRow 가 붙인다) */
+        body.r20jb-on #journalfolderroot li.dd-folder.r20jn-sep > button[data-action] { display:none !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder.r20jn-sep > .dd-content { min-height:18px !important; padding-left:0 !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder.r20jn-sep > .dd-content .folder-title { font-size:10px !important; line-height:18px !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder.r20jn-sep > .dd-list { display:none !important; }
+        body.r20jb-on #journalfolderroot li.dd-folder.r20jn-sep > .dd-handle { height:18px !important; }
         body.r20jb-on #journalfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 16px !important; }
         body.r20jb-on #journalfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:700 !important; line-height:26px !important; }
         /* 폴더 끌기 손잡이(투명)가 줄 높이를 늘리지 않게 흐름에서 뺀다 */
@@ -1817,7 +1840,12 @@ const logBackup = (() => {
         if (tag === "BR") return "\n";
         if (el.classList.contains("inlinerollresult")) return rollChip(el);
         // 그림은 제 줄에 — 홈페이지에서 제 크기(넓으면 칸 폭까지)로 보인다
-        if (tag === "IMG") { const u = abs(el.getAttribute("src")); return tpl || !/^https?:/.test(u) ? "" : `\n[[그림:${urlSafe(u)}]]\n`; }
+        if (tag === "IMG") {
+            const u = abs(el.getAttribute("src"));
+            if (tpl || !/^https?:/.test(u)) return "";
+            const r = swap(u, "그림");
+            return r ? `\n[[그림:${urlSafe(r)}]]\n` : "";
+        }
         let s = [...el.childNodes].map(n => text(n, tpl)).join("");
         if ((tag === "B" || tag === "STRONG") && s.trim() && !s.includes("\n")) s = `**${s}**`;
         else if ((tag === "I" || tag === "EM") && s.trim() && !s.includes("\n")) s = `*${s}*`;
@@ -1844,17 +1872,23 @@ const logBackup = (() => {
         }
         return out;
     };
-    // Roll20 사용자 아바타(/users/avatar/…)는 홈페이지에서 못 연다 → 넘겨주는 실제 그림 주소로 (못 알아내면 비워 둔다)
-    const avCache = new Map();
-    const realAv = u => {
-        if (!/\/users\/avatar\//.test(u)) return Promise.resolve(u);
-        if (!avCache.has(u)) avCache.set(u, fetch(u)        // 같은 출처라 로그인 쿠키는 그대로 가고, 넘겨받은 바깥 주소에는 안 보낸다 (CORS * 로 읽힌다)
-            .then(r => r.ok && new URL(r.url).host !== location.host ? r.url : "").catch(() => ""));
-        return avCache.get(u);
+    // Roll20 저장소 그림(아바타 · 채팅 그림 · 마켓플레이스)은 홈페이지에 그대로 걸지 않는다 — Roll20 에 부담을 주지 않게.
+    // 판에 '바꿀 그림' 목록으로 보여 주고, 사용자가 넣은 주소로 바꾼다 (비워 두면 뺀다). 넣은 주소는 이 브라우저에 기억해 둔다
+    const R20 = /^https?:\/\/(?:[^/]*\.)?(?:roll20\.net|d20\.io)\/|^https?:\/\/s3\.amazonaws\.com\/files\.d20\.io\//i;
+    const MAP_KEY = "r20lb_imgmap";
+    let imgMap = {};
+    try { imgMap = JSON.parse(localStorage.getItem(MAP_KEY)) || {}; } catch (e) {}
+    const saveMap = () => { try { localStorage.setItem(MAP_KEY, JSON.stringify(imgMap)); } catch (e) {} };
+    let found = null;           // 바꾸는 동안 만난 Roll20 그림: 주소 → 이름표
+    const swap = (u, label) => {
+        if (!R20.test(u)) return u;
+        if (!found.has(u)) found.set(u, label);
+        return imgMap[u] || "";
     };
 
     const convert = list => {
         styles = [];
+        found = new Map();
         const out = [], cast = new Map();
         let who = "", lastWho = null;
         const block = s => { out.push(s); lastWho = null; };
@@ -1872,7 +1906,7 @@ const logBackup = (() => {
             if (by) {
                 who = by.textContent.replace(/[:：]\s*$/, "").trim() || who;
                 const av = m.querySelector(":scope > .avatar img")?.getAttribute("src");
-                if (who && av && !cast.has(who)) cast.set(who, abs(av));
+                if (who && av && !cast.has(who)) cast.set(who, swap(abs(av), "아바타 · " + who));
             }
             const name = who || "?";
             const tpl = m.querySelector("[class^='sheet-rolltemplate-'], [class*=' sheet-rolltemplate-']");
@@ -1901,7 +1935,8 @@ const logBackup = (() => {
         const defs = [];
         const name = used.map(({ s, n }) => n > 1 && s.length > 20 ? (defs.push(`[[꾸밈정의:s${defs.length + 1}|${s}]]`), "s" + defs.length) : s);
         const lines = ["[R20]", ...defs, ...out].map(l => ent(l.replace(/\u0001(\d+)\u0001/g, (x, i) => name[i])));
-        return { text: lines.join("\n"), lines: lines.length, cast: [...cast].map(([n, u]) => [ent(n.replace(/\|/g, "¦")), u]) };
+        return { text: lines.join("\n"), lines: lines.length, imgs: [...found],
+            cast: [...cast].map(([n, u]) => `${ent(n.replace(/\|/g, "¦"))} | ${u}`).join("\n") };
     };
 
     // ── 범위 ──
@@ -1932,32 +1967,42 @@ const logBackup = (() => {
         pop.querySelectorAll(".rg button[data-k]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.k === mode)));
         const sw = pop.querySelector(".sw");
         sw.setAttribute("aria-checked", String(noWhisper));
-        const mine = cache;
-        mine.castText = Promise.all(mine.cast.map(([n, u]) => realAv(u).then(r => [n, r]))).then(list => {
-            if (cache === mine) paintCast(list);
-            return list.map(([n, u]) => `${n} | ${u}`).join("\n");
-        });
-        paintCast(mine.cast);
+        paintImgs();
         paintRange();
     };
-    const paintCast = list => {
-        pop.querySelector(".cast").replaceChildren(...list.map(([n, u]) => {
-            const row = document.createElement("div"), im = document.createElement("img"), b = document.createElement("b"), s = document.createElement("span");
-            if (u) im.src = u;
-            im.alt = ""; im.loading = "lazy";
-            b.innerHTML = escAttr(n).replace(/&amp;(#x[0-9A-F]+;)/g, "&$1");     // &#x…; 는 글자로 보여 준다
-            s.textContent = u ? u.replace(/^https?:\/\//, "") : "(그림 없음 — 홈페이지에서 첫 글자로)";
-            row.append(im, b, s);
+    // 바꿀 그림 목록 — 입력 중에는 다시 그리지 않는다 (글자를 칠 때마다 칸이 사라지지 않게)
+    const countImgs = () => {
+        const n = cache.imgs.length, done = cache.imgs.filter(([u]) => imgMap[u]).length;
+        pop.querySelector(".cnt").textContent = n ? `${done} / ${n}` : "";
+    };
+    const paintImgs = () => {
+        const box = pop.querySelector(".imgs");
+        box.replaceChildren(...cache.imgs.map(([u, label]) => {
+            const row = document.createElement("div"), im = document.createElement("img"), b = document.createElement("b"), inp = document.createElement("input");
+            im.src = u; im.alt = ""; im.loading = "lazy";
+            b.textContent = label; b.title = u;
+            inp.type = "url"; inp.placeholder = "바꿀 주소 https://…"; inp.value = imgMap[u] || "";
+            inp.setAttribute("aria-label", label + " 바꿀 주소");
+            row.classList.toggle("ok", !!imgMap[u]);
+            inp.addEventListener("input", () => {
+                const v = inp.value.trim();
+                if (/^https?:\/\/\S+$/i.test(v)) imgMap[u] = v; else delete imgMap[u];
+                row.classList.toggle("ok", !!imgMap[u]);
+                saveMap();
+                countImgs();
+            });
+            row.append(im, b, inp);
             return row;
         }));
-        pop.querySelector(".nocast").hidden = list.length > 0;
+        pop.querySelector(".noimg").hidden = cache.imgs.length > 0;
+        countImgs();
     };
     const flash = (b, msg) => { const t = b.textContent; b.textContent = msg; b.disabled = true; setTimeout(() => { b.textContent = t; b.disabled = false; }, 1400); };
 
     // ── 판 ──
     const place = () => {
         if (!pop) return;
-        Object.assign(pop.style, { right: "16px", bottom: "64px", width: "320px" });
+        Object.assign(pop.style, { right: "16px", bottom: "64px", width: "360px" });
     };
     const build = () => {
         pop = document.createElement("div");
@@ -1968,7 +2013,7 @@ const logBackup = (() => {
             + '<div class="bd"><div class="rg"><span>범위</span><button type="button" data-k="a">▶ 시작 찍기</button><button type="button" data-k="b">끝 찍기 ■</button><button type="button" data-k="all">전체</button></div>'
             + '<div class="hint" aria-live="polite"></div>'
             + '<button type="button" class="sw" role="switch"><i aria-hidden="true"></i>귓속말 · GM 굴림 빼기</button>'
-            + '<div class="lbl">명단 (홈페이지 글쓰기 \'명단 붙여넣기\'에)</div><div class="cast"></div><div class="nocast">말한 사람이 없어요</div>'
+            + '<div class="lbl">Roll20 저장소 그림 <b class="cnt"></b><br>바꿀 주소를 넣으면 그 주소로, 비워 두면 빼요 (아바타 · 채팅 그림)</div><div class="imgs"></div><div class="noimg">Roll20 저장소 그림이 없어요</div>'
             + '<div class="go"><button type="button" class="pri" data-go="log">로그 복사</button><button type="button" data-go="cast">명단 복사</button></div></div>';
         pop.addEventListener("click", async e => {
             const b = e.target.closest("button");
@@ -1979,8 +2024,9 @@ const logBackup = (() => {
             if (k === "all") { ra = rb = null; mode = null; return refresh(); }
             if (k) { mode = mode === k ? null : k; return refresh(); }
             if (go) {
-                refresh();
-                const ok = await copyText(go === "log" ? cache.text : await cache.castText);
+                cache = convert(range().list);           // 방금 넣은 주소까지 (목록은 다시 그리지 않는다)
+                countImgs();
+                const ok = await copyText(go === "log" ? cache.text : cache.cast);
                 flash(b, ok ? "복사했어요" : "복사 실패");
             }
         });
@@ -2042,11 +2088,15 @@ const LB_CSS = `
         #r20-logbak .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
         #r20-logbak .sw[aria-checked=true] i { background:#1867c7; }
         #r20-logbak .sw[aria-checked=true] i::after { left:14px; }
-        #r20-logbak .cast > div { display:flex; align-items:center; gap:6px; min-width:0; font-size:11px; }
-        #r20-logbak .cast img { width:18px; height:18px; flex-shrink:0; border-radius:4px; object-fit:cover; background:#eee; }
-        #r20-logbak .cast b { flex-shrink:0; }
-        #r20-logbak .cast span { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#aaa; font-size:10.5px; }
-        #r20-logbak .nocast { color:#aaa; font-size:11px; }
+        #r20-logbak .lbl b { color:#8a3d9e; }
+        #r20-logbak .imgs { display:flex; flex-direction:column; gap:4px; }
+        #r20-logbak .imgs > div { display:flex; align-items:center; gap:6px; min-width:0; }
+        #r20-logbak .imgs img { width:24px; height:24px; flex-shrink:0; border-radius:4px; object-fit:cover; background:#eee; }
+        #r20-logbak .imgs b { flex:0 0 96px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:11px; font-weight:700; }
+        #r20-logbak .imgs input { flex:1; min-width:0; height:22px; margin:0; padding:0 6px; border:1px solid #ccc; border-radius:4px; font:11px/20px sans-serif; color:#333; background:#fff; }
+        #r20-logbak .imgs input:focus { outline:2px solid #8a3d9e; outline-offset:-1px; border-color:#8a3d9e; }
+        #r20-logbak .imgs .ok input { border-color:#2e8b57; background:#f1fbf5; }
+        #r20-logbak .noimg { color:#aaa; font-size:11px; }
         #r20-logbak .go { display:flex; gap:5px; margin-top:2px; }
         #r20-logbak .go .pri { background:#1867c7; border-color:#1867c7; color:#fff; }
         /* 범위: 밖은 흐리게, 시작 · 끝에 표시 */
