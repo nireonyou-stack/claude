@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.22.2
+// @version      1.22.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.22.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.22.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2144,11 +2144,27 @@ const mapShot = (() => {
         im.onerror = () => res(null);
         im.src = u;
     });
+    // 움직이는 그림(Roll20 은 apng · gif 도 webm · mp4 로 바꿔 둔다)은 <img> 로 못 그려서 <video> 로 받아 첫 장면을 그린다
+    const loadVid = u => new Promise(res => {
+        const v = document.createElement("video");
+        let t = 0;
+        const fin = ok => { clearTimeout(t); v.onloadeddata = v.onerror = null; res(ok ? v : null); };
+        t = setTimeout(() => fin(false), 15000);
+        v.crossOrigin = "anonymous"; v.muted = true; v.playsInline = true; v.preload = "auto";
+        v.onloadeddata = () => fin(v.videoWidth > 0);
+        v.onerror = () => fin(false);
+        v.src = u + "#t=0.1";        // 맨 처음 장면은 검은 경우가 있어 조금 뒤 (미리보기와 같은 값)
+    });
     let failed = [];
     const load = async u => {
-        for (const c of new Set([r20img(u), u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])) {
-            const im = await loadOne(c);
-            if (im) return im;
+        const cands = [...new Set([r20img(u), u, u + (u.includes("?") ? "&" : "?") + "r20ms=" + Date.now()])];
+        const vid = isAnimVideo(u);
+        // 그림 주소는 <img> 로 먼저, 안 되면 <video> 로 한 번 더 (확장자가 안 맞는 움직이는 그림)
+        for (const kind of vid ? ["video"] : ["img", "video"]) {
+            for (const c of cands) {
+                const im = await (kind === "img" ? loadOne(c) : loadVid(c));
+                if (im) return im;
+            }
         }
         failed.push(u);
         return null;
