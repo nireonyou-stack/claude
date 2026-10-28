@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.22.1
+// @version      1.22.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.22.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.22.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3020,7 +3020,10 @@ addCss(`
         .context-menu > button[data-r20tm="choose"] { position:relative; }
         /* 화면 배치: 화면 제어는 햄버거 밑에 하나로 접고 마우스를 올리면 왼쪽으로 펼침, 조명 레이어 자리에 페이지 버튼 */
         body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
-        body.r20sc-on #vm_zoom_buttons button { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
+        /* 크기는 화면 제어 단추(.btnStyle)에만 — 눈 단추가 여는 창(라이트 모드 · 플레이어 시점 미리 보기 …)의 단추는 그대로 */
+        body.r20sc-on #vm_zoom_buttons button.btnStyle { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
+        /* 오른쪽 대화 판에 붙은 인덱스 탭처럼: 오른쪽 모서리는 각지게 (페이지 · 화면 제어 · 맵 촬영) */
+        body.r20sc-on #page-button, body.r20sc-on #vm_zoom_buttons, body.r20sc-on #vm_zoom_buttons > .wrapper, body.r20sc-on #vm_zoom_buttons .parentContainer, #r20-mapshot { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }
         body.r20sc-on #vm_zoom_buttons .level { font-size:11px !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
