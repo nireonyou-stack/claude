@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.24.0
+// @version      1.24.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.24.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.24.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2117,6 +2117,7 @@ const mapShot = (() => {
     const ICON = {
         map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
         up: '<path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>',
+        pgset: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
         cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
         load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
         ok: '<path d="M20 6 9 17l-5-5"/>',
@@ -2254,7 +2255,19 @@ const mapShot = (() => {
         }
         busy = false;
     };
-    // 맵 단추를 누르면 촬영 · 가져오기 단추가 왼쪽으로 미끄러져 나온다 (바깥을 누르거나 Esc 로 접기, 찍는 중엔 안 접힘)
+    // 페이지 설정: Roll20 페이지 창을 열고 "현재 페이지 설정" 을 대신 누른다 (페이지 창이 열려 있으면 바로)
+    const pageSettings = async b => {
+        const find = () => document.querySelector(".vtt-page-card-menu .current-page-settings");
+        let el = find();
+        if (!el) {
+            document.getElementById("page-button")?.click();
+            for (let i = 0; i < 20 && !(el = find()); i++) await new Promise(r => setTimeout(r, 100));
+        }
+        if (el) { el.click(); setOpen(false); return; }
+        b.title = "페이지 설정을 못 찾았어요";
+        setTimeout(() => { b.title = "페이지 설정"; }, 3000);
+    };
+    // 맵 단추를 누르면 촬영 · 가져오기 · 페이지 설정 단추가 아래로 펼쳐진다 (바깥을 누르거나 Esc 로 접기, 찍는 중엔 안 접힘)
     const setOpen = v => {
         const w = box();
         if (!w) return;
@@ -2273,10 +2286,10 @@ const mapShot = (() => {
         if (!btnVisible.mapshot || box() || !document.getElementById("sidebarcontrol")) return;
         const b = document.createElement("div");
         b.id = "r20-mapshot";
-        b.innerHTML = '<div class="tray" id="r20-maptray" role="group" aria-label="맵 도구">'
+        b.innerHTML = `<button type="button" class="main" title="맵" aria-label="맵 도구" aria-expanded="false" aria-controls="r20-maptray">${svg("map")}</button>`
+            + '<div class="tray" id="r20-maptray" role="group" aria-label="맵 도구"><button type="button" class="shot"></button>'
             + `<button type="button" class="imp" title="코코포리아 맵 가져오기" aria-label="코코포리아 맵 가져오기">${svg("up")}</button>`
-            + '<button type="button" class="shot"></button></div>'
-            + `<button type="button" class="main" title="맵" aria-label="맵 도구" aria-expanded="false" aria-controls="r20-maptray">${svg("map")}</button>`;
+            + `<button type="button" class="pgset" title="페이지 설정" aria-label="페이지 설정">${svg("pgset")}</button></div>`;
         b.addEventListener("click", e => {
             const k = e.target.closest("button")?.className;
             if (!k) return;
@@ -2284,8 +2297,9 @@ const mapShot = (() => {
             if (k === "main") setOpen(!b.classList.contains("open"));
             else if (k === "shot") shoot();
             else if (k === "imp") ccfImport.toggle(b);
+            else if (k === "pgset") pageSettings(e.target.closest("button"));
         });
-        if (window.is_gm === false) b.querySelector(".imp").remove();       // 페이지를 바꾸는 일이라 GM 만
+        if (window.is_gm === false) b.querySelectorAll(".imp, .pgset").forEach(x => x.remove());       // 페이지를 바꾸는 일이라 GM 만
         document.body.appendChild(b);
         idle();
         if (FEAT.screenUI) FEAT.screenUI.place();
@@ -2592,7 +2606,7 @@ const ccfImport = (() => {
                     const ent = data?.entities;
                     if (!ent?.room) throw new Error("코코포리아 룸 데이터가 아니에요");
                     scenes = [{ ...ent.room, name: "지금 방" }, ...Object.values(ent.scenes || {})
-                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => ({ ...s, name: "장면 · " + (s.name || "이름 없음") }))];
+                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => ({ ...s, name: s.name || "이름 없음" }))];
                     sel = 0; grid = null;
                 } catch (e) { zip = null; data = null; scenes = []; prog("못 읽었어요 — " + (e?.message || e)); }
             } else extra.set(base(f.name), f);
@@ -2622,8 +2636,8 @@ const ccfImport = (() => {
         const sc = scenes[sel];
         $(".fn").textContent = zip ? zipName + (extra.size ? ` + 파일 ${extra.size}개` : "") : "ZIP 을 여기에 끌어다 놓아도 돼요";
         const s = $("select");
-        s.hidden = !zip;
-        s.innerHTML = scenes.map((c, i) => `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)}</option>`).join("");
+        $(".scn").hidden = !zip;
+        s.innerHTML = scenes.map((c, i) => `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)} · 패널 ${Object.keys(c.markers || {}).length}</option>`).join("");
         pop.querySelectorAll("[data-cell]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.cell === cell)));
         if (grid === null && sc) grid = !!sc.displayGrid;
         $(".grid").setAttribute("aria-checked", String(!!grid));
@@ -2660,7 +2674,7 @@ const ccfImport = (() => {
     const place = () => {
         if (!pop || !anchor?.isConnected) return;
         const r = anchor.getBoundingClientRect();
-        Object.assign(pop.style, { top: Math.round(r.bottom + 6) + "px", right: Math.round(innerWidth - r.right) + "px" });
+        Object.assign(pop.style, { top: Math.round(r.top) + "px", right: Math.round(innerWidth - r.left + 8) + "px" });
     };
     const build = () => {
         pop = document.createElement("div");
@@ -2670,7 +2684,7 @@ const ccfImport = (() => {
         pop.innerHTML = '<div class="hd"><b>코코포리아 맵 가져오기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><div class="rg"><button type="button" data-k="pick">ZIP · webm 고르기</button><span class="fn"></span>'
             + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
-            + '<select aria-label="장면"></select><div class="info"></div>'
+            + '<label class="rg scn" hidden><span>장면</span><select></select></label><div class="info"></div>'
             + '<button type="button" class="sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button><canvas class="pv" hidden></canvas>'
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
             + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
@@ -2704,12 +2718,13 @@ const ccfImport = (() => {
 })();
 
 addCss(`
-        /* 맵 단추 (화면 제어 줄 맨 아래): 누르면 촬영 · 가져오기 단추가 왼쪽으로 미끄러져 나온다 */
+        /* 맵 단추 (화면 제어 줄 맨 아래): 누르면 촬영 · 가져오기 · 페이지 설정 단추가 아래로 펼쳐진다 */
         #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; }
         #r20-mapshot button { width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
         #r20-mapshot button:hover, #r20-mapshot.open > .main { color:#b8215f; }
         #r20-mapshot button:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
-        #r20-mapshot .tray { position:absolute; top:0; right:100%; display:flex; gap:4px; padding-right:4px; opacity:0; visibility:hidden; transform:translateX(16px); pointer-events:none; transition:transform .18s ease, opacity .18s ease, visibility 0s linear .18s; }
+        #r20-mapshot .tray { position:absolute; top:100%; right:0; display:flex; flex-direction:column; gap:4px; padding-top:4px; opacity:0; visibility:hidden; transform:translateY(-12px); pointer-events:none; transition:transform .18s ease, opacity .18s ease, visibility 0s linear .18s; }
+        #r20-mapshot .tray button { border-top-right-radius:0; border-bottom-right-radius:0; }
         #r20-mapshot.open .tray { opacity:1; visibility:visible; transform:none; pointer-events:auto; transition:transform .18s ease, opacity .18s ease; }
         #r20-mapshot .shot[data-state=ok] { color:#2e8b57; }
         #r20-mapshot .shot[data-state=warn] { color:#c98a00; }
@@ -2731,8 +2746,9 @@ addCss(`
         #r20-ccf button:focus-visible, #r20-ccf select:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
         #r20-ccf button[aria-pressed=true] { background:#b8215f; border-color:#b8215f; color:#fff; }
         #r20-ccf .x { padding:0 6px; }
-        #r20-ccf select { width:100%; height:24px; margin:0; padding:0 4px; font-size:12px; }
-        #r20-ccf select[hidden] { display:none; }
+        #r20-ccf .scn { margin:0; flex-wrap:nowrap; font-weight:400; }
+        #r20-ccf .scn[hidden] { display:none; }
+        #r20-ccf select { flex:1; min-width:0; height:24px; margin:0; padding:0 4px; font-size:12px; }
         #r20-ccf .pv { display:block; max-width:100%; margin:0 auto; border-radius:4px; }
         #r20-ccf .pv[hidden] { display:none; }
         #r20-ccf .sw { display:flex; align-items:center; gap:6px; margin-left:auto; padding:0; border:0; background:none; font-weight:400; }
