@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.23.0
+// @version      1.24.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.23.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.24.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2305,9 +2305,12 @@ const mapShot = (() => {
 // ───────── 코코포리아 맵 가져오기: 룸 데이터 ZIP 의 마커 패널을 지금 페이지에 같은 칸 · 같은 겹침 순서로 놓는다 ─────────
 // 그림은 Roll20 테이블에 파일을 끌어다 놓은 것처럼 해서 Roll20 이 직접 올린다 (한 번에 하나씩).
 // 올린 주소는 파일 이름(코코포리아가 붙인 내용 해시) + 크기로 기억해 두고, 다시 가져올 때는 또 올리지 않는다.
-// 확장자만 다른 파일(apng 를 바꾼 webm 등)을 같이 넣으면 같은 이름의 그림 대신 그걸 올린다
+// 확장자만 다른 파일(apng 를 바꾼 webm 등)을 같이 넣으면 같은 이름의 그림 대신 그걸 올리고,
+// 없으면 (켜 둔 경우) apng 를 브라우저 안에서 투명 webm 으로 바꿔 올린다 (Roll20 은 apng 를 안 움직인다)
 const ccfImport = (() => {
     const UP_KEY = "r20_ccf_up";
+    const CAN_CONV = typeof ImageDecoder === "function" && typeof VideoEncoder === "function";
+    let conv = localStorage.getItem("r20_ccf_conv") !== "false";
     const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
     const R20 = /^https:\/\/(?:s3\.amazonaws\.com\/)?files\.d20\.io\//i;
     let pop = null, anchor = null, zip = null, zipName = "", data = null, scenes = [], sel = 0, grid = null, busy = false, stop = false;
@@ -2398,11 +2401,100 @@ const ccfImport = (() => {
     const px = v => Math.round(v * cell * 100) / 100;
     const attrsOf = (t, L) => ({ left: px(t.x - L.x0 + t.w / 2), top: px(t.y - L.y0 + t.h / 2), width: px(t.w), height: px(t.h),
         rotation: 0, layer: t.lock ? "map" : "objects", controlledby: t.lock ? "" : "all" });
-    const upFile = async n => {
-        const f = extra.get(base(n));
-        return f || new File([await blobOf(n)], n, { type: typeOf(n) });
+
+    // ── apng → 투명 webm: 색과 투명도를 VP9(안 되면 VP8) 두 줄기로 따로 만들어, 투명도는 블록 덧붙임(BlockAdditional)으로 넣는다 ──
+    // (ffmpeg 의 투명 webm 과 같은 짜임. 브라우저 인코더는 아직 투명도를 직접 못 받는다)
+    const toWebm = async bytes => {
+        const dec = new ImageDecoder({ data: bytes, type: "image/png" });
+        try {
+            await dec.tracks.ready; await dec.completed;
+            const n = dec.tracks.selectedTrack.frameCount;
+            let f = (await dec.decode({ frameIndex: 0 })).image;
+            const W = f.displayWidth + (f.displayWidth & 1), H = f.displayHeight + (f.displayHeight & 1);       // 4:2:0 은 짝수 크기
+            const fps = Math.max(1, Math.round(1e6 / (f.duration || 100000)));
+            let cfg = null;
+            for (const codec of ["vp09.00.10.08", "vp8"]) {
+                const c = { codec, width: W, height: H, framerate: fps, bitrate: Math.max(150000, Math.round(W * H * fps * 0.12)) };
+                if ((await VideoEncoder.isConfigSupported(c).catch(() => ({}))).supported) { cfg = c; break; }
+            }
+            if (!cfg) throw new Error("이 브라우저는 webm 을 못 만들어요");
+            let err = null;
+            const enc = arr => {
+                const e = new VideoEncoder({ output: c => { const u = new Uint8Array(c.byteLength); c.copyTo(u); arr.push({ ts: c.timestamp, key: c.type === "key", data: u }); },
+                    error: x => { err = err || x; } });
+                e.configure(cfg);
+                return e;
+            };
+            const color = [], alpha = [], ec = enc(color), ea = enc(alpha);
+            const cv = new OffscreenCanvas(W, H), x = cv.getContext("2d", { willReadFrequently: true });
+            const yuv = new Uint8Array(W * H * 3 / 2).fill(128, W * H);          // 투명도 줄기: 밝기 = 투명도, 색차는 가운데
+            let end = 0;
+            for (let i = 0; i < n && !err; i++) {
+                if (i) f = (await dec.decode({ frameIndex: i })).image;
+                x.clearRect(0, 0, W, H);
+                x.drawImage(f, 0, 0);
+                const ts = f.timestamp, dur = f.duration || 100000, key = i % 50 === 0;
+                f.close();
+                end = ts + dur;
+                const px = x.getImageData(0, 0, W, H).data;
+                const vc = new VideoFrame(px, { format: "RGBX", codedWidth: W, codedHeight: H, timestamp: ts, duration: dur });
+                ec.encode(vc, { keyFrame: key }); vc.close();
+                for (let j = 0, k = 3; j < W * H; j++, k += 4) yuv[j] = px[k];
+                const va = new VideoFrame(yuv, { format: "I420", codedWidth: W, codedHeight: H, timestamp: ts, duration: dur });
+                ea.encode(va, { keyFrame: key }); va.close();
+                while (ec.encodeQueueSize > 4 || ea.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 0));
+            }
+            await ec.flush(); await ea.flush();
+            ec.close(); ea.close();
+            if (err) throw err;
+            return webmFile(W, H, cfg.codec.startsWith("vp8") ? "V_VP8" : "V_VP9", color, alpha, end / 1000);
+        } finally { dec.close(); }
     };
-    const upKey = f => f.name + ":" + f.size;
+    // 아주 작은 WebM(EBML) 쓰기: 영상 줄기 하나 + 투명도 덧붙임, 키 장면마다 묶음(Cluster)
+    const cat = parts => { const o = new Uint8Array(parts.reduce((s, p) => s + p.length, 0)); let i = 0; parts.forEach(p => { o.set(p, i); i += p.length; }); return o; };
+    const beBytes = (n, len) => { const o = new Uint8Array(len); for (let i = len - 1; i >= 0; i--) { o[i] = n % 256; n = Math.floor(n / 256); } return o; };
+    const uintB = n => { let L = 1; while (n >= 256 ** L) L++; return beBytes(n, L); };
+    const sizeB = n => { let L = 1; while (L < 8 && n >= 2 ** (7 * L) - 1) L++; const o = beBytes(n, L); o[0] |= 1 << (8 - L); return o; };
+    const el = (id, ...kids) => {
+        const body = cat(kids.map(k => typeof k === "number" ? uintB(k) : typeof k === "string" ? new TextEncoder().encode(k) : k));
+        return cat([uintB(id), sizeB(body.length), body]);
+    };
+    const webmFile = (W, H, codecId, color, alpha, durMs) => {
+        const f64 = new Uint8Array(8);
+        new DataView(f64.buffer).setFloat64(0, durMs);
+        const head = el(0x1A45DFA3, el(0x4286, 1), el(0x42F7, 1), el(0x42F2, 4), el(0x42F3, 8), el(0x4282, "webm"), el(0x4287, 4), el(0x4285, 2));
+        const info = el(0x1549A966, el(0x2AD7B1, 1000000), el(0x4D80, "r20"), el(0x5741, "r20"), el(0x4489, f64));
+        // AlphaMode 1 + MaxBlockAdditionID 1 → 덧붙임 1번이 투명도
+        const tracks = el(0x1654AE6B, el(0xAE, el(0xD7, 1), el(0x73C5, 1), el(0x83, 1), el(0x86, codecId), el(0x55EE, 1), el(0xE0, el(0xB0, W), el(0xBA, H), el(0x53C0, 1))));
+        const clusters = [];
+        let cur = null, base0 = 0, prev = 0;
+        color.forEach((c, i) => {
+            const t = Math.round(c.ts / 1000);
+            if (c.key || !cur || t - base0 > 30000) {           // 묶음 안 상대 시각은 16비트
+                if (cur) clusters.push(el(0x1F43B675, ...cur));
+                cur = [el(0xE7, t)];
+                base0 = t;
+            }
+            const rel = new Uint8Array(2);
+            new DataView(rel.buffer).setInt16(0, t - base0);
+            const kids = [el(0xA1, cat([Uint8Array.of(0x81), rel, Uint8Array.of(0), c.data]))];
+            if (!c.key) { const d = new Uint8Array(2); new DataView(d.buffer).setInt16(0, prev - t); kids.push(el(0xFB, d)); }     // 앞 장면을 참조 = 키 장면 아님
+            if (alpha[i]) kids.push(el(0x75A1, el(0xA6, el(0xEE, 1), el(0xA5, alpha[i].data))));
+            cur.push(el(0xA0, ...kids));
+            prev = t;
+        });
+        if (cur) clusters.push(el(0x1F43B675, ...cur));
+        return new Blob([head, el(0x18538067, info, tracks, ...clusters)], { type: "video/webm" });
+    };
+
+    // 올릴 파일과 기억 열쇠: 직접 넣은 파일 > (켜 두면) apng 를 바꾼 webm > ZIP 그림 그대로
+    const plainSrc = async n => { const b = await blobOf(n); return { key: n + ":" + b.size, file: new File([b], n, { type: typeOf(n) }) }; };
+    const sourceOf = async n => {
+        const f = extra.get(base(n));
+        if (f) return { key: f.name + ":" + f.size, file: f };
+        if (conv && CAN_CONV && await isApng(n)) return { key: n + ":webm", conv: true };
+        return plainSrc(n);
+    };
 
     // ── 올리기: Roll20 테이블 캔버스에 파일을 끌어다 놓은 것처럼 → Roll20 이 라이브러리에 올리고 토큰 층에 그림을 만든다 ──
     const dropUpload = (pg, file) => new Promise(res => {
@@ -2429,22 +2521,39 @@ const ccfImport = (() => {
         const L = await layout(sc);
         if (!L.items.length) return prog("놓을 패널이 없어요");
         busy = true; stop = false; paint();
-        pg.save({ width: L.pw, height: L.ph, snapping_increment: cell / 70, showgrid: !!grid, ...(L.color ? { background_color: L.color } : {}) });
+        // apng → webm 은 Roll20 에 올리기 전에 한꺼번에 (이미 올려 둔 건 건너뜀, 못 바꾸면 멈춘 그림으로)
+        const srcs = new Map();
+        for (const n of new Set(L.items.map(t => t.img))) srcs.set(n, await sourceOf(n));
+        const todo = [...srcs].filter(([, s]) => s.conv && !upMap[s.key]);
+        let k = 0, conved = 0, convFail = 0;
+        for (const [n, s] of todo) {
+            if (stop) break;
+            prog(`webm 으로 바꾸는 중 ${++k}/${todo.length}`);
+            try {
+                s.file = new File([await toWebm(new Uint8Array(await (await blobOf(n)).arrayBuffer()))], base(n) + ".webm", { type: "video/webm" });
+                conved++;
+            } catch (e) {
+                console.warn("[코코포리아 가져오기] webm 으로 못 바꿈:", n, e);
+                convFail++;
+                srcs.set(n, await plainSrc(n));
+            }
+        }
+        if (!stop) pg.save({ width: L.pw, height: L.ph, snapping_increment: cell / 70, showgrid: !!grid, ...(L.color ? { background_color: L.color } : {}) });
         const urls = new Map(), fail = new Set();
         let up = 0, reused = 0, placed = 0, i = 0;
         for (const t of L.items) {
             if (stop) break;
             prog(`놓는 중 ${++i}/${L.items.length}`);
             if (!urls.has(t.img)) {
-                const f = await upFile(t.img);
-                let src = upMap[upKey(f)] || null;
+                const s = srcs.get(t.img), f = s.file;
+                let src = upMap[s.key] || null;
                 if (src) reused++;
                 else {
                     prog(`그림 올리는 중 ${up + 1} · 놓는 중 ${i}/${L.items.length}`);
                     const g = await dropUpload(pg, f);
                     if (g) {
                         src = g.get("imgsrc");
-                        upMap[upKey(f)] = src;
+                        upMap[s.key] = src;
                         saveUp();
                         up++;
                         urls.set(t.img, src);
@@ -2464,7 +2573,8 @@ const ccfImport = (() => {
         busy = false;
         paint();
         prog((stop ? `멈췄어요 — ${placed}/${L.items.length}개 놓음` : `다 놓았어요 — 패널 ${placed}개`)
-            + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
+            + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
+            + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
         if (fail.size) console.warn("[코코포리아 가져오기] 못 올린 그림:", [...fail]);
     };
 
@@ -2516,18 +2626,23 @@ const ccfImport = (() => {
         s.innerHTML = scenes.map((c, i) => `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)}</option>`).join("");
         pop.querySelectorAll("[data-cell]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.cell === cell)));
         if (grid === null && sc) grid = !!sc.displayGrid;
-        $(".sw").setAttribute("aria-checked", String(!!grid));
+        $(".grid").setAttribute("aria-checked", String(!!grid));
+        $(".conv").setAttribute("aria-checked", String(conv));
         $(".set").hidden = !sc;
         paint();
         if (!sc) { $(".info").textContent = ""; $(".pg").textContent = ""; $(".warn").textContent = ""; $(".pv").hidden = true; return; }
         const L = await layout(sc);
         if (scenes[sel] !== sc) return;
         const imgs = [...new Set(L.items.map(t => t.img))];
-        const anim = (await Promise.all(imgs.map(isApng))).filter(Boolean).length;
+        const isA = await Promise.all(imgs.map(isApng));
+        const anim = isA.filter(Boolean).length;
         const swap = imgs.filter(n => extra.has(base(n))).length;
+        const left = imgs.filter((n, i) => isA[i] && !extra.has(base(n))).length;       // 직접 넣은 webm 이 없는 움직이는 그림
+        $(".conv").hidden = !(left && CAN_CONV);
         const ent = data.entities, other = Object.keys(ent.items || {}).length + Object.keys(ent.characters || {}).length;
         $(".info").textContent = `패널 ${L.items.length}개 · 그림 ${imgs.length}종` + (anim ? ` · 움직이는 그림 ${anim}종` : "")
-            + (swap ? ` (바꿔 올릴 파일 ${swap}개 짝 맞음)` : anim ? " — 바꿔 올릴 webm 이 없으면 멈춘 그림으로 올라가요" : "")
+            + (swap ? ` (직접 넣은 파일 ${swap}개 짝 맞음)` : "")
+            + (left && !(conv && CAN_CONV) ? ` — webm 이 없는 ${left}종은 멈춘 그림으로 올라가요` : "")
             + (L.skipped ? ` · 그림 없는 패널 ${L.skipped}개 빼요` : "") + (other ? ` · 스크린 패널 · 캐릭터 ${other}개는 안 옮겨요` : "");
         $(".pg").innerHTML = L.items.length ? `지금 페이지 → <b>${L.pw}×${L.ph}</b> · 칸 너비 ${+(cell / 70).toFixed(3)}`
             + (L.color ? ` · 배경색 <i style="background:${escAttr(L.color)}"></i>${escAttr(L.color)}` : "") : "";
@@ -2555,9 +2670,10 @@ const ccfImport = (() => {
         pop.innerHTML = '<div class="hd"><b>코코포리아 맵 가져오기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><div class="rg"><button type="button" data-k="pick">ZIP · webm 고르기</button><span class="fn"></span>'
             + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
-            + '<select aria-label="장면"></select><div class="info"></div><canvas class="pv" hidden></canvas>'
+            + '<select aria-label="장면"></select><div class="info"></div>'
+            + '<button type="button" class="sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button><canvas class="pv" hidden></canvas>'
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
-            + '<button type="button" class="sw" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
+            + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
             + '<div class="pg"></div><div class="warn"></div></div>'
             + '<div class="go"><button type="button" class="pri">가져오기</button><span class="prog" aria-live="polite"></span></div></div>';
         const inp = $("input");
@@ -2569,7 +2685,8 @@ const ccfImport = (() => {
             if (b.classList.contains("x")) return close();
             if (b.dataset.k === "pick") return inp.click();
             if (b.dataset.cell) { cell = +b.dataset.cell; localStorage.setItem("r20_ccf_cell", String(cell)); return refresh(); }
-            if (b.classList.contains("sw")) { grid = !grid; return refresh(); }
+            if (b.classList.contains("conv")) { conv = !conv; localStorage.setItem("r20_ccf_conv", String(conv)); return refresh(); }
+            if (b.classList.contains("grid")) { grid = !grid; return refresh(); }
             if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else run(); }
         });
         // 판에 끌어다 놓은 파일은 Roll20 이 받지 않게 여기서 끝낸다
@@ -2619,6 +2736,8 @@ addCss(`
         #r20-ccf .pv { display:block; max-width:100%; margin:0 auto; border-radius:4px; }
         #r20-ccf .pv[hidden] { display:none; }
         #r20-ccf .sw { display:flex; align-items:center; gap:6px; margin-left:auto; padding:0; border:0; background:none; font-weight:400; }
+        #r20-ccf .conv { align-self:flex-start; margin-left:0; }
+        #r20-ccf .conv[hidden] { display:none; }
         #r20-ccf .sw i { position:relative; width:26px; height:14px; border-radius:7px; background:#c8c8cc; }
         #r20-ccf .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
         #r20-ccf .sw[aria-checked=true] i { background:#b8215f; }
