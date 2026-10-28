@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.22.3
+// @version      1.23.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.22.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.23.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2115,6 +2115,8 @@ const LB_CSS = `
 // 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
 const mapShot = (() => {
     const ICON = {
+        map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+        up: '<path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>',
         cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
         load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
         ok: '<path d="M20 6 9 17l-5-5"/>',
@@ -2122,7 +2124,8 @@ const mapShot = (() => {
         bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
     };
     const svg = k => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-    const btn = () => document.getElementById("r20-mapshot");
+    const box = () => document.getElementById("r20-mapshot");
+    const btn = () => box()?.querySelector(".shot");
     let busy = false, noteT = 0;
     const show = (k, tip) => {
         const b = btn();
@@ -2144,7 +2147,7 @@ const mapShot = (() => {
         im.onerror = () => res(null);
         im.src = u;
     });
-    // 움직이는 그림(Roll20 은 apng · gif 도 webm · mp4 로 바꿔 둔다)은 <img> 로 못 그려서 <video> 로 받아 첫 장면을 그린다
+    // 움직이는 그림(webm · mp4)은 <img> 로 못 그려서 <video> 로 받아 첫 장면을 그린다
     const loadVid = u => new Promise(res => {
         const v = document.createElement("video");
         let t = 0;
@@ -2251,12 +2254,38 @@ const mapShot = (() => {
         }
         busy = false;
     };
+    // 맵 단추를 누르면 촬영 · 가져오기 단추가 왼쪽으로 미끄러져 나온다 (바깥을 누르거나 Esc 로 접기, 찍는 중엔 안 접힘)
+    const setOpen = v => {
+        const w = box();
+        if (!w) return;
+        w.classList.toggle("open", v);
+        w.querySelector(".main").setAttribute("aria-expanded", String(v));
+    };
+    document.addEventListener("pointerdown", e => {
+        const w = box();
+        if (w?.classList.contains("open") && !busy && !w.contains(e.target)) setOpen(false);
+    }, true);
+    document.addEventListener("keydown", e => {
+        const w = box();
+        if (e.key === "Escape" && w?.classList.contains("open") && w.contains(document.activeElement)) { setOpen(false); w.querySelector(".main").focus(); }
+    });
     const inject = () => {
-        if (!btnVisible.mapshot || btn() || !document.getElementById("sidebarcontrol")) return;
-        const b = document.createElement("button");
-        b.type = "button";
+        if (!btnVisible.mapshot || box() || !document.getElementById("sidebarcontrol")) return;
+        const b = document.createElement("div");
         b.id = "r20-mapshot";
-        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); shoot(); });
+        b.innerHTML = '<div class="tray" id="r20-maptray" role="group" aria-label="맵 도구">'
+            + `<button type="button" class="imp" title="코코포리아 맵 가져오기" aria-label="코코포리아 맵 가져오기">${svg("up")}</button>`
+            + '<button type="button" class="shot"></button></div>'
+            + `<button type="button" class="main" title="맵" aria-label="맵 도구" aria-expanded="false" aria-controls="r20-maptray">${svg("map")}</button>`;
+        b.addEventListener("click", e => {
+            const k = e.target.closest("button")?.className;
+            if (!k) return;
+            e.preventDefault(); e.stopPropagation();
+            if (k === "main") setOpen(!b.classList.contains("open"));
+            else if (k === "shot") shoot();
+            else if (k === "imp") ccfImport.toggle(b);
+        });
+        if (window.is_gm === false) b.querySelector(".imp").remove();       // 페이지를 바꾸는 일이라 GM 만
         document.body.appendChild(b);
         idle();
         if (FEAT.screenUI) FEAT.screenUI.place();
@@ -2267,20 +2296,338 @@ const mapShot = (() => {
     };
     const setEnabled = v => {
         if (v) return inject();
-        btn()?.remove();
+        box()?.remove();
+        ccfImport.close();
     };
     return { inject, setEnabled };
 })();
 
+// ───────── 코코포리아 맵 가져오기: 룸 데이터 ZIP 의 마커 패널을 지금 페이지에 같은 칸 · 같은 겹침 순서로 놓는다 ─────────
+// 그림은 Roll20 테이블에 파일을 끌어다 놓은 것처럼 해서 Roll20 이 직접 올린다 (한 번에 하나씩).
+// 올린 주소는 파일 이름(코코포리아가 붙인 내용 해시) + 크기로 기억해 두고, 다시 가져올 때는 또 올리지 않는다.
+// 확장자만 다른 파일(apng 를 바꾼 webm 등)을 같이 넣으면 같은 이름의 그림 대신 그걸 올린다
+const ccfImport = (() => {
+    const UP_KEY = "r20_ccf_up";
+    const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
+    const R20 = /^https:\/\/(?:s3\.amazonaws\.com\/)?files\.d20\.io\//i;
+    let pop = null, anchor = null, zip = null, zipName = "", data = null, scenes = [], sel = 0, grid = null, busy = false, stop = false;
+    let cell = localStorage.getItem("r20_ccf_cell") === "70" ? 70 : 24;      // 기본은 코코포리아 그림 그대로 (1칸 = 24px)
+    const extra = new Map();          // 확장자 뺀 이름 → 바꿔 올릴 파일
+    const blobs = new Map(), looks = new Map(), bitmaps = new Map();
+    const upMap = (() => { try { return JSON.parse(localStorage.getItem(UP_KEY) || "{}") || {}; } catch (e) { return {}; } })();
+    const saveUp = () => { try { localStorage.setItem(UP_KEY, JSON.stringify(upMap)); } catch (e) {} };
+    const base = n => String(n).replace(/^.*\//, "").replace(/\.[^.]+$/, "");
+    const typeOf = n => data?.resources?.[n]?.type || MIME[String(n).split(".").pop().toLowerCase()] || "application/octet-stream";
+
+    // ── ZIP: 끝의 목록(central directory)만 읽고, 파일은 필요할 때 브라우저 내장 압축 풀기로 ──
+    const readZip = async file => {
+        const v = new DataView(await file.arrayBuffer());
+        let e = v.byteLength - 22;
+        while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+        if (e < 0) throw new Error("ZIP 파일이 아니에요");
+        const out = new Map(), td = new TextDecoder();
+        let p = v.getUint32(e + 16, true);
+        for (let i = v.getUint16(e + 10, true); i > 0; i--) {
+            if (v.getUint32(p, true) !== 0x02014b50) throw new Error("ZIP 목록이 깨졌어요");
+            const method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true), size = v.getUint32(p + 24, true);
+            const nl = v.getUint16(p + 28, true), lo = v.getUint32(p + 42, true);
+            const name = td.decode(new Uint8Array(v.buffer, p + 46, nl));
+            const start = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true);
+            if (!name.endsWith("/")) out.set(name.replace(/^.*\//, ""), { method, size, raw: file.slice(start, start + csize) });
+            p += 46 + nl + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+        }
+        return out;
+    };
+    const blobOf = n => {
+        if (!blobs.has(n)) {
+            const z = zip.get(n);
+            const b = z.method === 0 ? Promise.resolve(z.raw)
+                : new Response(z.raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
+            blobs.set(n, b.then(x => x.slice(0, x.size, typeOf(n))));
+        }
+        return blobs.get(n);
+    };
+    // apng 인지 (acTL 조각이 그림 데이터 앞에 있다)
+    const isApng = async n => {
+        if (!/\.png$/i.test(n)) return false;
+        const u = new Uint8Array(await (await blobOf(n)).slice(0, 65536).arrayBuffer());
+        for (let i = 8; i < u.length - 3; i++) if (u[i] === 0x61 && u[i + 1] === 0x63 && u[i + 2] === 0x54 && u[i + 3] === 0x4c) return true;
+        return false;
+    };
+    // 8×8 로 줄여 봐서: 다 투명하면 blank, 한 가지 색이면 그 색 (배경 · 전경 그림을 올릴지 정한다)
+    const look = n => {
+        if (!looks.has(n)) looks.set(n, (async () => {
+            try {
+                const bm = await createImageBitmap(await blobOf(n));
+                const c = document.createElement("canvas");
+                c.width = c.height = 8;
+                const x = c.getContext("2d", { willReadFrequently: true });
+                x.drawImage(bm, 0, 0, 8, 8);
+                const d = x.getImageData(0, 0, 8, 8).data;
+                let clear = true, same = true;
+                for (let i = 0; i < d.length; i += 4) {
+                    if (d[i + 3] > 8) clear = false;
+                    if (d[i + 3] < 250 || Math.abs(d[i] - d[0]) > 3 || Math.abs(d[i + 1] - d[1]) > 3 || Math.abs(d[i + 2] - d[2]) > 3) same = false;
+                }
+                if (clear) return { blank: true };
+                return same ? { color: "#" + [d[0], d[1], d[2]].map(c => c.toString(16).padStart(2, "0")).join("") } : {};
+            } catch (e) { return {}; }
+        })());
+        return looks.get(n);
+    };
+
+    // ── 배치 계산: 코코포리아 좌표는 칸 단위(필드 가운데가 0,0) → 왼쪽 위 끝을 정수 칸으로 당겨 Roll20 페이지 (0,0) 에 ──
+    const has = n => !!n && zip.has(n);
+    const layout = async sc => {
+        const ms = Object.values(sc.markers || {}).map((m, i) => ({ ...m, i }));
+        const ok = ms.filter(m => has(m.imageUrl) && +m.width > 0 && +m.height > 0).sort((a, b) => (a.z || 0) - (b.z || 0) || a.i - b.i);
+        const fw = +sc.fieldWidth || 0, fh = +sc.fieldHeight || 0;
+        const fg = has(sc.foregroundUrl) && fw > 0 && fh > 0 && !(await look(sc.foregroundUrl)).blank;
+        const bg = has(sc.backgroundUrl) ? await look(sc.backgroundUrl) : { blank: true };
+        const items = [];
+        if (fg) items.push({ img: sc.foregroundUrl, x: -fw / 2, y: -fh / 2, w: fw, h: fh, lock: true });
+        ok.forEach(m => items.push({ img: m.imageUrl, x: +m.x || 0, y: +m.y || 0, w: +m.width, h: +m.height, lock: !!m.locked }));
+        if (!items.length) return { items, skipped: ms.length };
+        const x0 = Math.floor(Math.min(...items.map(t => t.x))), y0 = Math.floor(Math.min(...items.map(t => t.y)));
+        const pw = Math.ceil((Math.max(...items.map(t => t.x + t.w)) - x0) * cell / 70);
+        const ph = Math.ceil((Math.max(...items.map(t => t.y + t.h)) - y0) * cell / 70);
+        // 배경(화면 뒤 그림): 한 가지 색이면 페이지 배경색, 그림이면 맵 층 맨 아래에 페이지 가득
+        if (!bg.blank && !bg.color) items.unshift({ img: sc.backgroundUrl, x: x0, y: y0, w: pw * 70 / cell, h: ph * 70 / cell, lock: true });
+        return { items, x0, y0, pw, ph, color: bg.color || sc.backgroundColor || "", skipped: ms.length - ok.length };
+    };
+    const px = v => Math.round(v * cell * 100) / 100;
+    const attrsOf = (t, L) => ({ left: px(t.x - L.x0 + t.w / 2), top: px(t.y - L.y0 + t.h / 2), width: px(t.w), height: px(t.h),
+        rotation: 0, layer: t.lock ? "map" : "objects", controlledby: t.lock ? "" : "all" });
+    const upFile = async n => {
+        const f = extra.get(base(n));
+        return f || new File([await blobOf(n)], n, { type: typeOf(n) });
+    };
+    const upKey = f => f.name + ":" + f.size;
+
+    // ── 올리기: Roll20 테이블 캔버스에 파일을 끌어다 놓은 것처럼 → Roll20 이 라이브러리에 올리고 토큰 층에 그림을 만든다 ──
+    const dropUpload = (pg, file) => new Promise(res => {
+        const cv = document.getElementById("babylonCanvas") || document.querySelector("#editor-wrapper canvas");
+        if (!cv) return res(null);
+        let got = null, tick = 0;
+        const t0 = Date.now(), onAdd = m => { got = got || m; };
+        const fin = m => { clearInterval(tick); pg.thegraphics.off("add", onAdd); res(m); };
+        pg.thegraphics.on("add", onAdd);
+        tick = setInterval(() => {
+            if (got && R20.test(got.get("imgsrc") || "")) fin(got);
+            else if (Date.now() - t0 > 90000) fin(null);
+        }, 250);
+        const r = cv.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        for (const type of ["dragenter", "dragover", "drop"])
+            cv.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt, clientX: x, clientY: y }));
+    });
+    const page = () => (typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null);
+    const run = async () => {
+        const pg = page(), sc = scenes[sel];
+        if (!pg?.thegraphics || !sc) return prog("지금 페이지를 못 찾았어요");
+        const L = await layout(sc);
+        if (!L.items.length) return prog("놓을 패널이 없어요");
+        busy = true; stop = false; paint();
+        pg.save({ width: L.pw, height: L.ph, snapping_increment: cell / 70, showgrid: !!grid, ...(L.color ? { background_color: L.color } : {}) });
+        const urls = new Map(), fail = new Set();
+        let up = 0, reused = 0, placed = 0, i = 0;
+        for (const t of L.items) {
+            if (stop) break;
+            prog(`놓는 중 ${++i}/${L.items.length}`);
+            if (!urls.has(t.img)) {
+                const f = await upFile(t.img);
+                let src = upMap[upKey(f)] || null;
+                if (src) reused++;
+                else {
+                    prog(`그림 올리는 중 ${up + 1} · 놓는 중 ${i}/${L.items.length}`);
+                    const g = await dropUpload(pg, f);
+                    if (g) {
+                        src = g.get("imgsrc");
+                        upMap[upKey(f)] = src;
+                        saveUp();
+                        up++;
+                        urls.set(t.img, src);
+                        g.save(attrsOf(t, L));        // Roll20 이 만든 그림을 그 자리로 (만든 순서가 곧 겹침 순서)
+                        placed++;
+                        continue;
+                    }
+                    console.warn("[코코포리아 가져오기] 못 올림:", f.name);
+                }
+                urls.set(t.img, src);
+            }
+            const src = urls.get(t.img);
+            if (!src) { fail.add(t.img); continue; }
+            try { pg.thegraphics.create({ imgsrc: src, page_id: pg.id, ...attrsOf(t, L) }); placed++; }
+            catch (e) { console.warn("[코코포리아 가져오기] 놓기 실패:", e); fail.add(t.img); }
+        }
+        busy = false;
+        paint();
+        prog((stop ? `멈췄어요 — ${placed}/${L.items.length}개 놓음` : `다 놓았어요 — 패널 ${placed}개`)
+            + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
+        if (fail.size) console.warn("[코코포리아 가져오기] 못 올린 그림:", [...fail]);
+    };
+
+    // ── 판 ──
+    const $ = s => pop.querySelector(s);
+    const prog = s => { if (pop) $(".prog").textContent = s; };
+    const addFiles = async files => {
+        for (const f of files) {
+            if (/\.zip$/i.test(f.name)) {
+                try {
+                    const z = await readZip(f);
+                    if (!z.has("__data.json")) throw new Error("__data.json 이 없어요");
+                    zip = z; zipName = f.name; blobs.clear(); looks.clear(); bitmaps.clear();
+                    data = JSON.parse(await (await blobOf("__data.json")).text());
+                    const ent = data?.entities;
+                    if (!ent?.room) throw new Error("코코포리아 룸 데이터가 아니에요");
+                    scenes = [{ ...ent.room, name: "지금 방" }, ...Object.values(ent.scenes || {})
+                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => ({ ...s, name: "장면 · " + (s.name || "이름 없음") }))];
+                    sel = 0; grid = null;
+                } catch (e) { zip = null; data = null; scenes = []; prog("못 읽었어요 — " + (e?.message || e)); }
+            } else extra.set(base(f.name), f);
+        }
+        refresh();
+    };
+    // 미리보기: 첫 장면만 (apng 도 첫 장면)
+    const drawPreview = async (sc, L) => {
+        const cv = $(".pv");
+        if (!L?.items.length) { cv.hidden = true; return; }
+        const W = L.pw * 70, H = L.ph * 70, k = Math.min(300 / W, 240 / H);
+        cv.hidden = false;
+        cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+        const x = cv.getContext("2d");
+        x.fillStyle = L.color || "#ffffff";
+        x.fillRect(0, 0, cv.width, cv.height);
+        for (const t of L.items) {
+            if (!bitmaps.has(t.img)) bitmaps.set(t.img, blobOf(t.img).then(b => createImageBitmap(b)).catch(() => null));
+            const bm = await bitmaps.get(t.img);
+            if (scenes[sel] !== sc) return;        // 그리는 사이 장면을 바꿨으면 그만
+            const a = attrsOf(t, L);
+            if (bm) x.drawImage(bm, (a.left - a.width / 2) * k, (a.top - a.height / 2) * k, a.width * k, a.height * k);
+        }
+    };
+    const refresh = async () => {
+        if (!pop) return;
+        const sc = scenes[sel];
+        $(".fn").textContent = zip ? zipName + (extra.size ? ` + 파일 ${extra.size}개` : "") : "ZIP 을 여기에 끌어다 놓아도 돼요";
+        const s = $("select");
+        s.hidden = !zip;
+        s.innerHTML = scenes.map((c, i) => `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)}</option>`).join("");
+        pop.querySelectorAll("[data-cell]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.cell === cell)));
+        if (grid === null && sc) grid = !!sc.displayGrid;
+        $(".sw").setAttribute("aria-checked", String(!!grid));
+        $(".set").hidden = !sc;
+        paint();
+        if (!sc) { $(".info").textContent = ""; $(".pg").textContent = ""; $(".warn").textContent = ""; $(".pv").hidden = true; return; }
+        const L = await layout(sc);
+        if (scenes[sel] !== sc) return;
+        const imgs = [...new Set(L.items.map(t => t.img))];
+        const anim = (await Promise.all(imgs.map(isApng))).filter(Boolean).length;
+        const swap = imgs.filter(n => extra.has(base(n))).length;
+        const ent = data.entities, other = Object.keys(ent.items || {}).length + Object.keys(ent.characters || {}).length;
+        $(".info").textContent = `패널 ${L.items.length}개 · 그림 ${imgs.length}종` + (anim ? ` · 움직이는 그림 ${anim}종` : "")
+            + (swap ? ` (바꿔 올릴 파일 ${swap}개 짝 맞음)` : anim ? " — 바꿔 올릴 webm 이 없으면 멈춘 그림으로 올라가요" : "")
+            + (L.skipped ? ` · 그림 없는 패널 ${L.skipped}개 빼요` : "") + (other ? ` · 스크린 패널 · 캐릭터 ${other}개는 안 옮겨요` : "");
+        $(".pg").innerHTML = L.items.length ? `지금 페이지 → <b>${L.pw}×${L.ph}</b> · 칸 너비 ${+(cell / 70).toFixed(3)}`
+            + (L.color ? ` · 배경색 <i style="background:${escAttr(L.color)}"></i>${escAttr(L.color)}` : "") : "";
+        const n = page()?.thegraphics?.models?.length || 0;
+        $(".warn").textContent = n ? `지금 페이지에 그림이 ${n}개 있어요 — 그 위에 겹쳐 놓여요` : "";
+        drawPreview(sc, L);
+    };
+    const paint = () => {
+        if (!pop) return;
+        const go = $(".pri");
+        go.textContent = busy ? "멈추기" : "가져오기";
+        go.disabled = !busy && !scenes[sel];
+        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick]").forEach(el => { el.disabled = busy; });
+    };
+    const place = () => {
+        if (!pop || !anchor?.isConnected) return;
+        const r = anchor.getBoundingClientRect();
+        Object.assign(pop.style, { top: Math.round(r.bottom + 6) + "px", right: Math.round(innerWidth - r.right) + "px" });
+    };
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "r20-ccf";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "코코포리아 맵 가져오기");
+        pop.innerHTML = '<div class="hd"><b>코코포리아 맵 가져오기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
+            + '<div class="bd"><div class="rg"><button type="button" data-k="pick">ZIP · webm 고르기</button><span class="fn"></span>'
+            + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
+            + '<select aria-label="장면"></select><div class="info"></div><canvas class="pv" hidden></canvas>'
+            + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
+            + '<button type="button" class="sw" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
+            + '<div class="pg"></div><div class="warn"></div></div>'
+            + '<div class="go"><button type="button" class="pri">가져오기</button><span class="prog" aria-live="polite"></span></div></div>';
+        const inp = $("input");
+        inp.addEventListener("change", () => { addFiles([...inp.files]); inp.value = ""; });
+        $("select").addEventListener("change", e => { sel = +e.target.value; grid = null; refresh(); });
+        pop.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.classList.contains("x")) return close();
+            if (b.dataset.k === "pick") return inp.click();
+            if (b.dataset.cell) { cell = +b.dataset.cell; localStorage.setItem("r20_ccf_cell", String(cell)); return refresh(); }
+            if (b.classList.contains("sw")) { grid = !grid; return refresh(); }
+            if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else run(); }
+        });
+        // 판에 끌어다 놓은 파일은 Roll20 이 받지 않게 여기서 끝낸다
+        pop.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); });
+        pop.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); if (!busy) addFiles([...e.dataTransfer.files]); });
+        document.body.appendChild(pop);
+    };
+    const isOpen = () => !!pop && !pop.hidden;
+    const open = at => { anchor = at; if (!pop) build(); pop.hidden = false; place(); refresh(); };
+    const close = () => { if (pop) pop.hidden = true; };
+    const toggle = at => (isOpen() ? close() : open(at));
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
+    window.addEventListener("resize", () => isOpen() && place());
+    return { toggle, close };
+})();
+
 addCss(`
-        /* 맵 촬영 단추 (화면 제어 줄 맨 아래) */
-        #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
-        #r20-mapshot:hover { color:#b8215f; }
-        #r20-mapshot:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
-        #r20-mapshot[data-state=ok] { color:#2e8b57; }
-        #r20-mapshot[data-state=warn] { color:#c98a00; }
-        #r20-mapshot[data-state=bad] { color:#c0392b; }
+        /* 맵 단추 (화면 제어 줄 맨 아래): 누르면 촬영 · 가져오기 단추가 왼쪽으로 미끄러져 나온다 */
+        #r20-mapshot { position:fixed; z-index:3000; width:28px; height:28px; }
+        #r20-mapshot button { width:28px; height:28px; margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:6px; background:rgba(245,245,247,0.94); color:#555; box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
+        #r20-mapshot button:hover, #r20-mapshot.open > .main { color:#b8215f; }
+        #r20-mapshot button:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        #r20-mapshot .tray { position:absolute; top:0; right:100%; display:flex; gap:4px; padding-right:4px; opacity:0; visibility:hidden; transform:translateX(16px); pointer-events:none; transition:transform .18s ease, opacity .18s ease, visibility 0s linear .18s; }
+        #r20-mapshot.open .tray { opacity:1; visibility:visible; transform:none; pointer-events:auto; transition:transform .18s ease, opacity .18s ease; }
+        #r20-mapshot .shot[data-state=ok] { color:#2e8b57; }
+        #r20-mapshot .shot[data-state=warn] { color:#c98a00; }
+        #r20-mapshot .shot[data-state=bad] { color:#c0392b; }
         #r20-mapshot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
+        @media (prefers-reduced-motion: reduce) { #r20-mapshot .tray { transition:none; } }
+        /* 코코포리아 맵 가져오기 판 (맵 단추 밑) */
+        #r20-ccf { position:fixed; z-index:10006; display:flex; flex-direction:column; width:320px; max-width:calc(100vw - 32px); max-height:80vh; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:#333; }
+        #r20-ccf[hidden] { display:none; }
+        #r20-ccf .hd { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #eee; }
+        #r20-ccf .bd { display:flex; flex-direction:column; gap:6px; padding:6px 8px 8px; overflow-y:auto; }
+        #r20-ccf .rg, #r20-ccf .go { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+        #r20-ccf .set { display:flex; flex-direction:column; gap:6px; }
+        #r20-ccf .set[hidden] { display:none; }
+        #r20-ccf .rg > span, #r20-ccf .fn, #r20-ccf .info, #r20-ccf .pg, #r20-ccf .prog { color:#777; font-size:11px; }
+        #r20-ccf .fn { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; }
+        #r20-ccf button { height:22px; margin:0; padding:0 9px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font:700 11px/20px sans-serif; cursor:pointer; }
+        #r20-ccf button:disabled { opacity:.6; cursor:default; }
+        #r20-ccf button:focus-visible, #r20-ccf select:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        #r20-ccf button[aria-pressed=true] { background:#b8215f; border-color:#b8215f; color:#fff; }
+        #r20-ccf .x { padding:0 6px; }
+        #r20-ccf select { width:100%; height:24px; margin:0; padding:0 4px; font-size:12px; }
+        #r20-ccf select[hidden] { display:none; }
+        #r20-ccf .pv { display:block; max-width:100%; margin:0 auto; border-radius:4px; }
+        #r20-ccf .pv[hidden] { display:none; }
+        #r20-ccf .sw { display:flex; align-items:center; gap:6px; margin-left:auto; padding:0; border:0; background:none; font-weight:400; }
+        #r20-ccf .sw i { position:relative; width:26px; height:14px; border-radius:7px; background:#c8c8cc; }
+        #r20-ccf .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
+        #r20-ccf .sw[aria-checked=true] i { background:#b8215f; }
+        #r20-ccf .sw[aria-checked=true] i::after { left:14px; }
+        #r20-ccf .pg b { color:#333; }
+        #r20-ccf .pg i { display:inline-block; width:10px; height:10px; margin:0 3px 0 4px; border:1px solid #bbb; border-radius:2px; vertical-align:-1px; }
+        #r20-ccf .warn { color:#c98a00; font-size:11px; }
+        #r20-ccf .warn:empty { display:none; }
+        #r20-ccf .pri { background:#b8215f; border-color:#b8215f; color:#fff; }
         /* 대화 캡처: 고르는 동안 메시지를 눌러 고르고, 고른 것은 왼쪽 막대 + 옅은 배경 */
         #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
         #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 #e7b3c9 !important; }
@@ -2293,7 +2640,7 @@ addCss(`
 addFeature("chatCapture", chatCapture);
 addFeature("mapShot", mapShot);
 addFeature("logBackup", logBackup);
-addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵시트 촬영 · 로그 백업", sub: "로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
+addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵(촬영 · 코코포리아 가져오기) · 로그 백업", sub: "로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
     members: [["capture", "chatCapture"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
 
 // ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
@@ -3038,8 +3385,8 @@ addCss(`
         body.r20sc-on #page-button { width:28px !important; height:28px !important; min-width:0 !important; padding:0 !important; }
         /* 크기는 화면 제어 단추(.btnStyle)에만 — 눈 단추가 여는 창(라이트 모드 · 플레이어 시점 미리 보기 …)의 단추는 그대로 */
         body.r20sc-on #vm_zoom_buttons button.btnStyle { width:26px !important; height:24px !important; min-width:0 !important; margin:0 !important; padding:0 !important; }
-        /* 오른쪽 대화 판에 붙은 인덱스 탭처럼: 오른쪽 모서리는 각지게 (페이지 · 화면 제어 · 맵 촬영) */
-        body.r20sc-on #page-button, body.r20sc-on #vm_zoom_buttons, body.r20sc-on #vm_zoom_buttons > .wrapper, body.r20sc-on #vm_zoom_buttons .parentContainer, #r20-mapshot { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }
+        /* 오른쪽 대화 판에 붙은 인덱스 탭처럼: 오른쪽 모서리는 각지게 (페이지 · 화면 제어 · 맵) */
+        body.r20sc-on #page-button, body.r20sc-on #vm_zoom_buttons, body.r20sc-on #vm_zoom_buttons > .wrapper, body.r20sc-on #vm_zoom_buttons .parentContainer, #r20-mapshot > .main { border-top-right-radius:0 !important; border-bottom-right-radius:0 !important; }
         body.r20sc-on #vm_zoom_buttons .level { font-size:11px !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
