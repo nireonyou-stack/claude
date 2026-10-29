@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.26.0
+// @version      1.27.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.26.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.27.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2320,15 +2320,17 @@ const mapShot = (() => {
 // 그림은 Roll20 테이블에 파일을 끌어다 놓은 것처럼 해서 Roll20 이 직접 올린다 (한 번에 하나씩).
 // 올린 주소는 파일 이름(코코포리아가 붙인 내용 해시) + 크기로 기억해 두고, 다시 가져올 때는 또 올리지 않는다.
 // 확장자만 다른 파일(apng 를 바꾼 webm 등)을 같이 넣으면 같은 이름의 그림 대신 그걸 올리고,
-// 없으면 (켜 둔 경우) apng 를 브라우저 안에서 투명 webm 으로 바꿔 올린다 (Roll20 은 apng 를 안 움직인다)
+// 없으면 (켜 둔 경우) apng 를 브라우저 안에서 투명 webm 으로 바꿔 올린다 (Roll20 은 apng 를 안 움직인다).
+// 룸 데이터(__data.json)가 없는 ZIP 은 그림 묶음으로 보고, 안의 그림을 라이브러리에만 올린다
 const ccfImport = (() => {
     const UP_KEY = "r20_ccf_up";
     const CAN_CONV = typeof ImageDecoder === "function" && typeof VideoEncoder === "function";
     let conv = localStorage.getItem("r20_ccf_conv") !== "false";
-    const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
+    const MIME = { png: "image/png", apng: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
     const R20 = /^https:\/\/(?:s3\.amazonaws\.com\/)?files\.d20\.io\//i;
     let pop = null, anchor = null, zip = null, zipName = "", data = null, scenes = [], sel = 0, grid = null, busy = false, stop = false;
     let pending = null, zipPw = null;      // 암호를 기다리는 ZIP, 맞힌 암호(바이트)
+    let pack = null;                       // 룸 데이터가 없는 ZIP: 올릴 그림 이름들
     let cell = localStorage.getItem("r20_ccf_cell") === "70" ? 70 : 24;      // 기본은 코코포리아 그림 그대로 (1칸 = 24px)
     const extra = new Map();          // 확장자 뺀 이름 → 바꿔 올릴 파일
     const blobs = new Map(), looks = new Map(), bitmaps = new Map();
@@ -2344,6 +2346,12 @@ const ccfImport = (() => {
         while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
         if (e < 0) throw new Error("ZIP 파일이 아니에요");
         const out = new Map(), td = new TextDecoder();
+        // 이름: UTF-8 표시가 없으면 윈도우 압축이 쓰는 한국어(euc-kr) · 일본어(shift_jis) 코드일 수 있다
+        const strict = ["utf-8", "euc-kr", "shift_jis"].map(l => new TextDecoder(l, { fatal: true }));
+        const nameOf = (u, flag) => {
+            if (!(flag & 0x800)) for (const d of strict) { try { return d.decode(u); } catch (e) {} }
+            return td.decode(u);
+        };
         let p = v.getUint32(e + 16, true);
         for (let i = v.getUint16(e + 10, true); i > 0; i--) {
             if (v.getUint32(p, true) !== 0x02014b50) throw new Error("ZIP 목록이 깨졌어요");
@@ -2351,9 +2359,10 @@ const ccfImport = (() => {
             // 암호 머리 12바이트의 마지막 바이트 = CRC 맨 윗바이트 (뒤에 크기를 적는 방식이면 수정 시각의 윗바이트)
             const check = flag & 8 ? v.getUint16(p + 12, true) >>> 8 : v.getUint32(p + 16, true) >>> 24;
             const nl = v.getUint16(p + 28, true), lo = v.getUint32(p + 42, true);
-            const name = td.decode(new Uint8Array(v.buffer, p + 46, nl));
+            const name = nameOf(new Uint8Array(v.buffer, p + 46, nl), flag);
             const start = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true);
-            if (!name.endsWith("/")) out.set(name.replace(/^.*\//, ""), { method, size, enc: !!(flag & 1), check, raw: file.slice(start, start + csize) });
+            const short = name.replace(/^.*\//, "");         // 폴더는 떼고, 이름이 겹치면 폴더째로
+            if (!name.endsWith("/")) out.set(out.has(short) ? name : short, { method, size, enc: !!(flag & 1), check, raw: file.slice(start, start + csize) });
             p += 46 + nl + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
         }
         return out;
@@ -2390,7 +2399,7 @@ const ccfImport = (() => {
     };
     // apng 인지 (acTL 조각이 그림 데이터 앞에 있다)
     const isApng = async n => {
-        if (!/\.png$/i.test(n)) return false;
+        if (!/\.a?png$/i.test(n)) return false;
         const u = new Uint8Array(await (await blobOf(n)).slice(0, 65536).arrayBuffer());
         for (let i = 8; i < u.length - 3; i++) if (u[i] === 0x61 && u[i + 1] === 0x63 && u[i + 2] === 0x54 && u[i + 3] === 0x4c) return true;
         return false;
@@ -2626,11 +2635,63 @@ const ccfImport = (() => {
         if (fail.size) console.warn("[코코포리아 가져오기] 못 올린 그림:", [...fail]);
     };
 
+    // 그림 묶음 올리기: 하나씩 Roll20 에 올리고 테이블에 생긴 그림은 바로 지워 라이브러리에만 남긴다.
+    // 이름이 흔해서 기억 열쇠는 내용 해시 (같은 그림은 어느 ZIP 에서 와도 한 번만)
+    const hashOf = async b => [...new Uint8Array(await crypto.subtle.digest("SHA-256", await b.arrayBuffer()))].slice(0, 16)
+        .map(v => v.toString(16).padStart(2, "0")).join("");
+    const runPack = async () => {
+        const pg = page();
+        if (!pg?.thegraphics) return prog("지금 페이지를 못 찾았어요");
+        busy = true; stop = false; paint();
+        let up = 0, reused = 0, conved = 0, convFail = 0, i = 0;
+        const fail = [];
+        for (const n of pack) {
+            if (stop) break;
+            prog(`올리는 중 ${++i}/${pack.length}`);
+            const b = await blobOf(n).catch(() => null);
+            if (!b) { fail.push(n); continue; }
+            const h = "h:" + await hashOf(b), name = base(n);
+            let file = null, key = h;
+            if (conv && CAN_CONV && await isApng(n)) {
+                if (upMap[h + ":webm2"]) { reused++; continue; }
+                prog(`webm 으로 바꾸는 중 ${i}/${pack.length}`);
+                try { file = new File([await toWebm(new Uint8Array(await b.arrayBuffer()))], name + ".webm", { type: "video/webm" }); key = h + ":webm2"; conved++; }
+                catch (e) { console.warn("[그림 올리기] webm 으로 못 바꿈:", n, e); convFail++; }
+            }
+            if (!file) {
+                if (upMap[h]) { reused++; continue; }
+                file = new File([b], /\.apng$/i.test(n) ? name + ".png" : n.replace(/^.*\//, ""), { type: typeOf(n) });
+            }
+            prog(`올리는 중 ${i}/${pack.length}`);
+            const g = await dropUpload(pg, file);
+            if (!g) { fail.push(n); continue; }
+            upMap[key] = g.get("imgsrc");
+            saveUp();
+            up++;
+            try { g.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); }
+        }
+        busy = false;
+        paint();
+        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
+            + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.length ? ` · 못 올린 그림 ${fail.length}개 (콘솔에 목록)` : ""));
+        if (fail.length) console.warn("[그림 올리기] 못 올린 그림:", fail);
+    };
+
     // ── 판 ──
     const $ = s => pop.querySelector(s);
     const prog = s => { if (pop) $(".prog").textContent = s; };
+    const IMG = /\.(?:a?png|jpe?g|gif|webp|webm|mp4)$/i;
+    const imgsIn = z => [...z.keys()].filter(n => IMG.test(n) && !/(^|\/)(__MACOSX\/|\._)/.test(n))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     const openZip = async (z, name) => {
         zip = z; zipName = name; blobs.clear(); looks.clear(); bitmaps.clear();
+        pack = null;
+        if (!z.has("__data.json")) {           // 그림 묶음
+            const list = imgsIn(z);
+            try { await blobOf(list[0]); } catch (e) { zip = null; throw new Error(zipPw ? "암호가 틀렸어요" : "그림을 못 풀었어요"); }
+            pack = list;
+            return;
+        }
         let d;
         try { d = JSON.parse(await (await blobOf("__data.json")).text()); }
         catch (e) { zip = null; throw new Error(zipPw ? "암호가 틀렸어요" : "__data.json 을 못 읽었어요"); }
@@ -2648,7 +2709,8 @@ const ccfImport = (() => {
     };
     // 암호 확인: 머리 12바이트만 풀어 마지막 바이트가 맞으면 열어 본다 (우연히 맞는 1/256 은 JSON 에서 걸러진다)
     const tryPw = async () => {
-        const inp = $(".pw input"), pw = new TextEncoder().encode(inp.value), d = pending?.z.get("__data.json");
+        const inp = $(".pw input"), pw = new TextEncoder().encode(inp.value);
+        const d = pending && (pending.z.get("__data.json") || [...pending.z.values()].find(e => e.enc));
         if (!d || busy) return;
         if (unlock(pw, new Uint8Array(await d.raw.slice(0, 12).arrayBuffer()))[11] !== d.check) { prog("암호가 틀렸어요"); inp.select(); return; }
         zipPw = pw;
@@ -2661,13 +2723,13 @@ const ccfImport = (() => {
             if (/\.zip$/i.test(f.name)) {
                 try {
                     const z = await readZip(f);
-                    if (!z.has("__data.json")) throw new Error("__data.json 이 없어요");
-                    pending = null; zipPw = null; zip = null; data = null; scenes = [];
+                    if (!z.has("__data.json") && !imgsIn(z).length) throw new Error("코코포리아 룸 데이터도, 올릴 그림도 없어요");
+                    pending = null; zipPw = null; zip = null; data = null; scenes = []; pack = null;
                     if ([...z.values()].some(e => e.enc && e.method === 99)) throw new Error("AES 암호는 못 풀어요 — 압축을 풀어 암호 없이 다시 묶어 주세요");
                     if ([...z.values()].some(e => e.enc)) { pending = { z, name: f.name }; prog("암호가 걸린 ZIP 이에요 — 암호를 넣어 주세요"); continue; }
                     await openZip(z, f.name);
                     prog("");
-                } catch (e) { zip = null; data = null; scenes = []; prog("못 읽었어요 — " + (e?.message || e)); }
+                } catch (e) { zip = null; data = null; scenes = []; pack = null; prog("못 읽었어요 — " + (e?.message || e)); }
             } else extra.set(base(f.name), f);
         }
         refresh();
@@ -2690,6 +2752,33 @@ const ccfImport = (() => {
             if (bm) x.drawImage(bm, (a.left - a.width / 2) * k, (a.top - a.height / 2) * k, a.width * k, a.height * k);
         }
     };
+    // 그림 묶음 판: 그림 수 · 움직이는 그림 수 · 앞쪽 48개 썸네일
+    const refreshPack = async () => {
+        $(".set").hidden = true;
+        $(".pg").textContent = ""; $(".warn").textContent = "";
+        $(".conv").setAttribute("aria-checked", String(conv));
+        paint();
+        const list = pack, isA = await Promise.all(list.map(n => isApng(n).catch(() => false)));
+        if (pack !== list) return;
+        const anim = isA.filter(Boolean).length;
+        $(".conv").hidden = !(anim && CAN_CONV);
+        $(".info").textContent = `룸 데이터가 없는 ZIP 이라 그림만 Roll20 라이브러리에 올려요 — 그림 ${list.length}개` + (anim ? ` · 움직이는 그림 ${anim}개` : "")
+            + (anim && !(conv && CAN_CONV) ? " (멈춘 그림으로 올라가요)" : "");
+        const cv = $(".pv"), show = list.filter(n => !/\.(webm|mp4)$/i.test(n)).slice(0, 48), S = 36, cols = 8;
+        cv.hidden = !show.length;
+        cv.width = cols * S; cv.height = Math.ceil(show.length / cols) * S;
+        const x = cv.getContext("2d");
+        x.clearRect(0, 0, cv.width, cv.height);
+        for (let i = 0; i < show.length; i++) {
+            const n = show[i];
+            if (!bitmaps.has(n)) bitmaps.set(n, blobOf(n).then(b => createImageBitmap(b)).catch(() => null));
+            const bm = await bitmaps.get(n);
+            if (pack !== list) return;
+            if (!bm) continue;
+            const k = Math.min((S - 4) / bm.width, (S - 4) / bm.height), w = bm.width * k, h = bm.height * k;
+            x.drawImage(bm, (i % cols) * S + (S - w) / 2, Math.floor(i / cols) * S + (S - h) / 2, w, h);
+        }
+    };
     const refresh = async () => {
         if (!pop) return;
         const sc = scenes[sel];
@@ -2697,7 +2786,8 @@ const ccfImport = (() => {
         const pwRow = $(".pw");
         if (pwRow.hidden === !!pending) { pwRow.hidden = !pending; if (pending) pwRow.querySelector("input").focus(); }
         const s = $("select");
-        $(".scn").hidden = !zip;
+        $(".scn").hidden = !zip || !!pack;
+        if (pack) return refreshPack();
         let html = "", grp = "";
         scenes.forEach((c, i) => {
             if (c.grp !== grp) html += (grp ? "</optgroup>" : "") + ((grp = c.grp) ? `<optgroup label="${escAttr(grp)}">` : "");
@@ -2711,7 +2801,7 @@ const ccfImport = (() => {
         $(".conv").setAttribute("aria-checked", String(conv));
         $(".set").hidden = !sc;
         paint();
-        if (!sc) { $(".info").textContent = ""; $(".pg").textContent = ""; $(".warn").textContent = ""; $(".pv").hidden = true; return; }
+        if (!sc) { $(".info").textContent = ""; $(".pg").textContent = ""; $(".warn").textContent = ""; $(".pv").hidden = $(".conv").hidden = true; return; }
         const L = await layout(sc);
         if (scenes[sel] !== sc) return;
         const imgs = [...new Set(L.items.map(t => t.img))];
@@ -2735,8 +2825,8 @@ const ccfImport = (() => {
     const paint = () => {
         if (!pop) return;
         const go = $(".pri");
-        go.textContent = busy ? "멈추기" : "가져오기";
-        go.disabled = !busy && !scenes[sel];
+        go.textContent = busy ? "멈추기" : pack ? "라이브러리에 올리기" : "가져오기";
+        go.disabled = !busy && !scenes[sel] && !pack;
         pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button").forEach(el => { el.disabled = busy; });
     };
     const place = () => {
@@ -2772,7 +2862,7 @@ const ccfImport = (() => {
             if (b.dataset.cell) { cell = +b.dataset.cell; localStorage.setItem("r20_ccf_cell", String(cell)); return refresh(); }
             if (b.classList.contains("conv")) { conv = !conv; localStorage.setItem("r20_ccf_conv", String(conv)); return refresh(); }
             if (b.classList.contains("grid")) { grid = !grid; return refresh(); }
-            if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else run(); }
+            if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else if (pack) runPack(); else run(); }
         });
         // 판에 끌어다 놓은 파일은 Roll20 이 받지 않게 여기서 끝낸다
         pop.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); });
