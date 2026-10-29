@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.25.0
+// @version      1.25.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.25.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.25.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2655,6 +2655,7 @@ const ccfImport = (() => {
                     if ([...z.values()].some(e => e.enc && e.method === 99)) throw new Error("AES 암호는 못 풀어요 — 압축을 풀어 암호 없이 다시 묶어 주세요");
                     if ([...z.values()].some(e => e.enc)) { pending = { z, name: f.name }; prog("암호가 걸린 ZIP 이에요 — 암호를 넣어 주세요"); continue; }
                     await openZip(z, f.name);
+                    prog("");
                 } catch (e) { zip = null; data = null; scenes = []; prog("못 읽었어요 — " + (e?.message || e)); }
             } else extra.set(base(f.name), f);
         }
@@ -2793,7 +2794,7 @@ addCss(`
         #r20-ccf .set[hidden] { display:none; }
         #r20-ccf .rg > span, #r20-ccf .fn, #r20-ccf .info, #r20-ccf .pg, #r20-ccf .prog { color:#777; font-size:11px; }
         #r20-ccf .fn { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; }
-        #r20-ccf .pw[hidden] { display:none; }
+        #r20-ccf .pw[hidden], #r20-ccf input[type=file] { display:none !important; }
         #r20-ccf .pw input { flex:1; min-width:0; height:24px; margin:0; padding:0 6px; border:1px solid #ccc; border-radius:4px; font-size:12px; }
         #r20-ccf .pw input:focus { outline:2px solid #b8215f; outline-offset:-1px; border-color:#b8215f; }
         #r20-ccf button { height:22px; margin:0; padding:0 9px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font:700 11px/20px sans-serif; cursor:pointer; }
