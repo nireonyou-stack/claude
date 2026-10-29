@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.25.1
+// @version      1.26.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.25.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.26.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2316,7 +2316,7 @@ const mapShot = (() => {
     return { inject, setEnabled };
 })();
 
-// ───────── 코코포리아 맵 가져오기: 룸 데이터 ZIP 의 마커 패널을 지금 페이지에 같은 칸 · 같은 겹침 순서로 놓는다 ─────────
+// ───────── 코코포리아 맵 가져오기: 룸 데이터 ZIP 의 마커 · 스크린 패널을 지금 페이지에 같은 칸 · 같은 겹침 순서로 놓는다 ─────────
 // 그림은 Roll20 테이블에 파일을 끌어다 놓은 것처럼 해서 Roll20 이 직접 올린다 (한 번에 하나씩).
 // 올린 주소는 파일 이름(코코포리아가 붙인 내용 해시) + 크기로 기억해 두고, 다시 가져올 때는 또 올리지 않는다.
 // 확장자만 다른 파일(apng 를 바꾼 webm 등)을 같이 넣으면 같은 이름의 그림 대신 그걸 올리고,
@@ -2425,20 +2425,26 @@ const ccfImport = (() => {
         const fw = +sc.fieldWidth || 0, fh = +sc.fieldHeight || 0;
         const fg = has(sc.foregroundUrl) && fw > 0 && fh > 0 && !(await look(sc.foregroundUrl)).blank;
         const bg = has(sc.backgroundUrl) ? await look(sc.backgroundUrl) : { blank: true };
+        // 스크린 패널: 판 위에 있는 것만 (마커 위에 놓인다). 뒤집혀 있으면 뒷면 그림, 숨김이면 GM 층
+        const ps = Object.values(sc.items || {}).filter(q => q.active !== false)
+            .map((q, i) => ({ ...q, i, imageUrl: q.closed && q.coverImageUrl ? q.coverImageUrl : q.imageUrl }));
+        const okp = ps.filter(q => has(q.imageUrl) && +q.width > 0 && +q.height > 0).sort((a, b) => (a.z || 0) - (b.z || 0) || a.i - b.i);
+        const skipped = ms.length - ok.length + ps.length - okp.length;
         const items = [];
-        if (fg) items.push({ img: sc.foregroundUrl, x: -fw / 2, y: -fh / 2, w: fw, h: fh, lock: true });
+        if (fg) items.push({ img: sc.foregroundUrl, x: -fw / 2, y: -fh / 2, w: fw, h: fh, lock: true, base: true });
         ok.forEach(m => items.push({ img: m.imageUrl, x: +m.x || 0, y: +m.y || 0, w: +m.width, h: +m.height, lock: !!m.locked }));
-        if (!items.length) return { items, skipped: ms.length };
+        okp.forEach(q => items.push({ img: q.imageUrl, x: +q.x || 0, y: +q.y || 0, w: +q.width, h: +q.height, lock: !!q.locked, rot: +q.angle || 0, gm: q.visible === false }));
+        if (!items.length) return { items, skipped };
         const x0 = Math.floor(Math.min(...items.map(t => t.x))), y0 = Math.floor(Math.min(...items.map(t => t.y)));
         const pw = Math.ceil((Math.max(...items.map(t => t.x + t.w)) - x0) * cell / 70);
         const ph = Math.ceil((Math.max(...items.map(t => t.y + t.h)) - y0) * cell / 70);
         // 배경(화면 뒤 그림): 한 가지 색이면 페이지 배경색, 그림이면 맵 층 맨 아래에 페이지 가득
-        if (!bg.blank && !bg.color) items.unshift({ img: sc.backgroundUrl, x: x0, y: y0, w: pw * 70 / cell, h: ph * 70 / cell, lock: true });
-        return { items, x0, y0, pw, ph, color: bg.color || sc.backgroundColor || "", skipped: ms.length - ok.length };
+        if (!bg.blank && !bg.color) items.unshift({ img: sc.backgroundUrl, x: x0, y: y0, w: pw * 70 / cell, h: ph * 70 / cell, lock: true, base: true });
+        return { items, x0, y0, pw, ph, color: bg.color || sc.backgroundColor || "", skipped };
     };
     const px = v => Math.round(v * cell * 100) / 100;
     const attrsOf = (t, L) => ({ left: px(t.x - L.x0 + t.w / 2), top: px(t.y - L.y0 + t.h / 2), width: px(t.w), height: px(t.h),
-        rotation: 0, layer: t.lock ? "map" : "objects", controlledby: t.lock ? "" : "all" });
+        rotation: t.rot || 0, layer: t.gm ? "gmlayer" : t.lock ? "map" : "objects", controlledby: t.lock ? "" : "all" });
 
     // ── apng → 투명 webm: 색과 투명도를 VP9(안 되면 VP8) 두 줄기로 따로 만들어, 투명도는 블록 덧붙임(BlockAdditional)으로 넣는다 ──
     // (ffmpeg 의 투명 webm 과 같은 짜임. 브라우저 인코더는 아직 투명도를 직접 못 받는다)
@@ -2614,7 +2620,7 @@ const ccfImport = (() => {
         }
         busy = false;
         paint();
-        prog((stop ? `멈췄어요 — ${placed}/${L.items.length}개 놓음` : `다 놓았어요 — 패널 ${placed}개`)
+        prog((stop ? `멈췄어요 — ${placed}/${L.items.length}개 놓음` : `다 놓았어요 — ${placed}개`)
             + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
         if (fail.size) console.warn("[코코포리아 가져오기] 못 올린 그림:", [...fail]);
@@ -2630,9 +2636,14 @@ const ccfImport = (() => {
         catch (e) { zip = null; throw new Error(zipPw ? "암호가 틀렸어요" : "__data.json 을 못 읽었어요"); }
         if (!d?.entities?.room) { zip = null; throw new Error("코코포리아 룸 데이터가 아니에요"); }
         data = d;
-        const ent = d.entities;
-        scenes = [{ ...ent.room, name: "지금 방" }, ...Object.values(ent.scenes || {})
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => ({ ...s, name: s.name || "이름 없음" }))];
+        const ent = d.entities, items = ent.items || {}, chars = ent.characters || {}, byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0);
+        // 고를 수 있는 것: 지금 방 · 장면(배경 · 마커만 바뀌고 스크린 패널은 지금 것 그대로) · 세이브 데이터(그때의 방과 스크린 패널 통째로)
+        scenes = [{ ...ent.room, items, chars, name: "지금 방", grp: "" },
+            ...Object.values(ent.scenes || {}).sort(byOrder).map(s => ({ ...s, items, chars, name: s.name || "이름 없음", grp: "장면" })),
+            ...Object.values(ent.savedatas || {}).sort(byOrder).map(s => {
+                const sn = ent.snapshots?.[s.snapshotId];
+                return sn?.room && { ...sn.room, items: sn.items || {}, chars: sn.characters || {}, name: s.name || "이름 없음", grp: "세이브 데이터" };
+            }).filter(Boolean)];
         sel = 0; grid = null;
     };
     // 암호 확인: 머리 12바이트만 풀어 마지막 바이트가 맞으면 열어 본다 (우연히 맞는 1/256 은 JSON 에서 걸러진다)
@@ -2687,7 +2698,13 @@ const ccfImport = (() => {
         if (pwRow.hidden === !!pending) { pwRow.hidden = !pending; if (pending) pwRow.querySelector("input").focus(); }
         const s = $("select");
         $(".scn").hidden = !zip;
-        s.innerHTML = scenes.map((c, i) => `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)} · 패널 ${Object.keys(c.markers || {}).length}</option>`).join("");
+        let html = "", grp = "";
+        scenes.forEach((c, i) => {
+            if (c.grp !== grp) html += (grp ? "</optgroup>" : "") + ((grp = c.grp) ? `<optgroup label="${escAttr(grp)}">` : "");
+            const n = Object.keys(c.markers || {}).length + Object.values(c.items || {}).filter(q => q.active !== false).length;
+            html += `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)} · 패널 ${n}</option>`;
+        });
+        s.innerHTML = html + (grp ? "</optgroup>" : "");
         pop.querySelectorAll("[data-cell]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.cell === cell)));
         if (grid === null && sc) grid = !!sc.displayGrid;
         $(".grid").setAttribute("aria-checked", String(!!grid));
@@ -2703,11 +2720,12 @@ const ccfImport = (() => {
         const swap = imgs.filter(n => extra.has(base(n))).length;
         const left = imgs.filter((n, i) => isA[i] && !extra.has(base(n))).length;       // 직접 넣은 webm 이 없는 움직이는 그림
         $(".conv").hidden = !(left && CAN_CONV);
-        const ent = data.entities, other = Object.keys(ent.items || {}).length + Object.keys(ent.characters || {}).length;
-        $(".info").textContent = `패널 ${L.items.length}개 · 그림 ${imgs.length}종` + (anim ? ` · 움직이는 그림 ${anim}종` : "")
+        const other = Object.keys(sc.chars || {}).length;
+        const nb = L.items.filter(t => t.base).length;      // 필드 · 배경 그림
+        $(".info").textContent = `패널 ${L.items.length - nb}개` + (nb ? ` + 필드·배경 그림 ${nb}` : "") + ` · 그림 ${imgs.length}종` + (anim ? ` · 움직이는 그림 ${anim}종` : "")
             + (swap ? ` (직접 넣은 파일 ${swap}개 짝 맞음)` : "")
             + (left && !(conv && CAN_CONV) ? ` — webm 이 없는 ${left}종은 멈춘 그림으로 올라가요` : "")
-            + (L.skipped ? ` · 그림 없는 패널 ${L.skipped}개 빼요` : "") + (other ? ` · 스크린 패널 · 캐릭터 ${other}개는 안 옮겨요` : "");
+            + (L.skipped ? ` · 그림 없는 패널 ${L.skipped}개 빼요` : "") + (other ? ` · 캐릭터 ${other}명은 아직 안 옮겨요` : "");
         $(".pg").innerHTML = L.items.length ? `지금 페이지 → <b>${L.pw}×${L.ph}</b> · 칸 너비 ${+(cell / 70).toFixed(3)}`
             + (L.color ? ` · 배경색 <i style="background:${escAttr(L.color)}"></i>${escAttr(L.color)}` : "") : "";
         const n = page()?.thegraphics?.models?.length || 0;
