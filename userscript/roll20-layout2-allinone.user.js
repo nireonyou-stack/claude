@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.24.1
+// @version      1.25.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.24.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.25.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2328,6 +2328,7 @@ const ccfImport = (() => {
     const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
     const R20 = /^https:\/\/(?:s3\.amazonaws\.com\/)?files\.d20\.io\//i;
     let pop = null, anchor = null, zip = null, zipName = "", data = null, scenes = [], sel = 0, grid = null, busy = false, stop = false;
+    let pending = null, zipPw = null;      // 암호를 기다리는 ZIP, 맞힌 암호(바이트)
     let cell = localStorage.getItem("r20_ccf_cell") === "70" ? 70 : 24;      // 기본은 코코포리아 그림 그대로 (1칸 = 24px)
     const extra = new Map();          // 확장자 뺀 이름 → 바꿔 올릴 파일
     const blobs = new Map(), looks = new Map(), bitmaps = new Map();
@@ -2346,20 +2347,43 @@ const ccfImport = (() => {
         let p = v.getUint32(e + 16, true);
         for (let i = v.getUint16(e + 10, true); i > 0; i--) {
             if (v.getUint32(p, true) !== 0x02014b50) throw new Error("ZIP 목록이 깨졌어요");
-            const method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true), size = v.getUint32(p + 24, true);
+            const flag = v.getUint16(p + 8, true), method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true), size = v.getUint32(p + 24, true);
+            // 암호 머리 12바이트의 마지막 바이트 = CRC 맨 윗바이트 (뒤에 크기를 적는 방식이면 수정 시각의 윗바이트)
+            const check = flag & 8 ? v.getUint16(p + 12, true) >>> 8 : v.getUint32(p + 16, true) >>> 24;
             const nl = v.getUint16(p + 28, true), lo = v.getUint32(p + 42, true);
             const name = td.decode(new Uint8Array(v.buffer, p + 46, nl));
             const start = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true);
-            if (!name.endsWith("/")) out.set(name.replace(/^.*\//, ""), { method, size, raw: file.slice(start, start + csize) });
+            if (!name.endsWith("/")) out.set(name.replace(/^.*\//, ""), { method, size, enc: !!(flag & 1), check, raw: file.slice(start, start + csize) });
             p += 46 + nl + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+        }
+        return out;
+    };
+    // ── ZIP 암호(ZipCrypto: 반디집 · 7-Zip · 윈도우 기본 방식): 암호로 세 열쇠를 만들고 한 바이트씩 풀며 열쇠를 굴린다 ──
+    const CRC = (() => {
+        const t = new Int32Array(256);
+        for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; }
+        return t;
+    })();
+    const roll = (k, b) => {
+        k[0] = CRC[(k[0] ^ b) & 255] ^ (k[0] >>> 8);
+        k[1] = Math.imul(k[1] + (k[0] & 255), 134775813) + 1;
+        k[2] = CRC[(k[2] ^ (k[1] >>> 24)) & 255] ^ (k[2] >>> 8);
+    };
+    const unlock = (pw, u) => {         // u = 암호 머리 12바이트 + 데이터
+        const k = new Int32Array([0x12345678, 0x23456789, 0x34567890]), out = new Uint8Array(u.length);
+        pw.forEach(b => roll(k, b));
+        for (let i = 0; i < u.length; i++) {
+            const t = (k[2] | 2) & 0xffff, c = u[i] ^ ((Math.imul(t, t ^ 1) >>> 8) & 255);
+            out[i] = c;
+            roll(k, c);
         }
         return out;
     };
     const blobOf = n => {
         if (!blobs.has(n)) {
             const z = zip.get(n);
-            const b = z.method === 0 ? Promise.resolve(z.raw)
-                : new Response(z.raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
+            const raw = z.enc ? z.raw.arrayBuffer().then(a => new Blob([unlock(zipPw, new Uint8Array(a)).subarray(12)])) : Promise.resolve(z.raw);
+            const b = raw.then(r => z.method === 0 ? r : new Response(r.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob());
             blobs.set(n, b.then(x => x.slice(0, x.size, typeOf(n))));
         }
         return blobs.get(n);
@@ -2424,11 +2448,14 @@ const ccfImport = (() => {
             await dec.tracks.ready; await dec.completed;
             const n = dec.tracks.selectedTrack.frameCount;
             let f = (await dec.decode({ frameIndex: 0 })).image;
-            const W = f.displayWidth + (f.displayWidth & 1), H = f.displayHeight + (f.displayHeight & 1);       // 4:2:0 은 짝수 크기
+            // 2배로 키워(이웃 픽셀 그대로) 만든다: 4:2:0 은 색을 2×2 마다 하나만 남겨 가는 선 · 글자 가장자리 색이 번지는데,
+            // 키운 그림을 Roll20 이 원래 크기로 줄여 그리면 색이 원본 픽셀마다 살아난다 (아주 큰 그림은 1배)
+            const fw = f.displayWidth, fh = f.displayHeight, K = Math.max(fw, fh) * 2 <= 2048 ? 2 : 1;
+            const W = fw * K + ((fw * K) & 1), H = fh * K + ((fh * K) & 1);       // 4:2:0 은 짝수 크기
             const fps = Math.max(1, Math.round(1e6 / (f.duration || 100000)));
             let cfg = null;
             for (const codec of ["vp09.00.10.08", "vp8"]) {
-                const c = { codec, width: W, height: H, framerate: fps, bitrate: Math.max(150000, Math.round(W * H * fps * 0.12)) };
+                const c = { codec, width: W, height: H, framerate: fps, bitrate: Math.max(300000, Math.round(W * H * fps * 0.25)) };
                 if ((await VideoEncoder.isConfigSupported(c).catch(() => ({}))).supported) { cfg = c; break; }
             }
             if (!cfg) throw new Error("이 브라우저는 webm 을 못 만들어요");
@@ -2441,12 +2468,13 @@ const ccfImport = (() => {
             };
             const color = [], alpha = [], ec = enc(color), ea = enc(alpha);
             const cv = new OffscreenCanvas(W, H), x = cv.getContext("2d", { willReadFrequently: true });
+            x.imageSmoothingEnabled = false;
             const yuv = new Uint8Array(W * H * 3 / 2).fill(128, W * H);          // 투명도 줄기: 밝기 = 투명도, 색차는 가운데
             let end = 0;
             for (let i = 0; i < n && !err; i++) {
                 if (i) f = (await dec.decode({ frameIndex: i })).image;
                 x.clearRect(0, 0, W, H);
-                x.drawImage(f, 0, 0);
+                x.drawImage(f, 0, 0, fw * K, fh * K);
                 const ts = f.timestamp, dur = f.duration || 100000, key = i % 50 === 0;
                 f.close();
                 end = ts + dur;
@@ -2506,7 +2534,7 @@ const ccfImport = (() => {
     const sourceOf = async n => {
         const f = extra.get(base(n));
         if (f) return { key: f.name + ":" + f.size, file: f };
-        if (conv && CAN_CONV && await isApng(n)) return { key: n + ":webm", conv: true };
+        if (conv && CAN_CONV && await isApng(n)) return { key: n + ":webm2", conv: true };       // webm2 = 2배 화질 (이전 변환본은 다시 쓰지 않음)
         return plainSrc(n);
     };
 
@@ -2595,19 +2623,38 @@ const ccfImport = (() => {
     // ── 판 ──
     const $ = s => pop.querySelector(s);
     const prog = s => { if (pop) $(".prog").textContent = s; };
+    const openZip = async (z, name) => {
+        zip = z; zipName = name; blobs.clear(); looks.clear(); bitmaps.clear();
+        let d;
+        try { d = JSON.parse(await (await blobOf("__data.json")).text()); }
+        catch (e) { zip = null; throw new Error(zipPw ? "암호가 틀렸어요" : "__data.json 을 못 읽었어요"); }
+        if (!d?.entities?.room) { zip = null; throw new Error("코코포리아 룸 데이터가 아니에요"); }
+        data = d;
+        const ent = d.entities;
+        scenes = [{ ...ent.room, name: "지금 방" }, ...Object.values(ent.scenes || {})
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => ({ ...s, name: s.name || "이름 없음" }))];
+        sel = 0; grid = null;
+    };
+    // 암호 확인: 머리 12바이트만 풀어 마지막 바이트가 맞으면 열어 본다 (우연히 맞는 1/256 은 JSON 에서 걸러진다)
+    const tryPw = async () => {
+        const inp = $(".pw input"), pw = new TextEncoder().encode(inp.value), d = pending?.z.get("__data.json");
+        if (!d || busy) return;
+        if (unlock(pw, new Uint8Array(await d.raw.slice(0, 12).arrayBuffer()))[11] !== d.check) { prog("암호가 틀렸어요"); inp.select(); return; }
+        zipPw = pw;
+        try { await openZip(pending.z, pending.name); pending = null; inp.value = ""; prog(""); }
+        catch (e) { zipPw = null; prog(e?.message || String(e)); inp.select(); }
+        refresh();
+    };
     const addFiles = async files => {
         for (const f of files) {
             if (/\.zip$/i.test(f.name)) {
                 try {
                     const z = await readZip(f);
                     if (!z.has("__data.json")) throw new Error("__data.json 이 없어요");
-                    zip = z; zipName = f.name; blobs.clear(); looks.clear(); bitmaps.clear();
-                    data = JSON.parse(await (await blobOf("__data.json")).text());
-                    const ent = data?.entities;
-                    if (!ent?.room) throw new Error("코코포리아 룸 데이터가 아니에요");
-                    scenes = [{ ...ent.room, name: "지금 방" }, ...Object.values(ent.scenes || {})
-                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => ({ ...s, name: s.name || "이름 없음" }))];
-                    sel = 0; grid = null;
+                    pending = null; zipPw = null; zip = null; data = null; scenes = [];
+                    if ([...z.values()].some(e => e.enc && e.method === 99)) throw new Error("AES 암호는 못 풀어요 — 압축을 풀어 암호 없이 다시 묶어 주세요");
+                    if ([...z.values()].some(e => e.enc)) { pending = { z, name: f.name }; prog("암호가 걸린 ZIP 이에요 — 암호를 넣어 주세요"); continue; }
+                    await openZip(z, f.name);
                 } catch (e) { zip = null; data = null; scenes = []; prog("못 읽었어요 — " + (e?.message || e)); }
             } else extra.set(base(f.name), f);
         }
@@ -2634,7 +2681,9 @@ const ccfImport = (() => {
     const refresh = async () => {
         if (!pop) return;
         const sc = scenes[sel];
-        $(".fn").textContent = zip ? zipName + (extra.size ? ` + 파일 ${extra.size}개` : "") : "ZIP 을 여기에 끌어다 놓아도 돼요";
+        $(".fn").textContent = zip ? zipName + (extra.size ? ` + 파일 ${extra.size}개` : "") : pending ? pending.name + " 🔒" : "ZIP 을 여기에 끌어다 놓아도 돼요";
+        const pwRow = $(".pw");
+        if (pwRow.hidden === !!pending) { pwRow.hidden = !pending; if (pending) pwRow.querySelector("input").focus(); }
         const s = $("select");
         $(".scn").hidden = !zip;
         s.innerHTML = scenes.map((c, i) => `<option value="${i}"${i === sel ? " selected" : ""}>${escAttr(c.name)} · 패널 ${Object.keys(c.markers || {}).length}</option>`).join("");
@@ -2669,7 +2718,7 @@ const ccfImport = (() => {
         const go = $(".pri");
         go.textContent = busy ? "멈추기" : "가져오기";
         go.disabled = !busy && !scenes[sel];
-        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick]").forEach(el => { el.disabled = busy; });
+        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button").forEach(el => { el.disabled = busy; });
     };
     const place = () => {
         if (!pop || !anchor?.isConnected) return;
@@ -2684,13 +2733,15 @@ const ccfImport = (() => {
         pop.innerHTML = '<div class="hd"><b>코코포리아 맵 가져오기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><div class="rg"><button type="button" data-k="pick">ZIP · webm 고르기</button><span class="fn"></span>'
             + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
+            + '<div class="rg pw" hidden><input type="password" placeholder="ZIP 암호" aria-label="ZIP 암호" autocomplete="off"><button type="button" data-k="pw">열기</button></div>'
             + '<label class="rg scn" hidden><span>장면</span><select></select></label><div class="info"></div>'
             + '<button type="button" class="sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button><canvas class="pv" hidden></canvas>'
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
             + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
             + '<div class="pg"></div><div class="warn"></div></div>'
             + '<div class="go"><button type="button" class="pri">가져오기</button><span class="prog" aria-live="polite"></span></div></div>';
-        const inp = $("input");
+        const inp = $("input[type=file]");
+        $(".pw input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); tryPw(); } });
         inp.addEventListener("change", () => { addFiles([...inp.files]); inp.value = ""; });
         $("select").addEventListener("change", e => { sel = +e.target.value; grid = null; refresh(); });
         pop.addEventListener("click", e => {
@@ -2698,6 +2749,7 @@ const ccfImport = (() => {
             if (!b) return;
             if (b.classList.contains("x")) return close();
             if (b.dataset.k === "pick") return inp.click();
+            if (b.dataset.k === "pw") return tryPw();
             if (b.dataset.cell) { cell = +b.dataset.cell; localStorage.setItem("r20_ccf_cell", String(cell)); return refresh(); }
             if (b.classList.contains("conv")) { conv = !conv; localStorage.setItem("r20_ccf_conv", String(conv)); return refresh(); }
             if (b.classList.contains("grid")) { grid = !grid; return refresh(); }
@@ -2741,6 +2793,9 @@ addCss(`
         #r20-ccf .set[hidden] { display:none; }
         #r20-ccf .rg > span, #r20-ccf .fn, #r20-ccf .info, #r20-ccf .pg, #r20-ccf .prog { color:#777; font-size:11px; }
         #r20-ccf .fn { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; }
+        #r20-ccf .pw[hidden] { display:none; }
+        #r20-ccf .pw input { flex:1; min-width:0; height:24px; margin:0; padding:0 6px; border:1px solid #ccc; border-radius:4px; font-size:12px; }
+        #r20-ccf .pw input:focus { outline:2px solid #b8215f; outline-offset:-1px; border-color:#b8215f; }
         #r20-ccf button { height:22px; margin:0; padding:0 9px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font:700 11px/20px sans-serif; cursor:pointer; }
         #r20-ccf button:disabled { opacity:.6; cursor:default; }
         #r20-ccf button:focus-visible, #r20-ccf select:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
