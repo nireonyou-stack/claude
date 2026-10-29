@@ -1,0 +1,5 @@
+# 룰북 데이터는 저장소에 올리지 않는다 (홈페이지 정적 파일로만)
+*.xlsx
+bloodmoon/gw.json
+bloodmoon/parsed.json
+bloodmoon/d.txt
