@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.28.0
+// @version      1.28.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.28.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.28.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2333,18 +2333,21 @@ const ccfImport = (() => {
     let pack = null;                       // 룸 데이터가 없는 ZIP: 올릴 그림 이름들
     let cell = localStorage.getItem("r20_ccf_cell") === "70" ? 70 : 24;      // 기본은 코코포리아 그림 그대로 (1칸 = 24px)
     const extra = new Map();          // 확장자 뺀 이름 → 바꿔 올릴 파일
-    const blobs = new Map(), looks = new Map(), bitmaps = new Map();
+    const blobs = new Map(), looks = new Map(), bitmaps = new Map(), anims = new Map();
     const upMap = (() => { try { return JSON.parse(localStorage.getItem(UP_KEY) || "{}") || {}; } catch (e) { return {}; } })();
     const saveUp = () => { try { localStorage.setItem(UP_KEY, JSON.stringify(upMap)); } catch (e) {} };
     const base = n => String(n).replace(/^.*\//, "").replace(/\.[^.]+$/, "");
     const typeOf = n => data?.resources?.[n]?.type || MIME[String(n).split(".").pop().toLowerCase()] || "application/octet-stream";
 
-    // ── ZIP: 끝의 목록(central directory)만 읽고, 파일은 필요할 때 브라우저 내장 압축 풀기로 ──
+    // ── ZIP: 끝의 목록(central directory)만 읽고, 파일은 필요할 때 브라우저 내장 압축 풀기로 (ZIP 전체를 메모리에 올리지 않는다) ──
     const readZip = async file => {
-        const v = new DataView(await file.arrayBuffer());
-        let e = v.byteLength - 22;
-        while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+        const tail = new DataView(await file.slice(Math.max(0, file.size - 65557)).arrayBuffer());
+        let e = tail.byteLength - 22;
+        while (e >= 0 && tail.getUint32(e, true) !== 0x06054b50) e--;
         if (e < 0) throw new Error("ZIP 파일이 아니에요");
+        const count = tail.getUint16(e + 10, true), cdSize = tail.getUint32(e + 12, true), cdOff = tail.getUint32(e + 16, true);
+        if (count === 0xffff || cdOff === 0xffffffff) throw new Error("너무 큰 ZIP(ZIP64)은 못 읽어요");
+        const v = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer());
         const out = new Map(), td = new TextDecoder();
         // 이름: UTF-8 표시가 없으면 윈도우 압축이 쓰는 한국어(euc-kr) · 일본어(shift_jis) 코드일 수 있다
         const strict = ["utf-8", "euc-kr", "shift_jis"].map(l => new TextDecoder(l, { fatal: true }));
@@ -2352,17 +2355,16 @@ const ccfImport = (() => {
             if (!(flag & 0x800)) for (const d of strict) { try { return d.decode(u); } catch (e) {} }
             return td.decode(u);
         };
-        let p = v.getUint32(e + 16, true);
-        for (let i = v.getUint16(e + 10, true); i > 0; i--) {
+        let p = 0;
+        for (let i = count; i > 0; i--) {
             if (v.getUint32(p, true) !== 0x02014b50) throw new Error("ZIP 목록이 깨졌어요");
             const flag = v.getUint16(p + 8, true), method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true), size = v.getUint32(p + 24, true);
             // 암호 머리 12바이트의 마지막 바이트 = CRC 맨 윗바이트 (뒤에 크기를 적는 방식이면 수정 시각의 윗바이트)
             const check = flag & 8 ? v.getUint16(p + 12, true) >>> 8 : v.getUint32(p + 16, true) >>> 24;
             const nl = v.getUint16(p + 28, true), lo = v.getUint32(p + 42, true);
             const name = nameOf(new Uint8Array(v.buffer, p + 46, nl), flag);
-            const start = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true);
             const short = name.replace(/^.*\//, "");         // 폴더는 떼고, 이름이 겹치면 폴더째로
-            if (!name.endsWith("/")) out.set(out.has(short) ? name : short, { method, size, enc: !!(flag & 1), check, raw: file.slice(start, start + csize) });
+            if (!name.endsWith("/")) out.set(out.has(short) ? name : short, { method, size, enc: !!(flag & 1), check, file, lo, csize, raw: null });
             p += 46 + nl + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
         }
         return out;
@@ -2388,24 +2390,55 @@ const ccfImport = (() => {
         }
         return out;
     };
+    // 파일 몸통: 그 파일 머리(30바이트 + 이름 · 덧붙임 길이)를 읽어 위치를 알아낸다
+    const rawOf = async z => {
+        if (!z.raw) {
+            const h = new DataView(await z.file.slice(z.lo, z.lo + 30).arrayBuffer());
+            const start = z.lo + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+            z.raw = z.file.slice(start, start + z.csize);
+        }
+        return z.raw;
+    };
     const blobOf = n => {
         if (!blobs.has(n)) {
             const z = zip.get(n);
-            const raw = z.enc ? z.raw.arrayBuffer().then(a => new Blob([unlock(zipPw, new Uint8Array(a)).subarray(12)])) : Promise.resolve(z.raw);
+            const raw = rawOf(z).then(r => z.enc ? r.arrayBuffer().then(a => new Blob([unlock(zipPw, new Uint8Array(a)).subarray(12)])) : r);
             const b = raw.then(r => z.method === 0 ? r : new Response(r.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob());
             blobs.set(n, b.then(x => x.slice(0, x.size, typeOf(n))));
         }
         return blobs.get(n);
     };
-    // 움직이는 그림인지: apng 는 acTL 조각이 그림 데이터 앞에, webp 는 VP8X 머리의 애니메이션 표시(0x02)
+    // 앞부분만 풀어 본다 — 움직이는 그림인지 보려고 큰 ZIP 의 그림을 전부 풀어 두지 않게 (암호 ZIP 은 처음부터 풀어야 해서 통째로)
+    const headOf = async (n, len = 65536) => {
+        const z = zip.get(n);
+        if (blobs.has(n) || z.enc) return new Uint8Array(await (await blobOf(n)).slice(0, len).arrayBuffer());
+        const raw = await rawOf(z);
+        if (z.method === 0) return new Uint8Array(await raw.slice(0, len).arrayBuffer());
+        const rd = raw.stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader(), parts = [];
+        let got = 0;
+        try { while (got < len) { const { value, done } = await rd.read(); if (done) break; parts.push(value); got += value.length; } }
+        finally { rd.cancel().catch(() => {}); }
+        const out = new Uint8Array(Math.min(got, len));
+        for (let i = 0, o = 0; i < parts.length && o < out.length; i++) { const t = parts[i].subarray(0, out.length - o); out.set(t, o); o += t.length; }
+        return out;
+    };
+    // 움직이는 그림인지: apng 는 그림 데이터(IDAT) 앞에 acTL 조각, webp 는 VP8X 머리의 애니메이션 표시(0x02)
     const animType = n => /\.a?png$/i.test(n) ? "image/png" : /\.webp$/i.test(n) ? "image/webp" : "";
-    const isAnim = async n => {
-        const t = animType(n);
-        if (!t) return false;
-        const u = new Uint8Array(await (await blobOf(n)).slice(0, 65536).arrayBuffer());
-        if (t === "image/webp") return String.fromCharCode(...u.subarray(12, 16)) === "VP8X" && !!(u[20] & 2);
-        for (let i = 8; i < u.length - 3; i++) if (u[i] === 0x61 && u[i + 1] === 0x63 && u[i + 2] === 0x54 && u[i + 3] === 0x4c) return true;
-        return false;
+    const isAnim = n => {
+        if (!anims.has(n)) anims.set(n, (async () => {
+            const t = animType(n);
+            if (!t) return false;
+            const u = await headOf(n);
+            if (t === "image/webp") return String.fromCharCode(...u.subarray(12, 16)) === "VP8X" && !!(u[20] & 2);
+            const dv = new DataView(u.buffer, u.byteOffset, u.length);
+            for (let p = 8; p + 8 <= u.length; p += 12 + dv.getUint32(p)) {
+                const type = String.fromCharCode(...u.subarray(p + 4, p + 8));
+                if (type === "acTL") return true;
+                if (type === "IDAT") return false;
+            }
+            return false;
+        })());
+        return anims.get(n);
     };
     // 8×8 로 줄여 봐서: 다 투명하면 blank, 한 가지 색이면 그 색 (배경 · 전경 그림을 올릴지 정한다)
     const look = n => {
@@ -2460,8 +2493,9 @@ const ccfImport = (() => {
 
     // ── apng · 움직이는 webp → 투명 webm: 색과 투명도를 VP9(안 되면 VP8) 두 줄기로 따로 만들어, 투명도는 블록 덧붙임(BlockAdditional)으로 넣는다 ──
     // (ffmpeg 의 투명 webm 과 같은 짜임. 브라우저 인코더는 아직 투명도를 직접 못 받는다)
-    const toWebm = async (bytes, type) => {
+    const toWebm = async (bytes, type, halt) => {
         const dec = new ImageDecoder({ data: bytes, type });
+        let ec = null, ea = null;
         try {
             await dec.tracks.ready; await dec.completed;
             const n = dec.tracks.selectedTrack.frameCount;
@@ -2484,12 +2518,14 @@ const ccfImport = (() => {
                 e.configure(cfg);
                 return e;
             };
-            const color = [], alpha = [], ec = enc(color), ea = enc(alpha);
+            const color = [], alpha = [];
+            ec = enc(color); ea = enc(alpha);
             const cv = new OffscreenCanvas(W, H), x = cv.getContext("2d", { willReadFrequently: true });
             x.imageSmoothingEnabled = false;
             const yuv = new Uint8Array(W * H * 3 / 2).fill(128, W * H);          // 투명도 줄기: 밝기 = 투명도, 색차는 가운데
             let end = 0;
             for (let i = 0; i < n && !err; i++) {
+                if (halt?.()) { f.close(); throw new Error("멈춤"); }
                 if (i) f = (await dec.decode({ frameIndex: i })).image;
                 x.clearRect(0, 0, W, H);
                 x.drawImage(f, 0, 0, fw * K, fh * K);
@@ -2505,10 +2541,12 @@ const ccfImport = (() => {
                 while (ec.encodeQueueSize > 4 || ea.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 0));
             }
             await ec.flush(); await ea.flush();
-            ec.close(); ea.close();
             if (err) throw err;
             return webmFile(W, H, cfg.codec.startsWith("vp8") ? "V_VP8" : "V_VP9", color, alpha, end / 1000);
-        } finally { dec.close(); }
+        } finally {
+            dec.close();
+            [ec, ea].forEach(e => { if (e && e.state !== "closed") e.close(); });
+        }
     };
     // 아주 작은 WebM(EBML) 쓰기: 영상 줄기 하나 + 투명도 덧붙임, 키 장면마다 묶음(Cluster)
     const cat = parts => { const o = new Uint8Array(parts.reduce((s, p) => s + p.length, 0)); let i = 0; parts.forEach(p => { o.set(p, i); i += p.length; }); return o; };
@@ -2526,9 +2564,9 @@ const ccfImport = (() => {
         const info = el(0x1549A966, el(0x2AD7B1, 1000000), el(0x4D80, "r20"), el(0x5741, "r20"), el(0x4489, f64));
         // AlphaMode 1 + MaxBlockAdditionID 1 → 덧붙임 1번이 투명도
         const tracks = el(0x1654AE6B, el(0xAE, el(0xD7, 1), el(0x73C5, 1), el(0x83, 1), el(0x86, codecId), el(0x55EE, 1), el(0xE0, el(0xB0, W), el(0xBA, H), el(0x53C0, 1))));
-        const clusters = [];
+        const clusters = [], alphaAt = new Map(alpha.map(a => [a.ts, a.data]));      // 투명도는 같은 시각의 장면과 짝 (장면을 빠뜨려도 어긋나지 않게)
         let cur = null, base0 = 0, prev = 0;
-        color.forEach((c, i) => {
+        color.forEach(c => {
             const t = Math.round(c.ts / 1000);
             if (c.key || !cur || t - base0 > 30000) {           // 묶음 안 상대 시각은 16비트
                 if (cur) clusters.push(el(0x1F43B675, ...cur));
@@ -2539,7 +2577,7 @@ const ccfImport = (() => {
             new DataView(rel.buffer).setInt16(0, t - base0);
             const kids = [el(0xA1, cat([Uint8Array.of(0x81), rel, Uint8Array.of(0), c.data]))];
             if (!c.key) { const d = new Uint8Array(2); new DataView(d.buffer).setInt16(0, prev - t); kids.push(el(0xFB, d)); }     // 앞 장면을 참조 = 키 장면 아님
-            if (alpha[i]) kids.push(el(0x75A1, el(0xA6, el(0xEE, 1), el(0xA5, alpha[i].data))));
+            if (alphaAt.has(c.ts)) kids.push(el(0x75A1, el(0xA6, el(0xEE, 1), el(0xA5, alphaAt.get(c.ts)))));
             cur.push(el(0xA0, ...kids));
             prev = t;
         });
@@ -2581,6 +2619,12 @@ const ccfImport = (() => {
         const L = await layout(sc);
         if (!L.items.length) return prog("놓을 패널이 없어요");
         busy = true; stop = false; paint();
+        $(".warn").textContent = "가져오는 동안 Roll20 에서 다른 페이지로 옮기지 마세요";
+        try { await runRoom(pg, sc, L); }
+        catch (e) { console.warn("[코코포리아 가져오기] 오류:", e); prog("멈췄어요 — 오류: " + (e?.message || e)); }
+        finally { busy = false; paint(); refresh(); }
+    };
+    const runRoom = async (pg, sc, L) => {
         // apng → webm 은 Roll20 에 올리기 전에 한꺼번에 (이미 올려 둔 건 건너뜀, 못 바꾸면 멈춘 그림으로)
         const srcs = new Map();
         for (const n of new Set(L.items.map(t => t.img))) srcs.set(n, await sourceOf(n));
@@ -2590,9 +2634,11 @@ const ccfImport = (() => {
             if (stop) break;
             prog(`webm 으로 바꾸는 중 ${++k}/${todo.length}`);
             try {
-                s.file = new File([await toWebm(new Uint8Array(await (await blobOf(n)).arrayBuffer()), animType(n))], base(n) + ".webm", { type: "video/webm" });
+                s.file = new File([await toWebm(new Uint8Array(await (await blobOf(n)).arrayBuffer()), animType(n), () => stop)], base(n) + ".webm", { type: "video/webm" });
+                blobs.delete(n);
                 conved++;
             } catch (e) {
+                if (stop) break;
                 console.warn("[코코포리아 가져오기] webm 으로 못 바꿈:", n, e);
                 convFail++;
                 srcs.set(n, await plainSrc(n));
@@ -2611,6 +2657,7 @@ const ccfImport = (() => {
                 else {
                     prog(`그림 올리는 중 ${up + 1} · 놓는 중 ${i}/${L.items.length}`);
                     const g = await dropUpload(pg, f);
+                    s.file = null; blobs.delete(t.img);         // 올렸으면 그림 몸통은 더 안 쓴다
                     if (g) {
                         src = g.get("imgsrc");
                         upMap[s.key] = src;
@@ -2630,8 +2677,6 @@ const ccfImport = (() => {
             try { pg.thegraphics.create({ imgsrc: src, page_id: pg.id, ...attrsOf(t, L) }); placed++; }
             catch (e) { console.warn("[코코포리아 가져오기] 놓기 실패:", e); fail.add(t.img); }
         }
-        busy = false;
-        paint();
         prog((stop ? `멈췄어요 — ${placed}/${L.items.length}개 놓음` : `다 놓았어요 — ${placed}개`)
             + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
@@ -2646,20 +2691,27 @@ const ccfImport = (() => {
         const pg = page();
         if (!pg?.thegraphics) return prog("지금 페이지를 못 찾았어요");
         busy = true; stop = false; paint();
+        $(".warn").textContent = "올리는 동안 Roll20 에서 다른 페이지로 옮기지 마세요";
+        try { await runPackAll(pg); }
+        catch (e) { console.warn("[그림 올리기] 오류:", e); prog("멈췄어요 — 오류: " + (e?.message || e)); }
+        finally { busy = false; paint(); refresh(); }
+    };
+    const runPackAll = async pg => {
         let up = 0, reused = 0, conved = 0, convFail = 0, i = 0;
         const fail = [];
         for (const n of pack) {
             if (stop) break;
             prog(`올리는 중 ${++i}/${pack.length}`);
             const b = await blobOf(n).catch(() => null);
+            blobs.delete(n);                 // 이 그림은 이번에 한 번만 쓴다
             if (!b) { fail.push(n); continue; }
             const h = "h:" + await hashOf(b), name = base(n);
             let file = null, key = h;
             if (conv && CAN_CONV && await isAnim(n)) {
                 if (upMap[h + ":webm2"]) { reused++; continue; }
                 prog(`webm 으로 바꾸는 중 ${i}/${pack.length}`);
-                try { file = new File([await toWebm(new Uint8Array(await b.arrayBuffer()), animType(n))], name + ".webm", { type: "video/webm" }); key = h + ":webm2"; conved++; }
-                catch (e) { console.warn("[그림 올리기] webm 으로 못 바꿈:", n, e); convFail++; }
+                try { file = new File([await toWebm(new Uint8Array(await b.arrayBuffer()), animType(n), () => stop)], name + ".webm", { type: "video/webm" }); key = h + ":webm2"; conved++; }
+                catch (e) { if (stop) break; console.warn("[그림 올리기] webm 으로 못 바꿈:", n, e); convFail++; }
             }
             if (!file) {
                 if (upMap[h]) { reused++; continue; }
@@ -2673,8 +2725,6 @@ const ccfImport = (() => {
             up++;
             try { g.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); }
         }
-        busy = false;
-        paint();
         prog((stop ? `멈췄어요 — ${i}/${pack.length}` : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.length ? ` · 못 올린 그림 ${fail.length}개 (콘솔에 목록)` : ""));
         if (fail.length) console.warn("[그림 올리기] 못 올린 그림:", fail);
@@ -2687,7 +2737,7 @@ const ccfImport = (() => {
     const imgsIn = z => [...z.keys()].filter(n => IMG.test(n) && !/(^|\/)(__MACOSX\/|\._)/.test(n))
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     const openZip = async (z, name) => {
-        zip = z; zipName = name; blobs.clear(); looks.clear(); bitmaps.clear();
+        zip = z; zipName = name; blobs.clear(); looks.clear(); bitmaps.clear(); anims.clear();
         pack = null;
         if (!z.has("__data.json")) {           // 그림 묶음
             const list = imgsIn(z);
@@ -2715,7 +2765,7 @@ const ccfImport = (() => {
         const inp = $(".pw input"), pw = new TextEncoder().encode(inp.value);
         const d = pending && (pending.z.get("__data.json") || [...pending.z.values()].find(e => e.enc));
         if (!d || busy) return;
-        if (unlock(pw, new Uint8Array(await d.raw.slice(0, 12).arrayBuffer()))[11] !== d.check) { prog("암호가 틀렸어요"); inp.select(); return; }
+        if (unlock(pw, new Uint8Array(await (await rawOf(d)).slice(0, 12).arrayBuffer()))[11] !== d.check) { prog("암호가 틀렸어요"); inp.select(); return; }
         zipPw = pw;
         try { await openZip(pending.z, pending.name); pending = null; inp.value = ""; prog(""); }
         catch (e) { zipPw = null; prog(e?.message || String(e)); inp.select(); }
