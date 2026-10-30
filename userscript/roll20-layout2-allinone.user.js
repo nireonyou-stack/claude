@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.30.1
+// @version      1.31.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.30.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.31.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4220,6 +4220,8 @@ const roomImages = (() => {
             + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="${mode === "bank" ? "그림 이름 검색" : "이름·사용처 검색"}" aria-label="이미지 검색"></label>`
             + `<select class="r20ri-acct" data-only="bank" aria-label="계정"><option value="">계정: 전체</option></select>`
             + `<span class="r20ri-zoom"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
+            + `<label class="r20ri-auto" data-only="bank" title="켜 두면 아직 안 모은 계정으로 게임에 들어올 때 저절로 모아요 (플레이어여도 됨). 지금 계정은 빼요. 다 돌고 나면 꺼 주세요">`
+            + `<input type="checkbox"${assetBank.autoOn() ? " checked" : ""}>들어오면 자동으로 모으기 <small>(지금 계정은 빼고)</small></label>`
             + `<div class="r20ri-chips">${KINDS.map(([k, l]) => `<button type="button" data-src="${k}" aria-pressed="${src === k}">${l}</button>`).join("")}</div>`
             + `<div class="r20ri-note" hidden><span></span><button type="button" data-a="load"></button></div>`
             + `<div class="r20ri-list"></div>`
@@ -4231,6 +4233,7 @@ const roomImages = (() => {
         let qt = null;
         input.addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(() => { q = input.value; render(); }, 150); });
         r.querySelector(".r20ri-acct").addEventListener("change", e => { acct = e.target.value; render(); });
+        r.querySelector(".r20ri-auto input").addEventListener("change", e => assetBank.setAuto(e.target.checked));
         r.addEventListener("keydown", e => {
             e.stopPropagation();                 // Roll20 단축키 막기
             if (e.key === "Escape") closePop();
@@ -4335,8 +4338,16 @@ const assetBank = (() => {
             t.onerror = t.onabort = () => rej(t.error);
         });
     };
-    const list = async () => cache || (cache = ((await store("readonly", s => s.getAll())) || [])
-        .sort((a, b) => String(a.name).localeCompare(String(b.name), "ko", { numeric: true })));
+    // 계정 기록들 + 방 주크박스 기억(uid "~room", 계정 목록엔 안 보임)
+    const ROOM = "~room";
+    const load = async () => {
+        if (!cache) {
+            const rows = (await store("readonly", s => s.getAll())) || [];
+            cache = { accts: rows.filter(a => !a.room).sort((a, b) => String(a.name).localeCompare(String(b.name), "ko", { numeric: true })), room: rows.find(a => a.room) || null };
+        }
+        return cache;
+    };
+    const list = async () => (await load()).accts;
     const put = async recs => { cache = null; await store("readwrite", s => { recs.forEach(r => s.put(r)); }); cache = null; };
     // 다른 탭에서 모았을 수 있으니 이 탭으로 돌아오면 다시 읽는다
     document.addEventListener("visibilitychange", () => { if (!document.hidden) cache = null; });
@@ -4402,12 +4413,12 @@ const assetBank = (() => {
         return (Array.isArray(d?.tracks) ? d.tracks : []).map(x => { try { return typeof x === "string" ? JSON.parse(x) : x; } catch (e) { return null; } }).filter(x => x?.id);
     };
     // 방 주크박스엔 다른 계정 곡도 섞여 있다 → 내 오디오에 있는 곡만 (주크박스 track_id 의 # 앞 = 오디오 번호).
-    // 방에 있는 곡은 방 설정(재생목록 · 볼륨 · 반복)대로, 없으면 예전에 모은 것, 그것도 없으면 재생목록 밖
+    // 방에 있는 곡은 방 설정(재생목록 · 볼륨 · 반복)대로 → 없으면 기억해 둔 방 주크박스 → 예전에 모은 것 → 재생목록 밖
     const aid = tid => String(tid || "").split("#")[0];
-    const ownTracks = (mine, room, old) => {
+    const ownTracks = (mine, room, old, mem) => {
         const ids = new Set(mine.map(a => String(a.id))), was = new Map(), out = [];
         (old?.tracks || []).forEach(t => { if (!was.has(aid(t.tid))) was.set(aid(t.tid), t); });
-        (room?.tracks || []).forEach(t => { const k = aid(t.tid); if (ids.has(k) && (!t.src || t.src === "My Audio")) { out.push(t); ids.delete(k); } });
+        [...(room?.tracks || []), ...(mem?.tracks || [])].forEach(t => { const k = aid(t.tid); if (ids.has(k) && (!t.src || t.src === "My Audio")) { out.push(t); ids.delete(k); } });
         mine.forEach(a => {
             const k = String(a.id);
             if (!ids.has(k)) return;
@@ -4416,8 +4427,15 @@ const assetBank = (() => {
             out.push(w ? { ...w, t: String(a.title || w.t) } : { t: String(a.title || ""), src: "My Audio", tid: k, sk: a.storagekey || "", tags: a.tags || "", vol: undefined, loop: false, pl: "" });
         });
         const used = new Set(out.map(t => t.pl)), pls = [];
-        [...(room?.pls || []), ...(old?.pls || [])].forEach(p => { if (used.has(p.n) && !pls.some(x => x.n === p.n)) pls.push(p); });
+        [...(room?.pls || []), ...(mem?.pls || []), ...(old?.pls || [])].forEach(p => { if (used.has(p.n) && !pls.some(x => x.n === p.n)) pls.push(p); });
         return { tracks: out, pls };
+    };
+    // GM 으로 모을 때 방 주크박스 전체(재생목록 · 볼륨 · 반복)를 기억해 둔다 → 주크박스가 안 보이는 플레이어로 모아도 재생목록이 붙는다
+    const remember = (room, game, prev) => {
+        const seen = new Set(), tracks = [], pls = [...room.pls];
+        [...room.tracks, ...(prev?.tracks || [])].forEach(t => { const k = aid(t.tid); if (!seen.has(k)) { seen.add(k); tracks.push(t); } });
+        (prev?.pls || []).forEach(p => { if (!pls.some(x => x.n === p.n)) pls.push(p); });
+        return { uid: ROOM, room: true, at: Date.now(), game, tracks, pls };
     };
     // 지금 로그인한 계정의 그림 + 그 계정이 올린 곡. 멈추면 예전 목록 그대로, 내 오디오를 못 읽으면 트랙은 예전 그대로
     const collect = async job => {
@@ -4429,11 +4447,12 @@ const assetBank = (() => {
         if (!imgs) return `멈췄어요 — ${who.name} 목록은 예전 그대로예요`;
         let mine = null;
         try { mine = await readMyAudio(); } catch (e) { console.warn("[모은 목록] 내 오디오 읽기 실패:", e); }
-        const room = readTracks();
+        const room = readTracks(), game = document.title.replace(/\s*\|\s*Roll20.*$/i, "").trim();
+        const memRec = room ? remember(room, game, (await load()).room) : null, mem = memRec || (await load()).room;
         const rec = { ...(old || {}), uid: who.uid, name: who.name, at: Date.now(), imgs, tracks: old?.tracks || [], pls: old?.pls || [] };
-        if (mine) Object.assign(rec, ownTracks(mine, room, old));
-        if (mine && room) rec.game = document.title.replace(/\s*\|\s*Roll20.*$/i, "").trim();
-        await put([rec]);
+        if (mine) Object.assign(rec, ownTracks(mine, room, old, mem));
+        if (mine && (room || mem)) rec.game = room ? game : mem.game;
+        await put(memRec ? [rec, memRec] : [rec]);
         const gone = (a, b, k) => { const s = new Set((b || []).map(k)); return (a || []).filter(x => !s.has(k(x))).length; };
         const diff = (now, was, k) => { if (!was) return ""; const p = gone(now, was, k), m = gone(was, now, k); return p || m ? ` (+${p} −${m})` : ""; };
         return `${who.name}: 그림 ${imgs.length}장${diff(imgs, old?.imgs, x => x.id)}`
@@ -4576,6 +4595,40 @@ const assetBank = (() => {
         draw();
     };
 
+    // ── 자동 모으기: 켜 두면 아직 안 모은 계정으로 게임에 들어올 때 저절로 모은다 (플레이어여도 됨 · 켠 계정은 빼고) ──
+    // 설정은 localStorage — 같은 브라우저면 계정을 바꿔도 그대로다
+    const AUTO = "r20_ab_auto";
+    const autoCfg = () => { try { return JSON.parse(localStorage.getItem(AUTO) || "null"); } catch (e) { return null; } };
+    const setAuto = on => { const w = me(); if (on) localStorage.setItem(AUTO, JSON.stringify({ skip: w ? [w.uid] : [] })); else localStorage.removeItem(AUTO); };
+    let autoTried = false, toastEl = null, toastT = 0;
+    const toast = (msg, job, ms) => {
+        if (!toastEl) {
+            toastEl = document.createElement("div");
+            toastEl.className = "r20ab-toast";
+            toastEl.setAttribute("role", "status");
+            toastEl.innerHTML = `<strong>모은 목록</strong><span></span><button type="button"></button>`;
+            toastEl.querySelector("button").addEventListener("click", () => { if (toastEl._job && !toastEl._job.done) toastEl._job.stop = true; else { toastEl.remove(); toastEl = null; } });
+            document.body.append(toastEl);
+        }
+        toastEl._job = job;
+        toastEl.querySelector("span").textContent = msg;
+        toastEl.querySelector("button").textContent = job && !job.done ? "멈추기" : "닫기";
+        clearTimeout(toastT);
+        if (ms) toastT = setTimeout(() => { toastEl?.remove(); toastEl = null; }, ms);
+    };
+    const autoRun = async () => {
+        const cfg = autoCfg(), w = me();
+        if (!cfg || !w || (cfg.skip || []).includes(w.uid)) return;
+        const had = (await list()).find(a => a.uid === w.uid);
+        if (had) { const d = new Date(had.at); return toast(`${w.name} — 이미 모은 계정이에요 (${d.getMonth() + 1}/${d.getDate()}) · 다시 모으려면 그림 탭 › 모은 목록`, null, 8000); }
+        const job = { stop: false, done: false };
+        job.tell = m => toast(m, job);
+        let msg;
+        try { msg = await collect(job); } catch (e) { console.warn("[모은 목록] 자동 모으기 실패:", e); msg = "못 모았어요 — " + (e?.message || e); }
+        job.done = true;
+        toast(/모았어요$/.test(msg) ? msg + " · 이제 로그아웃해도 돼요" : msg, job);
+    };
+
     const closePanel = () => { panel?.remove(); panel = null; btn?.setAttribute("aria-expanded", "false"); };
     const openPanel = () => {
         if (panel) return closePanel();
@@ -4622,6 +4675,8 @@ const assetBank = (() => {
 
     const inject = () => {
         if (!btnVisible.artroom) return;
+        // 게임이 다 뜬 뒤(계정 정보 · 주크박스) 한 번만
+        if (!autoTried && window.currentPlayer?.get && autoCfg()) { autoTried = true; setTimeout(autoRun, 5000); }
         const host = document.querySelector("#jukebox .secondarycontrols");
         if (!host || host.querySelector(".r20ab-open")) return;
         btn = document.createElement("button");
@@ -4637,10 +4692,11 @@ const assetBank = (() => {
     const setEnabled = on => {
         if (on) return inject();
         closePanel();
+        toastEl?.remove(); toastEl = null;
         document.querySelectorAll(".r20ab-open").forEach(b => b.remove());
         btn = null;
     };
-    return { inject, setEnabled, list, collect, exportFile, importFile };
+    return { inject, setEnabled, list, collect, exportFile, importFile, autoOn: () => !!autoCfg(), setAuto };
 })();
 
 // ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
@@ -5141,6 +5197,13 @@ addCss(`
         #imagedialog .r20ri[data-m="bank"] .r20ri-chips, #imagedialog .r20ri[data-m="bank"] [data-only="room"], #imagedialog .r20ri:not([data-m="bank"]) [data-only="bank"] { display:none !important; }
         #imagedialog .r20ri-q { min-width:0; }
         #imagedialog .r20ri-gh small { display:inline !important; position:static !important; top:auto !important; }
+        #imagedialog label.r20ri-auto { display:flex; align-items:center; gap:6px; margin:0 0 6px !important; padding:0; font-size:11px !important; font-weight:400 !important; color:#555; cursor:pointer; }
+        #imagedialog label.r20ri-auto input { margin:0 !important; }
+        #imagedialog label.r20ri-auto small { display:inline !important; position:static !important; color:#8a8a90; }
+        .r20ab-toast { position:fixed; right:16px; bottom:16px; z-index:10003; display:flex; align-items:center; gap:8px; max-width:min(380px, calc(100vw - 32px)); padding:10px 10px 10px 12px; border:1px solid #f0d6e2; border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.18); color:#333; font:12px/1.45 sans-serif; }
+        .r20ab-toast strong { flex-shrink:0; color:#b8215f; }
+        .r20ab-toast span { flex:1; min-width:0; overflow-wrap:anywhere; }
+        .r20ab-toast button { flex-shrink:0; height:24px; margin:0; padding:0 9px; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#555; font:11px sans-serif; cursor:pointer; }
         #imagedialog select.r20ri-acct { flex-shrink:0; width:auto !important; max-width:96px; height:28px !important; margin:0 !important; padding:0 4px !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         #imagedialog button.r20ri-more { display:block; width:100%; height:26px; margin:2px 0 6px; padding:0; border:1px dashed #d6d6dc; border-radius:6px; background:#fff; color:#b8215f; font-size:11px; }
         #imagedialog .r20ri-foot button[data-a="collect"] { border-color:#b8215f; background:#b8215f; color:#fff; font-weight:700; }
