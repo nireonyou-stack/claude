@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.28.2
+// @version      1.29.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.28.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.29.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2326,6 +2326,7 @@ const ccfImport = (() => {
     const UP_KEY = "r20_ccf_up";
     const CAN_CONV = typeof ImageDecoder === "function" && typeof VideoEncoder === "function";
     let conv = localStorage.getItem("r20_ccf_conv") !== "false";
+    let lay = localStorage.getItem("r20_ccf_lay") !== "false";        // 그림 묶음: 올린 그림을 지금 페이지에도 늘어놓기
     const MIME = { png: "image/png", apng: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
     const R20 = /^https:\/\/(?:s3\.amazonaws\.com\/)?files\.d20\.io\//i;
     let pop = null, anchor = null, zip = null, zipName = "", data = null, scenes = [], sel = 0, grid = null, busy = false, stop = false;
@@ -2683,8 +2684,8 @@ const ccfImport = (() => {
         if (fail.size) console.warn("[코코포리아 가져오기] 못 올린 그림:", [...fail]);
     };
 
-    // 그림 묶음 올리기: 하나씩 Roll20 에 올리고 테이블에 생긴 그림은 바로 지워 라이브러리에만 남긴다.
-    // 이름이 흔해서 기억 열쇠는 내용 해시 (같은 그림은 어느 ZIP 에서 와도 한 번만)
+    // 그림 묶음 올리기: 하나씩 Roll20 에 올린다. 켜 두면(기본) 지금 페이지에 첫 그림이 떨어진 자리부터 늘어놓고,
+    // 끄면 테이블에 생긴 그림을 지워 라이브러리에만 남긴다. 이름이 흔해서 기억 열쇠는 내용 해시 (같은 그림은 어느 ZIP 에서 와도 한 번만)
     const hashOf = async b => [...new Uint8Array(await crypto.subtle.digest("SHA-256", await b.arrayBuffer()))].slice(0, 16)
         .map(v => v.toString(16).padStart(2, "0")).join("");
     const runPack = async () => {
@@ -2696,25 +2697,58 @@ const ccfImport = (() => {
         catch (e) { console.warn("[그림 올리기] 오류:", e); prog("멈췄어요 — 오류: " + (e?.message || e)); }
         finally { busy = false; paint(); refresh(); }
     };
+    // 원래 크기: 그림은 첫 장면, 영상은 메타데이터 (모르면 1칸)
+    const dimsOf = async b => {
+        try { const bm = await createImageBitmap(b), d = [bm.width, bm.height]; bm.close(); return d; } catch (e) { /* 영상 */ }
+        const v = document.createElement("video"), u = URL.createObjectURL(b);
+        try {
+            v.muted = true; v.preload = "metadata"; v.src = u;
+            await new Promise((res, rej) => { v.onloadedmetadata = res; v.onerror = rej; setTimeout(rej, 10000); });
+            return [v.videoWidth || 70, v.videoHeight || 70];
+        } catch (e) { return [70, 70]; } finally { URL.revokeObjectURL(u); }
+    };
+    // 늘어놓기: 원래 크기 그대로, 한 줄 15칸(1050px)을 넘으면 다음 줄로
+    const shelf = (x0, y0) => {
+        let x = x0, y = y0, rowH = 0;
+        return (w, h) => {
+            if (x > x0 && x + w > x0 + 1050) { x = x0; y += rowH + 35; rowH = 0; }
+            const at = { left: x + w / 2, top: y + h / 2, width: w, height: h };
+            x += w + 35; rowH = Math.max(rowH, h);
+            return at;
+        };
+    };
+    const urlKey = u => String(u || "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
     const runPackAll = async pg => {
-        let up = 0, reused = 0, conved = 0, convFail = 0, i = 0;
-        const fail = [];
+        let up = 0, reused = 0, conved = 0, convFail = 0, i = 0, slot = null;
+        const fail = [], mine = new Set(), kept = new Set(), before = new Set(pg.thegraphics.models.map(m => m.id));
+        // g: Roll20 이 떨어뜨린 그림(새로 올린 것) · src: 이미 올려 둔 주소 — 늘어놓거나, 끈 경우엔 지운다
+        const put = (g, src, dims) => {
+            mine.add(urlKey(src));
+            if (!lay) { if (g) try { g.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); } return; }
+            if (!slot) {        // 첫 그림이 떨어진 자리(보고 있는 화면 가운데)부터, 모르면 페이지 왼쪽 위
+                const l = +g?.get("left") - (+g?.get("width") || 0) / 2, t = +g?.get("top") - (+g?.get("height") || 0) / 2;
+                slot = Number.isFinite(l) && Number.isFinite(t) ? shelf(Math.max(0, l), Math.max(0, t)) : shelf(35, 35);
+            }
+            const at = { ...slot(...dims), layer: "objects" };
+            if (g) g.save(at); else g = pg.thegraphics.create({ imgsrc: src, page_id: pg.id, ...at });
+            if (g) kept.add(g.id);
+        };
         for (const n of pack) {
             if (stop) break;
             prog(`올리는 중 ${++i}/${pack.length}`);
             const b = await blobOf(n).catch(() => null);
             blobs.delete(n);                 // 이 그림은 이번에 한 번만 쓴다
             if (!b) { fail.push(n); continue; }
-            const h = "h:" + await hashOf(b), name = base(n);
+            const h = "h:" + await hashOf(b), name = base(n), dims = await dimsOf(b);      // webm 으로 바꿔도 원래 크기로 놓는다
             let file = null, key = h;
             if (conv && CAN_CONV && await isAnim(n)) {
-                if (upMap[h + ":webm2"]) { reused++; continue; }
+                if (upMap[h + ":webm2"]) { reused++; put(null, upMap[h + ":webm2"], dims); continue; }
                 prog(`webm 으로 바꾸는 중 ${i}/${pack.length}`);
                 try { file = new File([await toWebm(new Uint8Array(await b.arrayBuffer()), animType(n), () => stop)], name + ".webm", { type: "video/webm" }); key = h + ":webm2"; conved++; }
                 catch (e) { if (stop) break; console.warn("[그림 올리기] webm 으로 못 바꿈:", n, e); convFail++; }
             }
             if (!file) {
-                if (upMap[h]) { reused++; continue; }
+                if (upMap[h]) { reused++; put(null, upMap[h], dims); continue; }
                 file = new File([b], /\.apng$/i.test(n) ? name + ".png" : n.replace(/^.*\//, ""), { type: typeOf(n) });
             }
             prog(`올리는 중 ${i}/${pack.length}`);
@@ -2723,9 +2757,12 @@ const ccfImport = (() => {
             upMap[key] = g.get("imgsrc");
             saveUp();
             up++;
-            try { g.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); }
+            put(g, upMap[key], dims);
         }
-        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
+        // 이번에 테이블에 생긴 그 그림 중 늘어놓은 것 말고 남은 것(Roll20 이 하나 더 만든 것 등)은 지운다
+        if (mine.size) pg.thegraphics.models.filter(m => !before.has(m.id) && !kept.has(m.id) && mine.has(urlKey(m.get("imgsrc"))))
+            .forEach(m => { try { m.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); } });
+        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : lay ? "다 올리고 늘어놓았어요" : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.length ? ` · 못 올린 그림 ${fail.length}개 (콘솔에 목록)` : ""));
         if (fail.length) console.warn("[그림 올리기] 못 올린 그림:", fail);
     };
@@ -2820,7 +2857,9 @@ const ccfImport = (() => {
         if (pack !== list) return;
         const anim = isA.filter(Boolean).length;
         $(".conv").hidden = !(anim && CAN_CONV);
-        $(".info").textContent = `룸 데이터가 없는 ZIP 이라 그림만 Roll20 라이브러리에 올려요 — 그림 ${list.length}개` + (anim ? ` · 움직이는 그림 ${anim}개` : "")
+        $(".lay").hidden = false;
+        $(".lay").setAttribute("aria-checked", String(lay));
+        $(".info").textContent = `룸 데이터가 없는 ZIP 이라 그림을 Roll20 라이브러리에 올려요${lay ? " (지금 페이지에도 늘어놓아요)" : ""} — 그림 ${list.length}개` + (anim ? ` · 움직이는 그림 ${anim}개` : "")
             + (anim && !(conv && CAN_CONV) ? " (멈춘 그림으로 올라가요)" : "");
         const cv = $(".pv"), show = list.filter(n => !/\.(webm|mp4)$/i.test(n)).slice(0, 48), S = 36, cols = 8;
         cv.hidden = !show.length;
@@ -2845,6 +2884,7 @@ const ccfImport = (() => {
         const s = $("select");
         $(".scn").hidden = !zip || !!pack;
         if (pack) return refreshPack();
+        $(".lay").hidden = true;
         let html = "", grp = "";
         scenes.forEach((c, i) => {
             if (c.grp !== grp) html += (grp ? "</optgroup>" : "") + ((grp = c.grp) ? `<optgroup label="${escAttr(grp)}">` : "");
@@ -2882,7 +2922,7 @@ const ccfImport = (() => {
     const paint = () => {
         if (!pop) return;
         const go = $(".pri");
-        go.textContent = busy ? "멈추기" : pack ? "라이브러리에 올리기" : "가져오기";
+        go.textContent = busy ? "멈추기" : pack ? (lay ? "올리고 늘어놓기" : "라이브러리에 올리기") : "가져오기";
         go.disabled = !busy && !scenes[sel] && !pack;
         pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button").forEach(el => { el.disabled = busy; });
     };
@@ -2901,7 +2941,8 @@ const ccfImport = (() => {
             + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
             + '<div class="rg pw" hidden><input type="password" placeholder="ZIP 암호" aria-label="ZIP 암호" autocomplete="off"><button type="button" data-k="pw">열기</button></div>'
             + '<label class="rg scn" hidden><span>장면</span><select></select></label><div class="info"></div>'
-            + '<button type="button" class="sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button><canvas class="pv" hidden></canvas>'
+            + '<button type="button" class="sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button>'
+            + '<button type="button" class="sw lay" role="switch" hidden><i aria-hidden="true"></i>올린 그림을 지금 페이지에도 늘어놓기</button><canvas class="pv" hidden></canvas>'
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
             + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
             + '<div class="pg"></div><div class="warn"></div></div>'
@@ -2918,6 +2959,7 @@ const ccfImport = (() => {
             if (b.dataset.k === "pw") return tryPw();
             if (b.dataset.cell) { cell = +b.dataset.cell; localStorage.setItem("r20_ccf_cell", String(cell)); return refresh(); }
             if (b.classList.contains("conv")) { conv = !conv; localStorage.setItem("r20_ccf_conv", String(conv)); return refresh(); }
+            if (b.classList.contains("lay")) { lay = !lay; localStorage.setItem("r20_ccf_lay", String(lay)); return refresh(); }
             if (b.classList.contains("grid")) { grid = !grid; return refresh(); }
             if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else if (pack) runPack(); else run(); }
         });
@@ -2973,8 +3015,8 @@ addCss(`
         #r20-ccf .pv { display:block; max-width:100%; margin:0 auto; border-radius:4px; }
         #r20-ccf .pv[hidden] { display:none; }
         #r20-ccf .sw { display:flex; align-items:center; gap:6px; margin-left:auto; padding:0; border:0; background:none; font-weight:400; }
-        #r20-ccf .conv { align-self:flex-start; margin-left:0; }
-        #r20-ccf .conv[hidden] { display:none; }
+        #r20-ccf .conv, #r20-ccf .lay { align-self:flex-start; margin-left:0; }
+        #r20-ccf .conv[hidden], #r20-ccf .lay[hidden] { display:none; }
         #r20-ccf .sw i { position:relative; width:26px; height:14px; border-radius:7px; background:#c8c8cc; }
         #r20-ccf .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
         #r20-ccf .sw[aria-checked=true] i { background:#b8215f; }
