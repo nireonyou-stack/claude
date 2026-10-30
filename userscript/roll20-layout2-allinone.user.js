@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.30.0
+// @version      1.30.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.30.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.30.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4225,7 +4225,7 @@ const roomImages = (() => {
             + `<div class="r20ri-list"></div>`
             + `<div class="r20ri-foot"><span class="r20ri-sum" title="같은 그림은 하나로 셉니다 · 그림을 끌어서 맵에 놓기"></span>`
             + `<button type="button" data-only="room" data-a="openall">전부 펼치기</button><button type="button" data-only="room" data-a="closeall">전부 접기</button><button type="button" data-only="room" data-a="reload">다시 읽기</button>`
-            + `<button type="button" data-only="bank" data-a="collect" title="지금 로그인한 계정의 라이브러리 그림과 이 게임 주크박스 트랙을 모아 둡니다">이 계정 모으기</button>`
+            + `<button type="button" data-only="bank" data-a="collect" title="지금 로그인한 계정의 라이브러리 그림과 그 계정이 올린 곡을 모아 둡니다 (재생목록은 이 게임 주크박스에서)">이 계정 모으기</button>`
             + `<button type="button" data-only="bank" data-a="export" title="모은 목록을 파일로 (백업 · 다른 PC로 옮기기)">내보내기</button><button type="button" data-only="bank" data-a="import" title="내보낸 파일 불러오기">불러오기</button></div></div>`;
         const input = r.querySelector(".r20ri-q input"), list = r.querySelector(".r20ri-list");
         let qt = null;
@@ -4312,7 +4312,7 @@ const roomImages = (() => {
 
 // ───────── 모은 목록: 저장소로 쓰는 계정들의 라이브러리 그림 · 주크박스 트랙 목록을 모아 두고 메인 계정에서 쓴다 ─────────
 // app.roll20.net 의 IndexedDB 는 같은 브라우저면 로그인한 계정이 달라도 같은 곳 → 계정마다 [이 계정 모으기] 한 번이면 쌓인다.
-// 그림은 라이브러리 목록 주소(폴더 밖 그림 — 폴더는 안 씀)를 한 쪽씩 쉬면서 읽고, 트랙은 지금 게임의 주크박스를 재생목록째 읽는다.
+// 그림은 라이브러리 목록 주소(폴더 밖 그림 — 폴더는 안 씀)를 한 쪽씩 쉬면서 읽고, 트랙은 그 계정이 올린 곡(내 오디오)만 — 재생목록은 지금 게임 주크박스에서.
 // 그림 쓰기는 '이 방의 이미지' 창의 모은 목록 탭, 트랙 넣기는 주크박스 탭의 [모은 트랙] 창
 const assetBank = (() => {
     const esc = escAttr;
@@ -4394,7 +4394,32 @@ const assetBank = (() => {
         byId.forEach(m => add(m, ""));
         return { tracks, pls };
     };
-    // 지금 로그인한 계정의 그림 + 이 게임 트랙. 멈추면 예전 목록 그대로, 트랙 없는 게임이면 트랙은 예전 것 그대로
+    // 내 오디오: 이 계정이 올린 곡 전부 { id, title, accountid, tags, storagekey } (항목이 JSON 글자로 한 번 더 싸여 온다)
+    const readMyAudio = async () => {
+        const r = await fetch("/audio_library/search?alltracks=true", { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } });
+        if (!r.ok) throw new Error(r.status);
+        const d = await r.json();
+        return (Array.isArray(d?.tracks) ? d.tracks : []).map(x => { try { return typeof x === "string" ? JSON.parse(x) : x; } catch (e) { return null; } }).filter(x => x?.id);
+    };
+    // 방 주크박스엔 다른 계정 곡도 섞여 있다 → 내 오디오에 있는 곡만 (주크박스 track_id 의 # 앞 = 오디오 번호).
+    // 방에 있는 곡은 방 설정(재생목록 · 볼륨 · 반복)대로, 없으면 예전에 모은 것, 그것도 없으면 재생목록 밖
+    const aid = tid => String(tid || "").split("#")[0];
+    const ownTracks = (mine, room, old) => {
+        const ids = new Set(mine.map(a => String(a.id))), was = new Map(), out = [];
+        (old?.tracks || []).forEach(t => { if (!was.has(aid(t.tid))) was.set(aid(t.tid), t); });
+        (room?.tracks || []).forEach(t => { const k = aid(t.tid); if (ids.has(k) && (!t.src || t.src === "My Audio")) { out.push(t); ids.delete(k); } });
+        mine.forEach(a => {
+            const k = String(a.id);
+            if (!ids.has(k)) return;
+            ids.delete(k);
+            const w = was.get(k);
+            out.push(w ? { ...w, t: String(a.title || w.t) } : { t: String(a.title || ""), src: "My Audio", tid: k, sk: a.storagekey || "", tags: a.tags || "", vol: undefined, loop: false, pl: "" });
+        });
+        const used = new Set(out.map(t => t.pl)), pls = [];
+        [...(room?.pls || []), ...(old?.pls || [])].forEach(p => { if (used.has(p.n) && !pls.some(x => x.n === p.n)) pls.push(p); });
+        return { tracks: out, pls };
+    };
+    // 지금 로그인한 계정의 그림 + 그 계정이 올린 곡. 멈추면 예전 목록 그대로, 내 오디오를 못 읽으면 트랙은 예전 그대로
     const collect = async job => {
         const who = me();
         if (!who) throw new Error("로그인한 계정을 못 찾았어요");
@@ -4402,14 +4427,17 @@ const assetBank = (() => {
         job.tell(`${who.name} 모으는 중…`);
         const imgs = await readLib(job);
         if (!imgs) return `멈췄어요 — ${who.name} 목록은 예전 그대로예요`;
-        const jb = readTracks();
+        let mine = null;
+        try { mine = await readMyAudio(); } catch (e) { console.warn("[모은 목록] 내 오디오 읽기 실패:", e); }
+        const room = readTracks();
         const rec = { ...(old || {}), uid: who.uid, name: who.name, at: Date.now(), imgs, tracks: old?.tracks || [], pls: old?.pls || [] };
-        if (jb) Object.assign(rec, jb, { game: document.title.replace(/\s*\|\s*Roll20.*$/i, "").trim() });
+        if (mine) Object.assign(rec, ownTracks(mine, room, old));
+        if (mine && room) rec.game = document.title.replace(/\s*\|\s*Roll20.*$/i, "").trim();
         await put([rec]);
         const gone = (a, b, k) => { const s = new Set((b || []).map(k)); return (a || []).filter(x => !s.has(k(x))).length; };
         const diff = (now, was, k) => { if (!was) return ""; const p = gone(now, was, k), m = gone(was, now, k); return p || m ? ` (+${p} −${m})` : ""; };
         return `${who.name}: 그림 ${imgs.length}장${diff(imgs, old?.imgs, x => x.id)}`
-            + (jb ? ` · 트랙 ${jb.tracks.length}곡${diff(jb.tracks, old?.tracks, x => x.tid + "|" + x.pl)}` : " · 이 게임엔 트랙이 없어 트랙은 예전 그대로") + " 모았어요";
+            + (mine ? ` · 올린 곡 ${rec.tracks.length}곡${diff(rec.tracks, old?.tracks, x => aid(x.tid))}` : " · 내 오디오 목록을 못 읽어 트랙은 예전 그대로") + " 모았어요";
     };
 
     // ── 파일로 내보내기 · 불러오기 (백업 · 다른 PC) ──
@@ -4496,7 +4524,7 @@ const assetBank = (() => {
         });
         if (rows > ROWS) html += `<p class="r20ab-empty">줄이 많아 앞 ${ROWS}줄만 보여요 — 검색이나 계정으로 좁혀 주세요</p>`;
         panel.querySelector(".r20ab-list").innerHTML = html || `<p class="r20ab-empty">${accts.length ? (onlyMissing && !v ? "빠진 곡이 없어요 ✓" : "찾는 곡이 없어요")
-            : "아직 모은 트랙이 없어요<br>저장소 계정으로 트랙이 든 게임에 들어가서<br>그림 창 › 모은 목록 › [이 계정 모으기]"}</p>`;
+            : "아직 모은 트랙이 없어요<br>저장소 계정으로 트랙이 든 게임에 들어가서<br>그림 탭 › 모은 목록 › [이 계정 모으기]"}</p>`;
         panel.querySelector(".r20ab-foot").textContent = accts.length ? `${who ? 1 : accts.length}계정 · ${total}곡 · 이 게임에 없는 곡 ${miss}` : "";
     };
     const drawSoon = () => { clearTimeout(dt); dt = setTimeout(draw, 200); };
@@ -4530,7 +4558,9 @@ const assetBank = (() => {
                 const k = audioKey(t.src, t.tid);
                 if (have.has(k)) continue;              // 같은 곡이 목록에 두 번 있으면 한 번만
                 if (b?.isConnected) b.textContent = `넣는 중 ${++n}/${todo.length}`;
-                const m = J.create({ title: t.t, source: t.src, track_id: t.tid, storagekey: t.sk, tags: t.tags || "", volume: t.vol ?? 30, loop: !!t.loop, playing: false, softstop: false });
+                // 방 주크박스에 없던 곡은 track_id 가 오디오 번호뿐 → Roll20 처럼 # 뒤에 곡마다 다른 번호를 붙인다 (재생엔 # 앞만 쓴다)
+                const tid = t.tid.includes("#") ? t.tid : t.tid + "#" + (10000 + Math.floor(Math.random() * 90000));
+                const m = J.create({ title: t.t, source: t.src, track_id: tid, storagekey: t.sk, tags: t.tags || "", volume: t.vol ?? 30, loop: !!t.loop, playing: false, softstop: false });
                 if (!m?.id) continue;
                 have.add(k);
                 if (t.pl) { if (!placed.has(t.pl)) placed.set(t.pl, []); placed.get(t.pl).push(m.id); }
@@ -5110,6 +5140,7 @@ addCss(`
         #imagedialog .r20ri-sum { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; }
         #imagedialog .r20ri[data-m="bank"] .r20ri-chips, #imagedialog .r20ri[data-m="bank"] [data-only="room"], #imagedialog .r20ri:not([data-m="bank"]) [data-only="bank"] { display:none !important; }
         #imagedialog .r20ri-q { min-width:0; }
+        #imagedialog .r20ri-gh small { display:inline !important; position:static !important; top:auto !important; }
         #imagedialog select.r20ri-acct { flex-shrink:0; width:auto !important; max-width:96px; height:28px !important; margin:0 !important; padding:0 4px !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         #imagedialog button.r20ri-more { display:block; width:100%; height:26px; margin:2px 0 6px; padding:0; border:1px dashed #d6d6dc; border-radius:6px; background:#fff; color:#b8215f; font-size:11px; }
         #imagedialog .r20ri-foot button[data-a="collect"] { border-color:#b8215f; background:#b8215f; color:#fff; font-weight:700; }
