@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.28.1
+// @version      1.28.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.28.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.28.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2763,7 +2763,7 @@ const ccfImport = (() => {
     // 암호 확인: 머리 12바이트만 풀어 마지막 바이트가 맞으면 열어 본다 (우연히 맞는 1/256 은 JSON 에서 걸러진다)
     const tryPw = async () => {
         const inp = $(".pw input"), pw = new TextEncoder().encode(inp.value);
-        const d = pending && (pending.z.get("__data.json") || [...pending.z.values()].find(e => e.enc));
+        const d = pending && [pending.z.get("__data.json"), ...pending.z.values()].find(e => e?.enc);     // 암호가 걸린 파일로 확인
         if (!d || busy) return;
         if (unlock(pw, new Uint8Array(await (await rawOf(d)).slice(0, 12).arrayBuffer()))[11] !== d.check) { prog("암호가 틀렸어요"); inp.select(); return; }
         zipPw = pw;
@@ -2787,6 +2787,12 @@ const ccfImport = (() => {
         }
         refresh();
     };
+    // 미리보기용 작은 그림: 다 그리면 그림 몸통은 비우고 160px 로 줄여 든다 (큰 ZIP 도 메모리에 다 들고 있지 않게)
+    const thumbOf = n => {
+        if (!bitmaps.has(n)) bitmaps.set(n, blobOf(n).then(b => createImageBitmap(b)).then(bm => bm.width <= 160 ? bm
+            : createImageBitmap(bm, { resizeWidth: 160, resizeQuality: "medium" }).finally(() => bm.close())).catch(() => null).finally(() => blobs.delete(n)));
+        return bitmaps.get(n);
+    };
     // 미리보기: 첫 장면만 (apng 도 첫 장면)
     const drawPreview = async (sc, L) => {
         const cv = $(".pv");
@@ -2798,8 +2804,7 @@ const ccfImport = (() => {
         x.fillStyle = L.color || "#ffffff";
         x.fillRect(0, 0, cv.width, cv.height);
         for (const t of L.items) {
-            if (!bitmaps.has(t.img)) bitmaps.set(t.img, blobOf(t.img).then(b => createImageBitmap(b)).catch(() => null));
-            const bm = await bitmaps.get(t.img);
+            const bm = await thumbOf(t.img);
             if (scenes[sel] !== sc) return;        // 그리는 사이 장면을 바꿨으면 그만
             const a = attrsOf(t, L);
             if (bm) x.drawImage(bm, (a.left - a.width / 2) * k, (a.top - a.height / 2) * k, a.width * k, a.height * k);
@@ -2824,8 +2829,7 @@ const ccfImport = (() => {
         x.clearRect(0, 0, cv.width, cv.height);
         for (let i = 0; i < show.length; i++) {
             const n = show[i];
-            if (!bitmaps.has(n)) bitmaps.set(n, blobOf(n).then(b => createImageBitmap(b)).catch(() => null));
-            const bm = await bitmaps.get(n);
+            const bm = await thumbOf(n);
             if (pack !== list) return;
             if (!bm) continue;
             const k = Math.min((S - 4) / bm.width, (S - 4) / bm.height), w = bm.width * k, h = bm.height * k;
