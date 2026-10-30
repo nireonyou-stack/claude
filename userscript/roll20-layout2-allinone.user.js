@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.27.0
+// @version      1.27.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.27.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.27.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2320,7 +2320,7 @@ const mapShot = (() => {
 // 그림은 Roll20 테이블에 파일을 끌어다 놓은 것처럼 해서 Roll20 이 직접 올린다 (한 번에 하나씩).
 // 올린 주소는 파일 이름(코코포리아가 붙인 내용 해시) + 크기로 기억해 두고, 다시 가져올 때는 또 올리지 않는다.
 // 확장자만 다른 파일(apng 를 바꾼 webm 등)을 같이 넣으면 같은 이름의 그림 대신 그걸 올리고,
-// 없으면 (켜 둔 경우) apng 를 브라우저 안에서 투명 webm 으로 바꿔 올린다 (Roll20 은 apng 를 안 움직인다).
+// 없으면 (켜 둔 경우) apng · 움직이는 webp 를 브라우저 안에서 투명 webm 으로 바꿔 올린다 (Roll20 은 이것들을 안 움직인다).
 // 룸 데이터(__data.json)가 없는 ZIP 은 그림 묶음으로 보고, 안의 그림을 라이브러리에만 올린다
 const ccfImport = (() => {
     const UP_KEY = "r20_ccf_up";
@@ -2397,10 +2397,13 @@ const ccfImport = (() => {
         }
         return blobs.get(n);
     };
-    // apng 인지 (acTL 조각이 그림 데이터 앞에 있다)
-    const isApng = async n => {
-        if (!/\.a?png$/i.test(n)) return false;
+    // 움직이는 그림인지: apng 는 acTL 조각이 그림 데이터 앞에, webp 는 VP8X 머리의 애니메이션 표시(0x02)
+    const animType = n => /\.a?png$/i.test(n) ? "image/png" : /\.webp$/i.test(n) ? "image/webp" : "";
+    const isAnim = async n => {
+        const t = animType(n);
+        if (!t) return false;
         const u = new Uint8Array(await (await blobOf(n)).slice(0, 65536).arrayBuffer());
+        if (t === "image/webp") return String.fromCharCode(...u.subarray(12, 16)) === "VP8X" && !!(u[20] & 2);
         for (let i = 8; i < u.length - 3; i++) if (u[i] === 0x61 && u[i + 1] === 0x63 && u[i + 2] === 0x54 && u[i + 3] === 0x4c) return true;
         return false;
     };
@@ -2455,10 +2458,10 @@ const ccfImport = (() => {
     const attrsOf = (t, L) => ({ left: px(t.x - L.x0 + t.w / 2), top: px(t.y - L.y0 + t.h / 2), width: px(t.w), height: px(t.h),
         rotation: t.rot || 0, layer: t.gm ? "gmlayer" : t.lock ? "map" : "objects", controlledby: t.lock ? "" : "all" });
 
-    // ── apng → 투명 webm: 색과 투명도를 VP9(안 되면 VP8) 두 줄기로 따로 만들어, 투명도는 블록 덧붙임(BlockAdditional)으로 넣는다 ──
+    // ── apng · 움직이는 webp → 투명 webm: 색과 투명도를 VP9(안 되면 VP8) 두 줄기로 따로 만들어, 투명도는 블록 덧붙임(BlockAdditional)으로 넣는다 ──
     // (ffmpeg 의 투명 webm 과 같은 짜임. 브라우저 인코더는 아직 투명도를 직접 못 받는다)
-    const toWebm = async bytes => {
-        const dec = new ImageDecoder({ data: bytes, type: "image/png" });
+    const toWebm = async (bytes, type) => {
+        const dec = new ImageDecoder({ data: bytes, type });
         try {
             await dec.tracks.ready; await dec.completed;
             const n = dec.tracks.selectedTrack.frameCount;
@@ -2549,7 +2552,7 @@ const ccfImport = (() => {
     const sourceOf = async n => {
         const f = extra.get(base(n));
         if (f) return { key: f.name + ":" + f.size, file: f };
-        if (conv && CAN_CONV && await isApng(n)) return { key: n + ":webm2", conv: true };       // webm2 = 2배 화질 (이전 변환본은 다시 쓰지 않음)
+        if (conv && CAN_CONV && await isAnim(n)) return { key: n + ":webm2", conv: true };       // webm2 = 2배 화질 (이전 변환본은 다시 쓰지 않음)
         return plainSrc(n);
     };
 
@@ -2587,7 +2590,7 @@ const ccfImport = (() => {
             if (stop) break;
             prog(`webm 으로 바꾸는 중 ${++k}/${todo.length}`);
             try {
-                s.file = new File([await toWebm(new Uint8Array(await (await blobOf(n)).arrayBuffer()))], base(n) + ".webm", { type: "video/webm" });
+                s.file = new File([await toWebm(new Uint8Array(await (await blobOf(n)).arrayBuffer()), animType(n))], base(n) + ".webm", { type: "video/webm" });
                 conved++;
             } catch (e) {
                 console.warn("[코코포리아 가져오기] webm 으로 못 바꿈:", n, e);
@@ -2652,10 +2655,10 @@ const ccfImport = (() => {
             if (!b) { fail.push(n); continue; }
             const h = "h:" + await hashOf(b), name = base(n);
             let file = null, key = h;
-            if (conv && CAN_CONV && await isApng(n)) {
+            if (conv && CAN_CONV && await isAnim(n)) {
                 if (upMap[h + ":webm2"]) { reused++; continue; }
                 prog(`webm 으로 바꾸는 중 ${i}/${pack.length}`);
-                try { file = new File([await toWebm(new Uint8Array(await b.arrayBuffer()))], name + ".webm", { type: "video/webm" }); key = h + ":webm2"; conved++; }
+                try { file = new File([await toWebm(new Uint8Array(await b.arrayBuffer()), animType(n))], name + ".webm", { type: "video/webm" }); key = h + ":webm2"; conved++; }
                 catch (e) { console.warn("[그림 올리기] webm 으로 못 바꿈:", n, e); convFail++; }
             }
             if (!file) {
@@ -2758,7 +2761,7 @@ const ccfImport = (() => {
         $(".pg").textContent = ""; $(".warn").textContent = "";
         $(".conv").setAttribute("aria-checked", String(conv));
         paint();
-        const list = pack, isA = await Promise.all(list.map(n => isApng(n).catch(() => false)));
+        const list = pack, isA = await Promise.all(list.map(n => isAnim(n).catch(() => false)));
         if (pack !== list) return;
         const anim = isA.filter(Boolean).length;
         $(".conv").hidden = !(anim && CAN_CONV);
@@ -2805,7 +2808,7 @@ const ccfImport = (() => {
         const L = await layout(sc);
         if (scenes[sel] !== sc) return;
         const imgs = [...new Set(L.items.map(t => t.img))];
-        const isA = await Promise.all(imgs.map(isApng));
+        const isA = await Promise.all(imgs.map(isAnim));
         const anim = isA.filter(Boolean).length;
         const swap = imgs.filter(n => extra.has(base(n))).length;
         const left = imgs.filter((n, i) => isA[i] && !extra.has(base(n))).length;       // 직접 넣은 webm 이 없는 움직이는 그림
