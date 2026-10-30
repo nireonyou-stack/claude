@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.27.1
+// @version      1.28.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.27.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.28.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6712,9 +6712,10 @@ addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 �
 
 // ══════════ 묶음 6 · 기본시트 데이터 자동완성 ══════════
 
-// ───────── 자동완성: 시트 인법/마법 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
-// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…] } — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
-// 레코드 키: name, group(유파), type, skill, range, target, cost, charge, effect, flavor, recite
+// ───────── 자동완성: 시트 인법/마법 · 어빌리티 · 아이템 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
+// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…] }
+//   — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
+// 레코드 키: name, group(유파 · 그룹), type, skill, range, target, cost, charge, effect, flavor, recite, kind(아이템 분류)
 // type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
 const autofill = (() => {
     const MAX = 8;
@@ -6722,10 +6723,14 @@ const autofill = (() => {
     const FIELDS = {
         insane:      { name: "Name", type: "Types", skill: "Assigned_Skill", effect: "Effect" },
         shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect" },
-        magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" }
+        magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" },
+        // 블러드문 시트: 반복 줄의 칸 이름이 그대로(name …), 팔로워 어빌리티는 ab1_ ~ ab3_ 이 앞에 붙는다
+        bloodmoon:      { name: "name", group: "group", type: "type", skill: "skill", cost: "cost", effect: "effect", flavor: "flavor" },
+        bloodmoon_item: { name: "name", kind: "kind", effect: "effect" }
     };
     // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
     const NAME_RE = /^attr_((?:Ninpo|Magic)_(?:\d+_)?)Name$/;
+    const BM_RE = /^attr_(ab[1-3]_)?name$/;
 
     const norm = s => String(s ?? "").replace(/^\s*\d+\.\s*/, "").replace(/\s+/g, "").toLowerCase();
     const normCache = new Map();
@@ -6797,7 +6802,17 @@ const autofill = (() => {
         input = null; items = [];
     };
 
+    // 블러드문: 어빌리티 줄 · 팔로워의 어빌리티 칸 3개 → 어빌리티, 아이템 줄 → 아이템 (팔로워 이름 칸은 아님)
+    const bmCtx = el => {
+        const m = el.name?.match(BM_RE);
+        const grp = m && el.closest(".bm") && el.closest(".repcontainer")?.dataset.groupname;
+        const sys = grp === "repeating_items" && !m[1] ? "bloodmoon_item"
+            : (grp === "repeating_abilities" && !m[1]) || (grp === "repeating_followers" && m[1]) ? "bloodmoon" : null;
+        const row = sys && el.closest(".repitem");
+        return row ? { base: m[1] || "", row, sys } : null;
+    };
     const ctx = el => {
+        if (BM_RE.test(el.name || "")) return el.disabled ? null : bmCtx(el);
         const m = el.name?.match(NAME_RE);
         if (!m || el.disabled) return null;
         const base = m[1];
@@ -6836,7 +6851,7 @@ const autofill = (() => {
             const b = document.createElement("b");
             b.textContent = r.name;
             const s = document.createElement("small");
-            s.textContent = [r.group, r.type, r.skill].filter(Boolean).join(" · ");
+            s.textContent = [r.group, r.type, r.skill, r.kind].filter(Boolean).join(" · ");
             it.append(b, s);
             box.appendChild(it);
         });
@@ -6885,14 +6900,15 @@ const autofill = (() => {
         if (!c) return close();
         const map = FIELDS[c.sys];
         const data = { ...rec };
-        // 플레이버 칸이 없는 시트는 효과 뒤에 붙인다
-        if (data.flavor && !map.flavor) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
+        const el = field => c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
+        // 플레이버 칸이 없는 시트 · 줄(팔로워 어빌리티 · 아이템)은 효과 뒤에 붙인다
+        if (data.flavor && !(map.flavor && el(map.flavor))) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
         filling = true;
         for (const [key, field] of Object.entries(map)) {
             if (data[key] == null || data[key] === "") continue;
             // 같은 name 의 표시용 <span> 이 앞에 있는 시트가 있어 입력 요소만 고른다
-            const el = c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
-            if (el) setField(el, String(data[key]));
+            const f = el(field);
+            if (f) setField(f, String(data[key]));
         }
         filling = false;
         close();
