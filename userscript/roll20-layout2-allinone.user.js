@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.32.0
+// @version      1.33.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.32.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.33.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6857,6 +6857,7 @@ const bulkEditor = (() => {
             "aria-pressed": String(t.filter === k), onclick: () => { t.filter = k; render(); } }, label)));
         ui.view.hidden = !isFlat(t);
         ui.zoom.hidden = !iconMode(t) && t.which !== "images";
+        ui.fold.hidden = !(t.which === "journal" || t.which === "bgm") || isFlat(t);
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         if (ui.foot.className === "r20be-foot") setStatus();      // 안내문만 보기 방식에 맞춘다 (알림 문구는 그대로)
         renderTree(); renderPane();
@@ -7108,6 +7109,11 @@ const bulkEditor = (() => {
         ui.zoom = el("span", { class: "r20be-zm", hidden: true },
             el("button", { type: "button", "aria-label": "아이콘 작게", onclick: () => zoom(-1) }, "−"),
             el("button", { type: "button", "aria-label": "아이콘 크게", onclick: () => zoom(1) }, "+"));
+        // 폴더 · 플레이리스트 한꺼번에 펼치기 · 접기 (저널 · BGM 의 폴더 보기에서만)
+        const foldAll = shut => { const t = cur(); t.collapsed = new Set(shut ? allNodes(t).filter(n => n.kids).map(n => n.id) : []); renderTree(); };
+        ui.fold = el("span", { class: "r20be-zm r20be-fold", hidden: true },
+            el("button", { type: "button", title: "폴더 전부 펼치기", onclick: () => foldAll(false) }, "전체 열기"),
+            el("button", { type: "button", title: "폴더 전부 접기", onclick: () => foldAll(true) }, "전체 닫기"));
         ui.pagesBtn = el("button", { type: "button", class: "r20be-sec", hidden: true, onclick: () => FEAT.roomImages?.loadPages() });
         // 페이지를 읽는 동안 묶음 목록을 늘리고, 다 읽으면 격자도 새로
         FEAT.roomImages?.onPages(l => {
@@ -7121,7 +7127,7 @@ const bulkEditor = (() => {
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
@@ -7240,6 +7246,7 @@ addCss(`
         #r20be .r20be-zm { display:flex; gap:2px; }
         #r20be .r20be-zm button { width:22px; height:22px; padding:0; border:1px solid #d4d4d4; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
         #r20be .r20be-zm button:hover { background:#f2f2f2; color:#222; }
+        #r20be .r20be-fold button { width:auto; padding:0 7px; font-size:11px; white-space:nowrap; }
         #r20be .r20be-tree.r20be-icons { padding:2px 10px 12px; }
         #r20be .r20be-igh { display:flex; align-items:center; gap:6px; padding:10px 4px 4px; font-size:11px; font-weight:700; color:#555; }
         #r20be .r20be-igh span { min-width:0; overflow:hidden; text-overflow:clip; white-space:nowrap; }
