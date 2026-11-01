@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.33.0
+// @version      1.34.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.33.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.34.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1512,10 +1512,142 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(24,103,199,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:#1867c7 !important; font-weight:700 !important; }
 `);
+// ───────── 주크박스 자동 백업: GM 으로 들어올 때 · 폴더 구조가 바뀔 때 이 브라우저(IndexedDB)에 저장해 두고 되돌린다 ─────────
+// 다른 브라우저 · 계정에서 Roll20 이 폴더를 빈 채로 저장한 일이 있었다(2026-11 · 폴더 72개가 다 비고 곡 2,500개가 밖으로).
+// 폴더 안 곡이 한꺼번에 30% 넘게 줄면 그 저장은 '수상함'으로 따로 표시하고 알림을 띄운다. 되돌리기는 알림 · 일괄 편집기 BGM 탭 [백업]
+const jbBackup = (() => {
+    const MAX = 12;
+    let dbp = null, bound = false, started = false, toast = null;
+    const db = () => dbp || (dbp = new Promise((res, rej) => {
+        const r = indexedDB.open("r20_jb_backup", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("room", { keyPath: "cid" });
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => { dbp = null; rej(r.error); };
+    }));
+    const cid = () => String(window.campaign_id || window.Campaign?.id || "");
+    const read = async () => {
+        const d = await db(), id = cid();
+        return new Promise(res => {
+            const q = d.transaction("room").objectStore("room").get(id);
+            q.onsuccess = () => res(q.result || { cid: id, snaps: [] });
+            q.onerror = () => res({ cid: id, snaps: [] });
+        });
+    };
+    const write = async rec => {
+        const d = await db();
+        return new Promise((res, rej) => { const t = d.transaction("room", "readwrite"); t.objectStore("room").put(rec); t.oncomplete = res; t.onerror = () => rej(t.error); });
+    };
+    // 폴더 수 · 폴더 안 곡 수
+    const stats = raw => {
+        let t = [];
+        try { t = JSON.parse(raw || "[]"); } catch (e) {}
+        let folders = 0, inF = 0;
+        const walk = (l, deep) => (Array.isArray(l) ? l : []).forEach(x => {
+            if (typeof x === "string") { if (deep) inF++; }
+            else if (x && typeof x === "object") { folders++; walk(x.i, true); }
+        });
+        walk(t, false);
+        return { folders, inF };
+    };
+    const lastGood = rec => rec.snaps.find(s => s.flag !== "drop");
+    // 지금 구조를 저장한다. 바로 앞 백업과 같으면 건너뛴다
+    const take = async () => {
+        if (!isGM() || !cid()) return;
+        const raw = window.Campaign?.get?.("jukeboxfolder"), n = window.Jukebox?.playlist?.models?.length || 0;
+        if (typeof raw !== "string" || !n) return;
+        let rec;
+        try { rec = await read(); } catch (e) { return; }
+        if (rec.snaps[0]?.raw === raw) return;
+        const st = stats(raw), good = lastGood(rec);
+        const drop = !!good && good.inF >= 20 && st.inF < good.inF * 0.7;
+        rec.snaps.unshift(Object.assign({ at: Date.now(), raw, tracks: n, flag: drop ? "drop" : "ok" }, st));
+        // 12개까지 — 정상 백업이 다 밀려나지 않게 마지막 정상 하나는 남긴다
+        let keep = rec.snaps.slice(0, MAX);
+        if (good && !keep.includes(good)) keep = keep.slice(0, MAX - 1).concat(good);
+        rec.snaps = keep;
+        try { await write(rec); } catch (e) { console.warn("[주크박스 백업] 저장 실패:", e); return; }
+        if (drop) warn(good, st);
+    };
+    // 되돌리기: 백업 구조에서 지금 없는 곡은 빼고, 백업 뒤에 폴더에 넣은 곡은 같은 이름 폴더(없으면 맨 아래)에 붙인다
+    const restore = async snap => {
+        const C = window.Campaign;
+        if (!isGM() || !C) return false;
+        const have = new Set((window.Jukebox?.playlist?.models || []).map(m => m.id));
+        let base, cur;
+        try { base = JSON.parse(snap.raw); cur = JSON.parse(C.get("jukeboxfolder") || "[]"); } catch (e) { return false; }
+        const keep = l => (Array.isArray(l) ? l : []).filter(x => typeof x !== "string" || have.has(x)).map(x => x && typeof x === "object" ? Object.assign({}, x, { i: keep(x.i) }) : x);
+        base = keep(base);
+        const used = new Set(), byName = new Map();
+        const mark = l => l.forEach(x => { if (typeof x === "string") used.add(x); else if (x && typeof x === "object") { if (!byName.has(x.n)) byName.set(x.n, x); mark(x.i); } });
+        mark(base);
+        const walk = (l, folder) => (Array.isArray(l) ? l : []).forEach(x => {
+            if (typeof x === "string") { if (used.has(x) || !have.has(x)) return; used.add(x); const f = folder && byName.get(folder.n); (f ? f.i : base).push(x); }
+            else if (x && typeof x === "object") walk(x.i, x);
+        });
+        walk(cur, null);
+        await take();                        // 되돌리기 전 지금 상태도 남겨 둔다
+        C.save({ jukeboxfolder: JSON.stringify(base) });
+        return true;
+    };
+    const fmt = s => { const d = new Date(s.at); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+    const closeToast = () => { toast?.remove(); toast = null; };
+    const warn = (good, st) => {
+        closeToast();
+        toast = document.createElement("div");
+        toast.className = "r20jbb-toast";
+        toast.setAttribute("role", "alert");
+        toast.innerHTML = `<b>주크박스 폴더에서 곡이 한꺼번에 빠졌어요</b><span>폴더 안 곡 ${good.inF.toLocaleString()} → ${st.inF.toLocaleString()} · ${fmt(good)} 백업으로 되돌릴 수 있어요</span>`
+            + `<div><button type="button" data-a="restore">되돌리기</button><button type="button" data-a="close">괜찮아요</button></div>`;
+        toast.addEventListener("click", async e => {
+            const a = e.target.closest("button")?.dataset.a;
+            if (a === "close") return closeToast();
+            if (a === "restore") {
+                const b = e.target.closest("button");
+                b.disabled = true; b.textContent = "되돌리는 중…";
+                const ok = await restore(good);
+                toast.querySelector("span").textContent = ok ? "되돌렸어요. 주크박스 폴더를 확인해 주세요." : "되돌리지 못했어요.";
+                toast.querySelector("div").innerHTML = '<button type="button" data-a="close">닫기</button>';
+            }
+        });
+        document.body.appendChild(toast);
+    };
+    const list = async () => { try { return (await read()).snaps; } catch (e) { return []; } };
+    // 게임이 다 뜬 뒤(GM · 주크박스 곡) 한 번 저장하고, 그 뒤로는 폴더 구조가 바뀔 때마다(3초 모아서)
+    let t = 0;
+    const inject = () => {
+        if (!btnVisible.jbrow || started || !gmKnown()) return;
+        if (!isGM()) { started = true; return; }
+        if (!window.Campaign?.get || !window.Jukebox?.playlist?.models?.length) return;
+        started = true;
+        setTimeout(take, 8000);
+        if (!bound && window.Campaign.on) { bound = true; window.Campaign.on("change:jukeboxfolder", () => { clearTimeout(t); t = setTimeout(take, 3000); }); }
+    };
+    const setEnabled = on => { if (on) inject(); else closeToast(); };
+    return { inject, setEnabled, list, restore, stats, fmt, take };
+})();
+addCss(`
+        .r20jbb-toast { position:fixed; right:16px; bottom:16px; z-index:10010; display:flex; flex-direction:column; gap:6px; width:min(340px, calc(100vw - 32px)); padding:12px 14px;
+            border:1px solid #e3b3a8; border-left:4px solid #c0392b; border-radius:6px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.2); color:#333; font:12px/1.5 sans-serif; }
+        .r20jbb-toast b { font-size:13px; color:#a0322a; }
+        .r20jbb-toast div { display:flex; gap:6px; justify-content:flex-end; }
+        .r20jbb-toast button { height:26px; margin:0; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font:12px sans-serif; cursor:pointer; }
+        .r20jbb-toast button[data-a="restore"] { border-color:#1867c7; background:#1867c7; color:#fff; font-weight:700; }
+        #r20be .r20be-bk { position:absolute; top:34px; right:10px; z-index:3; display:flex; flex-direction:column; width:min(360px, calc(100vw - 40px)); max-height:60vh; overflow-y:auto; padding:6px 0;
+            background:#fff; border:1px solid #ccc; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-size:12px; }
+        #r20be .r20be-bk[hidden] { display:none; }
+        #r20be .r20be-bk p { margin:4px 12px 6px; color:#777; }
+        #r20be .r20be-bk .row { display:flex; align-items:center; gap:8px; padding:6px 12px; border-top:1px solid #f0f0f0; }
+        #r20be .r20be-bk .row span { flex:1; min-width:0; }
+        #r20be .r20be-bk .row small { color:#888; }
+        #r20be .r20be-bk .row.drop span { color:#a0322a; }
+        #r20be .r20be-bk button { height:24px; margin:0; padding:0 9px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; cursor:pointer; white-space:nowrap; }
+        #r20be .r20be-bk button:disabled { color:#aaa; cursor:default; }
+`);
 addFeature("bgmPreview", bgmPreview);
 addFeature("jukeboxRow", jukeboxRow);
-addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일",
-    members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"]] });
+addFeature("jbBackup", jbBackup);
+addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
+    members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"], ["jbrow", "jbBackup"]] });
 
 // ══════════ 묶음 2 · 대화 캡쳐 · 맵시트 촬영 ══════════
 
@@ -6858,6 +6990,8 @@ const bulkEditor = (() => {
         ui.view.hidden = !isFlat(t);
         ui.zoom.hidden = !iconMode(t) && t.which !== "images";
         ui.fold.hidden = !(t.which === "journal" || t.which === "bgm") || isFlat(t);
+        ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
+        if (t.which !== "bgm") ui.bk.hidden = true;
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         if (ui.foot.className === "r20be-foot") setStatus();      // 안내문만 보기 방식에 맞춘다 (알림 문구는 그대로)
         renderTree(); renderPane();
@@ -6871,6 +7005,26 @@ const bulkEditor = (() => {
         if (!S[tab]) S[tab] = buildTab(tab);
         ui.menu.hidden = true;
         render();
+    };
+    // 주크박스 백업: 시점마다 폴더 수 · 폴더 안 곡 수. 저장 안 한 변경이 있으면 되돌리지 않는다(편집 중인 나무가 덮어쓸 수 있다)
+    const toggleBackups = async () => {
+        if (!ui.bk.hidden) { ui.bk.hidden = true; return; }
+        const B = FEAT.jbBackup, snaps = B ? await B.list() : [], dirty = dirtyCount() > 0;
+        ui.bk.textContent = "";
+        ui.bk.append(el("p", {}, snaps.length ? "이 브라우저에 남은 주크박스 폴더 백업이에요. 되돌리면 백업 뒤에 폴더에 넣은 곡은 같은 이름 폴더에 붙어요."
+            : "아직 백업이 없어요. GM 으로 방에 들어오면 자동으로 저장돼요."));
+        if (dirty) ui.bk.append(el("p", {}, "저장하지 않은 변경이 있어서 되돌릴 수 없어요. 먼저 [저장] 또는 [되돌리기]를 해 주세요."));
+        snaps.forEach((s, i) => ui.bk.append(el("div", { class: "row" + (s.flag === "drop" ? " drop" : "") },
+            el("span", {}, `${B.fmt(s)}${i === 0 ? " · 지금" : ""}${s.flag === "drop" ? " · 곡이 빠짐" : ""}`, el("br"), el("small", {}, `폴더 ${s.folders} · 폴더 안 ${s.inF.toLocaleString()}곡 · 전체 ${s.tracks.toLocaleString()}곡`)),
+            el("button", { type: "button", disabled: dirty || i === 0, onclick: async e => {
+                e.target.disabled = true; e.target.textContent = "되돌리는 중…";
+                const ok = await B.restore(s);
+                ui.bk.hidden = true;
+                if (!ok) return setStatus("되돌리지 못했습니다", "err");
+                S.bgm = null;
+                setTimeout(() => { switchTab("bgm"); setStatus(`${B.fmt(s)} 백업으로 되돌렸습니다`, "ok"); }, 600);
+            } }, "되돌리기"))));
+        ui.bk.hidden = false;
     };
     const toggleMenu = () => {
         if (!ui.menu.hidden) { ui.menu.hidden = true; return; }
@@ -7114,6 +7268,9 @@ const bulkEditor = (() => {
         ui.fold = el("span", { class: "r20be-zm r20be-fold", hidden: true },
             el("button", { type: "button", title: "폴더 전부 펼치기", onclick: () => foldAll(false) }, "전체 열기"),
             el("button", { type: "button", title: "폴더 전부 접기", onclick: () => foldAll(true) }, "전체 닫기"));
+        // 주크박스 백업 목록 (BGM 탭 · 자동 백업 묶음이 켜져 있을 때)
+        ui.bk = el("div", { class: "r20be-bk", hidden: true, role: "dialog", "aria-label": "주크박스 백업" });
+        ui.bkBtn = el("button", { type: "button", class: "r20be-sec", hidden: true, title: "주크박스 폴더 구조 백업 — 고른 시점으로 되돌리기", onclick: () => toggleBackups() }, "백업");
         ui.pagesBtn = el("button", { type: "button", class: "r20be-sec", hidden: true, onclick: () => FEAT.roomImages?.loadPages() });
         // 페이지를 읽는 동안 묶음 목록을 늘리고, 다 읽으면 격자도 새로
         FEAT.roomImages?.onPages(l => {
@@ -7127,7 +7284,7 @@ const bulkEditor = (() => {
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
