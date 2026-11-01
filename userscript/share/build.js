@@ -27,6 +27,10 @@ let s = out.join("\n");
 
 const FIX = [
     ["// @name         롤20 레이아웃2 올인원\n", "// @name         롤20 레이아웃2 올인원 (배포판)\n"],
+    ["// 자동완성 데이터: 설정(⚙) → 자동완성 아래 '데이터 주소' 칸에 홈페이지 데이터 주소를 붙여 넣습니다.\n",
+     "// 자동완성 데이터: ruledata.template.js 를 고쳐서 설정(⚙) → 기본시트 데이터 자동완성 → [파일]로 불러옵니다.\n"
+     + "// 로그 백업 형식을 바꾸려면 이 파일의 logBackup 구역 설명을 보세요 (formatLog 만 고치면 됨).\n"
+     + "// 맵 단추 · 일괄 편집기는 그 방의 GM 일 때만 나옵니다.\n"],
     ['    members: [["artroom", "roomImages"], ["artroom", "assetBank"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });',
      '    members: [["qpick", "queryPicker"], ["journal", "quickJournal"]] });'],
     ['label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 모은 목록(저장소 계정 그림 · 트랙) · 매크로 선택 썸네일 · 빠른 저널 뷰어",',
