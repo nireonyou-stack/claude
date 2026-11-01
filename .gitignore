@@ -3,3 +3,6 @@
 bloodmoon/gw.json
 bloodmoon/parsed.json
 bloodmoon/d.txt
+
+# 배포판 결과물 (파일로만 배포)
+userscript/share/out/

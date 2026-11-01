@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.31.0
+// @version      1.32.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.31.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.32.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -64,6 +64,10 @@ const btnVisible = {
     emoji:     localStorage.getItem("r20_show_emoji") !== "false",
     logbak:    localStorage.getItem("r20_show_logbak") !== "false"
 };
+// GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
+// 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
+const gmKnown = () => typeof window.is_gm === "boolean";
+const isGM = () => window.is_gm === true;
 // 채팅 아카이브 페이지에서는 로그 백업만 띄운다 (나머지는 편집기 화면용 — 맨 아래 시작 부분에서 갈린다)
 const IS_ARCHIVE = location.pathname.startsWith("/campaigns/chatarchive");
 
@@ -903,6 +907,7 @@ const CORE_CSS = `
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
         .cs-row.cs-rd { padding:0 10px 6px; }
+        .cs-rd .cs-rd-file { flex-shrink:0; height:22px; margin:0 0 0 4px; padding:0 8px; border:1px solid #ccc; border-radius:3px; background:#fff; color:#333; font-size:11px; cursor:pointer; }
         .cs-rd input { flex:1; min-width:0; height:22px !important; margin:0 !important; padding:0 6px !important; border:1px solid #ccc; border-radius:3px; font-size:11px !important; box-sizing:border-box; }
         .cs-switch { position:relative; width:32px; height:18px; display:inline-block; cursor:pointer; }
         .cs-switch input { opacity:0; width:0; height:0; }
@@ -1111,7 +1116,7 @@ const jukeboxRow = (() => {
             slider.dispatchEvent(new Event("change", { bubbles: true }));
         }
         const m = trackOf(li);
-        if (m && Number(m.get("volume")) !== v) m.save({ volume: v });
+        if (m && isGM() && Number(m.get("volume")) !== v) m.save({ volume: v });
         const label = li.querySelector(".r20jb-vol span");
         if (label) label.textContent = v;
     };
@@ -1324,7 +1329,7 @@ const jukeboxRow = (() => {
         if (lb) {
             e.preventDefault(); e.stopPropagation();
             const m = trackOf(lb.closest("li.jukeboxitem"));
-            if (!m) return;
+            if (!m || !isGM()) return;
             const on = !m.get("loop");
             m.save({ loop: on });
             setLoop(lb, on);
@@ -1779,6 +1784,7 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
+// @share-swap-start logBackup — 배포판은 share/logBackup.share.js 로 바꾼다 (홈페이지 전용 문법)
 // ───────── 로그 백업: 채팅을 홈페이지 '세션 로그' 문법 글로 바꿔 클립보드에 (그림은 주소만 · 명단은 따로) ─────────
 // 채팅 아카이브 페이지(/campaigns/chatarchive)에만 단추를 띄운다(archive). 편집기 화면에는 아무것도 안 붙인다.
 // 범위는 기본이 아카이브 전체, '시작 · 끝 찍기'로 자른다.
@@ -2110,6 +2116,7 @@ const LB_CSS = `
         .r20lb-float { position:fixed; right:16px; bottom:16px; z-index:10006; width:40px; height:40px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid #ccc; border-radius:50%; background:#fff; color:#8a3d9e; box-shadow:0 2px 8px rgba(0,0,0,.2); cursor:pointer; }
         .r20lb-float svg { width:18px; height:18px; }
 `;
+// @share-swap-end logBackup
 
 // ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
 // 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
@@ -2240,7 +2247,7 @@ const mapShot = (() => {
         return { blob, miss };
     };
     const shoot = async () => {
-        if (busy) return;
+        if (busy || !isGM()) return;
         busy = true;
         clearTimeout(noteT);
         show("load", "맵을 그리는 중…");
@@ -2257,6 +2264,7 @@ const mapShot = (() => {
     };
     // 페이지 설정: Roll20 페이지 창을 열고 "현재 페이지 설정" 을 대신 누른다 (페이지 창이 열려 있으면 바로)
     const pageSettings = async b => {
+        if (!isGM()) return;
         const find = () => document.querySelector(".vtt-page-card-menu .current-page-settings");
         let el = find();
         if (!el) {
@@ -2283,7 +2291,9 @@ const mapShot = (() => {
         if (e.key === "Escape" && w?.classList.contains("open") && w.contains(document.activeElement)) { setOpen(false); w.querySelector(".main").focus(); }
     });
     const inject = () => {
-        if (!btnVisible.mapshot || box() || !document.getElementById("sidebarcontrol")) return;
+        if (!btnVisible.mapshot || box() || !document.getElementById("sidebarcontrol") || !gmKnown()) return;
+        // 촬영은 토큰 정보로 맵을 다시 그려서 안개 · 다이내믹 라이팅에 가려진 곳까지 찍힌다 → 가져오기 · 페이지 설정과 함께 GM 만
+        if (!isGM()) return;
         const b = document.createElement("div");
         b.id = "r20-mapshot";
         b.innerHTML = `<button type="button" class="main" title="맵" aria-label="맵 도구" aria-expanded="false" aria-controls="r20-maptray">${svg("map")}</button>`
@@ -2299,7 +2309,6 @@ const mapShot = (() => {
             else if (k === "imp") ccfImport.toggle(b);
             else if (k === "pgset") pageSettings(e.target.closest("button"));
         });
-        if (window.is_gm === false) b.querySelectorAll(".imp, .pgset").forEach(x => x.remove());       // 페이지를 바꾸는 일이라 GM 만
         document.body.appendChild(b);
         idle();
         if (FEAT.screenUI) FEAT.screenUI.place();
@@ -2969,7 +2978,7 @@ const ccfImport = (() => {
         document.body.appendChild(pop);
     };
     const isOpen = () => !!pop && !pop.hidden;
-    const open = at => { anchor = at; if (!pop) build(); pop.hidden = false; place(); refresh(); };
+    const open = at => { if (!isGM()) return; anchor = at; if (!pop) build(); pop.hidden = false; place(); refresh(); };
     const close = () => { if (pop) pop.hidden = true; };
     const toggle = at => (isOpen() ? close() : open(at));
     document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
@@ -3834,6 +3843,7 @@ addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 �
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 
+// @share-cut-start bank — 이 방의 이미지 · 모은 목록 (배포판에서 뺌)
 // ───────── 그림 라이브러리 · 이 방의 이미지: 페이지·캐릭터·핸드아웃·굴림표·덱에 쓰인 그림을 한곳에서 본다 ─────────
 // 맵에 놓기는 Roll20 라이브러리 항목과 같은 모양(.draggableresult + data-fullsizeurl)으로 만들어 Roll20 드롭을 그대로 쓴다
 // → 계정 라이브러리에는 아무것도 추가되지 않는다. (보는 동안 라이브러리 정리 영역은 숨겨 실수로 넣는 일도 막는다)
@@ -4699,6 +4709,7 @@ const assetBank = (() => {
     return { inject, setEnabled, list, collect, exportFile, importFile, autoOn: () => !!autoCfg(), setAuto };
 })();
 
+// @share-cut-end bank
 // ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
 // 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
 const queryPicker = (() => {
@@ -5139,6 +5150,7 @@ addCss(`
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid #ddd !important; border-radius:3px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         .ui-dialog.r20qp img.r20qp-img { padding:0; }
         .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:clip; }
+        /* @share-cut-start css-bank — 이 방의 이미지 · 모은 목록 (배포판에서 뺌) */
         #imagedialog .r20ri { display:flex; flex-direction:column; color:#333; font-size:12px; }
         #imagedialog .r20ri button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
         #imagedialog .r20ri-seg { display:flex; flex-shrink:0; gap:2px; margin:4px 0 6px; padding:2px; border-radius:7px; background:#efeff2; }
@@ -5239,9 +5251,10 @@ addCss(`
         .r20ab-foot { flex-shrink:0; padding:8px 10px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
         .r20ab-foot:empty { display:none; }
         .r20ab-empty { margin:20px 0; color:#8a8a90; text-align:center; line-height:1.6; }
+        /* @share-cut-end css-bank */
 `);
-addFeature("roomImages", roomImages);
-addFeature("assetBank", assetBank);
+addFeature("roomImages", roomImages);    // @share-cut-line
+addFeature("assetBank", assetBank);      // @share-cut-line
 addFeature("queryPicker", queryPicker);
 addFeature("quickJournal", quickJournal);
 addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 모은 목록(저장소 계정 그림 · 트랙) · 매크로 선택 썸네일 · 빠른 저널 뷰어",
@@ -6764,6 +6777,7 @@ const bulkEditor = (() => {
 
     const save = async () => {
         if (saving || !dirtyCount()) return;
+        if (!isGM()) { setStatus("GM 만 저장할 수 있어요", "err"); return; }
         const dels = builtTabs().flatMap(t => allNodes(t).flatMap(n => [
             ...(n.deleted && !n.isNew ? [n.cur.name] : []),
             ...(n.items || []).filter(it => it.deleted && !it.isNew).map(it => `${n.cur.name} · ${it.cur.name || "항목"}`)]));
@@ -7117,6 +7131,7 @@ const bulkEditor = (() => {
     };
 
     const open = tab => {
+        if (!isGM()) { alert("일괄 편집기는 이 방의 GM 만 쓸 수 있어요."); return; }
         if (!window.Campaign?.handouts) { alert("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요."); return; }
         ensureUi();
         if (!dirtyCount()) TABS.forEach(k => { S[k] = null; });     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
@@ -7128,7 +7143,9 @@ const bulkEditor = (() => {
 
     // 저널 · 주크박스 탭 위쪽에 여는 버튼
     const inject = () => {
-        if (!btnVisible.bulk) return;
+        if (!btnVisible.bulk || !gmKnown()) return;
+        // 핸드아웃 · 캐릭터 · GM 메모 · 주크박스를 읽고 고치므로 GM 만
+        if (!isGM()) { document.querySelectorAll("button.r20be-open").forEach(b => b.remove()); return; }
         [["journal", "journal"], ["jukebox", "bgm"]].forEach(([id, tab]) => {
             const host = document.getElementById(id);
             if (!host) return;
@@ -7351,7 +7368,7 @@ addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 �
 
 // ───────── 자동완성: 시트 인법/마법 · 어빌리티 · 아이템 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
 // 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…] }
-//   — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 온다
+//   — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 오거나, 홈페이지가 없으면 '파일'로 고른 데이터 파일(같은 모양)을 브라우저에 넣어 둔다
 // 레코드 키: name, group(유파 · 그룹), type, skill, range, target, cost, charge, effect, flavor, recite, kind(아이템 분류)
 // type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
 const autofill = (() => {
@@ -7380,9 +7397,17 @@ const autofill = (() => {
 
     // Roll20 CSP 가 외부 <script> 는 막지만 fetch 는 허락한다 → 주소에서 글로 받아 JSON 부분만 읽는다.
     // 홈페이지 PHP 가 Access-Control-Allow-Origin: https://app.roll20.net 을 내야 한다.
-    const URL_KEY = "r20_ruledata_url";
+    const URL_KEY = "r20_ruledata_url", FILE_KEY = "r20_ruledata_file";       // 주소 · 파일은 둘 중 하나만 (마지막에 넣은 것)
     let status = window.NIRE_RULEDATA ? "ok" : "none";     // none · loading · ok · badkey · fail
     const getUrl = () => localStorage.getItem(URL_KEY) || "";
+    const fileName = () => { try { return JSON.parse(localStorage.getItem(FILE_KEY) || "null")?.name || ""; } catch (e) { return ""; } };
+    // 'window.NIRE_RULEDATA = {…};' 모양이면 = 뒤만, 아니면 통째로 JSON
+    const parseData = text => {
+        const at = text.indexOf("window.NIRE_RULEDATA");
+        const d = JSON.parse(at < 0 ? text : text.slice(text.indexOf("=", at) + 1).trim().replace(/;\s*$/, ""));
+        if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("데이터 모양이 아님");
+        return d;
+    };
     const statusText = () => {
         if (status === "ok") return Object.values(window.NIRE_RULEDATA || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0) + "개";
         return { loading: "불러오는 중…", badkey: "열쇠가 맞지 않음", fail: "불러오기 실패" }[status] || "데이터 없음";
@@ -7390,7 +7415,13 @@ const autofill = (() => {
     const setStatus = st => { status = st; document.dispatchEvent(new CustomEvent("r20-ruledata")); };
     const load = async () => {
         const url = getUrl();
-        if (!url) return;
+        if (!url) {
+            const f = localStorage.getItem(FILE_KEY);
+            if (!f) return;
+            try { window.NIRE_RULEDATA = parseData(JSON.parse(f).text); normCache.clear(); setStatus("ok"); }
+            catch (e) { console.warn("[자동완성] 넣어 둔 데이터 파일을 못 읽음:", e); setStatus("fail"); }
+            return;
+        }
         setStatus("loading");
         try {
             const res = await fetch(url, { cache: "no-cache" });
@@ -7411,10 +7442,23 @@ const autofill = (() => {
     // '// @require  https://…' 줄을 통째로 붙여 넣어도 주소만 쓴다
     const setUrl = v => {
         const url = (String(v).match(/https?:\/\/\S+/) || [""])[0];
-        if (url) { localStorage.setItem(URL_KEY, url); load(); }
+        if (url) { localStorage.setItem(URL_KEY, url); localStorage.removeItem(FILE_KEY); load(); }
         else { localStorage.removeItem(URL_KEY); setStatus(window.NIRE_RULEDATA ? "ok" : "none"); }
         return url;
     };
+    // 데이터 파일(.js · .json)을 읽어 브라우저(localStorage)에 넣어 둔다 → 다음부터 주소 없이 쓴다. 성공하면 true
+    const setFile = async f => {
+        let text;
+        try { text = await f.text(); window.NIRE_RULEDATA = parseData(text); }
+        catch (e) { console.warn("[자동완성] 데이터 파일이 아님:", e); setStatus("fail"); return false; }
+        try { localStorage.setItem(FILE_KEY, JSON.stringify({ name: f.name, text })); }
+        catch (e) { console.warn("[자동완성] 데이터가 너무 커서 브라우저에 못 넣음 — 이번 접속에만 씀:", e); }
+        localStorage.removeItem(URL_KEY);
+        normCache.clear();
+        setStatus("ok");
+        return true;
+    };
+    const clearData = () => { localStorage.removeItem(URL_KEY); localStorage.removeItem(FILE_KEY); delete window.NIRE_RULEDATA; normCache.clear(); setStatus("none"); };
     if (!window.NIRE_RULEDATA) load();
 
     let box = null, input = null, items = [], sel = 0, filling = false;
@@ -7623,7 +7667,7 @@ const autofill = (() => {
     document.addEventListener("focusin", e => { if (e.target.tagName === "IFRAME") hookFrame(e.target); });
 
     const setEnabled = on => { if (!on) close(); };
-    return { close, inject, getUrl, setUrl, statusText, setEnabled, watch: "iframe" };
+    return { close, inject, getUrl, setUrl, setFile, clearData, fileName, statusText, setEnabled, watch: "iframe" };
 })();
 
 addCss(`
@@ -7650,8 +7694,25 @@ addBundle({ place: "main", order: 5, label: "기본시트 데이터 자동완성
         rdInp.placeholder = "데이터 주소 붙여넣기";
         rdInp.setAttribute("aria-label", "자동완성 데이터 주소");
         rdInp.value = autofill.getUrl();
-        rdInp.addEventListener("change", () => { rdInp.value = autofill.setUrl(rdInp.value); });
-        rdRow.appendChild(rdInp);
+        rdInp.addEventListener("change", () => { if (rdInp.value.trim()) rdInp.value = autofill.setUrl(rdInp.value); else autofill.clearData(); });
+        // 홈페이지가 없으면 데이터 파일을 골라 브라우저에 넣어 둔다 (주소 칸은 비운다)
+        const fileBtn = document.createElement("button");
+        fileBtn.type = "button";
+        fileBtn.className = "cs-rd-file";
+        fileBtn.textContent = "파일";
+        fileBtn.title = "데이터 파일(.js · .json)을 골라 이 브라우저에 넣어 두기";
+        const fileInp = Object.assign(document.createElement("input"), { type: "file", accept: ".js,.json,text/javascript,application/json" });
+        fileInp.style.cssText = "display:none !important";
+        fileBtn.addEventListener("click", () => fileInp.click());
+        fileInp.addEventListener("change", async () => {
+            const f = fileInp.files[0];
+            fileInp.value = "";
+            if (f && await autofill.setFile(f)) rdInp.value = "";
+        });
+        const showFile = () => { const n = autofill.fileName(); rdInp.placeholder = n ? `파일: ${n}` : "데이터 주소 붙여넣기"; };
+        showFile();
+        document.addEventListener("r20-ruledata", showFile);
+        rdRow.append(rdInp, fileBtn, fileInp);
         return [rdRow];
     } });
 
