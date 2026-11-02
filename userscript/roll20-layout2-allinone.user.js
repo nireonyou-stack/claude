@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.34.0
+// @version      1.34.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.34.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.34.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2727,6 +2727,32 @@ const ccfImport = (() => {
         return new Blob([head, el(0x18538067, info, tracks, ...clusters)], { type: "video/webm" });
     };
 
+    // 기억해 둔 주소가 아직 열리는지 — 라이브러리에서 지운 그림은 주소가 죽어서, 다시 쓰면 Roll20 에 빈칸으로 놓인다.
+    // Roll20 처럼 crossOrigin 으로 열어 본다. 못 열면(시간 초과 포함) 기억을 지우고 새로 올린다
+    const alive = new Map();
+    const opens = u => {
+        if (!alive.has(u)) alive.set(u, new Promise(res => {
+            const v = isAnimVideo(u), el = document.createElement(v ? "video" : "img");
+            let to = 0;
+            const done = ok => { clearTimeout(to); el.onload = el.onerror = el.onloadedmetadata = null; el.removeAttribute("src"); res(ok); };
+            to = setTimeout(() => done(false), 20000);
+            el.crossOrigin = "anonymous";
+            if (v) { el.muted = true; el.preload = "metadata"; el.onloadedmetadata = () => done(true); }
+            else el.onload = () => done(true);
+            el.onerror = () => done(false);
+            el.src = u;
+        }));
+        return alive.get(u);
+    };
+    // 다시 쓸 열쇠들을 한꺼번에 확인해서 죽은 것은 upMap 에서 뺀다 → 몇 개 뺐는지
+    const dropDead = async keys => {
+        const ks = [...new Set(keys)].filter(k => upMap[k]);
+        if (!ks.length) return 0;
+        prog(`올려 둔 그림 ${ks.length}개가 아직 열리는지 확인하는 중…`);
+        const dead = (await Promise.all(ks.map(async k => [k, await opens(upMap[k])]))).filter(x => !x[1]).map(x => x[0]);
+        if (dead.length) { console.warn("[코코포리아 가져오기] 안 열리는 옛 주소 — 새로 올림:", dead.map(k => upMap[k])); dead.forEach(k => delete upMap[k]); saveUp(); }
+        return dead.length;
+    };
     // 올릴 파일과 기억 열쇠: 직접 넣은 파일 > (켜 두면) apng 를 바꾼 webm > ZIP 그림 그대로
     const plainSrc = async n => { const b = await blobOf(n); return { key: n + ":" + b.size, file: new File([b], n, { type: typeOf(n) }) }; };
     const sourceOf = async n => {
@@ -2770,6 +2796,7 @@ const ccfImport = (() => {
         // apng → webm 은 Roll20 에 올리기 전에 한꺼번에 (이미 올려 둔 건 건너뜀, 못 바꾸면 멈춘 그림으로)
         const srcs = new Map();
         for (const n of new Set(L.items.map(t => t.img))) srcs.set(n, await sourceOf(n));
+        const redo = await dropDead([...srcs.values()].map(s => s.key));        // 안 열리는 옛 주소는 새로 올린다
         const todo = [...srcs].filter(([, s]) => s.conv && !upMap[s.key]);
         let k = 0, conved = 0, convFail = 0;
         for (const [n, s] of todo) {
@@ -2820,7 +2847,7 @@ const ccfImport = (() => {
             catch (e) { console.warn("[코코포리아 가져오기] 놓기 실패:", e); fail.add(t.img); }
         }
         prog((stop ? `멈췄어요 — ${placed}/${L.items.length}개 놓음` : `다 놓았어요 — ${placed}개`)
-            + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
+            + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}` + (redo ? ` (옛 주소가 안 열려 다시 올린 그림 ${redo})` : "") + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
         if (fail.size) console.warn("[코코포리아 가져오기] 못 올린 그림:", [...fail]);
     };
@@ -2860,7 +2887,7 @@ const ccfImport = (() => {
     };
     const urlKey = u => String(u || "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
     const runPackAll = async pg => {
-        let up = 0, reused = 0, conved = 0, convFail = 0, i = 0, slot = null;
+        let up = 0, reused = 0, conved = 0, convFail = 0, redo = 0, i = 0, slot = null;
         const fail = [], mine = new Set(), kept = new Set(), before = new Set(pg.thegraphics.models.map(m => m.id));
         // g: Roll20 이 떨어뜨린 그림(새로 올린 것) · src: 이미 올려 둔 주소 — 늘어놓거나, 끈 경우엔 지운다
         const put = (g, src, dims) => {
@@ -2882,6 +2909,7 @@ const ccfImport = (() => {
             if (!b) { fail.push(n); continue; }
             const h = "h:" + await hashOf(b), name = base(n), dims = await dimsOf(b);      // webm 으로 바꿔도 원래 크기로 놓는다
             let file = null, key = h;
+            redo += await dropDead([h, h + ":webm2"]);         // 안 열리는 옛 주소는 새로 올린다
             if (conv && CAN_CONV && await isAnim(n)) {
                 if (upMap[h + ":webm2"]) { reused++; put(null, upMap[h + ":webm2"], dims); continue; }
                 prog(`webm 으로 바꾸는 중 ${i}/${pack.length}`);
@@ -2903,7 +2931,7 @@ const ccfImport = (() => {
         // 이번에 테이블에 생긴 그 그림 중 늘어놓은 것 말고 남은 것(Roll20 이 하나 더 만든 것 등)은 지운다
         if (mine.size) pg.thegraphics.models.filter(m => !before.has(m.id) && !kept.has(m.id) && mine.has(urlKey(m.get("imgsrc"))))
             .forEach(m => { try { m.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); } });
-        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : lay ? "다 올리고 늘어놓았어요" : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
+        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : lay ? "다 올리고 늘어놓았어요" : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (redo ? ` (옛 주소가 안 열려 다시 올린 그림 ${redo})` : "") + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.length ? ` · 못 올린 그림 ${fail.length}개 (콘솔에 목록)` : ""));
         if (fail.length) console.warn("[그림 올리기] 못 올린 그림:", fail);
     };
