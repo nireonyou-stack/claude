@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.34.1
+// @version      1.35.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.34.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.35.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3347,6 +3347,7 @@ const sidePicker = (() => {
 // 토큰 선택(d20 엔진)에 손댈 수 없어서, 새 단추는 Roll20 의 원래 '면 선택'을 대신 눌러 창을 열고 sidePicker 가 보이지 않게 고른다
 // + 메뉴 정리: 카드 메뉴 · 파티 · 레이어 · 편집 묶음(▸)과 순서. Roll20 항목은 옮기지 않고 숨기기만 하며(flex order 로 순서),
 //   묶음 안 단추는 숨겨 둔 원래 항목을 대신 누른다
+// + 롤러블 토큰으로 합치기(GM): 고른 토큰들의 그림을 면으로 모아 토큰 하나로
 const tokenMenu = (() => {
     const RE = { multi: /^(여러 면|Multi-?Sided)$/i, choose: /^(면 선택|Choose Side)$/i, random: /^(무작위 면|Random Side)$/i };
     const labelEl = b => b.querySelector(":scope > .submenu-button-outer span[style*='text-align']");
@@ -3375,7 +3376,7 @@ const tokenMenu = (() => {
         { one: "고급 변환" },
         { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"]] }
     ];
-    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP;
+    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP || b.dataset.r20tmRoll;
     const leftIcon = b => b.querySelector(":scope > .submenu-button-outer .submenu-button-inner .grimoire__roll20-icon");
     // 같은 이름이 먼저, 없으면 앞부분이 같은 것 ('위치 고정 해제' 같은 바뀐 이름)
     const findIn = (menu, name) => {
@@ -3528,6 +3529,7 @@ const tokenMenu = (() => {
             const sig = sigOf(menu);
             if (sig !== null && menu._r20tmSig === sig) { if (btnVisible.tokmenu) learnOpen(menu); return; }
             faces(menu);
+            addRoll(menu);
             if (btnVisible.tokmenu) arrange(menu);      // 면 단추를 붙인 뒤에 순서를 매긴다
             menu.querySelectorAll(":scope > button").forEach(b => { b._r20tmSeen = true; });
             menu._r20tmSig = sigOf(menu);
@@ -3555,7 +3557,80 @@ const tokenMenu = (() => {
             choose?.classList.add("r20tm-hide");       // 원래 '면 선택'은 위로 올렸으므로 숨긴다 (누르는 데는 쓴다)
         }
     };
+    // ── 롤러블 토큰으로 합치기 (GM): 고른 토큰들의 그림을 면으로 모아 첫 토큰(왼쪽 위부터 읽는 순서) 하나에 넣고 나머지는 지운다 ──
+    // Roll20 은 지금 고른 토큰을 스크립트에 알려 주지 않는다 → 숨겨 둔 '앞으로 가져오기'를 대신 눌러
+    // 페이지 겹침 순서(zorder)에서 맨 뒤로 옮겨진 것들 = 고른 것. 고른 것이 이미 맨 앞이라 순서가 안 바뀌는 일이 없게,
+    // 누르기 전에 GM 층에 1px 임시 그림을 하나 놓아 맨 앞을 차지하게 했다가 지운다
+    const addRoll = menu => {
+        const had = menu.querySelector(":scope > button[data-r20tm-roll]");
+        if (!(btnVisible.tokmenu && isGM() && findIn(menu, "앞으로 가져오기"))) { had?.remove(); return; }
+        const tpl = findIn(menu, "고급 변환") || findIn(menu, "레이어 변경");
+        if (had || !tpl) return;
+        const b = makeBtn(tpl, "롤러블 토큰으로 합치기", "");
+        delete b.dataset.r20tm;
+        b.removeAttribute("data-r20tm-hide"); b.removeAttribute("data-r20tm-hov");
+        b.dataset.r20tmRoll = "1";
+        b.style.order = 65;                 // '여러 면'(60) 과 '고급 변환'(70) 사이
+        tpl.before(b);
+    };
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const zOf = pg => String(pg.get("zorder") || "");
+    // zorder 가 before 와 달라진 뒤 0.2초 그대로일 때까지 (최대 2초) → 그때의 값
+    const zSettle = async (pg, before) => {
+        let last = zOf(pg), still = 0;
+        for (let t = 0; t < 2000; t += 100) {
+            await wait(100);
+            const now = zOf(pg);
+            if (now !== before && now === last) { if ((still += 100) >= 200) return now; } else still = 0;
+            last = now;
+        }
+        return last;
+    };
+    // 이전 → 이후 순서에서 맨 뒤로 옮겨진 것들 (앞으로 가져오기는 고른 것들끼리의 순서를 지킨 채 맨 뒤로 보낸다)
+    const movedToEnd = (a, b) => {
+        for (let k = 1; k < b.length; k++) {
+            const tail = new Set(b.slice(b.length - k)), rest = b.slice(0, b.length - k), exp = a.filter(id => !tail.has(id));
+            if (rest.length === exp.length && rest.every((id, i) => id === exp[i])) return [...tail];
+        }
+        return [];
+    };
+    const sidesOf = g => { const s = String(g.get("sides") || ""); return s ? s.split("|").filter(Boolean).map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } }) : [g.get("imgsrc")]; };
+    const mergeRoll = async menu => {
+        const pg = window.Campaign?.activePage?.(), front = menu && findIn(menu, "앞으로 가져오기");
+        if (!pg?.thegraphics || !front || !isGM()) return;
+        const z0 = zOf(pg), any = pg.thegraphics.models.find(m => m.get("imgsrc"));
+        if (!any) return;
+        // 1px 임시 그림 — 맨 앞(zorder 끝)에 들어간 것을 확인한 뒤에 '앞으로 가져오기'를 누른다
+        let tmp = null;
+        try { tmp = pg.thegraphics.create({ imgsrc: any.get("imgsrc"), page_id: pg.id, layer: "gmlayer", left: -500, top: -500, width: 1, height: 1, name: "r20tm-tmp" }); } catch (e) { tmp = null; }
+        for (let t = 0; tmp && t < 1500 && !zOf(pg).endsWith(tmp.id); t += 100) await wait(100);
+        const zA = zOf(pg);
+        front.click();
+        const zB = await zSettle(pg, zA);
+        try { tmp?.destroy(); } catch (e) {}
+        const ids = movedToEnd(zA.split(",").filter(Boolean), zB.split(",").filter(Boolean)).filter(id => id !== tmp?.id);
+        const gs = ids.map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
+        // 앞으로 옮긴 순서를 되돌린다 — 그 사이 생기거나 없어진 것이 없을 때만 (임시 그림이 순서에 남아 있으면 그대로 둔다)
+        const undoZ = () => {
+            const was = z0.split(",").filter(Boolean), now = zOf(pg).split(",").filter(Boolean), set = new Set(was);
+            if (now.length === was.length && now.every(id => set.has(id))) pg.save({ zorder: z0 });
+        };
+        if (gs.length < 2) { undoZ(); alert(gs.length ? "토큰을 두 개 이상 골라 주세요." : "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요."); return; }
+        // 면 순서: 위 → 아래 줄, 줄 안에서는 왼쪽 → 오른쪽 (윗변이 토큰 높이의 반 안쪽이면 같은 줄)
+        const top = g => +g.get("top") - +g.get("height") / 2, left = g => +g.get("left") - +g.get("width") / 2;
+        const tol = Math.min(...gs.map(g => +g.get("height") || 70)) / 2;
+        gs.sort((a, b) => Math.abs(top(a) - top(b)) <= tol ? left(a) - left(b) : top(a) - top(b));
+        const sides = gs.flatMap(sidesOf).filter(Boolean);
+        if (!confirm(`토큰 ${gs.length}개를 면 ${sides.length}개짜리 롤러블 토큰 하나로 합칠까요?\n왼쪽 위 토큰 자리 · 크기에 남기고, 나머지 ${gs.length - 1}개는 지워요.`)) {
+            undoZ();
+            return;
+        }
+        gs[0].save({ sides: sides.map(encodeURIComponent).join("|"), currentSide: 0, imgsrc: sides[0] });
+        gs.slice(1).forEach(g => { try { g.destroy(); } catch (e) { console.warn("[토큰 메뉴] 토큰을 못 지움:", e); } });
+    };
     document.addEventListener("click", async e => {
+        const rb = e.target.closest?.("button[data-r20tm-roll]");
+        if (rb) { e.preventDefault(); e.stopPropagation(); mergeRoll(rb.closest(".context-menu")); return; }
         const hdr = e.isTrusted && e.target.closest?.(".context-menu > button[data-r20tm-hov]");
         if (hdr && !e.target.closest(".submenu") && isOpen(hdr)) { e.preventDefault(); e.stopPropagation(); return; }
         const p = e.target.closest?.("button[data-r20tm-p]");
