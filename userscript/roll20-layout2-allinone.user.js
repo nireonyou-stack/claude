@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.35.1
+// @version      1.35.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.35.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.35.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3589,50 +3589,61 @@ const tokenMenu = (() => {
         }
         return last;
     };
-    // a → b 에서 한쪽 끝으로 옮겨진 것들 (앞으로 · 뒤로는 고른 것들끼리의 순서를 지킨 채 끝으로 보낸다). 안 바뀌었으면 없음
-    const movedTo = (a, b, toEnd) => {
+    // a → b 에서 움직인 것들 = 둘의 가장 긴 공통 순서(LCS)에 못 든 것. 어디로 옮겼든(맨 끝 · 층의 맨 아래 …) 같은 셈이다.
+    // ('뒤로 보내기'는 페이지 맨 처음이 아니라 그 층의 맨 아래로 보낸다 — 실제 Roll20 11-03)
+    // 둘 중 무엇이 움직였는지 같아 보이면(옆자리끼리 바뀜) 끝 쪽(preferEnd)이나 앞쪽으로 간 것을 움직인 것으로 본다
+    const movedSet = (a, b, preferEnd) => {
         if (a.join() === b.join()) return [];
-        for (let k = 1; k < b.length; k++) {
-            const moved = toEnd ? b.slice(b.length - k) : b.slice(0, k), set = new Set(moved);
-            const rest = toEnd ? b.slice(0, b.length - k) : b.slice(k), exp = a.filter(id => !set.has(id));
-            if (rest.length === exp.length && rest.every((id, i) => id === exp[i])) return moved;
+        const n = a.length, m = b.length, W = m + 1, dp = new Uint16Array((n + 1) * W);
+        for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++)
+            dp[i * W + j] = a[i - 1] === b[j - 1] ? dp[(i - 1) * W + j - 1] + 1 : Math.max(dp[(i - 1) * W + j], dp[i * W + j - 1]);
+        const keep = new Set();
+        for (let i = n, j = m; i > 0 && j > 0;) {
+            if (a[i - 1] === b[j - 1]) { keep.add(b[j - 1]); i--; j--; }
+            else if (preferEnd ? dp[i * W + j - 1] >= dp[(i - 1) * W + j] : dp[i * W + j - 1] > dp[(i - 1) * W + j]) j--;
+            else i--;
         }
-        return [];
+        const was = new Set(a);
+        return b.filter(id => !keep.has(id) && was.has(id));
     };
     const sidesOf = g => { const s = String(g.get("sides") || ""); return s ? s.split("|").filter(Boolean).map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } }) : [g.get("imgsrc")]; };
     const mergeRoll = async menu => {
         const pg = window.Campaign?.activePage?.();
         const back = menu && findIn(menu, "뒤로 보내기"), front = menu && findIn(menu, "앞으로 가져오기");
         if (!pg?.thegraphics || !front || !isGM()) return;
-        // 순서가 바뀔 때마다 그 한 번을 '더 적게 움직인 쪽'으로 읽어 모은다 — 하나를 맨 뒤로 보낸 것과 나머지를 다 앞으로 보낸 것은
-        // 순서가 같으므로. Roll20 은 토큰마다 한 번씩 바꾸기도 한다(진단: 두 개 → 바뀜 두 번)
-        const z0 = zOf(pg), found = new Set();
-        let prev = z0, turns = 0;
-        const onZ = () => {
-            const z = zOf(pg);
-            if (z === prev) return;
-            const A = zList(prev), B = zList(z), e = movedTo(A, B, true), st = movedTo(A, B, false);
-            (!e.length ? st : !st.length ? e : e.length <= st.length ? e : st).forEach(id => found.add(id));
-            prev = z; turns++;
-        };
+        // 지나온 순서를 다 적어 둔다 (Roll20 은 토큰마다 한 번씩 바꾸기도 한다 — 진단: 두 개 → 바뀜 두 번)
+        const z0 = zOf(pg), snaps = [];
+        const onZ = () => { const z = zOf(pg); if (z !== (snaps[snaps.length - 1] ?? z0)) snaps.push(z); };
         pg.on("change:zorder", onZ);
         // 메뉴가 닫히기 전에 같은 순간에 둘 다 누른다
         try { back?.click(); front.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 단추를 못 누름:", e); }
         await zSettle(pg, z0);
         pg.off("change:zorder", onZ);
         onZ();
-        const a = zList(z0);
-        const gs = [...found].map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
+        // 지나온 순서마다 처음과 견주어 '확실히' 움직인 것만 모은다 — 옆자리끼리 바뀌어 누가 움직였는지 같아 보이는 것은
+        // 두 해석(끝 쪽 · 앞쪽)에 다 든 것만. 고른 것이 한 끝에 붙어 있어 한쪽 동작이 애매해도 다른 동작에서 멀리 움직여 잡힌다
+        // ('뒤로' · '앞으로'가 토큰마다 섞여 들어와도 된다)
+        const a = zList(z0), u = new Set();
+        snaps.forEach(sz => { const b = zList(sz), late = new Set(movedSet(a, b, true)); movedSet(a, b, false).forEach(id => { if (late.has(id)) u.add(id); }); });
+        const ids = [...u];
+        let gs = ids.map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
+        // 안전장치: Roll20 은 한 층에서만 고를 수 있다 → 가장 많은 층 것만. 층이 반반이거나 너무 많으면(40 넘게) 하지 않는다
+        const byLayer = {}; gs.forEach(g => { const l = g.get("layer") || ""; (byLayer[l] = byLayer[l] || []).push(g); });
+        const groups = Object.values(byLayer).sort((x, y) => y.length - x.length);
+        const unsure = gs.length > 40 || (groups.length > 1 && groups[0].length === groups[1].length);
+        if (groups.length > 1 && !unsure) gs = groups[0];
+        if (unsure) console.warn("[토큰 메뉴] 고른 토큰이 이상함:", gs.length, "개 · 층", Object.keys(byLayer).map(l => l + " " + byLayer[l].length).join(", "), "· 순서 변화", snaps.length, "번");
         // 겹침 순서를 처음대로 — 지운 것은 빼고, 그 사이 새로 생긴 것은 뒤에 그대로
         const undoZ = (gone = new Set()) => {
             const now = zList(zOf(pg)), keep = a.filter(id => !gone.has(id) && now.includes(id)), extra = now.filter(id => !a.includes(id) && !gone.has(id));
             const want = [...keep, ...extra].join(",");
             if (want !== zOf(pg)) pg.save({ zorder: want });
         };
-        if (gs.length < 2) {
+        if (unsure || gs.length < 2) {
             undoZ();
-            alert(gs.length ? "토큰을 두 개 이상 골라 주세요." : "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요.");
-            if (!gs.length) console.warn("[토큰 메뉴] 순서 변화", turns, "번 · 찾은 것", found.size);
+            alert(unsure ? `고른 토큰을 확실히 알아내지 못했어요 (${gs.length}개로 보여요). 아무것도 바꾸지 않았어요 — 토큰을 다시 골라 해 주세요.`
+                : gs.length ? "토큰을 두 개 이상 골라 주세요." : "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요.");
+            if (!gs.length) console.warn("[토큰 메뉴] 순서 변화", snaps.length, "번 · 찾은 것 없음");
             return;
         }
         // 면 순서: 위 → 아래 줄, 줄 안에서는 왼쪽 → 오른쪽 (윗변이 토큰 높이의 반 안쪽이면 같은 줄)
