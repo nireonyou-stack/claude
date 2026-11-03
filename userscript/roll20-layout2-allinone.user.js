@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.35.0
+// @version      1.35.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.35.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.35.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3558,9 +3558,11 @@ const tokenMenu = (() => {
         }
     };
     // ── 롤러블 토큰으로 합치기 (GM): 고른 토큰들의 그림을 면으로 모아 첫 토큰(왼쪽 위부터 읽는 순서) 하나에 넣고 나머지는 지운다 ──
-    // Roll20 은 지금 고른 토큰을 스크립트에 알려 주지 않는다 → 숨겨 둔 '앞으로 가져오기'를 대신 눌러
-    // 페이지 겹침 순서(zorder)에서 맨 뒤로 옮겨진 것들 = 고른 것. 고른 것이 이미 맨 앞이라 순서가 안 바뀌는 일이 없게,
-    // 누르기 전에 GM 층에 1px 임시 그림을 하나 놓아 맨 앞을 차지하게 했다가 지운다
+    // Roll20 은 지금 고른 토큰을 스크립트에 알려 주지 않는다 → 숨겨 둔 '뒤로 보내기' · '앞으로 가져오기'를 메뉴가 열린 그 순간에
+    // 연달아 대신 눌러, 페이지 겹침 순서(zorder)에서 한쪽 끝으로 옮겨진 것들 = 고른 것으로 본다.
+    // 둘을 다 누르는 까닭: 고른 것이 이미 맨 앞(끝)이면 '앞으로'로는 안 바뀌고, 맨 뒤(처음)면 '뒤로'로는 안 바뀐다.
+    // (스크립트가 만든 그림은 zorder 에 안 들어가서 임시 그림으로 자리를 채울 수 없다 — 실제 Roll20 진단 11-03)
+    // 다 끝나면 겹침 순서는 처음대로 되돌린다
     const addRoll = menu => {
         const had = menu.querySelector(":scope > button[data-r20tm-roll]");
         if (!(btnVisible.tokmenu && isGM() && findIn(menu, "앞으로 가져오기"))) { had?.remove(); return; }
@@ -3575,58 +3577,75 @@ const tokenMenu = (() => {
     };
     const wait = ms => new Promise(r => setTimeout(r, ms));
     const zOf = pg => String(pg.get("zorder") || "");
-    // zorder 가 before 와 달라진 뒤 0.2초 그대로일 때까지 (최대 2초) → 그때의 값
+    const zList = s => String(s).split(",").filter(Boolean);
+    // zorder 가 before 와 달라진 뒤 0.3초 그대로일 때까지 (최대 2.5초) → 그때의 값
     const zSettle = async (pg, before) => {
         let last = zOf(pg), still = 0;
-        for (let t = 0; t < 2000; t += 100) {
+        for (let t = 0; t < 2500; t += 100) {
             await wait(100);
             const now = zOf(pg);
-            if (now !== before && now === last) { if ((still += 100) >= 200) return now; } else still = 0;
+            if (now !== before && now === last) { if ((still += 100) >= 300) return now; } else still = 0;
             last = now;
         }
         return last;
     };
-    // 이전 → 이후 순서에서 맨 뒤로 옮겨진 것들 (앞으로 가져오기는 고른 것들끼리의 순서를 지킨 채 맨 뒤로 보낸다)
-    const movedToEnd = (a, b) => {
+    // a → b 에서 한쪽 끝으로 옮겨진 것들 (앞으로 · 뒤로는 고른 것들끼리의 순서를 지킨 채 끝으로 보낸다). 안 바뀌었으면 없음
+    const movedTo = (a, b, toEnd) => {
+        if (a.join() === b.join()) return [];
         for (let k = 1; k < b.length; k++) {
-            const tail = new Set(b.slice(b.length - k)), rest = b.slice(0, b.length - k), exp = a.filter(id => !tail.has(id));
-            if (rest.length === exp.length && rest.every((id, i) => id === exp[i])) return [...tail];
+            const moved = toEnd ? b.slice(b.length - k) : b.slice(0, k), set = new Set(moved);
+            const rest = toEnd ? b.slice(0, b.length - k) : b.slice(k), exp = a.filter(id => !set.has(id));
+            if (rest.length === exp.length && rest.every((id, i) => id === exp[i])) return moved;
         }
         return [];
     };
     const sidesOf = g => { const s = String(g.get("sides") || ""); return s ? s.split("|").filter(Boolean).map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } }) : [g.get("imgsrc")]; };
     const mergeRoll = async menu => {
-        const pg = window.Campaign?.activePage?.(), front = menu && findIn(menu, "앞으로 가져오기");
+        const pg = window.Campaign?.activePage?.();
+        const back = menu && findIn(menu, "뒤로 보내기"), front = menu && findIn(menu, "앞으로 가져오기");
         if (!pg?.thegraphics || !front || !isGM()) return;
-        const z0 = zOf(pg), any = pg.thegraphics.models.find(m => m.get("imgsrc"));
-        if (!any) return;
-        // 1px 임시 그림 — 맨 앞(zorder 끝)에 들어간 것을 확인한 뒤에 '앞으로 가져오기'를 누른다
-        let tmp = null;
-        try { tmp = pg.thegraphics.create({ imgsrc: any.get("imgsrc"), page_id: pg.id, layer: "gmlayer", left: -500, top: -500, width: 1, height: 1, name: "r20tm-tmp" }); } catch (e) { tmp = null; }
-        for (let t = 0; tmp && t < 1500 && !zOf(pg).endsWith(tmp.id); t += 100) await wait(100);
-        const zA = zOf(pg);
-        front.click();
-        const zB = await zSettle(pg, zA);
-        try { tmp?.destroy(); } catch (e) {}
-        const ids = movedToEnd(zA.split(",").filter(Boolean), zB.split(",").filter(Boolean)).filter(id => id !== tmp?.id);
-        const gs = ids.map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
-        // 앞으로 옮긴 순서를 되돌린다 — 그 사이 생기거나 없어진 것이 없을 때만 (임시 그림이 순서에 남아 있으면 그대로 둔다)
-        const undoZ = () => {
-            const was = z0.split(",").filter(Boolean), now = zOf(pg).split(",").filter(Boolean), set = new Set(was);
-            if (now.length === was.length && now.every(id => set.has(id))) pg.save({ zorder: z0 });
+        // 순서가 바뀔 때마다 그 한 번을 '더 적게 움직인 쪽'으로 읽어 모은다 — 하나를 맨 뒤로 보낸 것과 나머지를 다 앞으로 보낸 것은
+        // 순서가 같으므로. Roll20 은 토큰마다 한 번씩 바꾸기도 한다(진단: 두 개 → 바뀜 두 번)
+        const z0 = zOf(pg), found = new Set();
+        let prev = z0, turns = 0;
+        const onZ = () => {
+            const z = zOf(pg);
+            if (z === prev) return;
+            const A = zList(prev), B = zList(z), e = movedTo(A, B, true), st = movedTo(A, B, false);
+            (!e.length ? st : !st.length ? e : e.length <= st.length ? e : st).forEach(id => found.add(id));
+            prev = z; turns++;
         };
-        if (gs.length < 2) { undoZ(); alert(gs.length ? "토큰을 두 개 이상 골라 주세요." : "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요."); return; }
+        pg.on("change:zorder", onZ);
+        // 메뉴가 닫히기 전에 같은 순간에 둘 다 누른다
+        try { back?.click(); front.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 단추를 못 누름:", e); }
+        await zSettle(pg, z0);
+        pg.off("change:zorder", onZ);
+        onZ();
+        const a = zList(z0);
+        const gs = [...found].map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
+        // 겹침 순서를 처음대로 — 지운 것은 빼고, 그 사이 새로 생긴 것은 뒤에 그대로
+        const undoZ = (gone = new Set()) => {
+            const now = zList(zOf(pg)), keep = a.filter(id => !gone.has(id) && now.includes(id)), extra = now.filter(id => !a.includes(id) && !gone.has(id));
+            const want = [...keep, ...extra].join(",");
+            if (want !== zOf(pg)) pg.save({ zorder: want });
+        };
+        if (gs.length < 2) {
+            undoZ();
+            alert(gs.length ? "토큰을 두 개 이상 골라 주세요." : "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요.");
+            if (!gs.length) console.warn("[토큰 메뉴] 순서 변화", turns, "번 · 찾은 것", found.size);
+            return;
+        }
         // 면 순서: 위 → 아래 줄, 줄 안에서는 왼쪽 → 오른쪽 (윗변이 토큰 높이의 반 안쪽이면 같은 줄)
         const top = g => +g.get("top") - +g.get("height") / 2, left = g => +g.get("left") - +g.get("width") / 2;
         const tol = Math.min(...gs.map(g => +g.get("height") || 70)) / 2;
-        gs.sort((a, b) => Math.abs(top(a) - top(b)) <= tol ? left(a) - left(b) : top(a) - top(b));
+        gs.sort((x, y) => Math.abs(top(x) - top(y)) <= tol ? left(x) - left(y) : top(x) - top(y));
         const sides = gs.flatMap(sidesOf).filter(Boolean);
-        if (!confirm(`토큰 ${gs.length}개를 면 ${sides.length}개짜리 롤러블 토큰 하나로 합칠까요?\n왼쪽 위 토큰 자리 · 크기에 남기고, 나머지 ${gs.length - 1}개는 지워요.`)) {
-            undoZ();
-            return;
-        }
+        if (!confirm(`토큰 ${gs.length}개를 면 ${sides.length}개짜리 롤러블 토큰 하나로 합칠까요?\n왼쪽 위 토큰 자리 · 크기에 남기고, 나머지 ${gs.length - 1}개는 지워요.`)) { undoZ(); return; }
         gs[0].save({ sides: sides.map(encodeURIComponent).join("|"), currentSide: 0, imgsrc: sides[0] });
-        gs.slice(1).forEach(g => { try { g.destroy(); } catch (e) { console.warn("[토큰 메뉴] 토큰을 못 지움:", e); } });
+        const gone = new Set();
+        gs.slice(1).forEach(g => { try { gone.add(g.id); g.destroy(); } catch (e) { console.warn("[토큰 메뉴] 토큰을 못 지움:", e); } });
+        await wait(300);
+        undoZ(gone);
     };
     document.addEventListener("click", async e => {
         const rb = e.target.closest?.("button[data-r20tm-roll]");
