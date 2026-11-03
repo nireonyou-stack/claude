@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.36.0
+// @version      1.36.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.36.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.36.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5821,7 +5821,7 @@ const bulkEditor = (() => {
     };
     const buildDecks = () => flatTab("decks", (decksColl()?.models || []).map(m => {
         const n = mkNode(m.id, "deck", m, { name: m.get("name") || "", back: m.get("avatar") || "" });
-        n.items = (m.cards?.models || []).map(c => cardNode(c));
+        n.items = (m.cards?.models || []).map((c, k) => Object.assign(cardNode(c), { ord: k }));      // ord = Roll20 에 만든 차례
         n.checkedItems = new Set();
         return n;
     }));
@@ -6401,18 +6401,29 @@ const bulkEditor = (() => {
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "항목 추가")),
             addBox, bar, grid);
         // 항목 순서 — 토큰 메뉴의 '면 순서 바꾸기'와 같은 창. 굴림표를 맵에 끌어 놓으면 이 순서가 롤러블 토큰의 면 순서가 된다
-        function openOrder() {
-            const L = live();
-            sideOrder.open({ title: "항목 순서 바꾸기", sub: `${n.cur.name} · 항목 ${L.length}개`, unit: "항목", items: L.map(it => ({ src: it.cur.avatar, name: it.cur.name })),
-                onSave: order => {
-                    const kept = order.map(i => L[i]);       // 뺀 항목은 지움 표시 (저장 때 지운다)
-                    L.filter((_, i) => !order.includes(i)).forEach(it => { if (it.isNew) n.items.splice(n.items.indexOf(it), 1); else it.deleted = true; n.checkedItems.delete(it.id); });
-                    n.items = [...kept, ...n.items.filter(it => it.deleted)];
-                    markOrder(n);
-                    drawGrid(); drawBar(); changed();
-                    setStatus("항목 순서를 바꿨습니다 (저장해야 Roll20에 반영)", "ok");
-                } });
-        }
+        function openOrder() { openItemOrder(n, "항목", () => { drawGrid(); drawBar(); changed(); }); }
+    };
+    // 굴림표 항목 · 덱 카드 순서 바꾸기 (sideOrder 창). 뺀 것은 지움 표시 — 저장 때 지운다
+    const openItemOrder = (n, unit, redraw) => {
+        const L = n.items.filter(it => !it.deleted);
+        sideOrder.open({ title: `${unit} 순서 바꾸기`, sub: `${n.cur.name} · ${unit} ${L.length}${unit === "카드" ? "장" : "개"}`, unit,
+            items: L.map(it => ({ src: it.cur.avatar, name: it.cur.name })),
+            onSave: order => {
+                const kept = order.map(i => L[i]);
+                L.filter((_, i) => !order.includes(i)).forEach(it => { if (it.isNew) n.items.splice(n.items.indexOf(it), 1); else it.deleted = true; n.checkedItems.delete(it.id); });
+                n.items = [...kept, ...n.items.filter(it => it.deleted)];
+                markOrder(n);
+                redraw();
+                setStatus(`${unit} 순서를 바꿨습니다 (저장해야 Roll20에 반영)`, "ok");
+            } });
+    };
+    // 덱에서 나가 있는 카드 수 — 뽑을 더미 · 버린 더미 · 뺀 카드 어디에도 없는 카드 (뽑을 더미가 아직 없으면 0)
+    const pileIds = (m, k) => { const v = m?.get(k); return Array.isArray(v) ? v : typeof v === "string" ? v.split(",").filter(Boolean) : []; };
+    const cardsOut = n => {
+        const deck = pileIds(n.model, "currentDeck");
+        if (!deck.length) return 0;
+        const home = new Set([...deck, ...pileIds(n.model, "discardPile"), ...pileIds(n.model, "removedcards")]);
+        return n.items.filter(it => !it.isNew && !it.deleted && !home.has(it.id)).length;
     };
     // Roll20 굴림표 항목에는 순서 칸이 없고 만든 차례로 선다 → 앞에서부터 원래 차례 그대로인 데까지는 두고,
     // 처음 어긋난 자리부터 뒤는 저장할 때 다시 만든다(moved). 원래 순서로 되돌리면 표시도 사라진다
@@ -6533,6 +6544,11 @@ const bulkEditor = (() => {
                     oninput: e => { setField(n, "back", e.target.value.trim()); changed(); } })),
                 el("span", { class: "r20be-flex" }),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => openMerge(n) }, "합치기…"),
+                el("button", { type: "button", class: "r20be-sec", disabled: live().length < 2, onclick: () => {
+                    const out = cardsOut(n);
+                    if (out && !confirm(`테이블이나 손에 나가 있는 카드가 ${out}장 있어요.\n순서를 바꾼 카드는 저장할 때 새로 만들어져서, 나가 있던 카드와 이어지지 않을 수 있어요.\n덱의 '회수'로 거둔 뒤 바꾸는 걸 권해요. 그래도 열까요?`)) return;
+                    openItemOrder(n, "카드", () => { drawGrid(); drawBar(); changed(); });
+                } }, "순서 바꾸기…"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "카드 추가")),
             el("p", { class: "r20be-note" }, "게임 중인 덱은 카드를 모두 회수(Recall)한 뒤 편집하세요 · 새 카드는 덱을 섞은 뒤부터 뽑힙니다"),
             addBox, bar, grid);
@@ -7179,7 +7195,7 @@ const bulkEditor = (() => {
                 if (n.items.some(itemDirty)) await attempt(`${n.cur.name} · 카드`, async () => { throw new Error("덱의 카드 목록을 찾지 못함"); });
                 continue;
             }
-            const gone = new Set();
+            const gone = new Set(), remap = new Map();
             for (const it of [...n.items]) {
                 const label = `${n.cur.name} · ${it.cur.name || "카드"}`;
                 if (it.deleted) await attempt(label, async () => {
@@ -7191,6 +7207,15 @@ const bulkEditor = (() => {
                     if (!it.model?.id) throw new Error("생성 실패");
                     it.id = it.model.id; it.isNew = false; it.orig = { ...it.cur };
                 });
+                else if (it.moved) await attempt(label, async () => {      // 순서를 바꾼 카드: 새 자리에 다시 만들고 옛것을 지운다 (더미 목록의 id 는 아래에서 바꾼다)
+                    const m = n.model.cards.create({ name: it.cur.name, avatar: it.cur.avatar, card_back: it.cur.card_back, tooltip: it.cur.tooltip });
+                    if (!m?.id) throw new Error("생성 실패");
+                    const was = it.id;
+                    it.model.destroy();
+                    remap.set(was, m.id);
+                    it.model = m; it.id = m.id; it.moved = false; it.orig = { ...it.cur }; it.changed.clear();
+                    if (n.checkedItems.delete(was)) n.checkedItems.add(it.id);
+                });
                 else if (it.changed.size) await attempt(label, async () => {
                     const a = {};
                     it.changed.forEach(k => { a[k] = it.cur[k]; });
@@ -7198,16 +7223,18 @@ const bulkEditor = (() => {
                     it.orig = { ...it.cur }; it.changed.clear();
                 });
             }
-            // 지운 카드가 뽑을 순서·버린 더미 목록에 남아 있지 않게
-            if (gone.size) await attempt(`${n.cur.name} · 덱 순서`, async () => {
+            // 지운 카드가 뽑을 순서·버린 더미 목록에 남아 있지 않게 · 다시 만든 카드는 옛 id 자리에 새 id 를 (섞은 순서 그대로)
+            if (gone.size || remap.size) await attempt(`${n.cur.name} · 덱 순서`, async () => {
                 const a = {};
-                ["currentDeck", "discardPile"].forEach(k => {
+                const fix = ids => ids.filter(id => !gone.has(id)).map(id => remap.get(id) || id);
+                ["currentDeck", "discardPile", "removedcards"].forEach(k => {
                     const v = n.model.get(k);
-                    if (Array.isArray(v)) { const nv = v.filter(id => !gone.has(id)); if (nv.length !== v.length) a[k] = nv; }
-                    else if (typeof v === "string" && v) { const nv = v.split(",").filter(id => id && !gone.has(id)).join(","); if (nv !== v) a[k] = nv; }
+                    if (Array.isArray(v)) { const nv = fix(v); if (nv.join() !== v.join()) a[k] = nv; }
+                    else if (typeof v === "string" && v) { const nv = fix(v.split(",").filter(Boolean)).join(","); if (nv !== v) a[k] = nv; }
                 });
                 if (Object.keys(a).length) n.model.save(a);
             });
+            n.items.filter(it => !it.deleted && !it.isNew).forEach((it, k) => { it.ord = k; });       // 저장한 순서가 새 기준
         }
     };
 
