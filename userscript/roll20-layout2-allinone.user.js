@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.37.2
+// @version      1.38.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.37.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3812,19 +3812,21 @@ const tokenMenu = (() => {
         b.dataset.r20tm = act;
         return b;
     };
-    // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]. '@roll' 은 Roll20 항목이 아니라 이 스크립트의 합치기
+    // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]. '@…' 은 Roll20 항목이 아니라 이 스크립트의 동작
+    //   (@roll 합치기 · @center/@centerX/@centerY 맵 가운데로 — GM 만, 고른 토큰은 pickSel 로 알아낸다)
     const LAYOUT = [
         { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
         { one: "카드 뒤집기" },
         { g: "파티", icon: "모두에게 핑", items: [["모두에게 핑"], ["시선 집중 핑"], ["파티 정의"], ["파티 배치"], ["핀 놓기"], ["턴 추가"]] },
         { g: "레이어", icon: "레이어 변경", items: [["레이어 변경>토큰", "토큰 레이어로"], ["레이어 변경>GM", "GM 레이어로"], ["레이어 변경>맵", "맵 레이어로"],
             ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"]] },
+        { g: "정렬", icon: "앞으로 가져오기", items: [["@center", "맵 가운데로"], ["@centerX", "가로만 가운데"], ["@centerY", "세로만 가운데"]] },
         { faces: true },
         { one: "여러 면" },
         { one: "고급 변환" },
         { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"], ["@roll", "롤러블 토큰으로 합치기"]] }
     ];
-    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP || b.dataset.r20tmRoll;
+    const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP || b.dataset.r20tmAct;
     const leftIcon = b => b.querySelector(":scope > .submenu-button-outer .submenu-button-inner .grimoire__roll20-icon");
     // 같은 이름이 먼저, 없으면 앞부분이 같은 것 ('위치 고정 해제' 같은 바뀐 이름)
     const findIn = (menu, name) => {
@@ -3883,10 +3885,10 @@ const tokenMenu = (() => {
         g._r20tmFly = sub;
         menu.appendChild(sub);
         const build = () => sub.replaceChildren(...present.map(([path, text]) => {
-            if (path !== "@roll") return proxyBtn(findIn(menu, path.split(">")[0]), path, text || path);
+            if (!path.startsWith("@")) return proxyBtn(findIn(menu, path.split(">")[0]), path, text || path);
             const b = proxyBtn(findIn(menu, "삭제") || tpl, path, text);
             b.classList.remove("disabled");
-            delete b.dataset.r20tmP; b.dataset.r20tmRoll = "1";
+            delete b.dataset.r20tmP; b.dataset.r20tmAct = path.slice(1);
             return b;
         }));
         build();
@@ -3961,8 +3963,8 @@ const tokenMenu = (() => {
             const order = (i + 1) * 10;
             if (L.one) { const b = findIn(menu, L.one); if (b) { b.style.order = order; used.add(b); } return; }
             if (L.faces) { menu.querySelectorAll(":scope > button[data-r20tm]").forEach((b, k) => { b.style.order = order + k; }); return; }
-            const present = L.items.filter(([path]) => path === "@roll" ? rollOK(menu) : findIn(menu, path.split(">")[0]));
-            present.forEach(([path]) => { if (path === "@roll") return; const b = findIn(menu, path.split(">")[0]); b.setAttribute("data-r20tm-hide", ""); used.add(b); });
+            const present = L.items.filter(([path]) => path.startsWith("@") ? rollOK(menu) : findIn(menu, path.split(">")[0]));
+            present.forEach(([path]) => { if (path.startsWith("@")) return; const b = findIn(menu, path.split(">")[0]); b.setAttribute("data-r20tm-hide", ""); used.add(b); });
             let gb = menu.querySelector(`:scope > button[data-r20tm-g="${L.g}"]`);
             if (!present.length) { gb?._r20tmFly?.remove(); gb?.remove(); return; }
             if (!gb && tpl) gb = menu.appendChild(makeGroup(menu, L, present, tpl));
@@ -4106,6 +4108,30 @@ const tokenMenu = (() => {
         undoZ(gone);
     };
     // 면 순서 바꾸기: 고른 여러 면 토큰 하나의 면을 sideOrder 창에서. 지금 보이는 그림은 순서가 바뀌어도 그대로 보이게
+    // 맵 가운데로: 고른 토큰들을 한 덩어리로(서로 간격 그대로) 페이지 가운데에. 격자가 반 칸(35px) 이상이면
+    // 맵 맞추기와 같이 격자 칸 단위로만 옮긴다 — 격자에 맞던 토큰은 계속 맞고, 정가운데에서 반 칸 남으면 오른쪽 · 아래로
+    const centerSel = async (menu, axis) => {
+        const r = await pickSel(menu);
+        if (!r) return;
+        r.undoZ();
+        if (r.unsure || !r.gs.length) { alert(r.unsure ? NOT_SURE(r.gs.length) : NOT_FOUND); return; }
+        const pg = window.Campaign?.activePage?.();
+        if (!pg) return;
+        const n = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
+        const box = g => {
+            const rad = n(g, "rotation") * Math.PI / 180, c = Math.abs(Math.cos(rad)), sn = Math.abs(Math.sin(rad));
+            const w = n(g, "width") * c + n(g, "height") * sn, h = n(g, "width") * sn + n(g, "height") * c;
+            return [n(g, "left") - w / 2, n(g, "top") - h / 2, n(g, "left") + w / 2, n(g, "top") + h / 2];
+        };
+        const bs = r.gs.map(box);
+        const x0 = Math.min(...bs.map(b => b[0])), y0 = Math.min(...bs.map(b => b[1])), x1 = Math.max(...bs.map(b => b[2])), y1 = Math.max(...bs.map(b => b[3]));
+        const snap = n(pg, "snapping_increment", 1), cell = 70 * (snap > 0 ? snap : 1);
+        const step = v => cell >= 35 ? Math.floor(v / cell + 0.5 - 1e-9) * cell : Math.round(v);       // 반 칸이면 작은 쪽(남는 칸은 오른쪽 · 아래)
+        const dx = axis === "y" ? 0 : step(n(pg, "width", 25) * 70 / 2 - (x0 + x1) / 2);
+        const dy = axis === "x" ? 0 : step(n(pg, "height", 25) * 70 / 2 - (y0 + y1) / 2);
+        if (!dx && !dy) return;
+        r.gs.forEach(g => g.save({ left: n(g, "left") + dx, top: n(g, "top") + dy }));
+    };
     const reorderSel = async menu => {
         const r = await pickSel(menu);
         if (!r) return;
@@ -4124,8 +4150,14 @@ const tokenMenu = (() => {
             } });
     };
     document.addEventListener("click", async e => {
-        const rb = e.target.closest?.("button[data-r20tm-roll]");
-        if (rb) { e.preventDefault(); e.stopPropagation(); mergeRoll(rb.closest(".context-menu")); return; }
+        const rb = e.target.closest?.("button[data-r20tm-act]");
+        if (rb) {
+            e.preventDefault(); e.stopPropagation();
+            const a = rb.dataset.r20tmAct, menu = rb.closest(".context-menu");
+            if (a === "roll") mergeRoll(menu);
+            else if (/^center/.test(a)) centerSel(menu, a === "centerX" ? "x" : a === "centerY" ? "y" : "xy");
+            return;
+        }
         const hdr = e.isTrusted && e.target.closest?.(".context-menu > button[data-r20tm-hov]");
         if (hdr && !e.target.closest(".submenu") && isOpen(hdr)) { e.preventDefault(); e.stopPropagation(); return; }
         const p = e.target.closest?.("button[data-r20tm-p]");
