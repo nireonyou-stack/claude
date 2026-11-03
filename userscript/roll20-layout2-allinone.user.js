@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.2
+// @version      1.38.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4064,6 +4064,9 @@ const tokenMenu = (() => {
         // 둘째 단서: 위치 고정된 그림은 순서 단추로 순서가 안 바뀐다(11-03 실제 Roll20) → '위치 고정'도 같이 눌러
         // 잠금 칸(이름에 lock)이 바뀐 그림을 모으고, 끝나면 잠금은 처음 값으로 되돌린다. 다른 칸은 건드리지 않는다
         const lockBtn = findIn(menu, "위치 고정"), locked = new Map();
+        // Roll20 모음이 '바뀜' 알림을 안 넘겨줄 수 있어서(11-03 실제: 잠금 변화 0) 누르기 전 · 뒤의 잠금 칸을 직접 견준다
+        const lockKeys = g => Object.keys(g.attributes || {}).filter(k => /lock/i.test(k));
+        const before = new Map(pg.thegraphics.models.map(g => [g, Object.fromEntries(lockKeys(g).map(k => [k, g.get(k)]))]));
         const onG = m => {
             const ch = m.changedAttributes?.() || {}, prev = m.previousAttributes?.() || {};
             Object.keys(ch).forEach(k => { if (!/lock/i.test(k)) return; const rec = locked.get(m) || {}; if (!(k in rec)) rec[k] = prev[k] ?? false; locked.set(m, rec); });
@@ -4077,12 +4080,20 @@ const tokenMenu = (() => {
         pg.off("change:zorder", onZ);
         pg.thegraphics.off?.("change", onG);
         onZ();
+        pg.thegraphics.models.forEach(g => {
+            const was = before.get(g) || {}, rec = locked.get(g) || {};
+            new Set([...Object.keys(was), ...lockKeys(g)]).forEach(k => { if (!(k in rec) && !!was[k] !== !!g.get(k)) rec[k] = was[k] ?? false; });
+            if (Object.keys(rec).length) locked.set(g, rec);
+        });
         locked.forEach((rec, m) => { try { m.save(rec); } catch (e) { console.warn("[토큰 메뉴] 잠금을 못 되돌림:", e); } });
         // 지나온 순서마다 처음과 견주어 '확실히' 움직인 것만 모은다 — 옆자리끼리 바뀌어 누가 움직였는지 같아 보이는 것은
         // 두 해석(끝 쪽 · 앞쪽)에 다 든 것만. 고른 것이 한 끝에 붙어 있어 한쪽 동작이 애매해도 다른 동작에서 멀리 움직여 잡힌다
         // ('뒤로' · '앞으로'가 토큰마다 섞여 들어와도 된다)
         const a = zList(z0), u = new Set();
         snaps.forEach(sz => { const b = zList(sz), late = new Set(movedSet(a, b, true)); movedSet(a, b, false).forEach(id => { if (late.has(id)) u.add(id); }); });
+        // Roll20 이 '뒤로' · '앞으로'를 한 번에 합쳐 마지막 결과만 남기면(11-03 실제: 순서 변화 1) 옆자리끼리 바뀐 것처럼 애매해진다
+        // → 확실한 게 없으면 마지막에 누른 '앞으로'(맨 위로 간 쪽)로 읽는다
+        if (!u.size && snaps.length) movedSet(a, zList(snaps[snaps.length - 1]), true).forEach(id => u.add(id));
         locked.forEach((_, m) => u.add(m.id));
         let gs = [...u].map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
         // 안전장치: Roll20 은 한 층에서만 고를 수 있다 → 가장 많은 층 것만. 층이 반반이거나 너무 많으면(40 넘게) 하지 않는다
@@ -4092,7 +4103,8 @@ const tokenMenu = (() => {
         if (groups.length > 1 && !unsure) gs = groups[0];
         if (unsure) console.warn("[토큰 메뉴] 고른 토큰이 이상함:", gs.length, "개 · 층", Object.keys(byLayer).map(l => l + " " + byLayer[l].length).join(", "), "· 순서 변화", snaps.length, "번");
         if (!gs.length) console.warn("[토큰 메뉴] 찾은 것 없음 —", JSON.stringify({ 순서변화: snaps.length, 잠금변화: locked.size, 앞으로: front ? (dis(front) ? "꺼짐" : "있음") : "없음",
-            뒤로: back ? (dis(back) ? "꺼짐" : "있음") : "없음", 위치고정: lockBtn ? (dis(lockBtn) ? "꺼짐" : label(lockBtn)) : "없음" }));
+            뒤로: back ? (dis(back) ? "꺼짐" : "있음") : "없음", 위치고정: lockBtn ? (dis(lockBtn) ? "꺼짐" : label(lockBtn)) : "없음",
+            잠금칸: [...new Set(pg.thegraphics.models.flatMap(lockKeys))].slice(0, 6), 그림칸: Object.keys(pg.thegraphics.models[0]?.attributes || {}).length }));
         // 겹침 순서를 처음대로 — 지운 것은 빼고, 그 사이 새로 생긴 것은 뒤에 그대로
         const undoZ = (gone = new Set()) => {
             const now = zList(zOf(pg)), keep = a.filter(id => !gone.has(id) && now.includes(id)), extra = now.filter(id => !a.includes(id) && !gone.has(id));
