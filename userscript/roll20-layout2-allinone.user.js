@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.37.0
+// @version      1.37.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.37.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.37.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3161,7 +3161,7 @@ const mapFit = (() => {
     const MARGINS = [0, 1, 2, 5, 10, 20];
     const LAYERS = [["map", "맵"], ["objects", "토큰"], ["gmlayer", "GM"]];
     const KEY = "r20_fit";
-    const st = Object.assign({ mode: "fit", ratio: "free", margin: 1, layers: ["map", "objects"] }, (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } })());
+    const st = Object.assign({ mode: "fit", ratio: "free", margin: 1, layers: ["map", "objects"], far: false }, (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } })());
     const saveSt = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
     let pop = null, anchor = null, undo = null;
     const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
@@ -3189,6 +3189,24 @@ const mapFit = (() => {
     const bboxOf = list => list.length ? list.reduce((a, t) => ({ x0: Math.min(a.x0, t.box.x0), y0: Math.min(a.y0, t.box.y0), x1: Math.max(a.x1, t.box.x1), y1: Math.max(a.y1, t.box.y1) }),
         { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }) : null;
 
+    // ── 덩어리 나누기: 상자를 세로 · 가로로 비춰 보아 큰 빈틈(30칸 또는 앞 덩어리 길이의 절반 이상)으로 갈라진 덩어리 가운데
+    //    것이 가장 많은 쪽만 '내용'. 멀리 떨어진 GM 메모 하나 때문에 맵이 수백 칸이 되지 않게 (11-03 실제 Roll20) ──
+    const mainIsland = list => {
+        const split = (items, a0, a1) => {
+            const sorted = items.slice().sort((p, q) => p.box[a0] - q.box[a0]), groups = [];
+            let cur = [], start = 0, end = -Infinity;
+            for (const t of sorted) {
+                if (cur.length && t.box[a0] - end > Math.max(30 * 70, (end - start) / 2)) { groups.push(cur); cur = []; end = -Infinity; }
+                if (!cur.length) start = t.box[a0];
+                cur.push(t); end = Math.max(end, t.box[a1]);
+            }
+            if (cur.length) groups.push(cur);
+            return groups.sort((x, y) => y.length - x.length)[0] || [];
+        };
+        let main = list;
+        for (let i = 0; i < 3; i++) { const n = main.length; main = split(split(main, "y0", "y1"), "x0", "x1"); if (main.length === n) break; }
+        return main;
+    };
     // ── 격자: 칸에 딱 맞는 크기의 토큰(90° 단위로만 돈 것)들이 격자에서 얼마나 밀려 있나 ──
     const gridInfo = (list, cell) => {
         const toks = list.filter(t => t.kind === "g" && t.layer !== "gmlayer" && mod(num(t.m, "rotation"), 90) < 0.5)
@@ -3226,10 +3244,12 @@ const mapFit = (() => {
     const plan = () => {
         const pg = page();
         if (!pg?.thegraphics) return { err: "페이지를 아직 불러오지 않았어요" };
-        const cell = cellOf(pg), all = things(pg), counted = all.filter(t => st.layers.includes(t.layer));
+        const cell = cellOf(pg), all = things(pg), layered = all.filter(t => st.layers.includes(t.layer));
+        const main = mainIsland(layered), far = layered.filter(t => !main.includes(t)), counted = st.far ? layered : main;
         const b0 = bboxOf(counted);
         if (!b0) return { err: "고른 층에 놓인 것이 없어요" };
-        const W0 = num(pg, "width", 25), H0 = num(pg, "height", 25), m = Math.max(0, +st.margin || 0) * cell;
+        // 여백 · 크기는 맵과 같은 70px 칸으로 센다 (격자 한 칸이 7px 인 촘촘한 페이지도 있다). 옮기는 거리만 격자 칸 단위
+        const W0 = num(pg, "width", 25), H0 = num(pg, "height", 25), m = Math.max(0, +st.margin || 0) * 70;
         let k = 1, b = b0;
         if (st.mode === "scale") {
             // 격자를 지키는 배율만: 키우기는 2 · 3 · 4배, 줄이기는 ½ · ⅓ · ¼ 중 칸에 딱 맞는 토큰이 모두 그 배수일 때만
@@ -3263,12 +3283,13 @@ const mapFit = (() => {
         const L = b.x0 + dx, T = b.y0 + dy;
         // 범위에서 뺀 층(GM 메모 등) 가운데 맞춘 뒤 맵 밖으로 나가는 것 — 층마다 센다
         const out = {};
+        let outFar = false;
         all.forEach(t => {
             const x0 = t.box.x0 * k + dx, y0 = t.box.y0 * k + dy, x1 = t.box.x1 * k + dx, y1 = t.box.y1 * k + dy;
-            if (x1 <= 0 || y1 <= 0 || x0 >= Wu * 70 || y0 >= Hu * 70) out[t.layer || "?"] = (out[t.layer || "?"] || 0) + 1;
+            if (x1 <= 0 || y1 <= 0 || x0 >= Wu * 70 || y0 >= Hu * 70) { out[t.layer || "?"] = (out[t.layer || "?"] || 0) + 1; if (far.includes(t)) outFar = true; }
         });
-        return { pg, cell, all, k, dx, dy, W0, H0, Wu, Hu, margins: { l: L / cell, t: T / cell, r: (Wu * 70 - (L + cw)) / cell, b: (Hu * 70 - (T + ch)) / cell },
-            grid: gridInfo(counted, cell), others: others(pg), out };
+        return { pg, cell, all, k, dx, dy, W0, H0, Wu, Hu, cw, ch, far, margins: { l: L / 70, t: T / 70, r: (Wu * 70 - (L + cw)) / 70, b: (Hu * 70 - (T + ch)) / 70 },
+            grid: cell >= 35 ? gridInfo(counted, cell) : null, others: others(pg), out, outFar };
     };
 
     // ── 적용 · 되돌리기 ──
@@ -3295,6 +3316,7 @@ const mapFit = (() => {
     const alignAll = () => {
         const p = plan();
         if (p.err) return say(p.err, true);
+        if (!p.grid) return say("격자가 촘촘해서 격자 맞추기는 하지 않아요");
         if (!p.grid.dx && !p.grid.dy) return say("이미 격자에 맞아 있어요");
         remember(p.pg, p.all);
         moveAll(p.all, p.grid.dx, p.grid.dy);
@@ -3304,8 +3326,10 @@ const mapFit = (() => {
     const alignStray = () => {
         const p = plan();
         if (p.err) return say(p.err, true);
+        if (!p.grid) return say("격자가 촘촘해서 격자 맞추기는 하지 않아요");
         const s = p.grid.stray;
         if (!s.length) return say("따로 어긋난 토큰이 없어요");
+        if (s.length > 3 && !confirm(`따로 어긋난 토큰 ${s.length}개를 하나씩 가장 가까운 격자선으로 옮겨요.\n격자에 안 맞춰 일부러 놓은 배치라면 조합이 틀어질 수 있어요 (되돌리기는 돼요). 할까요?`)) return;
         remember(p.pg, s.map(o => o.t));
         // 다른 토큰들과 같은 밀림으로 — 가까운 쪽 격자선으로 (크기는 그대로)
         const near = d => { d = mod(d, p.cell); return d <= p.cell / 2 ? -d : p.cell - d; };
@@ -3324,6 +3348,7 @@ const mapFit = (() => {
 
     // ── 판 ──
     const fmtK = k => k >= 1 ? `${k}배` : `${Math.round(1 / k)}분의 1`;
+    const LN = { map: "맵", objects: "토큰", gmlayer: "GM", walls: "벽", foreground: "앞" };
     const chip = (attr, v, label, on) => `<button type="button" ${attr}="${v}" aria-pressed="${on}">${label}</button>`;
     const say = (t, bad) => { const el = pop?.querySelector(".prog"); if (el) { el.textContent = t; el.classList.toggle("bad", !!bad); } };
     const draw = () => {
@@ -3343,20 +3368,28 @@ const mapFit = (() => {
             $(".pri").disabled = false;
             const f = n => (Math.round(n * 10) / 10).toString();
             const lines = [`${p.W0}×${p.H0}칸 → ${p.Wu}×${p.Hu}칸${st.mode === "fit" && st.ratio !== "free" ? ` (${(RATIOS.find(x => x[0] === st.ratio) || [])[1]} ≈ ${(p.Wu / p.Hu).toFixed(2)})` : ""}${p.k !== 1 ? ` · ${fmtK(p.k)}` : ""}`,
-                `여백 위 ${f(p.margins.t)} · 아래 ${f(p.margins.b)} · 왼 ${f(p.margins.l)} · 오른 ${f(p.margins.r)}칸 · 전부 (${f(p.dx / p.cell)}, ${f(p.dy / p.cell)})칸 옮김`,
+                `내용 ${f(p.cw / 70)}×${f(p.ch / 70)}칸 · 격자 한 칸 ${f(p.cell / 70)}칸(${Math.round(p.cell * 10) / 10}px)`,
+                `여백 위 ${f(p.margins.t)} · 아래 ${f(p.margins.b)} · 왼 ${f(p.margins.l)} · 오른 ${f(p.margins.r)}칸 · 전부 (${f(p.dx / 70)}, ${f(p.dy / 70)})칸 옮김`,
                 `그림 ${p.all.filter(t => t.kind === "g").length} · 선 ${p.all.filter(t => t.kind === "p").length} · 글자 ${p.all.filter(t => t.kind === "t").length}개를 같이 옮겨요`];
             if (p.others.length) lines.push(`못 옮기는 것: ${p.others.map(([k, n]) => `${k} ${n}`).join(", ")}`);
-            const LN = { map: "맵", objects: "토큰", gmlayer: "GM", walls: "벽", foreground: "앞" };
             const outs = Object.entries(p.out);
-            if (outs.length) lines.push(`⚠ 맵 밖으로 나가는 것: ${outs.map(([l, n]) => `${LN[l] || l} ${n}개`).join(", ")} — '범위를 셀 층'에 넣으면 같이 들어와요`);
+            if (outs.length) lines.push(`⚠ 맵 밖으로 나가는 것: ${outs.map(([l, n]) => `${LN[l] || l} ${n}개`).join(", ")} — ${p.outFar ? "멀리 떨어진 것을 '같이 세기'하면 들어와요" : "'범위를 셀 층'에 넣으면 같이 들어와요"}`);
             lines.forEach(l => { const d = document.createElement("div"); d.textContent = l; $(".sum").appendChild(d); });
+            if (p.far.length) {
+                const fl = document.createElement("div"), cnt = {};
+                p.far.forEach(t => { cnt[t.layer] = (cnt[t.layer] || 0) + 1; });
+                fl.textContent = `멀리 떨어진 것 ${p.far.length}개 (${Object.entries(cnt).map(([l, n]) => `${LN[l] || l} ${n}`).join(" · ")}) — ${st.far ? "같이 셌어요" : "범위에서 뺐어요"} `;
+                fl.insertAdjacentHTML("beforeend", `<button type="button" data-act="far">${st.far ? "빼고 세기" : "같이 세기"}</button>`);
+                $(".grid").appendChild(fl);
+            }
             const g = p.grid;
             const gl = document.createElement("div");
-            if (!g.toks) gl.textContent = "칸에 딱 맞는 크기의 토큰이 없어요 — 격자 확인은 건너뛰어요";
+            if (!g) gl.textContent = `격자가 촘촘해서(한 칸 ${Math.round(p.cell * 10) / 10}px) 격자 맞추기는 건너뛰어요 — 크기 · 간격은 그대로 옮겨요`;
+            else if (!g.toks) gl.textContent = "칸에 딱 맞는 크기의 토큰이 없어요 — 격자 확인은 건너뛰어요";
             else if (!g.dx && !g.dy) gl.textContent = `칸 크기 토큰 ${g.toks}개 중 ${g.shared}개가 격자에 맞아요`;
             else { gl.textContent = `칸 크기 토큰 ${g.toks}개 중 ${g.shared}개가 격자에서 (${g.ox}, ${g.oy})px 밀려 있어요 `; gl.insertAdjacentHTML("beforeend", '<button type="button" data-act="align">다 같이 맞추기</button>'); }
             $(".grid").appendChild(gl);
-            if (g.stray.length) { const s = document.createElement("div"); s.textContent = `따로 어긋난 토큰 ${g.stray.length}개 `; s.insertAdjacentHTML("beforeend", '<button type="button" data-act="stray">그것도 붙이기</button>'); $(".grid").appendChild(s); }
+            if (g?.stray.length) { const s = document.createElement("div"); s.textContent = `따로 어긋난 토큰 ${g.stray.length}개 `; s.insertAdjacentHTML("beforeend", '<button type="button" data-act="stray">그것도 붙이기</button>'); $(".grid").appendChild(s); }
         }
         $(".undo").disabled = !undo;
     };
@@ -3380,6 +3413,7 @@ const mapFit = (() => {
             else if (b.dataset.ratio) st.ratio = b.dataset.ratio;
             else if (b.dataset.margin != null) st.margin = +b.dataset.margin;
             else if (b.dataset.layer) { const v = b.dataset.layer; st.layers = st.layers.includes(v) ? st.layers.filter(x => x !== v) : [...st.layers, v]; }
+            else if (b.dataset.act === "far") st.far = !st.far;
             else if (b.dataset.act === "align") return alignAll();
             else if (b.dataset.act === "stray") return alignStray();
             else if (b.classList.contains("undo")) return doUndo();
