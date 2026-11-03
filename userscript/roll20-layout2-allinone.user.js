@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.36.1
+// @version      1.37.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.36.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.37.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2258,6 +2258,7 @@ const mapShot = (() => {
         up: '<path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>',
         pgset: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
         cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
+        fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
         load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
         ok: '<path d="M20 6 9 17l-5-5"/>',
         warn: '<path d="M20 6 9 17l-5-5"/><circle cx="19" cy="19" r="2" fill="currentColor"/>',
@@ -2431,6 +2432,7 @@ const mapShot = (() => {
         b.innerHTML = `<button type="button" class="main" title="맵" aria-label="맵 도구" aria-expanded="false" aria-controls="r20-maptray">${svg("map")}</button>`
             + '<div class="tray" id="r20-maptray" role="group" aria-label="맵 도구"><button type="button" class="shot"></button>'
             + `<button type="button" class="imp" title="코코포리아 맵 가져오기" aria-label="코코포리아 맵 가져오기">${svg("up")}</button>`
+            + `<button type="button" class="fit" title="맵 맞추기" aria-label="맵 맞추기">${svg("fit")}</button>`
             + `<button type="button" class="pgset" title="페이지 설정" aria-label="페이지 설정">${svg("pgset")}</button></div>`;
         b.addEventListener("click", e => {
             const k = e.target.closest("button")?.className;
@@ -2438,7 +2440,8 @@ const mapShot = (() => {
             e.preventDefault(); e.stopPropagation();
             if (k === "main") setOpen(!b.classList.contains("open"));
             else if (k === "shot") shoot();
-            else if (k === "imp") ccfImport.toggle(b);
+            else if (k === "imp") { mapFit.close(); ccfImport.toggle(b); }
+            else if (k === "fit") { ccfImport.close(); mapFit.toggle(b); }
             else if (k === "pgset") pageSettings(e.target.closest("button"));
         });
         document.body.appendChild(b);
@@ -2453,6 +2456,7 @@ const mapShot = (() => {
         if (v) return inject();
         box()?.remove();
         ccfImport.close();
+        mapFit.close();
     };
     return { inject, setEnabled };
 })();
@@ -3145,6 +3149,285 @@ const ccfImport = (() => {
     window.addEventListener("resize", () => isOpen() && place());
     return { toggle, close };
 })();
+
+// ───────── 맵 맞추기 (GM): 페이지 크기 · 내용 자리를 격자를 지키며 맞춘다 — 맵 단추 밑 ─────────
+// [격자 원칙] 크기는 절대 안 바꾸고(③ 배율 제외) 모든 것을 같은 거리만큼, 그것도 칸 단위로만 옮긴다 → 격자에 맞던 토큰은 계속 맞고,
+//   160×16 장식 위에 70×70 토큰을 얹은 조합도 그대로. 정가운데에서 반 칸이 남으면 오른쪽 · 아래 여백이 한 칸 더 된다
+// [격자에 맞추기] 칸에 딱 맞는 크기의 토큰들이 격자에서 같이 밀려 있으면, 그 밀림만큼 내용 전체를 한꺼번에 옮긴다(따로 어긋난 것은 보여 주기만)
+// [같이 옮기는 것] 그림(모든 층) · 선(조명 벽 포함) · 글자. 그 밖의 것(문 · 창문 등)은 세어서 알린다
+// [되돌리기] 마지막 한 번 — 페이지 크기와 옮긴 것의 자리 · 크기를 그대로
+const mapFit = (() => {
+    const RATIOS = [["free", "자유", 0], ["16:9", "16:9", 16 / 9], ["4:3", "4:3", 4 / 3], ["1:1", "1:1", 1], ["3:4", "3:4", 3 / 4], ["9:16", "9:16", 9 / 16], ["a4", "A4 세로", 1 / Math.SQRT2]];
+    const MARGINS = [0, 1, 2, 5, 10, 20];
+    const LAYERS = [["map", "맵"], ["objects", "토큰"], ["gmlayer", "GM"]];
+    const KEY = "r20_fit";
+    const st = Object.assign({ mode: "fit", ratio: "free", margin: 1, layers: ["map", "objects"] }, (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } })());
+    const saveSt = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
+    let pop = null, anchor = null, undo = null;
+    const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
+    const page = () => window.Campaign?.activePage?.() || null;
+    const cellOf = pg => 70 * (num(pg, "snapping_increment", 1) > 0 ? num(pg, "snapping_increment", 1) : 1);
+    const mod = (a, b) => ((a % b) + b) % b;
+
+    // ── 페이지 위의 것들: { m, kind, layer, box:{x0,y0,x1,y1} } ──
+    const things = pg => {
+        const out = [];
+        const box = (cx, cy, w, h, rot) => {
+            const r = (rot || 0) * Math.PI / 180, c = Math.abs(Math.cos(r)), s = Math.abs(Math.sin(r));
+            const W = w * c + h * s, H = w * s + h * c;
+            return { x0: cx - W / 2, y0: cy - H / 2, x1: cx + W / 2, y1: cy + H / 2 };
+        };
+        (pg.thegraphics?.models || []).forEach(m => out.push({ m, kind: "g", layer: m.get("layer") || "", box: box(num(m, "left"), num(m, "top"), num(m, "width"), num(m, "height"), num(m, "rotation")) }));
+        (pg.thepaths?.models || []).forEach(m => out.push({ m, kind: "p", layer: m.get("layer") || "",
+            box: box(num(m, "left"), num(m, "top"), num(m, "width") * Math.abs(num(m, "scaleX", 1)), num(m, "height") * Math.abs(num(m, "scaleY", 1)), num(m, "rotation")) }));
+        (pg.thetexts?.models || []).forEach(m => out.push({ m, kind: "t", layer: m.get("layer") || "", box: box(num(m, "left"), num(m, "top"), num(m, "width"), num(m, "height"), num(m, "rotation")) }));
+        return out;
+    };
+    // 못 옮기는 다른 것들 (Jumpgate 의 문 · 창문 같은 모음) — 세기만 한다
+    const others = pg => Object.keys(pg).filter(k => /^the/.test(k) && !["thegraphics", "thepaths", "thetexts"].includes(k) && Array.isArray(pg[k]?.models) && pg[k].models.length)
+        .map(k => [k.replace(/^the/, ""), pg[k].models.length]);
+    const bboxOf = list => list.length ? list.reduce((a, t) => ({ x0: Math.min(a.x0, t.box.x0), y0: Math.min(a.y0, t.box.y0), x1: Math.max(a.x1, t.box.x1), y1: Math.max(a.y1, t.box.y1) }),
+        { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }) : null;
+
+    // ── 격자: 칸에 딱 맞는 크기의 토큰(90° 단위로만 돈 것)들이 격자에서 얼마나 밀려 있나 ──
+    const gridInfo = (list, cell) => {
+        const toks = list.filter(t => t.kind === "g" && t.layer !== "gmlayer" && mod(num(t.m, "rotation"), 90) < 0.5)
+            .filter(t => { const w = t.box.x1 - t.box.x0, h = t.box.y1 - t.box.y0; return w >= cell - 0.5 && h >= cell - 0.5 && Math.abs(w / cell - Math.round(w / cell)) < 0.01 && Math.abs(h / cell - Math.round(h / cell)) < 0.01; });
+        const offs = toks.map(t => { let ox = mod(Math.round(t.box.x0), cell), oy = mod(Math.round(t.box.y0), cell); if (ox > cell - 1) ox = 0; if (oy > cell - 1) oy = 0; return { t, ox, oy }; });
+        // 가장 많은 밀림 (1px 안쪽은 같은 것으로)
+        const tally = new Map();
+        offs.forEach(o => { const k = o.ox + "," + o.oy; tally.set(k, (tally.get(k) || 0) + 1); });
+        let best = "0,0", bn = -1;
+        tally.forEach((n, k) => { if (n > bn) { best = k; bn = n; } });
+        const [bx, by] = best.split(",").map(Number);
+        const near = (a, b) => Math.min(Math.abs(a - b), cell - Math.abs(a - b)) <= 1;
+        const off = offs.filter(o => !(near(o.ox, bx) && near(o.oy, by)));
+        return { toks: offs.length, ox: bx, oy: by, stray: off,
+            // 다 같이 옮길 거리 — 가까운 쪽으로 (반 칸 넘게 밀렸으면 반대로)
+            dx: bx ? (bx <= cell / 2 ? -bx : cell - bx) : 0, dy: by ? (by <= cell / 2 ? -by : cell - by) : 0, shared: bn };
+    };
+
+    // ── 계획 세우기: 페이지 크기(칸 = 70px 단위) · 옮길 거리 · 배율 ──
+    // dx 는 칸(cell)의 배수로만. lo ≤ dx ≤ hi 에서 가운데(c)에 가장 가까운 것, 같으면 작은 쪽(남는 칸은 오른쪽 · 아래로)
+    const pickShift = (lo, hi, c, cell) => {
+        let best = null;
+        for (let k = Math.ceil((lo - 1e-6) / cell); k * cell <= hi + 1e-6; k++) { const d = k * cell; if (best === null || Math.abs(d - c) < Math.abs(best - c) - 1e-6) best = d; }
+        return best;
+    };
+    // 비율 r 에 1% 안쪽으로 가까운, w ≥ W · h ≥ H 인 가장 작은 (w, h)
+    const fitRatio = (W, H, r) => {
+        let best = null;
+        const ok = (w, h) => w >= W && h >= H && Math.abs(w / h - r) / r <= 0.01;
+        const take = (w, h) => { if (ok(w, h) && (!best || w * h < best[0] * best[1])) best = [w, h]; };
+        for (let h = H; h < H + 400; h++) { take(Math.max(W, Math.round(h * r)), h); take(Math.max(W, Math.ceil(h * r)), h); }
+        for (let w = W; w < W + 400; w++) { take(w, Math.max(H, Math.round(w / r))); take(w, Math.max(H, Math.ceil(w / r))); }
+        return best || [W, H];
+    };
+    const plan = () => {
+        const pg = page();
+        if (!pg?.thegraphics) return { err: "페이지를 아직 불러오지 않았어요" };
+        const cell = cellOf(pg), all = things(pg), counted = all.filter(t => st.layers.includes(t.layer));
+        const b0 = bboxOf(counted);
+        if (!b0) return { err: "고른 층에 놓인 것이 없어요" };
+        const W0 = num(pg, "width", 25), H0 = num(pg, "height", 25), m = Math.max(0, +st.margin || 0) * cell;
+        let k = 1, b = b0;
+        if (st.mode === "scale") {
+            // 격자를 지키는 배율만: 키우기는 2 · 3 · 4배, 줄이기는 ½ · ⅓ · ¼ 중 칸에 딱 맞는 토큰이 모두 그 배수일 때만
+            const g = gridInfo(counted, cell);
+            const safeDown = d => g.stray.length === 0 && counted.filter(t => t.kind === "g").every(t => {
+                const w = t.box.x1 - t.box.x0, h = t.box.y1 - t.box.y0;
+                const isGrid = Math.abs(w / cell - Math.round(w / cell)) < 0.01 && Math.abs(h / cell - Math.round(h / cell)) < 0.01;
+                return !isGrid || [w, h, t.box.x0 - g.ox, t.box.y0 - g.oy].every(v => Math.abs(mod(Math.round(v / cell), d)) < 1e-6);
+            });
+            const fits = f => (b0.x1 - b0.x0) * f + 2 * m <= W0 * 70 + 0.5 && (b0.y1 - b0.y0) * f + 2 * m <= H0 * 70 + 0.5;
+            const cands = [4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4].filter(f => f >= 1 || safeDown(Math.round(1 / f)));
+            k = cands.find(fits) || 0;
+            if (!k) return { err: "격자를 지키며 맵 안에 맞출 배율이 없어요 — 여백을 줄이거나 '맵을 내용에'를 써 보세요" };
+            b = { x0: b0.x0 * k, y0: b0.y0 * k, x1: b0.x1 * k, y1: b0.y1 * k };
+        }
+        const cw = b.x1 - b.x0, ch = b.y1 - b.y0;
+        const r = st.mode === "fit" ? (RATIOS.find(x => x[0] === st.ratio) || RATIOS[0])[2] : 0;
+        // 맞추기: 비율이 있으면 1% 안쪽 크기 · 없으면 딱 그만큼 / 가운데 · 배율: 넘치는 쪽만 늘린다
+        const size = (nw, nh) => st.mode === "fit" ? (r ? fitRatio(Math.max(1, nw), Math.max(1, nh), r) : [Math.max(1, nw), Math.max(1, nh)]) : [Math.max(W0, nw), Math.max(H0, nh)];
+        // 옮길 거리 — 칸 단위로, 여백을 지키며 가운데에 가장 가깝게. 칸이 안 들어가면 그쪽을 한 칸 늘려 크기(비율)부터 다시
+        let nw = Math.ceil((cw + 2 * m - 0.5) / 70), nh = Math.ceil((ch + 2 * m - 0.5) / 70), Wu = W0, Hu = H0, dx = null, dy = null;
+        for (let i = 0; i < 8; i++) {
+            [Wu, Hu] = size(nw, nh);
+            dx = pickShift(m - b.x0, Wu * 70 - m - b.x1, (Wu * 70 - cw) / 2 - b.x0, cell);
+            dy = pickShift(m - b.y0, Hu * 70 - m - b.y1, (Hu * 70 - ch) / 2 - b.y0, cell);
+            if (dx !== null && dy !== null) break;
+            if (dx === null) nw = Wu + 1;
+            if (dy === null) nh = Hu + 1;
+        }
+        if (dx === null || dy === null) return { err: "여백을 지키며 칸 단위로 놓을 자리를 못 찾았어요" };
+        const L = b.x0 + dx, T = b.y0 + dy;
+        // 범위에서 뺀 층(GM 메모 등) 가운데 맞춘 뒤 맵 밖으로 나가는 것 — 층마다 센다
+        const out = {};
+        all.forEach(t => {
+            const x0 = t.box.x0 * k + dx, y0 = t.box.y0 * k + dy, x1 = t.box.x1 * k + dx, y1 = t.box.y1 * k + dy;
+            if (x1 <= 0 || y1 <= 0 || x0 >= Wu * 70 || y0 >= Hu * 70) out[t.layer || "?"] = (out[t.layer || "?"] || 0) + 1;
+        });
+        return { pg, cell, all, k, dx, dy, W0, H0, Wu, Hu, margins: { l: L / cell, t: T / cell, r: (Wu * 70 - (L + cw)) / cell, b: (Hu * 70 - (T + ch)) / cell },
+            grid: gridInfo(counted, cell), others: others(pg), out };
+    };
+
+    // ── 적용 · 되돌리기 ──
+    const snap = (t) => ({ m: t.m, a: Object.fromEntries(["left", "top", "width", "height", "scaleX", "scaleY", "font_size"].filter(k => t.m.get(k) !== undefined).map(k => [k, t.m.get(k)])) });
+    const moveAll = (all, dx, dy, k = 1) => all.forEach(t => {
+        const a = { left: num(t.m, "left") * k + dx, top: num(t.m, "top") * k + dy };
+        if (k !== 1) {
+            if (t.kind === "g") { a.width = num(t.m, "width") * k; a.height = num(t.m, "height") * k; }
+            if (t.kind === "p") { a.scaleX = num(t.m, "scaleX", 1) * k; a.scaleY = num(t.m, "scaleY", 1) * k; }
+            if (t.kind === "t" && t.m.get("font_size") !== undefined) a.font_size = Math.round(num(t.m, "font_size", 16) * k);
+        }
+        t.m.save(a);
+    });
+    const remember = (pg, list) => { undo = { pg, page: { width: pg.get("width"), height: pg.get("height") }, items: list.map(snap) }; };
+    const apply = () => {
+        const p = plan();
+        if (p.err) return say(p.err, true);
+        remember(p.pg, p.all);
+        moveAll(p.all, p.dx, p.dy, p.k);
+        if (p.Wu !== p.W0 || p.Hu !== p.H0) p.pg.save({ width: p.Wu, height: p.Hu });
+        say(`맞췄어요 — ${p.Wu}×${p.Hu}칸${p.k !== 1 ? ` · ${fmtK(p.k)}` : ""} · ${p.all.length}개 옮김`);
+        draw();
+    };
+    const alignAll = () => {
+        const p = plan();
+        if (p.err) return say(p.err, true);
+        if (!p.grid.dx && !p.grid.dy) return say("이미 격자에 맞아 있어요");
+        remember(p.pg, p.all);
+        moveAll(p.all, p.grid.dx, p.grid.dy);
+        say(`내용 전체를 (${p.grid.dx}, ${p.grid.dy})px 옮겨 격자에 맞췄어요`);
+        draw();
+    };
+    const alignStray = () => {
+        const p = plan();
+        if (p.err) return say(p.err, true);
+        const s = p.grid.stray;
+        if (!s.length) return say("따로 어긋난 토큰이 없어요");
+        remember(p.pg, s.map(o => o.t));
+        // 다른 토큰들과 같은 밀림으로 — 가까운 쪽 격자선으로 (크기는 그대로)
+        const near = d => { d = mod(d, p.cell); return d <= p.cell / 2 ? -d : p.cell - d; };
+        s.forEach(({ t, ox, oy }) => t.m.save({ left: num(t.m, "left") + near(ox - p.grid.ox), top: num(t.m, "top") + near(oy - p.grid.oy) }));
+        say(`따로 어긋난 토큰 ${s.length}개를 격자에 붙였어요 (크기는 그대로)`);
+        draw();
+    };
+    const doUndo = () => {
+        if (!undo) return;
+        undo.items.forEach(({ m, a }) => { try { m.save(a); } catch (e) {} });
+        undo.pg.save(undo.page);
+        undo = null;
+        say("되돌렸어요");
+        draw();
+    };
+
+    // ── 판 ──
+    const fmtK = k => k >= 1 ? `${k}배` : `${Math.round(1 / k)}분의 1`;
+    const chip = (attr, v, label, on) => `<button type="button" ${attr}="${v}" aria-pressed="${on}">${label}</button>`;
+    const say = (t, bad) => { const el = pop?.querySelector(".prog"); if (el) { el.textContent = t; el.classList.toggle("bad", !!bad); } };
+    const draw = () => {
+        if (!pop) return;
+        const $ = s => pop.querySelector(s);
+        $(".mode").innerHTML = [["fit", "맵을 내용에"], ["center", "내용을 가운데"], ["scale", "내용 크기 맞춤"]].map(([v, l]) => chip("data-mode", v, l, st.mode === v)).join("");
+        $(".ratio").innerHTML = RATIOS.map(([v, l]) => chip("data-ratio", v, l, st.ratio === v)).join("");
+        $(".rrow").hidden = st.mode !== "fit";
+        $(".margin").innerHTML = MARGINS.map(v => chip("data-margin", v, v, +st.margin === v)).join("")
+            + `<input type="number" min="0" max="200" step="1" aria-label="여백 직접 (칸)" placeholder="직접" value="${MARGINS.includes(+st.margin) ? "" : st.margin}">`;
+        $(".layers").innerHTML = LAYERS.map(([v, l]) => chip("data-layer", v, l, st.layers.includes(v))).join("");
+        const p = plan();
+        $(".sum").textContent = "";
+        $(".grid").textContent = "";
+        if (p.err) { $(".sum").textContent = p.err; $(".pri").disabled = true; }
+        else {
+            $(".pri").disabled = false;
+            const f = n => (Math.round(n * 10) / 10).toString();
+            const lines = [`${p.W0}×${p.H0}칸 → ${p.Wu}×${p.Hu}칸${st.mode === "fit" && st.ratio !== "free" ? ` (${(RATIOS.find(x => x[0] === st.ratio) || [])[1]} ≈ ${(p.Wu / p.Hu).toFixed(2)})` : ""}${p.k !== 1 ? ` · ${fmtK(p.k)}` : ""}`,
+                `여백 위 ${f(p.margins.t)} · 아래 ${f(p.margins.b)} · 왼 ${f(p.margins.l)} · 오른 ${f(p.margins.r)}칸 · 전부 (${f(p.dx / p.cell)}, ${f(p.dy / p.cell)})칸 옮김`,
+                `그림 ${p.all.filter(t => t.kind === "g").length} · 선 ${p.all.filter(t => t.kind === "p").length} · 글자 ${p.all.filter(t => t.kind === "t").length}개를 같이 옮겨요`];
+            if (p.others.length) lines.push(`못 옮기는 것: ${p.others.map(([k, n]) => `${k} ${n}`).join(", ")}`);
+            const LN = { map: "맵", objects: "토큰", gmlayer: "GM", walls: "벽", foreground: "앞" };
+            const outs = Object.entries(p.out);
+            if (outs.length) lines.push(`⚠ 맵 밖으로 나가는 것: ${outs.map(([l, n]) => `${LN[l] || l} ${n}개`).join(", ")} — '범위를 셀 층'에 넣으면 같이 들어와요`);
+            lines.forEach(l => { const d = document.createElement("div"); d.textContent = l; $(".sum").appendChild(d); });
+            const g = p.grid;
+            const gl = document.createElement("div");
+            if (!g.toks) gl.textContent = "칸에 딱 맞는 크기의 토큰이 없어요 — 격자 확인은 건너뛰어요";
+            else if (!g.dx && !g.dy) gl.textContent = `칸 크기 토큰 ${g.toks}개 중 ${g.shared}개가 격자에 맞아요`;
+            else { gl.textContent = `칸 크기 토큰 ${g.toks}개 중 ${g.shared}개가 격자에서 (${g.ox}, ${g.oy})px 밀려 있어요 `; gl.insertAdjacentHTML("beforeend", '<button type="button" data-act="align">다 같이 맞추기</button>'); }
+            $(".grid").appendChild(gl);
+            if (g.stray.length) { const s = document.createElement("div"); s.textContent = `따로 어긋난 토큰 ${g.stray.length}개 `; s.insertAdjacentHTML("beforeend", '<button type="button" data-act="stray">그것도 붙이기</button>'); $(".grid").appendChild(s); }
+        }
+        $(".undo").disabled = !undo;
+    };
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "r20-fit";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "맵 맞추기");
+        pop.innerHTML = '<div class="hd"><b>맵 맞추기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
+            + '<div class="bd"><span class="lb">방식</span><div class="rg mode"></div>'
+            + '<div class="rrow"><span class="lb">맵 비율 <small>1% 안쪽으로</small></span><div class="rg ratio"></div></div>'
+            + '<span class="lb">여백 (칸) <small>가장 좁은 쪽</small></span><div class="rg margin"></div>'
+            + '<span class="lb">범위를 셀 층 <small>옮기는 건 전부</small></span><div class="rg layers"></div>'
+            + '<div class="grid"></div><div class="sum" aria-live="polite"></div>'
+            + '<div class="go"><button type="button" class="undo">되돌리기</button><button type="button" class="pri">맞추기</button></div><div class="prog" aria-live="polite"></div></div>';
+        pop.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.classList.contains("x")) return close();
+            if (b.dataset.mode) st.mode = b.dataset.mode;
+            else if (b.dataset.ratio) st.ratio = b.dataset.ratio;
+            else if (b.dataset.margin != null) st.margin = +b.dataset.margin;
+            else if (b.dataset.layer) { const v = b.dataset.layer; st.layers = st.layers.includes(v) ? st.layers.filter(x => x !== v) : [...st.layers, v]; }
+            else if (b.dataset.act === "align") return alignAll();
+            else if (b.dataset.act === "stray") return alignStray();
+            else if (b.classList.contains("undo")) return doUndo();
+            else if (b.classList.contains("pri")) return apply();
+            else return;
+            saveSt(); say(""); draw();
+        });
+        pop.addEventListener("change", e => { if (e.target.matches(".margin input") && e.target.value !== "") { st.margin = Math.max(0, Math.min(200, Math.round(+e.target.value) || 0)); saveSt(); draw(); } });
+        document.body.appendChild(pop);
+    };
+    const place = () => {
+        if (!pop || !anchor?.isConnected) return;
+        const r = anchor.getBoundingClientRect();
+        Object.assign(pop.style, { top: Math.round(r.top) + "px", right: Math.round(innerWidth - r.left + 8) + "px" });
+    };
+    const isOpen = () => !!pop && !pop.hidden;
+    const open = at => { if (!isGM()) return; anchor = at; if (!pop) build(); pop.hidden = false; place(); say(""); draw(); };
+    const close = () => { if (pop) pop.hidden = true; };
+    const toggle = at => (isOpen() ? close() : open(at));
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
+    window.addEventListener("resize", () => isOpen() && place());
+    return { toggle, close, _plan: plan };
+})();
+addCss(`
+        /* 맵 맞추기 판 (맵 단추 밑) — 가져오기 판과 같은 모양 */
+        #r20-fit { position:fixed; z-index:10006; display:flex; flex-direction:column; width:330px; max-width:calc(100vw - 32px); max-height:80vh; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:#333; }
+        #r20-fit[hidden] { display:none; }
+        #r20-fit .hd { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #eee; }
+        #r20-fit .bd { display:flex; flex-direction:column; gap:5px; padding:6px 8px 8px; overflow-y:auto; }
+        #r20-fit .rrow[hidden] { display:none; }
+        #r20-fit .rrow { display:flex; flex-direction:column; gap:5px; }
+        #r20-fit .lb { font-weight:700; color:#444; } #r20-fit .lb small { font-weight:400; color:#999; margin-left:4px; }
+        #r20-fit .rg, #r20-fit .go { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+        #r20-fit .go { justify-content:flex-end; margin-top:2px; }
+        #r20-fit button { height:22px; margin:0; padding:0 9px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font:700 11px/20px sans-serif; cursor:pointer; }
+        #r20-fit button:disabled { opacity:.5; cursor:default; }
+        #r20-fit button:focus-visible, #r20-fit input:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        #r20-fit button[aria-pressed=true] { background:#b8215f; border-color:#b8215f; color:#fff; }
+        #r20-fit .x { padding:0 6px; }
+        #r20-fit .margin input { width:52px; height:22px; margin:0; padding:0 5px; border:1px solid #ccc; border-radius:4px; font-size:11px; }
+        #r20-fit .grid { display:flex; flex-direction:column; gap:3px; padding:5px 7px; border-radius:5px; background:#fff7e6; color:#7a5410; font-size:11px; }
+        #r20-fit .grid:empty { display:none; }
+        #r20-fit .grid button { height:20px; margin-left:4px; padding:0 7px; font-size:10.5px; line-height:18px; }
+        #r20-fit .sum { padding:5px 7px; border-radius:5px; background:#f4f5f8; color:#40465a; font-size:11px; }
+        #r20-fit .sum:empty { display:none; }
+        #r20-fit .pri { background:#b8215f; border-color:#b8215f; color:#fff; }
+        #r20-fit .prog { color:#2e7d4f; font-size:11px; } #r20-fit .prog.bad { color:#c0392b; } #r20-fit .prog:empty { display:none; }
+`);
 
 addCss(`
         /* 맵 단추 (화면 제어 줄 맨 아래): 누르면 촬영 · 가져오기 · 페이지 설정 단추가 아래로 펼쳐진다 */
