@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.3
+// @version      1.38.4
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4057,6 +4057,7 @@ const tokenMenu = (() => {
         const pg = window.Campaign?.activePage?.();
         const back = menu && findIn(menu, "뒤로 보내기"), front = menu && findIn(menu, "앞으로 가져오기");
         if (!pg?.thegraphics || !front || !isGM()) return null;
+        const dis = b => !!b?.classList.contains("disabled");
         // 지나온 순서를 다 적어 둔다 (Roll20 은 토큰마다 한 번씩 바꾸기도 한다 — 진단: 두 개 → 바뀜 두 번)
         const z0 = zOf(pg), snaps = [];
         const onZ = () => { const z = zOf(pg); if (z !== (snaps[snaps.length - 1] ?? z0)) snaps.push(z); };
@@ -4066,34 +4067,45 @@ const tokenMenu = (() => {
         const lockBtn = findIn(menu, "위치 고정"), locked = new Map();
         // Roll20 모음이 '바뀜' 알림을 안 넘겨줄 수 있어서(11-03 실제: 잠금 변화 0) 누르기 전 · 뒤의 잠금 칸을 직접 견준다
         const lockKeys = g => Object.keys(g.attributes || {}).filter(k => /lock/i.test(k));
-        const before = new Map(pg.thegraphics.models.map(g => [g, Object.fromEntries(lockKeys(g).map(k => [k, g.get(k)]))]));
+        const lockSnap = () => new Map(pg.thegraphics.models.map(g => [g, Object.fromEntries(lockKeys(g).map(k => [k, g.get(k)]))]));
+        const before = lockSnap();
         const onG = m => {
             const ch = m.changedAttributes?.() || {}, prev = m.previousAttributes?.() || {};
             Object.keys(ch).forEach(k => { if (!/lock/i.test(k)) return; const rec = locked.get(m) || {}; if (!(k in rec)) rec[k] = prev[k] ?? false; locked.set(m, rec); });
         };
         pg.thegraphics.on?.("change", onG);
-        const dis = b => !!b?.classList.contains("disabled");
-        // 메뉴가 닫히기 전에 같은 순간에 다 누른다
-        try { back?.click(); front.click(); lockBtn?.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 · 고정 단추를 못 누름:", e); }
+        // 메뉴가 닫히기 전에 같은 순간에 누른다. 순서는 '뒤로 보내기' 하나만 — '앞으로'까지 누르면 Roll20 이 둘을 합쳐
+        // 맨 위에 있던 토큰(복사해 붙인 것 등)은 아무 변화가 안 남는다(11-03 실제). '뒤로'가 없거나 꺼져 있을 때만 '앞으로'
+        // 누를 때마다 바로 순서 · 잠금을 읽어 둔다 — 합쳐지기 전의 중간 상태도 잡게
+        const zb = back && !dis(back) ? back : front;
+        const lockDiff = snap => pg.thegraphics.models.forEach(g => {
+            const was = before.get(g) || {}, now = snap.get(g) || {}, rec = locked.get(g) || {};
+            new Set([...Object.keys(was), ...Object.keys(now)]).forEach(k => { if (!(k in rec) && !!was[k] !== !!now[k]) rec[k] = was[k] ?? false; });
+            if (Object.keys(rec).length) locked.set(g, rec);
+        });
+        try { zb.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 단추를 못 누름:", e); }
+        onZ();
+        // '위치 고정'은 두 번 — 고정 · 안 고정이 섞이면 Roll20 이 한 값으로 맞춰서 원래 그 값이던 것은 안 바뀐다.
+        // 두 번 누르면 어느 쪽이든 한 번은 바뀐다(매번 읽어 둔다). 끝나면 처음 값으로 되돌린다
+        for (let i = 0; i < 2 && lockBtn; i++) {
+            try { lockBtn.click(); } catch (e) { console.warn("[토큰 메뉴] 고정 단추를 못 누름:", e); break; }
+            lockDiff(lockSnap());
+        }
+        onZ();
         await zSettle(pg, z0);
         await wait(200);
         pg.off("change:zorder", onZ);
         pg.thegraphics.off?.("change", onG);
         onZ();
-        pg.thegraphics.models.forEach(g => {
-            const was = before.get(g) || {}, rec = locked.get(g) || {};
-            new Set([...Object.keys(was), ...lockKeys(g)]).forEach(k => { if (!(k in rec) && !!was[k] !== !!g.get(k)) rec[k] = was[k] ?? false; });
-            if (Object.keys(rec).length) locked.set(g, rec);
-        });
+        lockDiff(lockSnap());
         locked.forEach((rec, m) => { try { m.save(rec); } catch (e) { console.warn("[토큰 메뉴] 잠금을 못 되돌림:", e); } });
         // 지나온 순서마다 처음과 견주어 '확실히' 움직인 것만 모은다 — 옆자리끼리 바뀌어 누가 움직였는지 같아 보이는 것은
         // 두 해석(끝 쪽 · 앞쪽)에 다 든 것만. 고른 것이 한 끝에 붙어 있어 한쪽 동작이 애매해도 다른 동작에서 멀리 움직여 잡힌다
         // ('뒤로' · '앞으로'가 토큰마다 섞여 들어와도 된다)
         const a = zList(z0), u = new Set();
         snaps.forEach(sz => { const b = zList(sz), late = new Set(movedSet(a, b, true)); movedSet(a, b, false).forEach(id => { if (late.has(id)) u.add(id); }); });
-        // Roll20 이 '뒤로' · '앞으로'를 한 번에 합쳐 마지막 결과만 남기면(11-03 실제: 순서 변화 1) 옆자리끼리 바뀐 것처럼 애매해진다
-        // → 확실한 게 없으면 마지막에 누른 '앞으로'(맨 위로 간 쪽)로 읽는다
-        if (!u.size && snaps.length) movedSet(a, zList(snaps[snaps.length - 1]), true).forEach(id => u.add(id));
+        // 옆자리끼리 바뀐 것처럼 애매하면 누른 쪽으로 읽는다 ('뒤로'면 앞쪽(아래)으로 간 것, '앞으로'면 끝쪽(위)으로 간 것)
+        if (!u.size && snaps.length) movedSet(a, zList(snaps[snaps.length - 1]), zb === front).forEach(id => u.add(id));
         locked.forEach((_, m) => u.add(m.id));
         let gs = [...u].map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
         // 안전장치: Roll20 은 한 층에서만 고를 수 있다 → 가장 많은 층 것만. 층이 반반이거나 너무 많으면(40 넘게) 하지 않는다
@@ -4102,16 +4114,17 @@ const tokenMenu = (() => {
         const unsure = gs.length > 40 || (groups.length > 1 && groups[0].length === groups[1].length);
         if (groups.length > 1 && !unsure) gs = groups[0];
         if (unsure) console.warn("[토큰 메뉴] 고른 토큰이 이상함:", gs.length, "개 · 층", Object.keys(byLayer).map(l => l + " " + byLayer[l].length).join(", "), "· 순서 변화", snaps.length, "번");
-        if (!gs.length) console.warn("[토큰 메뉴] 찾은 것 없음 —", JSON.stringify({ 순서변화: snaps.length, 잠금변화: locked.size, 앞으로: front ? (dis(front) ? "꺼짐" : "있음") : "없음",
+        const diag = () => JSON.stringify({ 찾은것: gs.length, 순서변화: snaps.length, 잠금변화: locked.size, 앞으로: front ? (dis(front) ? "꺼짐" : "있음") : "없음",
             뒤로: back ? (dis(back) ? "꺼짐" : "있음") : "없음", 위치고정: lockBtn ? (dis(lockBtn) ? "꺼짐" : label(lockBtn)) : "없음",
-            잠금칸: [...new Set(pg.thegraphics.models.flatMap(lockKeys))].slice(0, 6), 그림칸: Object.keys(pg.thegraphics.models[0]?.attributes || {}).length }));
+            잠금칸: [...new Set(pg.thegraphics.models.flatMap(lockKeys))].slice(0, 6), 그림칸: Object.keys(pg.thegraphics.models[0]?.attributes || {}).length });
+        if (!gs.length) console.warn("[토큰 메뉴] 찾은 것 없음 —", diag());
         // 겹침 순서를 처음대로 — 지운 것은 빼고, 그 사이 새로 생긴 것은 뒤에 그대로
         const undoZ = (gone = new Set()) => {
             const now = zList(zOf(pg)), keep = a.filter(id => !gone.has(id) && now.includes(id)), extra = now.filter(id => !a.includes(id) && !gone.has(id));
             const want = [...keep, ...extra].join(",");
             if (want !== zOf(pg)) pg.save({ zorder: want });
         };
-        return { gs, unsure, undoZ };
+        return { gs, unsure, undoZ, diag };
     };
     const NOT_SURE = n => `고른 토큰을 확실히 알아내지 못했어요 (${n}개로 보여요). 아무것도 바꾸지 않았어요 — 토큰을 다시 골라 해 주세요.`;
     const NOT_FOUND = "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요.\n(계속 그러면 F12 콘솔의 [토큰 메뉴] 줄을 알려 주세요)";
@@ -4119,7 +4132,8 @@ const tokenMenu = (() => {
         const r = await pickSel(menu);
         if (!r) return;
         const { gs, unsure, undoZ } = r;
-        if (unsure || gs.length < 2) { undoZ(); alert(unsure ? NOT_SURE(gs.length) : gs.length ? "토큰을 두 개 이상 골라 주세요." : NOT_FOUND); return; }
+        if (gs.length === 1) console.warn("[토큰 메뉴] 하나만 찾음 —", r.diag());
+        if (unsure || gs.length < 2) { undoZ(); alert(unsure ? NOT_SURE(gs.length) : gs.length ? "토큰을 두 개 이상 골라 주세요.\n(두 개 넘게 골랐는데 이 말이 나오면 F12 콘솔의 [토큰 메뉴] 줄을 알려 주세요)" : NOT_FOUND); return; }
         // 면 순서: 위 → 아래 줄, 줄 안에서는 왼쪽 → 오른쪽 (윗변이 토큰 높이의 반 안쪽이면 같은 줄)
         const top = g => +g.get("top") - +g.get("height") / 2, left = g => +g.get("left") - +g.get("width") / 2;
         const tol = Math.min(...gs.map(g => +g.get("height") || 70)) / 2;
