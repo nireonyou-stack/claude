@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.37.1
+// @version      1.37.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.37.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.37.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3245,7 +3245,12 @@ const mapFit = (() => {
         const pg = page();
         if (!pg?.thegraphics) return { err: "페이지를 아직 불러오지 않았어요" };
         const cell = cellOf(pg), all = things(pg), layered = all.filter(t => st.layers.includes(t.layer));
-        const main = mainIsland(layered), far = layered.filter(t => !main.includes(t)), counted = st.far ? layered : main;
+        const W0px = num(pg, "width", 25) * 70, H0px = num(pg, "height", 25) * 70;
+        const hits = (bx, W, H) => bx.x1 > 0.5 && bx.y1 > 0.5 && bx.x0 < W - 0.5 && bx.y0 < H - 0.5;
+        // 내용 = 지금 맵과 겹치는 것. 맵 밖에 둔 것(예비 리소스 묶음 · 멀리 둔 메모)은 범위에서 뺀다 (11-03 실제 Roll20:
+        // 맵 아래에 쌓아 둔 묶음이 시트보다 많아서 '가장 큰 덩어리'로 고르면 시트가 밀려났다). 맵 안에 아무것도 없으면 가장 큰 덩어리
+        const inPage = layered.filter(t => hits(t.box, W0px, H0px));
+        const main = inPage.length ? inPage : mainIsland(layered), far = layered.filter(t => !main.includes(t)), counted = st.far ? layered : main;
         const b0 = bboxOf(counted);
         if (!b0) return { err: "고른 층에 놓인 것이 없어요" };
         // 여백 · 크기는 맵과 같은 70px 칸으로 센다 (격자 한 칸이 7px 인 촘촘한 페이지도 있다). 옮기는 거리만 격자 칸 단위
@@ -3281,15 +3286,17 @@ const mapFit = (() => {
         }
         if (dx === null || dy === null) return { err: "여백을 지키며 칸 단위로 놓을 자리를 못 찾았어요" };
         const L = b.x0 + dx, T = b.y0 + dy;
-        // 범위에서 뺀 층(GM 메모 등) 가운데 맞춘 뒤 맵 밖으로 나가는 것 — 층마다 센다
-        const out = {};
+        // 맵 안에 있던 것이 밖으로 나가거나(out), 밖에 두었던 것이 새 맵 안으로 들어오는 것(into) — 층마다 센다
+        const out = {}, into = {};
         let outFar = false;
         all.forEach(t => {
-            const x0 = t.box.x0 * k + dx, y0 = t.box.y0 * k + dy, x1 = t.box.x1 * k + dx, y1 = t.box.y1 * k + dy;
-            if (x1 <= 0 || y1 <= 0 || x0 >= Wu * 70 || y0 >= Hu * 70) { out[t.layer || "?"] = (out[t.layer || "?"] || 0) + 1; if (far.includes(t)) outFar = true; }
+            const nb = { x0: t.box.x0 * k + dx, y0: t.box.y0 * k + dy, x1: t.box.x1 * k + dx, y1: t.box.y1 * k + dy };
+            const was = hits(t.box, W0px, H0px), now = hits(nb, Wu * 70, Hu * 70), l = t.layer || "?";
+            if (was && !now) { out[l] = (out[l] || 0) + 1; if (far.includes(t)) outFar = true; }
+            if (!was && now) into[l] = (into[l] || 0) + 1;
         });
         return { pg, cell, all, k, dx, dy, W0, H0, Wu, Hu, cw, ch, far, margins: { l: L / 70, t: T / 70, r: (Wu * 70 - (L + cw)) / 70, b: (Hu * 70 - (T + ch)) / 70 },
-            grid: cell >= 35 ? gridInfo(counted, cell) : null, others: others(pg), out, outFar };
+            grid: cell >= 35 ? gridInfo(counted, cell) : null, others: others(pg), out, outFar, into, inPageCount: inPage.length };
     };
 
     // ── 적용 · 되돌리기 ──
@@ -3367,18 +3374,20 @@ const mapFit = (() => {
         else {
             $(".pri").disabled = false;
             const f = n => (Math.round(n * 10) / 10).toString();
-            const lines = [`${p.W0}×${p.H0}칸 → ${p.Wu}×${p.Hu}칸${st.mode === "fit" && st.ratio !== "free" ? ` (${(RATIOS.find(x => x[0] === st.ratio) || [])[1]} ≈ ${(p.Wu / p.Hu).toFixed(2)})` : ""}${p.k !== 1 ? ` · ${fmtK(p.k)}` : ""}`,
+            const lines = [`${f(p.W0)}×${f(p.H0)}칸 → ${p.Wu}×${p.Hu}칸${st.mode === "fit" && st.ratio !== "free" ? ` (${(RATIOS.find(x => x[0] === st.ratio) || [])[1]} ≈ ${(p.Wu / p.Hu).toFixed(2)})` : ""}${p.k !== 1 ? ` · ${fmtK(p.k)}` : ""}`,
                 `내용 ${f(p.cw / 70)}×${f(p.ch / 70)}칸 · 격자 한 칸 ${f(p.cell / 70)}칸(${Math.round(p.cell * 10) / 10}px)`,
                 `여백 위 ${f(p.margins.t)} · 아래 ${f(p.margins.b)} · 왼 ${f(p.margins.l)} · 오른 ${f(p.margins.r)}칸 · 전부 (${f(p.dx / 70)}, ${f(p.dy / 70)})칸 옮김`,
                 `그림 ${p.all.filter(t => t.kind === "g").length} · 선 ${p.all.filter(t => t.kind === "p").length} · 글자 ${p.all.filter(t => t.kind === "t").length}개를 같이 옮겨요`];
             if (p.others.length) lines.push(`못 옮기는 것: ${p.others.map(([k, n]) => `${k} ${n}`).join(", ")}`);
             const outs = Object.entries(p.out);
-            if (outs.length) lines.push(`⚠ 맵 밖으로 나가는 것: ${outs.map(([l, n]) => `${LN[l] || l} ${n}개`).join(", ")} — ${p.outFar ? "멀리 떨어진 것을 '같이 세기'하면 들어와요" : "'범위를 셀 층'에 넣으면 같이 들어와요"}`);
+            if (outs.length) lines.push(`⚠ 맵 안에 있다가 밖으로 나가는 것: ${outs.map(([l, n]) => `${LN[l] || l} ${n}개`).join(", ")} — ${p.outFar ? "'같이 세기'하면 들어와요" : "'범위를 셀 층'에 넣으면 같이 들어와요"}`);
+            const ins = Object.entries(p.into);
+            if (ins.length) lines.push(`⚠ 맵 밖에 두었다가 새 맵 안으로 들어오는 것: ${ins.map(([l, n]) => `${LN[l] || l} ${n}개`).join(", ")} — 여백을 줄이거나 그것들을 조금 떨어뜨려 두세요`);
             lines.forEach(l => { const d = document.createElement("div"); d.textContent = l; $(".sum").appendChild(d); });
             if (p.far.length) {
                 const fl = document.createElement("div"), cnt = {};
                 p.far.forEach(t => { cnt[t.layer] = (cnt[t.layer] || 0) + 1; });
-                fl.textContent = `멀리 떨어진 것 ${p.far.length}개 (${Object.entries(cnt).map(([l, n]) => `${LN[l] || l} ${n}`).join(" · ")}) — ${st.far ? "같이 셌어요" : "범위에서 뺐어요"} `;
+                fl.textContent = `${p.inPageCount ? "맵 밖에 둔 것" : "멀리 떨어진 것"} ${p.far.length}개 (${Object.entries(cnt).map(([l, n]) => `${LN[l] || l} ${n}`).join(" · ")}) — ${st.far ? "같이 셌어요" : "범위에서 뺐어요"} `;
                 fl.insertAdjacentHTML("beforeend", `<button type="button" data-act="far">${st.far ? "빼고 세기" : "같이 세기"}</button>`);
                 $(".grid").appendChild(fl);
             }
