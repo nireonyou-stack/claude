@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.0
+// @version      1.38.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3813,14 +3813,13 @@ const tokenMenu = (() => {
         return b;
     };
     // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]. '@…' 은 Roll20 항목이 아니라 이 스크립트의 동작
-    //   (@roll 합치기 · @center/@centerX/@centerY 맵 가운데로 — GM 만, 고른 토큰은 pickSel 로 알아낸다)
+    //   (@roll 합치기 · @centerX/@centerY/@center 가운데 정렬(레이어 묶음 안) — GM 만, 고른 토큰은 pickSel 로 알아낸다)
     const LAYOUT = [
         { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
         { one: "카드 뒤집기" },
         { g: "파티", icon: "모두에게 핑", items: [["모두에게 핑"], ["시선 집중 핑"], ["파티 정의"], ["파티 배치"], ["핀 놓기"], ["턴 추가"]] },
         { g: "레이어", icon: "레이어 변경", items: [["레이어 변경>토큰", "토큰 레이어로"], ["레이어 변경>GM", "GM 레이어로"], ["레이어 변경>맵", "맵 레이어로"],
-            ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"]] },
-        { g: "정렬", icon: "앞으로 가져오기", items: [["@center", "맵 가운데로"], ["@centerX", "가로만 가운데"], ["@centerY", "세로만 가운데"]] },
+            ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"], ["@centerX", "가로만 가운데 정렬"], ["@centerY", "세로만 가운데 정렬"], ["@center", "맵 정중앙 정렬"]] },
         { faces: true },
         { one: "여러 면" },
         { one: "고급 변환" },
