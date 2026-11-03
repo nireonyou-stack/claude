@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.5
+// @version      1.38.6
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.6";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2879,15 +2879,28 @@ const ccfImport = (() => {
             return [v.videoWidth || 70, v.videoHeight || 70];
         } catch (e) { return [70, 70]; } finally { URL.revokeObjectURL(u); }
     };
-    // 늘어놓기: 원래 크기 그대로, 한 줄 15칸(1050px)을 넘으면 다음 줄로
-    const shelf = (x0, y0) => {
+    // 늘어놓기: 원래 크기 그대로, 페이지 오른쪽 끝(반 칸 여백)에 닿으면 다음 줄로. 줄 폭이 15칸(1050px)이 되게 시작점을 당긴다(페이지가 좁으면 왼쪽 끝부터)
+    // 놓은 것의 오른쪽 · 아래 끝(put.r · put.b)을 기억해 두었다가 다 놓은 뒤 모자라면 페이지를 늘린다 — 페이지 저장은 끝에 한 번
+    const shelf = (x0, y0, W) => {
+        const right = W - 35;
+        if (right - x0 < 1050) x0 = Math.max(35, right - 1050);
         let x = x0, y = y0, rowH = 0;
-        return (w, h) => {
-            if (x > x0 && x + w > x0 + 1050) { x = x0; y += rowH + 35; rowH = 0; }
+        const put = (w, h) => {
+            if (x > x0 && x + w > right) { x = x0; y += rowH + 35; rowH = 0; }
             const at = { left: x + w / 2, top: y + h / 2, width: w, height: h };
+            put.r = Math.max(put.r, x + w); put.b = Math.max(put.b, y + h);
             x += w + 35; rowH = Math.max(rowH, h);
             return at;
         };
+        put.r = 0; put.b = 0;
+        return put;
+    };
+    // 늘어놓은 것이 페이지 밖으로 나갔으면 그만큼만 페이지를 늘린다(줄이지는 않는다). 70px 한 칸 단위, 끝에 반 칸 여백
+    const growTo = (pg, s) => {
+        if (!s?.b) return;
+        const W = parseFloat(pg.get("width")) || 25, H = parseFloat(pg.get("height")) || 25;
+        const nw = Math.max(W, Math.ceil((s.r + 35) / 70)), nh = Math.max(H, Math.ceil((s.b + 35) / 70));
+        if (nw !== W || nh !== H) { pg.save({ width: nw, height: nh }); return [nw, nh]; }
     };
     const urlKey = u => String(u || "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
     const runPackAll = async pg => {
@@ -2899,7 +2912,8 @@ const ccfImport = (() => {
             if (!lay) { if (g) try { g.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); } return; }
             if (!slot) {        // 첫 그림이 떨어진 자리(보고 있는 화면 가운데)부터, 모르면 페이지 왼쪽 위
                 const l = +g?.get("left") - (+g?.get("width") || 0) / 2, t = +g?.get("top") - (+g?.get("height") || 0) / 2;
-                slot = Number.isFinite(l) && Number.isFinite(t) ? shelf(Math.max(0, l), Math.max(0, t)) : shelf(35, 35);
+                const W = (parseFloat(pg.get("width")) || 25) * 70;
+                slot = Number.isFinite(l) && Number.isFinite(t) ? shelf(Math.max(0, l), Math.max(0, t), W) : shelf(35, 35, W);
             }
             const at = { ...slot(...dims), layer: "objects" };
             if (g) g.save(at); else g = pg.thegraphics.create({ imgsrc: src, page_id: pg.id, ...at });
@@ -2935,7 +2949,8 @@ const ccfImport = (() => {
         // 이번에 테이블에 생긴 그 그림 중 늘어놓은 것 말고 남은 것(Roll20 이 하나 더 만든 것 등)은 지운다
         if (mine.size) pg.thegraphics.models.filter(m => !before.has(m.id) && !kept.has(m.id) && mine.has(urlKey(m.get("imgsrc"))))
             .forEach(m => { try { m.destroy(); } catch (e) { console.warn("[그림 올리기] 테이블 그림을 못 지움:", e); } });
-        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : lay ? "다 올리고 늘어놓았어요" : "다 올렸어요") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (redo ? ` (옛 주소가 안 열려 다시 올린 그림 ${redo})` : "") + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
+        const grown = lay ? growTo(pg, slot) : null;
+        prog((stop ? `멈췄어요 — ${i}/${pack.length}` : lay ? "다 올리고 늘어놓았어요" : "다 올렸어요") + (grown ? ` · 페이지를 ${grown[0]}×${grown[1]}칸으로 늘렸어요` : "") + ` · 새로 올린 그림 ${up} · 이미 올린 그림 ${reused}` + (redo ? ` (옛 주소가 안 열려 다시 올린 그림 ${redo})` : "") + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "")
             + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "") + (fail.length ? ` · 못 올린 그림 ${fail.length}개 (콘솔에 목록)` : ""));
         if (fail.length) console.warn("[그림 올리기] 못 올린 그림:", fail);
     };
