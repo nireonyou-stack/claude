@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.1
+// @version      1.38.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4061,16 +4061,29 @@ const tokenMenu = (() => {
         const z0 = zOf(pg), snaps = [];
         const onZ = () => { const z = zOf(pg); if (z !== (snaps[snaps.length - 1] ?? z0)) snaps.push(z); };
         pg.on("change:zorder", onZ);
-        // 메뉴가 닫히기 전에 같은 순간에 둘 다 누른다
-        try { back?.click(); front.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 단추를 못 누름:", e); }
+        // 둘째 단서: 위치 고정된 그림은 순서 단추로 순서가 안 바뀐다(11-03 실제 Roll20) → '위치 고정'도 같이 눌러
+        // 잠금 칸(이름에 lock)이 바뀐 그림을 모으고, 끝나면 잠금은 처음 값으로 되돌린다. 다른 칸은 건드리지 않는다
+        const lockBtn = findIn(menu, "위치 고정"), locked = new Map();
+        const onG = m => {
+            const ch = m.changedAttributes?.() || {}, prev = m.previousAttributes?.() || {};
+            Object.keys(ch).forEach(k => { if (!/lock/i.test(k)) return; const rec = locked.get(m) || {}; if (!(k in rec)) rec[k] = prev[k] ?? false; locked.set(m, rec); });
+        };
+        pg.thegraphics.on?.("change", onG);
+        const dis = b => !!b?.classList.contains("disabled");
+        // 메뉴가 닫히기 전에 같은 순간에 다 누른다
+        try { back?.click(); front.click(); lockBtn?.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 · 고정 단추를 못 누름:", e); }
         await zSettle(pg, z0);
+        await wait(200);
         pg.off("change:zorder", onZ);
+        pg.thegraphics.off?.("change", onG);
         onZ();
+        locked.forEach((rec, m) => { try { m.save(rec); } catch (e) { console.warn("[토큰 메뉴] 잠금을 못 되돌림:", e); } });
         // 지나온 순서마다 처음과 견주어 '확실히' 움직인 것만 모은다 — 옆자리끼리 바뀌어 누가 움직였는지 같아 보이는 것은
         // 두 해석(끝 쪽 · 앞쪽)에 다 든 것만. 고른 것이 한 끝에 붙어 있어 한쪽 동작이 애매해도 다른 동작에서 멀리 움직여 잡힌다
         // ('뒤로' · '앞으로'가 토큰마다 섞여 들어와도 된다)
         const a = zList(z0), u = new Set();
         snaps.forEach(sz => { const b = zList(sz), late = new Set(movedSet(a, b, true)); movedSet(a, b, false).forEach(id => { if (late.has(id)) u.add(id); }); });
+        locked.forEach((_, m) => u.add(m.id));
         let gs = [...u].map(id => pg.thegraphics.get(id)).filter(g => g && g.get("imgsrc"));
         // 안전장치: Roll20 은 한 층에서만 고를 수 있다 → 가장 많은 층 것만. 층이 반반이거나 너무 많으면(40 넘게) 하지 않는다
         const byLayer = {}; gs.forEach(g => { const l = g.get("layer") || ""; (byLayer[l] = byLayer[l] || []).push(g); });
@@ -4078,7 +4091,8 @@ const tokenMenu = (() => {
         const unsure = gs.length > 40 || (groups.length > 1 && groups[0].length === groups[1].length);
         if (groups.length > 1 && !unsure) gs = groups[0];
         if (unsure) console.warn("[토큰 메뉴] 고른 토큰이 이상함:", gs.length, "개 · 층", Object.keys(byLayer).map(l => l + " " + byLayer[l].length).join(", "), "· 순서 변화", snaps.length, "번");
-        if (!gs.length) console.warn("[토큰 메뉴] 순서 변화", snaps.length, "번 · 찾은 것 없음");
+        if (!gs.length) console.warn("[토큰 메뉴] 찾은 것 없음 —", JSON.stringify({ 순서변화: snaps.length, 잠금변화: locked.size, 앞으로: front ? (dis(front) ? "꺼짐" : "있음") : "없음",
+            뒤로: back ? (dis(back) ? "꺼짐" : "있음") : "없음", 위치고정: lockBtn ? (dis(lockBtn) ? "꺼짐" : label(lockBtn)) : "없음" }));
         // 겹침 순서를 처음대로 — 지운 것은 빼고, 그 사이 새로 생긴 것은 뒤에 그대로
         const undoZ = (gone = new Set()) => {
             const now = zList(zOf(pg)), keep = a.filter(id => !gone.has(id) && now.includes(id)), extra = now.filter(id => !a.includes(id) && !gone.has(id));
@@ -4088,7 +4102,7 @@ const tokenMenu = (() => {
         return { gs, unsure, undoZ };
     };
     const NOT_SURE = n => `고른 토큰을 확실히 알아내지 못했어요 (${n}개로 보여요). 아무것도 바꾸지 않았어요 — 토큰을 다시 골라 해 주세요.`;
-    const NOT_FOUND = "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요.";
+    const NOT_FOUND = "고른 토큰을 알아내지 못했어요. 토큰을 다시 골라 오른쪽 클릭해 주세요.\n(계속 그러면 F12 콘솔의 [토큰 메뉴] 줄을 알려 주세요)";
     const mergeRoll = async menu => {
         const r = await pickSel(menu);
         if (!r) return;
