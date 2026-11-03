@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.4
+// @version      1.38.5
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.5";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4074,25 +4074,25 @@ const tokenMenu = (() => {
             Object.keys(ch).forEach(k => { if (!/lock/i.test(k)) return; const rec = locked.get(m) || {}; if (!(k in rec)) rec[k] = prev[k] ?? false; locked.set(m, rec); });
         };
         pg.thegraphics.on?.("change", onG);
-        // 메뉴가 닫히기 전에 같은 순간에 누른다. 순서는 '뒤로 보내기' 하나만 — '앞으로'까지 누르면 Roll20 이 둘을 합쳐
-        // 맨 위에 있던 토큰(복사해 붙인 것 등)은 아무 변화가 안 남는다(11-03 실제). '뒤로'가 없거나 꺼져 있을 때만 '앞으로'
-        // 누를 때마다 바로 순서 · 잠금을 읽어 둔다 — 합쳐지기 전의 중간 상태도 잡게
+        // Roll20 메뉴는 첫 클릭 하나만 먹는다(11-03 실제: 뒤의 클릭은 잠금 변화 0). 그래서 첫 클릭은 '위치 고정' —
+        // 고른 토큰이 어디에 있든(층 맨 아래 · 맨 위) 잠금이 바뀐다. 뒤의 클릭(고정 한 번 더 · 뒤로 보내기)은 먹는 환경이면 덤으로 쓴다.
+        // 누를 때마다 바로 순서 · 잠금을 읽어 둔다
         const zb = back && !dis(back) ? back : front;
         const lockDiff = snap => pg.thegraphics.models.forEach(g => {
             const was = before.get(g) || {}, now = snap.get(g) || {}, rec = locked.get(g) || {};
             new Set([...Object.keys(was), ...Object.keys(now)]).forEach(k => { if (!(k in rec) && !!was[k] !== !!now[k]) rec[k] = was[k] ?? false; });
             if (Object.keys(rec).length) locked.set(g, rec);
         });
-        try { zb.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 단추를 못 누름:", e); }
-        onZ();
         // '위치 고정'은 두 번 — 고정 · 안 고정이 섞이면 Roll20 이 한 값으로 맞춰서 원래 그 값이던 것은 안 바뀐다.
-        // 두 번 누르면 어느 쪽이든 한 번은 바뀐다(매번 읽어 둔다). 끝나면 처음 값으로 되돌린다
-        for (let i = 0; i < 2 && lockBtn; i++) {
+        // 둘째 클릭이 먹으면 어느 쪽이든 한 번은 바뀐다(매번 읽어 둔다). 끝나면 처음 값으로 되돌린다
+        for (let i = 0; i < 2 && lockBtn && !dis(lockBtn); i++) {
             try { lockBtn.click(); } catch (e) { console.warn("[토큰 메뉴] 고정 단추를 못 누름:", e); break; }
             lockDiff(lockSnap());
         }
+        try { zb.click(); } catch (e) { console.warn("[토큰 메뉴] 순서 단추를 못 누름:", e); }
         onZ();
-        await zSettle(pg, z0);
+        // 잠금으로 이미 찾았으면 순서는 잠깐만 기다린다(뒤로 보내기가 안 먹는 환경에서 2.5초씩 기다리지 않게)
+        if (locked.size) await wait(500); else await zSettle(pg, z0);
         await wait(200);
         pg.off("change:zorder", onZ);
         pg.thegraphics.off?.("change", onG);
@@ -4133,7 +4133,7 @@ const tokenMenu = (() => {
         if (!r) return;
         const { gs, unsure, undoZ } = r;
         if (gs.length === 1) console.warn("[토큰 메뉴] 하나만 찾음 —", r.diag());
-        if (unsure || gs.length < 2) { undoZ(); alert(unsure ? NOT_SURE(gs.length) : gs.length ? "토큰을 두 개 이상 골라 주세요.\n(두 개 넘게 골랐는데 이 말이 나오면 F12 콘솔의 [토큰 메뉴] 줄을 알려 주세요)" : NOT_FOUND); return; }
+        if (unsure || gs.length < 2) { undoZ(); alert(unsure ? NOT_SURE(gs.length) : gs.length ? "토큰을 두 개 이상 골라 주세요.\n(두 개 넘게 골랐다면: 위치 고정된 것과 안 된 것이 섞여 있으면 하나만 잡힐 수 있어요 — '위치 고정'을 같게 맞춘 뒤 다시 해 주세요)" : NOT_FOUND); return; }
         // 면 순서: 위 → 아래 줄, 줄 안에서는 왼쪽 → 오른쪽 (윗변이 토큰 높이의 반 안쪽이면 같은 줄)
         const top = g => +g.get("top") - +g.get("height") / 2, left = g => +g.get("left") - +g.get("width") / 2;
         const tol = Math.min(...gs.map(g => +g.get("height") || 70)) / 2;
