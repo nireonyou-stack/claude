@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.6
+// @version      1.38.7
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.6";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.7";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -895,6 +895,7 @@ const addFeature = (name, mod) => (FEAT[name] = mod);
 const addBundle = def => BUNDLES.push(def);
 const addCss = css => CSS_PARTS.push(css);
 // 기능이 watch(선택자)를 주면 그 요소가 새로 생기거나 그 안이 바뀐 때만 inject 를 부른다 (매번 문서 전체를 훑지 않게).
+// instant 도 주면 그 요소가 새로 생긴 순간 바로 부른다(기다리지 않고). 문서 전체 감시자는 시작 쪽 하나만 둔다
 // all: 다음 번엔 전부 (처음 · 설정을 바꾼 뒤)
 const DIRTY = { all: true, set: new Set() };
 
@@ -1623,7 +1624,7 @@ const jbBackup = (() => {
         if (!bound && window.Campaign.on) { bound = true; window.Campaign.on("change:jukeboxfolder", () => { clearTimeout(t); t = setTimeout(take, 3000); }); }
     };
     const setEnabled = on => { if (on) inject(); else closeToast(); };
-    return { inject, setEnabled, list, restore, stats, fmt, take };
+    return { inject, setEnabled, list, restore, fmt };
 })();
 addCss(`
         .r20jbb-toast { position:fixed; right:16px; bottom:16px; z-index:10010; display:flex; flex-direction:column; gap:6px; width:min(340px, calc(100vw - 32px)); padding:12px 14px;
@@ -2203,7 +2204,7 @@ const logBackup = (() => {
         b.classList.add("r20lb-float");
         document.body.appendChild(b);
     };
-    return { archive, convert };
+    return { archive };
 })();
 
 const LB_CSS = `
@@ -3459,7 +3460,7 @@ const mapFit = (() => {
     const toggle = at => (isOpen() ? close() : open(at));
     document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
     window.addEventListener("resize", () => isOpen() && place());
-    return { toggle, close, _plan: plan };
+    return { toggle, close };
 })();
 addCss(`
         /* 맵 맞추기 판 (맵 단추 밑) — 가져오기 판과 같은 모양 */
@@ -4245,10 +4246,8 @@ const tokenMenu = (() => {
         if (act !== "choose") sidePicker.startAuto(act);
         orig.click();
     }, true);
-    new MutationObserver(ms => {
-        if (ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.classList.contains("context-menu") || n.querySelector(".context-menu"))))) inject();
-    }).observe(document.body, { childList: true, subtree: true });
-    return { inject, watch: ".context-menu" };
+    // 메뉴가 뜬 순간 붙인다(instant) — 100ms 뒤면 원래 메뉴가 잠깐 보인다. 감시는 시작 쪽 본체 감시자가 한다
+    return { inject, watch: ".context-menu", instant: true };
 })();
 
 // ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
@@ -7451,7 +7450,7 @@ const bulkEditor = (() => {
     const createItem = async n => {
         if (n.kind === "track") {
             const a = n.dupOf.attributes;
-            n.model = window.Jukebox.playlist.create({ title: n.cur.name, source: a.source, track_id: a.track_id, tags: a.tags || "",
+            n.model = window.Jukebox.playlist.create({ title: n.cur.name, source: a.source, track_id: a.track_id,
                 volume: n.cur.vol, loop: n.cur.loop, tags: n.cur.tags ?? (a.tags || ""), playing: false, softstop: false });
         } else {
             const [bn, bg] = BLOBS[n.kind], blobs = {};
@@ -8867,8 +8866,17 @@ const markDirty = recs => {
         if (hit) DIRTY.set.add(name);
     }
 };
+// instant 기능: 그 요소가 새로 생긴 순간 바로
+const injectNow = recs => {
+    for (const [name, mod] of Object.entries(FEAT)) {
+        const sel = mod.instant && mod.watch;
+        if (!sel || !recs.some(r => [...r.addedNodes].some(n => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))))) continue;
+        try { mod.inject(); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
+    }
+};
 let _layoutTimer = null;
 new MutationObserver(recs => {
+    injectNow(recs);
     markDirty(recs);
     clearTimeout(_layoutTimer);
     _layoutTimer = setTimeout(injectAll, 100);
