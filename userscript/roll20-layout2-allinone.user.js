@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.7
+// @version      1.38.8
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.7";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.8";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -904,6 +904,7 @@ const CORE_CSS = `
         #custom-settings-popup.show { display:flex !important; }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
         #textchat-input.layout-applied-v11 { border-top:0 !important; }
+        #textchat-input.layout-applied-v11 button:focus-visible { outline:2px solid #1867c7 !important; outline-offset:1px; }
         #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:12px !important; line-height:1.5 !important; }
         .cs-header { padding:5px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #f5f5f5; }
@@ -1650,7 +1651,7 @@ addFeature("jbBackup", jbBackup);
 addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"], ["jbrow", "jbBackup"]] });
 
-// ══════════ 묶음 2 · 대화 캡쳐 · 맵시트 촬영 ══════════
+// ══════════ 묶음 2 · 대화 캡처 · 맵시트 촬영 ══════════
 
 // ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
 // 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
@@ -3549,7 +3550,7 @@ addCss(`
 addFeature("chatCapture", chatCapture);
 addFeature("mapShot", mapShot);
 addFeature("logBackup", logBackup);
-addBundle({ place: "main", order: 6, label: "대화 캡쳐 · 맵(촬영 · 코코포리아 가져오기) · 로그 백업", sub: "로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
+addBundle({ place: "main", order: 6, label: "대화 캡처 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
     members: [["capture", "chatCapture"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
 
 // ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
@@ -4630,6 +4631,7 @@ addCss(`
         .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
         .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
         .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
+        .context-menu button[data-r20tm]:focus-visible, .context-menu button[data-r20tm-g]:focus-visible, .context-menu .r20tm-sub > button:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
         .ui-dialog.r20cs .ui-dialog-content { height:min(60vh, 520px) !important; overflow-y:auto !important; padding:10px 12px !important; }
         .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
         .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:8px; overflow:hidden; background:#e9e9e9; cursor:pointer; counter-increment:side; }
@@ -4654,7 +4656,7 @@ addFeature("deckView", deckView);
 addFeature("screenUI", screenUI);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
-addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴 · Rollable 선택 메뉴 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
+addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
     members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"]] });
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
@@ -5923,6 +5925,12 @@ const quickJournal = (() => {
         document.getElementById("custom-journal-toggle")?.remove();
         document.getElementById("custom-journal-popup")?.remove();
     };
+    // Esc 로 닫기 (다른 창들과 같게) — 닫기 단추를 대신 누른다. 검색칸이 키를 막으므로 잡는 단계(capture)에서
+    document.addEventListener("keydown", e => {
+        if (e.key !== "Escape") return;
+        const p = document.getElementById("custom-journal-popup");
+        if (p?.classList.contains("show")) p.querySelector(".cj-close-btn")?.click();
+    }, true);
     return { inject, setEnabled };
 })();
 
@@ -5933,6 +5941,8 @@ addCss(`
         .cj-header { display:flex; align-items:center; justify-content:space-between; padding:4px 8px; background:#f0f0f0; border-bottom:1px solid #e0e0e0; font-size:11px; font-weight:bold; color:#666; flex-shrink:0; cursor:move; user-select:none; }
         .cj-close-btn { background:none; border:none; cursor:pointer; font-size:13px; color:#999; padding:0 2px; line-height:1; }
         .cj-close-btn:hover { color:#333; }
+        .cj-close-btn:focus-visible, .cj-zoom button:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
+        .cj-search-input:focus { border-color:#1867c7; }
         .cj-zoom { display:flex; gap:2px; margin-left:auto; margin-right:6px; }
         .cj-zoom button { width:20px; height:18px; padding:0; border:1px solid #ddd; border-radius:3px; background:#fff; color:#666; font-size:12px; line-height:1; cursor:pointer; }
         .cj-zoom button:hover { background:#ebebeb; color:#333; }
@@ -8266,7 +8276,7 @@ addCss(`
         .r20be-mini:hover { background:#ebebeb; color:#333; }
 `);
 addFeature("bulkEditor", bulkEditor);
-addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 편집기", sub: "",
+addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 편집기", sub: "덱 · 굴림표 · 이미지도 — 굴림표 항목 · 덱 카드 순서 바꾸기",
     members: [["bulk", "bulkEditor"]],
     extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
 
