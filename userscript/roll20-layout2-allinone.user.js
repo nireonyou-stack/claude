@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.39.1
+// @version      1.39.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.39.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.39.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4781,8 +4781,10 @@ addCss(`
         .context-menu > .r20tm-hr { flex:0 0 auto; height:1px; margin:3px 8px; background:rgba(128,128,128,0.25); }
         .context-menu > .r20tm-hr[hidden] { display:none; }
         /* Roll20 하위 메뉴 판(세로 flex)이 줄을 내용 폭으로 줄이고 단추 · 아이콘 크기를 덮어써서 3칸이 몰렸다 → 판 폭으로 늘리고 크기는 !important */
-        .context-menu .r20tm-irow { display:grid !important; grid-template-columns:repeat(3, 1fr) !important; align-self:stretch !important; width:auto !important; box-sizing:border-box; gap:2px; padding:2px 4px; }
-        .context-menu .r20tm-ib { display:flex !important; align-items:center !important; justify-content:center !important; width:auto !important; height:30px !important; min-width:0 !important; margin:0 !important; padding:0 !important; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+        .context-menu .r20tm-irow { display:grid !important; grid-template-columns:repeat(3, 1fr) !important; align-self:stretch !important; width:auto !important; box-sizing:border-box; gap:0; padding:2px 4px; }
+        .context-menu .r20tm-ib { position:relative !important; display:flex !important; align-items:center !important; justify-content:center !important; width:auto !important; height:30px !important; min-width:0 !important; margin:0 !important; padding:0 !important; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+        /* 칸 사이 짧은 세로 구분선 */
+        .context-menu .r20tm-ib + .r20tm-ib::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:1px; background:rgba(128,128,128,0.3); pointer-events:none; }
         .context-menu .r20tm-ib:hover { background:rgba(128,128,128,0.16); }
         .context-menu .r20tm-ib.is-on { background:rgba(128,128,128,0.26); }
         .context-menu .r20tm-ib.disabled { opacity:.4; cursor:default; }
@@ -4844,10 +4846,12 @@ addCss(`
         .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:clip; cursor:pointer; }
         .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
         .r20ta-pop:has(.r20ta-g3) { min-width:186px; }
-        .r20ta-pop .r20ta-g3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:2px; }
+        .r20ta-pop .r20ta-g3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:0; }
+        .r20ta-pop .r20ta-g3 > * { position:relative; }
+        .r20ta-pop .r20ta-g3 > * + *::before { content:""; position:absolute; left:0; top:9px; bottom:9px; width:1px; background:rgba(0,0,0,0.12); pointer-events:none; }
         .r20ta-pop .r20ta-ib { justify-content:center; height:32px; padding:0; }
         .r20ta-pop .r20ta-ib svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-        .r20ta-pop .r20ta-face { display:flex; align-items:center; min-width:0; }
+        .r20ta-pop .r20ta-face { display:flex; align-items:center; min-width:0; padding:0 3px; }
         .r20ta-pop .r20ta-face .r20ta-ib { flex:1 1 auto; min-width:0; }
         .r20ta-pop .r20ta-nav { flex:0 0 16px; width:16px; height:32px; padding:0; justify-content:center; font-size:15px; color:#666; }
         .r20ta-pop .off { opacity:.35; cursor:default; }
