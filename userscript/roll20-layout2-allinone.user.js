@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.39.2
+// @version      1.39.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.39.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.39.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2252,7 +2252,15 @@ const LB_CSS = `
 `;
 // @share-swap-end logBackup
 
-// ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
+// ── 새 선(Jumpgate 그리기 도구): path 가 비고 points · shape(free · pol · rec · eli) · x/y(점들 상자의 가운데)로 저장된다 (실제 진단 11-04)
+//    맵 촬영 · 맵 맞추기가 같이 쓴다. 예전 선은 path · left/top 그대로
+const pathPts = m => {
+    if (m.get("path")) return null;
+    try { const p = JSON.parse(m.get("points") || "null"); return Array.isArray(p) && p.length ? p.map(([x, y]) => [+x, +y]) : null; } catch (e) { return null; }
+};
+const ptsBox = pts => ({ x0: Math.min(...pts.map(p => p[0])), y0: Math.min(...pts.map(p => p[1])), x1: Math.max(...pts.map(p => p[0])), y1: Math.max(...pts.map(p => p[1])) });
+
+// ───────── 맵 촬영: 보고 있는 페이지의 맵·토큰 레이어(그림 + 펜으로 그린 선 + 글자)를 순서대로 다시 그려 PNG 로 클립보드에 ─────────
 // 화면을 찍는 게 아니라 Roll20 데이터로 그리므로 GM 레이어 · 조명 · 안개 · 격자 · 화면 UI 는 들어가지 않는다
 const mapShot = (() => {
     const ICON = {
@@ -2317,8 +2325,57 @@ const mapShot = (() => {
     };
     const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
     const usable = c => c && c !== "transparent" && c !== "none";
-    // 펜 선: path 는 [["M",x,y],["L",x,y],["Q",..],["C",..]] — 점들의 가운데가 (left, top) 에 오도록 놓는다
+    const paint = (ctx, p) => {
+        if (usable(p.get("fill"))) { ctx.fillStyle = p.get("fill"); ctx.fill(); }
+        const sw = num(p, "stroke_width", 0);
+        if (sw > 0 && usable(p.get("stroke"))) { ctx.lineWidth = sw; ctx.strokeStyle = p.get("stroke"); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
+    };
+    // 새 선: 점들 상자의 가운데가 (x, y). rec · eli 는 두 점이 상자 모서리, pol 은 꺾은선, free 는 점 사이 가운데를 지나는 부드러운 곡선
+    //   (Roll20 처럼 같은 점을 두 번 찍으면 모서리가 선다). 첫 점과 끝 점이 같으면 닫는다
+    const drawPathV2 = (ctx, p, pts) => {
+        const b = ptsBox(pts), shape = p.get("shape"), n = pts.length;
+        ctx.save();
+        ctx.translate(num(p, "x"), num(p, "y"));
+        ctx.rotate(num(p, "rotation") * Math.PI / 180);
+        ctx.scale(num(p, "scaleX", 1), num(p, "scaleY", 1));
+        ctx.translate(-(b.x0 + b.x1) / 2, -(b.y0 + b.y1) / 2);
+        ctx.beginPath();
+        if (shape === "rec") ctx.rect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+        else if (shape === "eli") ctx.ellipse((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.x1 - b.x0) / 2, (b.y1 - b.y0) / 2, 0, 0, Math.PI * 2);
+        else {
+            ctx.moveTo(...pts[0]);
+            if (shape === "free" && n > 2) {
+                for (let i = 1; i < n - 1; i++) ctx.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2);
+                ctx.lineTo(...pts[n - 1]);
+            } else pts.slice(1).forEach(q => ctx.lineTo(...q));
+            if (n > 2 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1]) ctx.closePath();
+        }
+        paint(ctx, p);
+        ctx.restore();
+    };
+    // 글자(T 도구): (left, top) 이 글자 덩어리의 가운데. 여러 줄은 덩어리 안에서 왼쪽 맞춤, 줄 간격은 글자 크기의 1.2배
+    const fontOf = t => `${t.get("font_style") || ""} ${t.get("font_weight") || ""} ${num(t, "font_size", 16)}px "${t.get("font_family") || "Arial"}", sans-serif`.trim();
+    const drawText = (ctx, t) => {
+        const lines = String(t.get("text") ?? "").split(/\r?\n/);
+        if (!lines.some(s => s.trim())) return;
+        const fs = num(t, "font_size", 16), lh = fs * 1.2, st = t.get("stroke");
+        ctx.save();
+        ctx.translate(num(t, "left"), num(t, "top"));
+        ctx.rotate(num(t, "rotation") * Math.PI / 180);
+        ctx.font = fontOf(t);
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        const x0 = -Math.max(...lines.map(s => ctx.measureText(s).width)) / 2, y0 = -(lines.length - 1) * lh / 2;
+        lines.forEach((s, i) => {
+            if (usable(st)) { ctx.lineWidth = Math.max(1, fs / 12); ctx.strokeStyle = st; ctx.lineJoin = "round"; ctx.strokeText(s, x0, y0 + i * lh); }
+            ctx.fillStyle = t.get("color") || "#000000";
+            ctx.fillText(s, x0, y0 + i * lh);
+        });
+        ctx.restore();
+    };
+    // 펜 선: path 는 [["M",x,y],["L",x,y],["Q",..],["C",..]] — 점들의 가운데가 (left, top) 에 오도록 놓는다. 새 선은 drawPathV2
     const drawPath = (ctx, p) => {
+        const pts = pathPts(p);
+        if (pts) return drawPathV2(ctx, p, pts);
         let cmds;
         try { cmds = JSON.parse(p.get("path") || "[]"); } catch (e) { return; }
         if (!Array.isArray(cmds) || !cmds.length) return;
@@ -2339,9 +2396,7 @@ const mapShot = (() => {
             else if (c === "C") ctx.bezierCurveTo(a[0], a[1], a[2], a[3], a[4], a[5]);
             else if (c === "Z" || c === "z") ctx.closePath();
         });
-        if (usable(p.get("fill"))) { ctx.fillStyle = p.get("fill"); ctx.fill(); }
-        const sw = num(p, "stroke_width", 0);
-        if (sw > 0 && usable(p.get("stroke"))) { ctx.lineWidth = sw; ctx.strokeStyle = p.get("stroke"); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(); }
+        paint(ctx, p);
         ctx.restore();
     };
     const drawImg = (ctx, g, im) => {
@@ -2360,12 +2415,18 @@ const mapShot = (() => {
         const W = num(pg, "width", 25) * 70, H = num(pg, "height", 25) * 70;
         const k = Math.min(1, 8192 / Math.max(W, H));             // 브라우저 캔버스 한도 안으로
         const z = new Map(String(pg.get("zorder") || "").split(",").map((id, i) => [id, i]));
-        const objs = [...pg.thegraphics.models.filter(g => g.get("imgsrc")), ...(pg.thepaths?.models || [])];
+        const texts = new Set(pg.thetexts?.models || []);
+        const objs = [...pg.thegraphics.models.filter(g => g.get("imgsrc")), ...(pg.thepaths?.models || []), ...texts];
         // 맵 레이어 먼저, 그다음 토큰 레이어. 같은 레이어 안에서는 Roll20 의 앞뒤 순서(zorder)대로
         const list = ["map", "objects"].flatMap(layer => objs.filter(o => o.get("layer") === layer)
             .sort((a, b) => (z.get(a.id) ?? num(a, "z_index", 1e9)) - (z.get(b.id) ?? num(b, "z_index", 1e9))));
         failed = [];
         const imgs = await Promise.all(list.map(o => o.get("imgsrc") ? load(o.get("imgsrc")) : null));
+        // 글자 글꼴: Roll20 이 문서에 실어 둔 글꼴을 쓴다. 아직 안 실렸으면 불러 보고, 끝내 없으면 기본 글꼴로 (콘솔에 남김)
+        const fonts = [...new Set(list.filter(o => texts.has(o)).map(fontOf))];
+        await Promise.all(fonts.map(f => document.fonts?.load(f).catch(() => null)));
+        const noFont = fonts.filter(f => document.fonts && !document.fonts.check(f));
+        if (noFont.length) console.warn("[맵 촬영] 글꼴을 못 찾아 기본 글꼴로 그림:", noFont);
         if (failed.length) console.warn(`[맵 촬영] 그림 ${failed.length}/${list.length}개를 못 불러옴`, failed.slice(0, 20));
         const cv = document.createElement("canvas");
         cv.width = Math.round(W * k); cv.height = Math.round(H * k);
@@ -2375,6 +2436,7 @@ const mapShot = (() => {
         ctx.fillRect(0, 0, W, H);
         let miss = 0;
         list.forEach((o, i) => {
+            if (texts.has(o)) return drawText(ctx, o);
             if (!o.get("imgsrc")) return drawPath(ctx, o);
             if (imgs[i]) drawImg(ctx, o, imgs[i]); else miss++;
         });
@@ -3195,8 +3257,12 @@ const mapFit = (() => {
             return { x0: cx - W / 2, y0: cy - H / 2, x1: cx + W / 2, y1: cy + H / 2 };
         };
         (pg.thegraphics?.models || []).forEach(m => out.push({ m, kind: "g", layer: m.get("layer") || "", box: box(num(m, "left"), num(m, "top"), num(m, "width"), num(m, "height"), num(m, "rotation")) }));
-        (pg.thepaths?.models || []).forEach(m => out.push({ m, kind: "p", layer: m.get("layer") || "",
-            box: box(num(m, "left"), num(m, "top"), num(m, "width") * Math.abs(num(m, "scaleX", 1)), num(m, "height") * Math.abs(num(m, "scaleY", 1)), num(m, "rotation")) }));
+        (pg.thepaths?.models || []).forEach(m => {
+            const pts = pathPts(m), b = pts && ptsBox(pts), sx = Math.abs(num(m, "scaleX", 1)), sy = Math.abs(num(m, "scaleY", 1));
+            out.push({ m, kind: "p", v2: !!pts, layer: m.get("layer") || "",       // 새 선은 (x, y) 가 가운데, 크기는 점들 상자
+                box: pts ? box(num(m, "x"), num(m, "y"), (b.x1 - b.x0) * sx, (b.y1 - b.y0) * sy, num(m, "rotation"))
+                    : box(num(m, "left"), num(m, "top"), num(m, "width") * sx, num(m, "height") * sy, num(m, "rotation")) });
+        });
         (pg.thetexts?.models || []).forEach(m => out.push({ m, kind: "t", layer: m.get("layer") || "", box: box(num(m, "left"), num(m, "top"), num(m, "width"), num(m, "height"), num(m, "rotation")) }));
         return out;
     };
@@ -3317,9 +3383,9 @@ const mapFit = (() => {
     };
 
     // ── 적용 · 되돌리기 ──
-    const snap = (t) => ({ m: t.m, a: Object.fromEntries(["left", "top", "width", "height", "scaleX", "scaleY", "font_size"].filter(k => t.m.get(k) !== undefined).map(k => [k, t.m.get(k)])) });
+    const snap = (t) => ({ m: t.m, a: Object.fromEntries(["left", "top", "x", "y", "width", "height", "scaleX", "scaleY", "font_size"].filter(k => t.m.get(k) !== undefined).map(k => [k, t.m.get(k)])) });
     const moveAll = (all, dx, dy, k = 1) => all.forEach(t => {
-        const a = { left: num(t.m, "left") * k + dx, top: num(t.m, "top") * k + dy };
+        const a = t.v2 ? { x: num(t.m, "x") * k + dx, y: num(t.m, "y") * k + dy } : { left: num(t.m, "left") * k + dx, top: num(t.m, "top") * k + dy };
         if (k !== 1) {
             if (t.kind === "g") { a.width = num(t.m, "width") * k; a.height = num(t.m, "height") * k; }
             if (t.kind === "p") { a.scaleX = num(t.m, "scaleX", 1) * k; a.scaleY = num(t.m, "scaleY", 1) * k; }
