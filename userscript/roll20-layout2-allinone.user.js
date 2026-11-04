@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.8
+// @version      1.38.9
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.8";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.38.9";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -3812,7 +3812,8 @@ addCss(`
 // 토큰 선택(d20 엔진)에 손댈 수 없어서, 새 단추는 Roll20 의 원래 '면 선택'을 대신 눌러 창을 열고 sidePicker 가 보이지 않게 고른다
 // + 메뉴 정리: 카드 메뉴 · 파티 · 레이어 · 편집 묶음(▸)과 순서. Roll20 항목은 옮기지 않고 숨기기만 하며(flex order 로 순서),
 //   묶음 안 단추는 숨겨 둔 원래 항목을 대신 누른다
-// + 롤러블 토큰으로 합치기(GM, 편집 묶음) · 면 순서 바꾸기(GM, 여러 면): 고른 토큰을 알아내 면을 모으거나 순서를 바꾼다
+// + 롤러블 토큰으로 합치기 · 면 순서 바꾸기(GM, 편집 묶음): 고른 토큰을 알아내 면을 모으거나 순서를 바꾼다
+// 순서(11-04): 카드 뒤집기 · 면 선택 ─ 편집 · 카드 메뉴 · 파티 · 레이어 · 여러 면 · 고급 변환 ─ 그 밖의 Roll20 항목
 const tokenMenu = (() => {
     const RE = { multi: /^(여러 면|Multi-?Sided)$/i, choose: /^(면 선택|Choose Side)$/i, random: /^(무작위 면|Random Side)$/i };
     const labelEl = b => b.querySelector(":scope > .submenu-button-outer span[style*='text-align']");
@@ -3830,18 +3831,28 @@ const tokenMenu = (() => {
         return b;
     };
     // 정리할 순서. 묶음 항목은 [Roll20 이름(하위 메뉴 안이면 '부모>자식'), 보일 이름]. '@…' 은 Roll20 항목이 아니라 이 스크립트의 동작
-    //   (@roll 합치기 · @centerX/@centerY/@center 가운데 정렬(레이어 묶음 안) — GM 만, 고른 토큰은 pickSel 로 알아낸다)
+    //   (@roll 합치기 · @order 면 순서(편집 묶음) · @centerX/@centerY/@center 가운데 정렬(레이어 묶음) — GM 만, 고른 토큰은 pickSel 로 알아낸다)
+    //   { icons: [[이름, 보일 이름, 아이콘]…] } 은 묶음 안 아이콘 한 줄(3칸) · { hr } 은 가는 구분선(위아래에 보이는 항목이 있을 때만)
     const LAYOUT = [
-        { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
         { one: "카드 뒤집기" },
+        { faces: true },
+        { hr: true },
+        { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"], ["@roll", "롤러블 토큰으로 합치기"], ["@order", "면 순서 바꾸기"]] },
+        { g: "카드 메뉴", icon: "카드 가져가기", items: [["카드 가져가기", "가져가기"], ["카드 제외하기", "제외하기"]] },
         { g: "파티", icon: "모두에게 핑", items: [["모두에게 핑"], ["시선 집중 핑"], ["파티 정의"], ["파티 배치"], ["핀 놓기"], ["턴 추가"]] },
         { g: "레이어", icon: "레이어 변경", items: [["레이어 변경>토큰", "토큰 레이어로"], ["레이어 변경>GM", "GM 레이어로"], ["레이어 변경>맵", "맵 레이어로"],
-            ["앞으로 가져오기"], ["뒤로 보내기"], ["위치 고정"], ["@centerX", "가로만 가운데 정렬"], ["@centerY", "세로만 가운데 정렬"], ["@center", "맵 정중앙 정렬"]] },
-        { faces: true },
+            { icons: [["앞으로 가져오기", "앞으로 가져오기", "up"], ["뒤로 보내기", "뒤로 보내기", "down"], ["위치 고정", "위치 고정", "lock"]] },
+            { icons: [["@centerX", "가로만 가운데 정렬", "cx"], ["@centerY", "세로만 가운데 정렬", "cy"], ["@center", "맵 정중앙 정렬", "cc"]] }] },
         { one: "여러 면" },
         { one: "고급 변환" },
-        { g: "편집", icon: "복사", items: [["복사"], ["붙여넣기"], ["실행 취소"], ["다시 실행"], ["삭제"], ["@roll", "롤러블 토큰으로 합치기"]] }
+        { hr: true }
     ];
+    const ICON = {
+        up: '<path d="M5 4h14M12 20V9M7 13l5-5 5 5"/>', down: '<path d="M5 20h14M12 4v11M7 11l5 5 5-5"/>',
+        lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+        cx: '<path d="M12 3v18M7 8h10M5 15h14"/>', cy: '<path d="M3 12h18M8 7v10M15 5v14"/>', cc: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/>'
+    };
+    const flat = items => items.flatMap(x => x.icons || [x]);
     const ours = b => b.dataset.r20tm || b.dataset.r20tmG || b.dataset.r20tmP || b.dataset.r20tmAct;
     const leftIcon = b => b.querySelector(":scope > .submenu-button-outer .submenu-button-inner .grimoire__roll20-icon");
     // 같은 이름이 먼저, 없으면 앞부분이 같은 것 ('위치 고정 해제' 같은 바뀐 이름)
@@ -3884,8 +3895,49 @@ const tokenMenu = (() => {
         fly?.addEventListener("mouseenter", () => clearTimeout(t));
         fly?.addEventListener("mouseleave", () => { clearTimeout(t); t = setTimeout(shut, 300); });
     };
+    // 이 메뉴에 있는 항목만: '@…'은 GM 동작(면 순서는 여러 면 토큰일 때만), 나머지는 Roll20 원래 항목이 있을 때.
+    // now(묶음을 열 때): 레이어 묶음에서 지금 레이어로 옮기기는 뺀다
+    const has = (menu, path) => path === "@order" ? rollOK(menu) && !!multiOf(menu) : path.startsWith("@") ? rollOK(menu) : !!findIn(menu, path.split(">")[0]);
+    const presentOf = (menu, L, now) => {
+        const cur = now && L.g === "레이어" ? curLayer(menu) : null;
+        return L.items.map(x => x.icons ? { icons: x.icons.filter(([p]) => has(menu, p)) } : x)
+            .filter(x => x.icons ? x.icons.length : has(menu, x[0]) && !(cur && x[0] === "레이어 변경>" + cur));
+    };
+    // 아이콘 한 줄(3칸): 이름은 마우스를 올리면 뜨는 말풍선(.r20tm-tip)과 aria-label 로. 위치 고정은 고정된 토큰이면 눌린 모양
+    const iconRow = (menu, list) => {
+        const row = document.createElement("div");
+        row.className = "r20tm-irow";
+        list.forEach(([path, text, ic]) => {
+            const b = document.createElement("button"), src = path.startsWith("@") ? null : findIn(menu, path);
+            const name = src ? label(src) || text : text;          // '위치 고정 해제' 처럼 Roll20 이 바꾼 이름
+            b.type = "button"; b.className = "r20tm-ib";
+            b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[ic]}</svg>`;
+            b.setAttribute("aria-label", name); b.dataset.tip = name;
+            if (!src) b.dataset.r20tmAct = path.slice(1);
+            else {
+                b.dataset.r20tmP = path;
+                b.classList.toggle("disabled", src.classList.contains("disabled"));
+                if (path === "위치 고정") { const on = name !== text; b.classList.toggle("is-on", on); b.setAttribute("aria-pressed", String(on)); }
+            }
+            row.appendChild(b);
+        });
+        return row;
+    };
+    // 지금 레이어: Roll20 '레이어 변경' 하위 메뉴가 지금 것만 다르게 그리면(꺼짐 · 체크 · aria · 아이콘 수) 그 이름('토큰' · 'GM' · '맵').
+    // 못 알아내면 null → 셋 다 보인다. 하위 메뉴 항목은 메뉴가 뜰 때 미리 그려 둔다(arrange). 처음 한 번은 생김새를 콘솔에 남긴다(진단용)
+    let layerLogged = false;
+    const curLayer = menu => {
+        const lc = findIn(menu, "레이어 변경"), its = lc ? [...lc.querySelectorAll(":scope > .submenu > button")] : [];
+        const sig = b => [b.disabled || b.classList.contains("disabled") || b.getAttribute("aria-disabled") === "true",
+            /\b(active|selected|checked|current)\b/i.test(b.className), ["aria-checked", "aria-pressed", "aria-selected", "aria-current"].some(a => b.getAttribute(a) === "true"),
+            /[✓✔]/.test(b.textContent), b.querySelectorAll("svg, i, img, .grimoire__roll20-icon").length].join("|");
+        const sigs = its.map(sig), odd = its.filter((b, i) => sigs.indexOf(sigs[i]) === sigs.lastIndexOf(sigs[i]));
+        const cur = its.length >= 3 && odd.length === 1 ? label(odd[0]) || odd[0].textContent.trim() : null;
+        if (!layerLogged && its.length) { layerLogged = true; console.info("[토큰 메뉴] 레이어 하위 메뉴:", its.map(b => b.outerHTML.replace(/\s+/g, " ").slice(0, 240)), "→ 지금 레이어:", cur); }
+        return cur;
+    };
     // 묶음 머리: 하위 메뉴가 있는 Roll20 단추(화살표 포함)를 본뜨고, 아이콘은 대표 항목 것으로
-    const makeGroup = (menu, L, present, tpl) => {
+    const makeGroup = (menu, L, tpl) => {
         const g = tpl.cloneNode(true);
         g.removeAttribute("data-r20tm-hide"); g.removeAttribute("data-r20tm-hov"); g.classList.remove("disabled");
         g.dataset.r20tmG = L.g;
@@ -3900,13 +3952,14 @@ const tokenMenu = (() => {
         sub.style.display = "none";
         g._r20tmFly = sub;
         menu.appendChild(sub);
-        const build = () => sub.replaceChildren(...present.map(([path, text]) => {
+        const item = ([path, text]) => {
             if (!path.startsWith("@")) return proxyBtn(findIn(menu, path.split(">")[0]), path, text || path);
             const b = proxyBtn(findIn(menu, "삭제") || tpl, path, text);
             b.classList.remove("disabled");
             delete b.dataset.r20tmP; b.dataset.r20tmAct = path.slice(1);
             return b;
-        }));
+        };
+        const build = () => sub.replaceChildren(...presentOf(menu, L, true).map(x => x.icons ? iconRow(menu, x.icons) : item(x)));
         build();
         // 메뉴에 transform · zoom 이 걸려 있으면 left/top 값이 곧 화면 좌표가 아니다 (기준점이 옮겨지고 배율이 붙는다)
         // → 두 번 놓아 보고 실제로 놓인 화면 좌표에서 이동·배율을 구해, 원하는 화면 좌표가 되는 값을 넣는다 (!important: Roll20 CSS 를 이기도록)
@@ -3925,7 +3978,7 @@ const tokenMenu = (() => {
         // 고급 변환 · 여러 면처럼 메뉴 판 오른쪽 바깥에 띄우고, 첫 항목을 이 줄 높이에 맞춘다.
         // (Roll20 하위 메뉴에서 자리를 읽어 따라 하면 여는 방식·움직임에 따라 어긋나서, 자리는 정해진 규칙으로만 계산한다)
         hoverKeep(g, () => {
-            if (ITEM && !sub.dataset.real) { sub.dataset.real = "1"; build(); }       // 하위 메뉴 항목 모양을 잡았으면 그 모양으로
+            build();        // 열 때마다 지금 상태로 (하위 메뉴 항목 모양 ITEM · 위치 고정 해제 · 지금 레이어)
             sub.removeAttribute("style");
             Object.assign(sub.style, { display: "flex", flexDirection: "column", zIndex: "100001" });
             ["position:fixed", "margin:0", "transition:none", "animation:none", "transform:none", "translate:none"].forEach(kv => { const [k, v] = kv.split(":"); sub.style.setProperty(k, v, "important"); });
@@ -3979,16 +4032,28 @@ const tokenMenu = (() => {
             const order = (i + 1) * 10;
             if (L.one) { const b = findIn(menu, L.one); if (b) { b.style.order = order; used.add(b); } return; }
             if (L.faces) { menu.querySelectorAll(":scope > button[data-r20tm]").forEach((b, k) => { b.style.order = order + k; }); return; }
-            const present = L.items.filter(([path]) => path.startsWith("@") ? rollOK(menu) : findIn(menu, path.split(">")[0]));
+            if (L.hr) {
+                let hr = menu.querySelector(`:scope > .r20tm-hr[data-i="${i}"]`);
+                if (!hr) { hr = document.createElement("div"); hr.className = "r20tm-hr"; hr.dataset.i = i; hr.setAttribute("role", "separator"); menu.appendChild(hr); }
+                hr.style.order = order;
+                return;
+            }
+            const present = flat(presentOf(menu, L));
             present.forEach(([path]) => { if (path.startsWith("@")) return; const b = findIn(menu, path.split(">")[0]); b.setAttribute("data-r20tm-hide", ""); used.add(b); });
             let gb = menu.querySelector(`:scope > button[data-r20tm-g="${L.g}"]`);
             if (!present.length) { gb?._r20tmFly?.remove(); gb?.remove(); return; }
-            if (!gb && tpl) gb = menu.appendChild(makeGroup(menu, L, present, tpl));
+            if (!gb && tpl) gb = menu.appendChild(makeGroup(menu, L, tpl));
             if (gb) gb.style.order = order;
         });
+        // 레이어 묶음이 지금 레이어를 알 수 있게 Roll20 '레이어 변경' 하위 메뉴 항목을 미리 그려 둔다(숨긴 단추라 안 보인다)
+        const lc = findIn(menu, "레이어 변경");
+        if (lc && !lc.querySelector(":scope > .submenu > button")) hoverOpen(lc);
         learnOpen(menu);
         menu.classList.add("r20tm-arranged");
         menu.querySelectorAll(":scope > button").forEach(b => { if (!ours(b) && !used.has(b)) b.style.order = 900; });       // 목록에 없는 것은 맨 아래
+        // 구분선은 위아래에 보이는 항목이 있을 때만
+        const shown = [...menu.querySelectorAll(":scope > button")].filter(b => getComputedStyle(b).display !== "none").map(b => +b.style.order || 0);
+        menu.querySelectorAll(":scope > .r20tm-hr").forEach(hr => { const o = +hr.style.order; hr.hidden = !(shown.some(x => x < o) && shown.some(x => x > o)); });
     };
     // 메뉴가 지난번 정리한 그대로면(같은 단추 요소 · 단추 수 · Roll20 단추 이름) 다시 훑지 않는다
     const sigOf = menu => {
@@ -4024,12 +4089,12 @@ const tokenMenu = (() => {
                 multi.before(row);
             }
             if (!multi.querySelector(":scope > .submenu > button[data-r20tm]"))
-                tpl.after(makeBtn(tpl, "처음 면", "first"), makeBtn(tpl, "마지막 면", "last"), ...(rollOK(menu) ? [makeBtn(tpl, "면 순서 바꾸기", "order")] : []));
+                tpl.after(makeBtn(tpl, "처음 면", "first"), makeBtn(tpl, "마지막 면", "last"));
             choose?.classList.add("r20tm-hide");       // 원래 '면 선택'은 위로 올렸으므로 숨긴다 (누르는 데는 쓴다)
         }
     };
     // ── 롤러블 토큰으로 합치기 (GM, '편집' 묶음 안): 고른 토큰들의 그림을 면으로 모아 첫 토큰(왼쪽 위부터 읽는 순서) 하나에 넣고 나머지는 지운다 ──
-    // ── 면 순서 바꾸기 (GM, '여러 면' 안): 고른 여러 면 토큰 하나의 면 순서를 sideOrder 창에서 ──
+    // ── 면 순서 바꾸기 (GM, '편집' 묶음 안, 여러 면 토큰일 때): 고른 여러 면 토큰 하나의 면 순서를 sideOrder 창에서 ──
     // Roll20 은 지금 고른 토큰을 스크립트에 알려 주지 않는다 → 숨겨 둔 '뒤로 보내기' · '앞으로 가져오기'를 메뉴가 열린 그 순간에
     // 연달아 대신 눌러, 페이지 겹침 순서(zorder)에서 한쪽 끝으로 옮겨진 것들 = 고른 것으로 본다.
     // 둘을 다 누르는 까닭: 고른 것이 이미 맨 앞(끝)이면 '앞으로'로는 안 바뀌고, 맨 뒤(처음)면 '뒤로'로는 안 바뀐다.
@@ -4211,6 +4276,7 @@ const tokenMenu = (() => {
             e.preventDefault(); e.stopPropagation();
             const a = rb.dataset.r20tmAct, menu = rb.closest(".context-menu");
             if (a === "roll") mergeRoll(menu);
+            else if (a === "order") reorderSel(menu);
             else if (/^center/.test(a)) centerSel(menu, a === "centerX" ? "x" : a === "centerY" ? "y" : "xy");
             return;
         }
@@ -4233,7 +4299,6 @@ const tokenMenu = (() => {
         const b = e.target.closest?.("button[data-r20tm]");
         if (!b) return;
         e.preventDefault(); e.stopPropagation();
-        if (b.dataset.r20tm === "order") { reorderSel(b.closest(".context-menu")); return; }
         const multi = multiOf(b.closest(".context-menu"));
         let orig = multi && origChoose(multi);
         if (!orig && multi) {
@@ -4247,6 +4312,20 @@ const tokenMenu = (() => {
         if (act !== "choose") sidePicker.startAuto(act);
         orig.click();
     }, true);
+    // 아이콘 단추 말풍선: 하위 메뉴 판 밖으로 나가도 잘리지 않게 body 에 띄운다
+    let tip = null;
+    const hideTip = () => { tip?.remove(); };
+    document.addEventListener("mouseover", e => {
+        const b = e.target.closest?.(".context-menu .r20tm-ib");
+        if (!b) return hideTip();
+        tip ||= Object.assign(document.createElement("div"), { className: "r20tm-tip" });
+        tip.textContent = b.dataset.tip || "";
+        document.body.appendChild(tip);
+        const r = b.getBoundingClientRect(), w = tip.offsetWidth;
+        tip.style.left = Math.max(4, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 4)) + "px";
+        tip.style.top = r.bottom + 4 + "px";
+    }, true);
+    document.addEventListener("pointerdown", hideTip, true);
     // 메뉴가 뜬 순간 붙인다(instant) — 100ms 뒤면 원래 메뉴가 잠깐 보인다. 감시는 시작 쪽 본체 감시자가 한다
     return { inject, watch: ".context-menu", instant: true };
 })();
@@ -4575,6 +4654,17 @@ addCss(`
         body.r20cs-auto .ui-dialog:has(.sidechoices) { visibility:hidden !important; }
         .context-menu button.r20tm-hide, .context-menu button[data-r20tm-hide] { display:none !important; }
         .context-menu.r20tm-arranged > .context-menu-divider { display:none !important; }
+        /* 가는 구분선 · 묶음 안 아이콘 한 줄(3칸) · 말풍선 */
+        .context-menu > .r20tm-hr { flex:0 0 auto; height:1px; margin:3px 8px; background:rgba(128,128,128,0.25); }
+        .context-menu > .r20tm-hr[hidden] { display:none; }
+        .context-menu .r20tm-irow { display:grid; grid-template-columns:repeat(3, 1fr); gap:2px; padding:2px 4px; }
+        .context-menu .r20tm-ib { display:flex; align-items:center; justify-content:center; height:30px; min-width:0; margin:0; padding:0; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+        .context-menu .r20tm-ib:hover { background:rgba(128,128,128,0.16); }
+        .context-menu .r20tm-ib.is-on { background:rgba(128,128,128,0.26); }
+        .context-menu .r20tm-ib.disabled { opacity:.4; cursor:default; }
+        .context-menu .r20tm-ib svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+        .context-menu .r20tm-ib:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
+        .r20tm-tip { position:fixed; z-index:100006; padding:3px 8px; border-radius:4px; background:rgba(20,20,22,0.92); color:#fff; font:11px/1.4 sans-serif; white-space:nowrap; pointer-events:none; }
         /* 덱 창: 반투명 판에 카드 더미만 (폭 70px, 높이는 그림 비율대로). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
         /* Roll20 은 메뉴를 판 안 40px 폭에 넣어서 글자가 한 자씩 꺾였다 → position:fixed 로 판 밖에 (자리는 deckView 가 잡는다) */
         #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:8px; box-sizing:border-box; scrollbar-width:thin; }
