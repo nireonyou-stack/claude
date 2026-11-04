@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.38.9
+// @version      1.39.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.38.9";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.39.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4270,53 +4270,68 @@ const tokenMenu = (() => {
                 g.save({ sides: ns.map(encodeURIComponent).join("|"), currentSide: c, imgsrc: ns[c] });
             } });
     };
-    document.addEventListener("click", async e => {
-        const rb = e.target.closest?.("button[data-r20tm-act]");
-        if (rb) {
-            e.preventDefault(); e.stopPropagation();
-            const a = rb.dataset.r20tmAct, menu = rb.closest(".context-menu");
-            if (a === "roll") mergeRoll(menu);
-            else if (a === "order") reorderSel(menu);
-            else if (/^center/.test(a)) centerSel(menu, a === "centerX" ? "x" : a === "centerY" ? "y" : "xy");
-            return;
-        }
-        const hdr = e.isTrusted && e.target.closest?.(".context-menu > button[data-r20tm-hov]");
-        if (hdr && !e.target.closest(".submenu") && isOpen(hdr)) { e.preventDefault(); e.stopPropagation(); return; }
-        const p = e.target.closest?.("button[data-r20tm-p]");
-        if (!p && e.target.closest?.("button[data-r20tm-g]")) { e.preventDefault(); e.stopPropagation(); return; }
-        if (p) {
-            e.preventDefault(); e.stopPropagation();
-            if (p.classList.contains("disabled")) return;
-            const [parent, child] = p.dataset.r20tmP.split(">"), orig = findIn(p.closest(".context-menu"), parent);
-            if (!orig) return;
-            if (!child) { orig.click(); return; }
-            // 하위 메뉴 항목: 원래 묶음에 마우스를 올린 것처럼 해서 그리게 한 뒤 누른다
-            const item = () => [...orig.querySelectorAll(":scope > .submenu > button")].find(x => label(x) === child);
-            if (!item()) { hoverOpen(orig); await new Promise(r => setTimeout(r, 80)); }
-            item()?.click();
-            return;
-        }
-        const b = e.target.closest?.("button[data-r20tm]");
-        if (!b) return;
-        e.preventDefault(); e.stopPropagation();
-        const multi = multiOf(b.closest(".context-menu"));
+    // 동작 셋 — 메뉴 단추를 누를 때와 왼클릭 메뉴(tokenActs, 숨긴 우클릭 메뉴로)가 같이 쓴다
+    const runAct = (menu, a) => a === "roll" ? mergeRoll(menu) : a === "order" ? reorderSel(menu)
+        : /^center/.test(a) ? centerSel(menu, a === "centerX" ? "x" : a === "centerY" ? "y" : "xy") : null;
+    const runPath = async (menu, path) => {
+        const [parent, child] = path.split(">"), orig = findIn(menu, parent);
+        if (!orig) return;
+        if (!child) { orig.click(); return; }
+        // 하위 메뉴 항목: 원래 묶음에 마우스를 올린 것처럼 해서 그리게 한 뒤 누른다
+        const item = () => [...orig.querySelectorAll(":scope > .submenu > button")].find(x => label(x) === child);
+        if (!item()) { hoverOpen(orig); await new Promise(r => setTimeout(r, 80)); }
+        item()?.click();
+    };
+    const runFace = async (menu, act) => {
+        const multi = multiOf(menu);
         let orig = multi && origChoose(multi);
         if (!orig && multi) {
             // 하위 메뉴가 아직 안 그려졌으면 '여러 면'에 마우스를 올린 것처럼 해서 그리게 한다
-            ["mouseenter", "mouseover"].forEach(t => multi.dispatchEvent(new MouseEvent(t, { bubbles: t === "mouseover" })));
+            hoverOpen(multi);
             await new Promise(r => setTimeout(r, 80));
             orig = origChoose(multi);
         }
         if (!orig) { console.warn("[토큰 메뉴] '면 선택'을 찾지 못함"); return; }
-        const act = e.target.closest("[data-r20tm-nav]")?.dataset.r20tmNav || b.dataset.r20tm;
         if (act !== "choose") sidePicker.startAuto(act);
         orig.click();
+    };
+    document.addEventListener("click", e => {
+        const rb = e.target.closest?.(".context-menu button[data-r20tm-act]");
+        if (rb) { e.preventDefault(); e.stopPropagation(); runAct(rb.closest(".context-menu"), rb.dataset.r20tmAct); return; }
+        const hdr = e.isTrusted && e.target.closest?.(".context-menu > button[data-r20tm-hov]");
+        if (hdr && !e.target.closest(".submenu") && isOpen(hdr)) { e.preventDefault(); e.stopPropagation(); return; }
+        const p = e.target.closest?.(".context-menu button[data-r20tm-p]");
+        if (!p && e.target.closest?.(".context-menu button[data-r20tm-g]")) { e.preventDefault(); e.stopPropagation(); return; }
+        if (p) {
+            e.preventDefault(); e.stopPropagation();
+            if (!p.classList.contains("disabled")) runPath(p.closest(".context-menu"), p.dataset.r20tmP);
+            return;
+        }
+        const b = e.target.closest?.(".context-menu button[data-r20tm]");
+        if (!b) return;
+        e.preventDefault(); e.stopPropagation();
+        runFace(b.closest(".context-menu"), e.target.closest("[data-r20tm-nav]")?.dataset.r20tmNav || b.dataset.r20tm);
     }, true);
+    // ── 왼클릭 메뉴(tokenActs)용: 숨긴 우클릭 메뉴에서 읽고(info) · 대신 누른다(run) ──
+    // 토큰 메뉴인지: 토큰에만 있는 항목이 하나라도 (빈 맵 메뉴는 핑 · 붙여넣기 정도)
+    const TOKEN_ONLY = ["삭제", "복사", "레이어 변경", "캐릭터 시트", "턴 추가", "위치 고정", "카드 뒤집기", "여러 면"];
+    const LAYER_G = LAYOUT.find(L => L.g === "레이어");
+    const layerSpec = menu => presentOf(menu, LAYER_G, true).map(x => x.icons
+        ? { icons: x.icons.map(([path, text, ic]) => {
+            const src = path.startsWith("@") ? null : findIn(menu, path), name = src ? label(src) || text : text;
+            return { path, name, svg: ICON[ic], on: path === "위치 고정" && name !== text, off: !!src?.classList.contains("disabled") };
+        }) }
+        : { path: x[0], name: x[1] || x[0], off: !!findIn(menu, x[0].split(">")[0])?.classList.contains("disabled") });
+    const info = menu => ({
+        token: TOKEN_ONLY.some(n => findIn(menu, n)), card: !!findIn(menu, "카드 뒤집기"), multi: !!multiOf(menu),
+        sheet: !!findIn(menu, "캐릭터 시트"), ping: !!findIn(menu, "시선 집중 핑"), layer: layerSpec(menu)
+    });
+    const run = (menu, spec) => spec.face ? runFace(menu, spec.face) : spec.path.startsWith("@") ? runAct(menu, spec.path.slice(1)) : runPath(menu, spec.path);
     // 아이콘 단추 말풍선: 하위 메뉴 판 밖으로 나가도 잘리지 않게 body 에 띄운다
     let tip = null;
     const hideTip = () => { tip?.remove(); };
     document.addEventListener("mouseover", e => {
-        const b = e.target.closest?.(".context-menu .r20tm-ib");
+        const b = e.target.closest?.(".context-menu .r20tm-ib, .r20ta-pop [data-tip]");
         if (!b) return hideTip();
         tip ||= Object.assign(document.createElement("div"), { className: "r20tm-tip" });
         tip.textContent = b.dataset.tip || "";
@@ -4327,13 +4342,13 @@ const tokenMenu = (() => {
     }, true);
     document.addEventListener("pointerdown", hideTip, true);
     // 메뉴가 뜬 순간 붙인다(instant) — 100ms 뒤면 원래 메뉴가 잠깐 보인다. 감시는 시작 쪽 본체 감시자가 한다
-    return { inject, watch: ".context-menu", instant: true };
+    return { inject, watch: ".context-menu", instant: true, info, run };
 })();
 
 // ───────── 토큰 액션 → 클릭 메뉴: 토큰을 왼클릭(끌지 않고)하면 그 자리에 토큰 액션 매크로를 메뉴로 띄운다 (body.r20ta-on) ─────────
 // 위쪽 토큰 액션 줄(#secondary-toolbar 의 ul.tokenactions)은 숨기고, 메뉴 항목은 그 줄의 원래 단추를 대신 누른다
 const tokenActs = (() => {
-    let down = null, pop = null;
+    let down = null, pop = null, busy = false;
     const barEl = () => document.getElementById("secondary-toolbar");
     const shown = el => !!el && getComputedStyle(el).display !== "none";
     // 우리가 줄을 숨기는 것(visibility)과 상관없이, Roll20 이 줄·단추를 실제로 보여 주고 있는지로 판단한다
@@ -4349,13 +4364,119 @@ const tokenActs = (() => {
         return list;
     };
     const close = () => { pop?.remove(); pop = null; };
-    const open = (at, list) => {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    // 판 위를 눌렀는지: Roll20 맵 판(#tabletop-wrapper · 캔버스, 예전 화면은 #editor-wrapper)
+    const onBoard = t => !!t && (t.id === "tabletop-wrapper" || t.tagName === "CANVAS" || !!t.closest?.("#editor-wrapper"));
+    // ── 그 자리에 마우스 동작을 흉내 낸다 — Roll20 은 스크립트가 보낸 우클릭 · 더블클릭도 받는다(실제 진단 11-04) ──
+    const fire = (at, type, btn, extra) => at.el.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : MouseEvent)(type,
+        { bubbles: true, cancelable: true, composed: true, clientX: at.x, clientY: at.y, button: btn, buttons: btn === 2 ? 2 : 1, pointerId: 1, pointerType: "mouse", isPrimary: true, view: window, ...extra }));
+    const press = (at, btn, detail = 1) => {
+        fire(at, "pointerdown", btn, { detail }); fire(at, "mousedown", btn, { detail });
+        fire(at, "pointerup", btn, { buttons: 0, detail }); fire(at, "mouseup", btn, { buttons: 0, detail });
+    };
+    const shownMenu = () => [...document.querySelectorAll(".context-menu")].find(m => m.getClientRects().length);
+    // 숨긴 우클릭 메뉴: 그 자리를 우클릭한 것처럼 해서 Roll20 메뉴를 보이지 않게(body.r20ta-probe) 띄운다
+    const probe = async at => {
+        document.body.classList.add("r20ta-probe");
+        press(at, 2); fire(at, "contextmenu", 2, { buttons: 0 });
+        let m = null;
+        for (let i = 0; i < 20 && !(m = shownMenu()); i++) await wait(25);
+        if (m) await wait(60);            // 토큰 메뉴 정리 · 레이어 하위 메뉴가 그려질 틈
+        else document.body.classList.remove("r20ta-probe");
+        return m;
+    };
+    // 닫기: 항목을 누르면 Roll20 이 닫는다. 안 닫혔으면 그 자리를 왼클릭 (Esc 로는 안 닫힌다 — 진단 11-04)
+    const unprobe = async (at, m, ms) => {
+        for (let t = 0; t < ms && m.isConnected && m.getClientRects().length; t += 25) await wait(25);
+        if (m.isConnected && m.getClientRects().length) { press(at, 0); for (let i = 0; i < 12 && m.isConnected && m.getClientRects().length; i++) await wait(25); }
+        document.body.classList.remove("r20ta-probe");
+    };
+    const solo = async fn => {
+        if (busy) return;
+        busy = true;
+        try { await fn(); }
+        catch (e) { console.warn("[토큰 액션] 숨긴 우클릭 메뉴 오류:", e); document.body.classList.remove("r20ta-probe"); }
+        finally { busy = false; }
+    };
+    // 메뉴 항목 실행: 그때마다 새로 숨긴 우클릭 메뉴를 띄워 누른다(Roll20 메뉴는 한 번 누르면 닫힌다). 토큰 설정은 더블클릭
+    const act = (at, spec) => {
+        close();
+        if (spec.dbl) { press(at, 0, 1); fire(at, "click", 0, { buttons: 0, detail: 1 }); press(at, 0, 2); fire(at, "click", 0, { buttons: 0, detail: 2 }); fire(at, "dblclick", 0, { buttons: 0, detail: 2 }); return; }
+        solo(async () => {
+            const m = await probe(at);
+            if (!m) return console.warn("[토큰 액션] 우클릭 메뉴를 못 열었어요");
+            try { await tokenMenu.run(m, spec); } finally { await unprobe(at, m, 1500); }
+        });
+    };
+    // 토큰을 눌렀으면: 숨긴 우클릭 메뉴로 무엇이 되는지 읽고 닫은 뒤 메뉴를 띄운다(토큰이 아니면 토큰 액션만 — 없으면 안 띄움)
+    const show = at => solo(async () => {
+        let info = null;
+        const m = await probe(at);
+        if (m) { try { info = tokenMenu.info(m); } finally { await unprobe(at, m, 0); } }
+        const list = actions();
+        if (info?.token || list.length) open(at, info?.token ? info : null, list);
+    });
+    // ── 메뉴 판: [카드 뒤집기 · ‹면 선택› · 레이어] [토큰 설정 · 캐릭터 시트 · 시선 집중 핑] ─ 토큰 액션 ──
+    // 못 쓰는 칸은 지우지 않고 흐리게(자리가 늘 같게). 이름은 마우스를 올리면 말풍선(tokenMenu 의 .r20tm-tip)
+    const SVG = {
+        flip: '<rect x="3" y="5" width="10" height="14" rx="2"/><path d="M16 8h3a2 2 0 0 1 2 2v7M18 15l3 3 3-3"/>',
+        face: '<rect x="4" y="4" width="12" height="12" rx="2"/><path d="M8 20h10a2 2 0 0 0 2-2V8"/>',
+        layer: '<path d="M12 4l9 5-9 5-9-5z"/><path d="M3 14l9 5 9-5"/>',
+        gear: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+        sheet: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+        ping: '<circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'
+    };
+    const ib = (name, d, off, fn, cls = "r20ta-ib") => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = cls; b.setAttribute("role", "menuitem");
+        b.innerHTML = d.startsWith("<") ? `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>` : d;
+        b.setAttribute("aria-label", name); b.dataset.tip = name;
+        if (off) { b.classList.add("off"); b.setAttribute("aria-disabled", "true"); }
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (!off && fn) fn(); });
+        return b;
+    };
+    const row3 = (...cells) => { const r = document.createElement("div"); r.className = "r20ta-g3"; r.append(...cells); return r; };
+    const hr = () => Object.assign(document.createElement("div"), { className: "r20ta-hr" });
+    // 레이어 하위 판: 우클릭 레이어 묶음과 같은 내용(지금 레이어 빼기 · 아이콘 3칸 줄). 마우스를 올리면 열고 0.3초 여유를 두고 닫는다
+    const layerFly = (at, anchor, spec) => {
+        const f = document.createElement("div");
+        f.className = "r20ta-fly"; f.setAttribute("role", "menu"); f.setAttribute("aria-label", "레이어"); f.hidden = true;
+        spec.forEach(x => {
+            if (!x.icons) { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "menuitem"); b.textContent = x.name;
+                if (x.off) b.classList.add("off"); b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (!x.off) act(at, { path: x.path }); }); f.appendChild(b); return; }
+            f.appendChild(row3(...x.icons.map(i => { const b = ib(i.name, i.svg, i.off, () => act(at, { path: i.path })); if (i.on) { b.classList.add("on"); b.setAttribute("aria-pressed", "true"); } return b; })));
+        });
+        let t = 0;
+        const place = () => {
+            f.classList.remove("left");
+            f.style.top = Math.max(0, anchor.offsetTop - 4) + "px";
+            if (pop.getBoundingClientRect().right + f.offsetWidth + 8 > innerWidth) f.classList.add("left");
+        };
+        const openF = () => { clearTimeout(t); if (f.hidden) { f.hidden = false; place(); } };
+        const shut = () => { clearTimeout(t); t = setTimeout(() => { f.hidden = true; }, 300); };
+        [anchor, f].forEach(el => { el.addEventListener("mouseenter", openF); el.addEventListener("mouseleave", shut); });
+        anchor.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); f.hidden ? openF() : (f.hidden = true); });
+        return f;
+    };
+    const open = (at, info, list) => {
         close();
         pop = document.createElement("div");
         pop.className = "r20ta-pop";
         pop.setAttribute("role", "menu");
-        pop.setAttribute("aria-label", "토큰 액션");
-        pop.innerHTML = '<div class="r20ta-h">토큰 액션</div>';
+        pop.setAttribute("aria-label", "토큰 메뉴");
+        pop._info = !!info;
+        if (info) {
+            const face = document.createElement("div");
+            face.className = "r20ta-face";
+            face.append(ib("이전 면", "‹", !info.multi, () => act(at, { face: "prev" }), "r20ta-nav"), ib("면 선택", SVG.face, !info.multi, () => act(at, { face: "choose" })),
+                ib("다음 면", "›", !info.multi, () => act(at, { face: "next" }), "r20ta-nav"));
+            const lay = ib("레이어", SVG.layer, !info.layer.length, null);
+            pop.append(row3(ib("카드 뒤집기", SVG.flip, !info.card, () => act(at, { path: "카드 뒤집기" })), face, lay),
+                row3(ib("토큰 설정", SVG.gear, false, () => act(at, { dbl: true })), ib("캐릭터 시트", SVG.sheet, !info.sheet, () => act(at, { path: "캐릭터 시트" })),
+                    ib("시선 집중 핑", SVG.ping, !info.ping, () => act(at, { path: "시선 집중 핑" }))));
+            if (info.layer.length) pop.appendChild(layerFly(at, lay, info.layer));
+            if (list.length) pop.appendChild(hr());
+        }
         list.forEach(orig => {
             const b = document.createElement("button");
             b.type = "button";
@@ -4376,18 +4497,20 @@ const tokenActs = (() => {
         const ul = b.querySelector("ul.tokenactions");
         const others = [...b.querySelectorAll("ul.mode")].some(u => u !== ul && shown(u));
         b.classList.toggle("r20ta-hide", btnVisible.tokact && !!ul && !others);
-        if (pop && !actions().length) close();         // 선택이 풀리면 메뉴도 닫는다
+        if (pop && !pop._info && !actions().length) close();         // 토큰 액션만 띄운 메뉴는 선택이 풀리면 닫는다
     };
     document.addEventListener("pointerdown", e => {
         if (pop && !pop.contains(e.target)) close();
-        down = btnVisible.tokact && e.button === 0 && e.target.closest?.("#editor-wrapper") ? { x: e.clientX, y: e.clientY } : null;
+        if (!e.isTrusted) return;           // 숨긴 메뉴를 열고 닫으려고 스크립트가 보낸 것은 무시
+        const mod = e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;      // 여럿 고르기 등은 그대로
+        down = btnVisible.tokact && e.button === 0 && !mod && onBoard(e.target) ? { x: e.clientX, y: e.clientY, el: e.target } : null;
     }, true);
     document.addEventListener("pointerup", e => {
-        if (!down || e.button !== 0) return;
-        const at = { x: e.clientX, y: e.clientY }, moved = Math.hypot(at.x - down.x, at.y - down.y) > 4;
+        if (!down || !e.isTrusted || e.button !== 0) return;
+        const at = { x: e.clientX, y: e.clientY, el: down.el }, moved = Math.hypot(at.x - down.x, at.y - down.y) > 4;
         down = null;
         if (moved) return;                  // 끌어서 옮긴 것은 메뉴를 띄우지 않는다
-        setTimeout(() => { const list = actions(); if (list.length) open(at, list); }, 150);     // Roll20 이 선택·토큰 액션을 갱신한 뒤
+        setTimeout(() => show(at), 60);     // Roll20 이 선택 · 토큰 액션을 갱신한 뒤
     }, true);
     document.addEventListener("keydown", e => { if (pop && e.key === "Escape") close(); }, true);
     document.addEventListener("contextmenu", close, true);
@@ -4715,9 +4838,24 @@ addCss(`
         /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
         .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
-        .r20ta-pop .r20ta-h { padding:4px 10px 2px; color:#8a8a90; font-size:10px; font-weight:700; }
+        /* 숨긴 우클릭 메뉴(왼클릭 메뉴가 읽고 누르는 동안) */
+        body.r20ta-probe .context-menu, body.r20ta-probe .context-menu * { visibility:hidden !important; }
         .r20ta-pop button { display:flex; align-items:center; width:100%; height:30px; margin:0; padding:0 10px; border:0; border-radius:6px; background:transparent; color:#333; font-size:13px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:clip; cursor:pointer; }
         .r20ta-pop button:hover, .r20ta-pop button:focus-visible { background:#ececf0; outline:none; }
+        .r20ta-pop:has(.r20ta-g3) { min-width:186px; }
+        .r20ta-pop .r20ta-g3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:2px; }
+        .r20ta-pop .r20ta-ib { justify-content:center; height:32px; padding:0; }
+        .r20ta-pop .r20ta-ib svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+        .r20ta-pop .r20ta-face { display:flex; align-items:center; min-width:0; }
+        .r20ta-pop .r20ta-face .r20ta-ib { flex:1 1 auto; min-width:0; }
+        .r20ta-pop .r20ta-nav { flex:0 0 16px; width:16px; height:32px; padding:0; justify-content:center; font-size:15px; color:#666; }
+        .r20ta-pop .off { opacity:.35; cursor:default; }
+        .r20ta-pop .off:hover { background:transparent; }
+        .r20ta-pop .on { background:#e2e2e8; }
+        .r20ta-pop .r20ta-hr { height:1px; margin:3px 6px; background:rgba(0,0,0,0.1); }
+        .r20ta-pop .r20ta-fly { position:absolute; left:calc(100% + 4px); min-width:160px; padding:4px; border-radius:10px; background:#f6f6f8; box-shadow:0 6px 18px rgba(0,0,0,0.35); }
+        .r20ta-pop .r20ta-fly.left { left:auto; right:calc(100% + 4px); }
+        .r20ta-pop .r20ta-fly[hidden] { display:none; }
         .context-menu .r20tm-nav { position:absolute; right:6px; top:50%; transform:translateY(-50%); display:inline-flex; gap:2px; }
         .context-menu .r20tm-nav > span { display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px; border-radius:4px; font-size:15px; line-height:1; cursor:pointer; }
         .context-menu .r20tm-nav > span:hover { background:rgba(0,0,0,0.1); }
