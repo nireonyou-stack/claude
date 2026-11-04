@@ -218,15 +218,15 @@ const pickRow = (row, v, keys) => Object.fromEntries(keys.map(k => [k, v[row + k
 const info = (title, sub, rows, effect, flavor) => post('&{template:bloodmoon}' + field('title', title) + field('sub', sub)
   + rows.filter(([, val]) => val !== '').slice(0, 4).map(([k, val], i) => field(`k${i + 1}`, k) + field(`v${i + 1}`, val)).join('') + field('effect', effect) + field('flavor', flavor));
 
-// 어빌리티: 지정특기로 행동판정(공격 타입은 【공격력】 자동 가산). 상주 · 지정특기 없음은 효과만 출력
+// 어빌리티: 지정특기로 행동판정(공격 타입은 【공격력】, 지원 타입은 【행동력】 자동 가산 — 공격판정 · 지원판정). 상주 · 지정특기 없음은 효과만 출력
 on('clicked:repeating_abilities:use', e => {
   const row = rowOf(e, 'abilities'); if (!row) return;
   const keys = ['name', 'group', 'type', 'lv', 'cost', 'skill', 'effect', 'flavor'];
-  getAttrs([...keys.map(k => row + k), 'attack'], v => {
+  getAttrs([...keys.map(k => row + k), 'attack', 'action'], v => {
     const a = pickRow(row, v, keys), sub = [a.type, a.lv && `Lv ${a.lv}`, a.group, a.cost && `코스트 ${a.cost}`].filter(Boolean).join(' / ');
     const title = a.name || '어빌리티', skill = a.skill.replace(/[《》\s]/g, '');
     if (a.type === '상주' || !skill || skill === '없음') return info(title, sub, [['지정특기', a.skill || '-']], a.effect, a.flavor);
-    actionCheck({ title, sub, skill: NAME_TO_ID[skill], pick: !NAME_TO_ID[skill], atk: a.type === '공격' ? (num(v.attack) || 0) : 0, effect: a.effect, flavor: a.flavor });
+    actionCheck({ title, sub, skill: NAME_TO_ID[skill], pick: !NAME_TO_ID[skill], atk: num(v[{ 공격: 'attack', 지원: 'action' }[a.type]]) || 0, effect: a.effect, flavor: a.flavor });
   });
 });
 

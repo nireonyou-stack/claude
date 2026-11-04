@@ -103,6 +103,14 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   has('ability meta line', last().macro, '{{sub=공격 / 코스트 1}}');
   has('attack ability macro atk', last().macro, '{{atk=[[2]]}}');
   has('ability effect/flavor', last().macro, '{{effect=대미지 1점}} {{flavor=개요}}');
+  s.set('action', '3');
+  const abS = s.addRow('abilities', { name: '응급', type: '지원', skill: '《베기》' }); await s.settle();
+  s.dice.push(1, 1); s.click('use', abS); await s.settle();
+  eq('support ability adds 행동력', [last().computed.total, /\{\{atk=\[\[3\]\]\}\}/.test(last().macro)], [5, true]);
+  const abB = s.addRow('abilities', { name: '자세잡기', type: '보조', skill: '《베기》' }); await s.settle();
+  s.dice.push(1, 1); s.click('use', abB); await s.settle();
+  eq('assist ability adds nothing', [last().computed.total, /\{\{atk=/.test(last().macro)], [2, false]);
+  s.set('action', '');
   const ab2 = s.addRow('abilities', { name: '자세', type: '상주', cost: '1', skill: '없음', effect: '항상' }); await s.settle();
   const before = s.rolls.length; s.click('use', ab2); await s.settle();
   eq('passive ability: info card only', [s.rolls.length - before, /\[\[1d6\]\]/.test(last().macro)], [1, false]);
