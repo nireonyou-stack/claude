@@ -25,7 +25,7 @@
 
 /* Band */
 .bm .band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 -20px 14px;padding:9px 20px;background:var(--band);color:var(--band-ink)}
-.bm .mark{font:900 24px/1 Georgia,'Noto Serif KR',serif;letter-spacing:2px;color:#f4e7e7;text-shadow:0 0 10px rgba(224,57,75,.9);white-space:nowrap}
+.bm .mark{font:900 24px/1 Georgia,'Noto Serif KR',serif;letter-spacing:2px;color:#f4e7e7;text-shadow:0 0 10px rgba(224,57,75,.9);white-space:nowrap;background:none;padding:0}  /* Roll20 base.css(Bootstrap) 의 .mark{배경 노랑 · padding .2em} 끄기 */
 .bm .band label.stype{display:flex;align-items:center;gap:2px;width:auto;margin:0;font-weight:400;font-size:12px;border:1px solid rgba(244,231,231,.35);border-radius:9em;padding:1px 2px 1px 12px}
 .bm .stype select{width:auto;border:0;color:inherit;font-weight:700;padding:1px 4px;cursor:pointer}
 .bm .stype option{color:#222226}
