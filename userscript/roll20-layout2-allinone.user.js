@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.40.2
+// @version      1.40.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.40.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.40.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -8900,7 +8900,8 @@ const autofill = (() => {
         shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect" },
         magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" },
         // 블러드문 시트: 반복 줄의 칸 이름이 그대로(name …), 팔로워 어빌리티는 ab1_ ~ ab3_ 이 앞에 붙는다
-        bloodmoon:      { name: "name", group: "group", type: "type", skill: "skill", cost: "cost", effect: "effect", flavor: "flavor" },
+        // 레벨(lv · level)은 데이터에 있을 때만 — 시트에 Lv 칸이 생긴 판부터 채워진다
+        bloodmoon:      { name: "name", group: "group", type: "type", lv: "lv", level: "lv", skill: "skill", cost: "cost", effect: "effect", flavor: "flavor" },
         bloodmoon_item: { name: "name", kind: "kind", effect: "effect" }
     };
     // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
@@ -9110,7 +9111,11 @@ const autofill = (() => {
             if (data[key] == null || data[key] === "") continue;
             // 같은 name 의 표시용 <span> 이 앞에 있는 시트가 있어 입력 요소만 고른다
             const f = el(field);
-            if (f) setField(f, String(data[key]));
+            if (!f) continue;
+            // 블러드문 아이템 분류가 [아이템 · 레어아이템] 고르기인 판: 데이터의 다른 분류는 '레어' 가 들어 있는지로 고른다
+            const v = c.sys === "bloodmoon_item" && key === "kind" && f.tagName === "SELECT" && !pickOption(f, data.kind)
+                ? (/레어/.test(data.kind) ? "레어아이템" : "아이템") : String(data[key]);
+            setField(f, v);
         }
         filling = false;
         close();
