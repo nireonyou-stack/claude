@@ -85,12 +85,12 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   // ── 굴림: 특기 행동판정
   const last = () => s.rolls[s.rolls.length - 1];
   s.dice.push(3, 4); s.click('rarm4'); await s.settle();
-  eq('skill roll computed', last().computed, { res: '✓ 성공', total: 7, target: 5, skill: '《베기》' });
+  eq('skill roll computed', last().computed, { res: '✓ 성공', ok: 1, total: 7, target: 5, skill: '《베기》' });
   has('skill roll prompt', last().macro, '《베기》 목표치 5');
   s.dice.push(1, 1); s.click('rarm4'); await s.settle();
-  eq('fumble', last().computed.res, '✗ 펌블 · 【여유】 0');
+  eq('1·1 is just total (no auto fumble)', [last().computed.total, last().computed.res, last().computed.ok], [2, '✗ 실패', 2]);
   s.dice.push(6, 6); s.click('renv12'); await s.settle();
-  eq('special even if tn 12', last().computed.res, '★ 스페셜 · 【여유】 +3');
+  eq('6·6 is just total (no auto special)', [last().computed.total, last().computed.res, last().computed.ok], [12, '✓ 성공', 1]);
   s.queries['《베기》'] = -3; s.dice.push(3, 4); s.click('rarm4'); await s.settle(); delete s.queries['《베기》'];
   eq('modifier applied', [last().computed.total, last().computed.res], [4, '✗ 실패']);
 

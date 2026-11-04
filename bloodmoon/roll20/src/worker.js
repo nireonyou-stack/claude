@@ -141,7 +141,8 @@ const ask = s => clean(s).replace(/[|,]/g, ' ');     // Roll20 입력창 문구
 const field = (k, v) => (v === '' || v == null ? '' : ` {{${k}=${clean(v)}}}`);
 const post = (s, computed) => startRoll(s, r => finishRoll(r.rollId, computed ? computed(r.results) : {}));
 
-// 행동판정: 2D6 + (공격력) + 수정치 ≥ 목표치. 2 는 펌블, 12 는 스페셜
+// 행동판정: 2D6 + (공격력) + 수정치 ≥ 목표치 → 성공 · 실패만. 펌블 · 스페셜은 자동으로 정하지 않는다
+//   (펌블치가 오르는 등 룰이 바뀌므로) — 카드에서 주사위 1 은 빨강, 6 은 초록으로 보인다
 //   skill: 특기 id (목표치 · 사용불능은 sheet worker 가 계산해 둔 값), pick: 자유 · 전부일 때 고를 특기 목록
 //   follower: 팔로워 판정치(특기 없이 판정)
 function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor }) {
@@ -150,7 +151,7 @@ function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor })
     const isF = follower !== undefined;
     const tnOf = id => num(v[`sk_${id}_tn`]) || 12;
     const opts = pick ? [...SKILL_IDS].sort((a, b) => tnOf(a) - tnOf(b)) : null;
-    let s = '&{template:bloodmoon} {{res=[[0]]}} {{total=[[0]]}}' + (isF ? '' : ' {{skill=[[0]]}}') + ' {{target=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}';
+    let s = '&{template:bloodmoon} {{res=[[0]]}} {{ok=[[0]]}} {{total=[[0]]}}' + (isF ? '' : ' {{skill=[[0]]}}') + ' {{target=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}';
     if (opts) s += ` {{pick=[[?{판정 특기|${opts.map((id, i) => `${skillName(id)} (${tnOf(id)}),${i}`).join('|')}}]]}}`;
     const lead = isF ? `판정치 ${follower}` : opts ? '' : `《${skillName(skill)}》 목표치 ${tnOf(skill)}${on1(v[`sk_${skill}_off`]) ? ' (사용불능 · 스페셜만 성공)' : ''}`;
     s += ` {{mod=[[?{${ask(lead ? `${lead} — 수정치` : '수정치')}|0}]]}}`;
@@ -158,9 +159,9 @@ function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor })
     s += field('title', title) + field('sub', sub) + field('effect', effect) + field('flavor', flavor);
     post(s, R => {
       const id = opts ? (opts[R.pick.result] || opts[0]) : skill;
-      const t = isF ? follower : tnOf(id), sum = R.d1.result + R.d2.result, tot = sum + (atk || 0) + R.mod.result;
-      const res = sum === 2 ? (isF ? '✗ 펌블 · 무력화' : '✗ 펌블 · 【여유】 0') : sum === 12 ? (isF ? '★ 스페셜' : '★ 스페셜 · 【여유】 +3') : tot >= t ? '✓ 성공' : '✗ 실패';
-      return Object.assign({ res, total: tot, target: t }, isF ? {} : { skill: `《${skillName(id)}》` });
+      const t = isF ? follower : tnOf(id), tot = R.d1.result + R.d2.result + (atk || 0) + R.mod.result;
+      const ok = tot >= t;
+      return Object.assign({ res: ok ? '✓ 성공' : '✗ 실패', ok: ok ? 1 : 2, total: tot, target: t }, isF ? {} : { skill: `《${skillName(id)}》` });
     });
   });
 }

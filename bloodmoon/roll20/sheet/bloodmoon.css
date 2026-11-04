@@ -181,18 +181,26 @@
 }
 
 /* Chat card (roll template) */
-.sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#fff;--c-ink:#222226;--c-sub:#8b8b93;--c-line:#dddde2;background:var(--c-bg);color:var(--c-ink);border:1px solid #26262b;font:12px/1.45 'Noto Sans KR','Malgun Gothic',Arial,sans-serif;margin-left:-7px}
+.sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#fff;--c-ink:#222226;--c-sub:#8b8b93;--c-line:#dddde2;background:var(--c-bg);color:var(--c-ink);border:1px solid #26262b;font:13px/1.45 'Noto Sans KR','Malgun Gothic',Arial,sans-serif;margin-left:-7px}
 .sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#1d1d21;--c-ink:#ececf0;--c-sub:#9a9aa3;--c-line:#3a3a42;border-color:#55555e}
-.sheet-rolltemplate-bloodmoon .sheet-h{background:#26262b;color:#fff;font-weight:700;padding:4px 8px;border-left:4px solid #e0394b}
+.sheet-rolltemplate-bloodmoon .sheet-h{background:#26262b;color:#fff;font-weight:700;font-size:14px;padding:5px 9px;border-left:4px solid #e0394b}
 .sheet-rolltemplate-bloodmoon .sheet-h small{font-weight:400;opacity:.75;font-size:11px}
 .sheet-rolltemplate-bloodmoon .sheet-b{padding:6px 8px}
-.sheet-rolltemplate-bloodmoon .sheet-row{display:flex;align-items:baseline;gap:10px;border-bottom:1px dashed var(--c-line);padding:3px 0}
+.sheet-rolltemplate-bloodmoon .sheet-row{display:flex;align-items:baseline;gap:10px;border-bottom:1px dashed var(--c-line);padding:4px 0}
+.sheet-rolltemplate-bloodmoon .sheet-row b{font-size:15px}
 .sheet-rolltemplate-bloodmoon .sheet-c{display:flex;align-items:baseline;gap:6px;min-width:0}
 .sheet-rolltemplate-bloodmoon .sheet-e{margin-left:auto;text-align:right}
-.sheet-rolltemplate-bloodmoon .sheet-k{color:var(--c-sub);font-size:11px;white-space:nowrap}
+.sheet-rolltemplate-bloodmoon .sheet-k{color:var(--c-sub);font-size:12px;white-space:nowrap}
 .sheet-rolltemplate-bloodmoon .sheet-m{color:var(--c-sub);font-weight:700}
-.sheet-rolltemplate-bloodmoon .sheet-big{font-size:15px;line-height:1.1}
+.sheet-rolltemplate-bloodmoon .sheet-row b.sheet-big{font-size:22px;line-height:1}
 .sheet-rolltemplate-bloodmoon .sheet-tx{padding-top:4px}
 .sheet-rolltemplate-bloodmoon .sheet-fl{padding-top:3px;font-style:italic;opacity:.75}
-.sheet-rolltemplate-bloodmoon .sheet-res{margin-top:5px;text-align:center;font-weight:700;color:#fff;background:#e0394b;border-radius:9em;padding:1px 6px}
+.sheet-rolltemplate-bloodmoon .sheet-res{margin-top:6px;text-align:center;font-size:17px;font-weight:900;letter-spacing:1px;color:#fff;background:#26262b;border-radius:6px;padding:5px 6px}
+.sheet-rolltemplate-bloodmoon .sheet-res.sheet-ok{background:#1f9d55}
+.sheet-rolltemplate-bloodmoon .sheet-res.sheet-ng{background:#e0394b}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-res{background:#3a3a42}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-res.sheet-ok{background:#1f9d55}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-res.sheet-ng{background:#e0394b}
 .sheet-rolltemplate-bloodmoon .inlinerollresult,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullcrit,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullfail,.sheet-rolltemplate-bloodmoon .inlinerollresult.importantroll{background:none;border:0;padding:0;color:inherit;font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-d .inlinerollresult.fullfail{color:#e0394b}
+.sheet-rolltemplate-bloodmoon .sheet-d .inlinerollresult.fullcrit{color:#1f9d55}
