@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.39.5
+// @version      1.40.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.39.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.40.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -62,7 +62,8 @@ const btnVisible = {
     macrobar:  localStorage.getItem("r20_show_macrobar") !== "false",
     mapshot:   localStorage.getItem("r20_show_mapshot") !== "false",
     emoji:     localStorage.getItem("r20_show_emoji") !== "false",
-    logbak:    localStorage.getItem("r20_show_logbak") !== "false"
+    logbak:    localStorage.getItem("r20_show_logbak") !== "false",
+    tokset:    localStorage.getItem("r20_show_tokset") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -1230,8 +1231,21 @@ const jukeboxRow = (() => {
             if (f.classList.contains("r20jn-sep") !== on) f.classList.toggle("r20jn-sep", on);
         });
     };
+    // 폴더 일괄 닫기: 열린 폴더의 '접기' 단추를 안쪽(깊은 것)부터 대신 누른다 — 바깥을 다시 열어도 안쪽은 닫혀 있게
+    const foldAll = sel => {
+        const root = document.querySelector(sel);
+        if (!root) return;
+        [...root.querySelectorAll("li.dd-folder > button[data-action='collapse']")].filter(b => getComputedStyle(b).display !== "none").reverse().forEach(b => b.click());
+    };
+    const foldBtn = sel => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "btn r20-fold"; b.textContent = "폴더 닫기"; b.title = "열린 폴더를 모두 닫아요";
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); foldAll(sel); });
+        return b;
+    };
     const addStepControl = () => {
         const host = document.querySelector("#jukebox .secondarycontrols");
+        if (host && !host.querySelector(".r20-fold")) host.appendChild(foldBtn("#jukeboxfolderroot"));
         if (!host || host.querySelector(".r20jb-step")) return;
         const wrap = document.createElement("label");
         wrap.className = "r20jb-step";
@@ -1361,12 +1375,14 @@ const jukeboxRow = (() => {
             .filter(b => !cc.contains(b) && !b.closest(".searchbox, .dd-list, .r20jn-tools") && /핸드아웃|추가|Handout|Add/.test(b.textContent));
         if (!jtools?.wrap.isConnected) jtools = { wrap: Object.assign(document.createElement("div"), { className: "r20jn-tools" }), moved: [] };
         [cc, ...extra].forEach(el => { jtools.moved.push([el, el.parentElement, el.nextSibling]); jtools.wrap.appendChild(el); });
+        if (!jtools.wrap.querySelector(".r20-fold")) jtools.wrap.appendChild(foldBtn("#journalfolderroot"));
         sb.prepend(jtools.wrap);
     };
     const setEnabled = on => {
         document.body.classList.toggle("r20jb-on", on);
         if (on) { inject(); jbWatch.all().forEach(decorate); markSeps(); measured = false; if (rootShown) measureSoon(); }
         else {
+            document.querySelectorAll("#jukebox .r20-fold").forEach(b => b.remove());
             journalTools(false);
             document.querySelectorAll(TITLE + "[tabindex]").forEach(ti => { ti.removeAttribute("tabindex"); ti.removeAttribute("role"); });
         }
@@ -1384,6 +1400,8 @@ addCss(`
         body.r20jb-on #jukebox .instructions { display:none !important; }
         body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
         .r20jb-step { display:none; }
+        /* 폴더 닫기 단추 (저널 · 주크박스) */
+        body.r20jb-on :is(#jukebox, #journal) .r20-fold { height:22px; margin:0 !important; padding:0 7px !important; font-size:11px; line-height:20px; white-space:nowrap; }
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
@@ -4963,6 +4981,234 @@ addCss(`
         .r20cs-zoom button { width:24px; height:22px; padding:0; border:1px solid #ccc; border-radius:3px; background:#fff; color:#555; font-size:13px; line-height:1; cursor:pointer; }
         .r20cs-zoom button:hover { background:#ebebeb; color:#222; }
 `);
+// ───────── 토큰 설정 창 정리: Roll20 '토큰 설정'의 세부 정보 탭을 한 화면 표로 (GM용 메모 탭 · 저장 · 취소는 Roll20 그대로) ─────────
+// [원래 칸은 숨겨 두고 새 칸이 대신 바꾼다] Roll20 은 저장할 때 원래 칸(.bar1_value · .showplayers_name …)을 읽는다.
+//   새 칸은 고칠 때마다 원래 칸 값을 바꾸고 change 를 보낸다. Roll20 이 원래 칸을 바꾸면(연동 캐릭터를 고르면 바 값 등) 잠깐 뒤 다시 읽어 맞춘다.
+// [숨은 것 꺼내기] '…' 안의 플레이어 보기 · 편집, 바 숫자 보이기를 줄마다 단추로. 드롭다운은 연동 캐릭터 · 특성치 연결만 남긴다
+// [색] 색조 · 오라 색은 Roll20 색 단추(spectrum)를 이쪽으로 옮겨 쓴다. 오라는 접어 둔다(펼침은 기억)
+// 칸 이름은 실제 Roll20 진단(11-04) 그대로
+const tokenSet = (() => {
+    const isTS = d => /^(토큰 설정|Token Settings)/.test(d.querySelector(".ui-dialog-title")?.textContent.trim() || "");
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const fire = (e, ...types) => types.forEach(t => e.dispatchEvent(new Event(t, { bubbles: true })));
+    const LIMIT = 150;          // Roll20 툴팁 글자 수
+    let auraOpen = localStorage.getItem("r20_ts_aura") === "1";
+    // 세부 정보 칸들을 담은 곳: 연동 캐릭터와 마지막 칸(오라 2 반경 · 바 위치)의 가장 가까운 공통 조상 (GM 메모를 품으면 안 된다)
+    const paneOf = dlg => {
+        const a = dlg.querySelector(".represents"), b = dlg.querySelector(".aura2_radius") || dlg.querySelector(".token_bar_location");
+        if (!a || !b) return null;
+        const up = new Set(); for (let p = a; p && p !== dlg; p = p.parentElement) up.add(p);
+        let p = b; while (p && p !== dlg && !up.has(p)) p = p.parentElement;
+        return p && p !== dlg && !p.querySelector(".gmnotes") ? p : null;
+    };
+    // 바 색: 원래 '바 1' 줄의 작은 동그라미 색 (숨기기 전에 읽는다, 없으면 회색)
+    const barColor = (pane, n) => {
+        const lab = [...pane.querySelectorAll("*")].find(e => e.children.length <= 3 && new RegExp(`^(바|Bar)\\s*${n}$`, "i").test(e.textContent.trim()));
+        const dot = lab && [lab, ...(lab.parentElement || lab).querySelectorAll("*")].find(x => {
+            const r = x.getBoundingClientRect(), bg = getComputedStyle(x).backgroundColor;
+            return r.width > 0 && r.width <= 18 && r.height <= 18 && bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent";
+        });
+        return dot ? getComputedStyle(dot).backgroundColor : "#bbb";
+    };
+    const build = dlg => {
+        const pane = paneOf(dlg);
+        if (!pane || pane.querySelector(":scope > .r20ts")) return pane;
+        const Q = c => dlg.querySelector(/[.\s[]/.test(c) ? c : "." + c);     // 원래 칸은 그때그때 찾는다 (Roll20 이 다시 그려도)
+        const syncs = [], moved = [];
+        const sync = () => syncs.forEach(f => { try { f(); } catch (e) { /* 원래 칸이 잠깐 없을 때 */ } });
+        let t1 = 0, t2 = 0;
+        const later = () => { clearTimeout(t1); clearTimeout(t2); t1 = setTimeout(sync, 80); t2 = setTimeout(sync, 400); };
+        const stop = e => e.stopPropagation();                     // Roll20 단축키로 새지 않게
+        // ── 칸 만들기 ──
+        const text = (c, cls = "") => {
+            const i = mk("input", cls); i.type = "text"; i.addEventListener("keydown", stop);
+            i.addEventListener("input", () => { const o = Q(c); if (o) { o.value = i.value; fire(o, "input", "change"); later(); } });
+            syncs.push(() => { const o = Q(c); if (o && document.activeElement !== i) i.value = o.value; });
+            return i;
+        };
+        const select = c => {
+            const s = mk("select"); let sig = "";
+            s.addEventListener("change", () => { const o = Q(c); if (o) { o.value = s.value; fire(o, "change"); later(); } });
+            syncs.push(() => {
+                const o = Q(c); if (!o) return;
+                const ns = o.options.length + "|" + (o.options[0]?.value || "") + "|" + (o.options[o.options.length - 1]?.value || "");
+                if (ns !== sig) { sig = ns; s.innerHTML = o.innerHTML; }       // 연동 캐릭터가 바뀌면 특성치 목록도 바뀐다
+                s.value = o.value;
+            });
+            return s;
+        };
+        const chip = (label, c) => {
+            const b = mk("button", "r20ts-chip", label); b.type = "button";
+            b.addEventListener("click", () => { const o = Q(c); if (!o) return; o.checked = !o.checked; fire(o, "input", "change"); later(); sync(); });
+            syncs.push(() => b.setAttribute("aria-pressed", String(!!Q(c)?.checked)));
+            return b;
+        };
+        // 단추 묶음: get() → 지금 번호, set(i) → 바꾸기
+        const seg = (labels, get, set, cls = "") => {
+            const w = mk("span", "r20ts-seg " + cls); w.setAttribute("role", "group");
+            const bs = labels.map((l, i) => { const b = mk("button", "", l); b.type = "button"; b.addEventListener("click", () => { set(i); later(); sync(); }); w.appendChild(b); return b; });
+            syncs.push(() => { const k = get(); bs.forEach((b, i) => b.setAttribute("aria-pressed", String(i === k))); });
+            return w;
+        };
+        // 고르기(select)를 번호로: 개수가 맞으면 짧은 이름, 아니면 Roll20 글 그대로
+        const segSelect = (c, short) => {
+            const o = Q(c); if (!o) return mk("span");
+            const labels = o.options.length === short.length ? short : [...o.options].map(x => x.text);
+            return seg(labels, () => Q(c)?.selectedIndex ?? -1, i => { const x = Q(c); if (x) { x.selectedIndex = i; fire(x, "change"); } });
+        };
+        const btn = (label, c) => { const b = mk("button", "r20ts-btn", label); b.type = "button"; b.addEventListener("click", e => { e.preventDefault(); Q(c)?.click(); }); return b; };
+        // 색 단추: Roll20 색 고르기(spectrum)의 단추를 옮겨 온다. 못 찾으면 브라우저 색 고르기로 대신
+        const color = c => {
+            const o = Q(c), rep = o && (o.nextElementSibling?.classList.contains("sp-replacer") ? o.nextElementSibling : o.parentElement?.querySelector(".sp-replacer"));
+            if (rep) { moved.push([rep, rep.parentElement, rep.nextSibling]); return rep; }
+            const i = mk("input", "r20ts-color"); i.type = "color";
+            i.addEventListener("input", () => { const x = Q(c); if (!x) return; x.value = i.value; try { window.jQuery?.(x).spectrum?.("set", i.value); } catch (e) { /* 없음 */ } fire(x, "change"); });
+            syncs.push(() => { const v = Q(c)?.value || ""; if (/^#[0-9a-f]{6}$/i.test(v)) i.value = v; });
+            return i;
+        };
+        const row = (...kids) => { const r = mk("div", "r20ts-row"); r.append(...kids); return r; };
+        const lb = t => mk("span", "r20ts-lb", t);
+        const sec = (...kids) => { const s = mk("div", "r20ts-sec"); s.append(...kids); return s; };
+        const grow = e => { e.classList.add("r20ts-grow"); return e; };
+        const panel = mk("div", "r20ts");
+        // ── 기본 ──
+        const op = Q("token_opacity_slider"), rng = mk("input", "r20ts-range"), pct = mk("span", "r20ts-pct");
+        rng.type = "range"; ["min", "max", "step"].forEach(a => op?.getAttribute(a) && rng.setAttribute(a, op.getAttribute(a)));
+        rng.setAttribute("aria-label", "기본 불투명도");
+        rng.addEventListener("input", () => { const o = Q("token_opacity_slider"); if (!o) return; o.value = rng.value; fire(o, "input", "change"); pct.textContent = Math.round(rng.value * 100) + "%"; });
+        syncs.push(() => { const o = Q("token_opacity_slider"); if (o) { rng.value = o.value; pct.textContent = Math.round(o.value * 100) + "%"; } });
+        const rep = select("select.represents"); rep.setAttribute("aria-label", "토큰에 연동된 캐릭터");
+        const nm = text("input.name"); nm.setAttribute("aria-label", "이름");
+        panel.appendChild(sec(
+            row(lb("캐릭터"), grow(rep), btn("시트 열기", "go_to_character"), btn("기본 토큰 갱신", "update_default_token")),
+            row(lb("이름"), grow(nm), chip("이름표", "showname"), chip("보기", "showplayers_name"), chip("편집", "playersedit_name")),
+            row(lb("색조"), color("tint_color"), mk("span", "r20ts-gap"), lb("불투명도"), grow(rng), pct)));
+        // ── 토큰 바 ──
+        const bars = mk("div", "r20ts-bars");
+        ["", "값 / 최대", "특성치 연결", "플레이어", "숫자 보이기"].forEach(h => bars.appendChild(mk("span", "r20ts-gh", h)));
+        for (const n of [1, 2, 3]) {
+            if (!Q(`bar${n}_value`)) continue;
+            const dot = mk("span", "r20ts-dot"); dot.style.background = barColor(pane, n);
+            const v = text(`bar${n}_value`, "r20ts-num"), m = text(`bar${n}_max`, "r20ts-num");
+            v.setAttribute("aria-label", `바 ${n} 값`); m.setAttribute("aria-label", `바 ${n} 최대`);
+            const vm = mk("span", "r20ts-vm"); vm.append(v, "/", m);
+            const ln = select(`bar${n}_link`); ln.setAttribute("aria-label", `바 ${n} 특성치 연결`);
+            const pp = mk("span", "r20ts-pair"); pp.append(chip("보기", `showplayers_bar${n}`), chip("편집", `playersedit_bar${n}`));
+            bars.append(dot, vm, ln, pp, segSelect(`bar${n}options`, ["숨김", "편집자", "모두"]));
+        }
+        const radios = () => [...dlg.querySelectorAll("input[name=barStyle]")];
+        panel.appendChild(sec(mk("div", "r20ts-st", "토큰 바"), bars,
+            row(lb("바 위치"), segSelect("token_bar_location", ["위", "위 겹침", "아래 겹침", "아래"]), mk("span", "r20ts-grow"), lb("모양"),
+                seg(["기본", "축소"], () => radios().findIndex(r => r.checked), i => { const r = radios()[i]; if (r) { r.checked = true; fire(r, "click", "change"); } }))));
+        // ── 오라 (접기) ──
+        const fold = mk("button", "r20ts-fold"); fold.type = "button";
+        const auraBox = mk("div", "r20ts-aura");
+        const setFold = () => { fold.textContent = (auraOpen ? "▾ " : "▸ ") + "오라"; fold.setAttribute("aria-expanded", String(auraOpen)); auraBox.hidden = !auraOpen; };
+        fold.addEventListener("click", () => { auraOpen = !auraOpen; localStorage.setItem("r20_ts_aura", auraOpen ? "1" : "0"); setFold(); });
+        for (const n of [1, 2]) {
+            const o = Q(`aura${n}_options`), six = o?.options.length === 6;
+            const idx = () => Q(`aura${n}_options`)?.selectedIndex ?? 0;
+            const put = i => { const x = Q(`aura${n}_options`); if (x) { x.selectedIndex = i; fire(x, "change"); } };
+            const r = text(`aura${n}_radius`, "r20ts-num"); r.setAttribute("aria-label", `오라 ${n} 반경`);
+            auraBox.appendChild(row(lb(`오라 ${n}`), r, mk("span", "r20ts-unit", "ft"),
+                six ? seg(["○", "□", "⬡"], () => idx() % 3, i => put(i + (idx() >= 3 ? 3 : 0)), "r20ts-shape") : segSelect(`aura${n}_options`, []),
+                six ? seg(["채움", "테두리"], () => (idx() >= 3 ? 1 : 0), i => put(idx() % 3 + i * 3)) : mk("span"),
+                color(`aura${n}_color`), mk("span", "r20ts-grow"), chip("보기", `showplayers_aura${n}`), chip("편집", `playersedit_aura${n}`)));
+        }
+        setFold();
+        panel.appendChild(sec(fold, auraBox));
+        // ── 툴팁: 150자가 넘는 부분은 빨갛게(트위터처럼), 숫자도 빨갛게 ──
+        const tt = mk("div", "r20ts-tt"), bk = mk("div", "r20ts-bk"), ta = mk("textarea"), cnt = mk("span", "r20ts-cnt");
+        ta.setAttribute("aria-label", "툴팁"); ta.rows = 2; ta.addEventListener("keydown", stop);
+        const esc = s => s.replace(/[&<>]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[ch]);
+        const paint = () => {
+            const v = ta.value;
+            bk.innerHTML = esc(v.slice(0, LIMIT)) + (v.length > LIMIT ? `<mark>${esc(v.slice(LIMIT))}</mark>` : "") + "\n";
+            cnt.textContent = `${v.length}/${LIMIT}`; cnt.classList.toggle("over", v.length > LIMIT);
+            ta.style.setProperty("height", "auto", "important");          // 글이 늘면 칸도 늘린다(뒤판과 줄이 어긋나지 않게 스크롤 없이)
+            ta.style.setProperty("height", Math.max(44, ta.scrollHeight + 2) + "px", "important");
+        };
+        ta.addEventListener("input", () => { const o = Q("token-tooltip"); if (o) { o.value = ta.value; fire(o, "input", "change"); } paint(); });
+        syncs.push(() => { const o = Q("token-tooltip"); if (o && document.activeElement !== ta) { ta.value = o.value; paint(); } });
+        tt.append(bk, ta);
+        const side = mk("div", "r20ts-side"); side.append(chip("표시", "show_tooltip"), chip("GM만", "gm_only_tooltip"), cnt);
+        const ttRow = row(lb("툴팁"), tt, side); ttRow.classList.add("r20ts-top");
+        panel.appendChild(sec(ttRow));
+        pane.prepend(panel);
+        moved.forEach(([e]) => e.classList.add("r20ts-moved"));
+        pane.classList.add("r20ts-on");
+        pane._r20ts = { panel, moved, sync };
+        sync();
+        return pane;
+    };
+    const undo = pane => {
+        const s = pane._r20ts; if (!s) return;
+        s.moved.slice().reverse().forEach(([e, p, n]) => { e.classList.remove("r20ts-moved"); if (p.isConnected) p.insertBefore(e, n?.parentNode === p ? n : null); });
+        s.panel.remove(); pane.classList.remove("r20ts-on"); delete pane._r20ts;
+    };
+    const dialogs = () => [...document.querySelectorAll(".ui-dialog")].filter(d => d.getClientRects().length && isTS(d));
+    let hooked = false;
+    const inject = () => {
+        if (!btnVisible.tokset) return;
+        dialogs().forEach(d => { try { build(d); } catch (e) { console.warn("[토큰 설정] 정리 못 함:", e); } });
+        // 같은 창을 다시 열면(다른 토큰) 원래 칸 값이 바뀌므로 다시 읽는다
+        if (!hooked && window.jQuery) { hooked = true; window.jQuery(document).on("dialogopen", () => setTimeout(() => dialogs().forEach(d => paneOf(d)?._r20ts?.sync()), 50)); }
+    };
+    const setEnabled = on => {
+        if (on) return inject();
+        document.querySelectorAll(".r20ts-on").forEach(undo);
+    };
+    return { inject, setEnabled, watch: ".ui-dialog" };
+})();
+addCss(`
+        /* 토큰 설정 창 정리 — 일괄 편집기와 같은 모양 */
+        .r20ts-on > :not(.r20ts) { display:none !important; }
+        .r20ts { display:flex; flex-direction:column; padding:0 2px 4px; color:#333; font-size:12px; text-align:left; }
+        .r20ts .r20ts-sec { padding:8px 0; border-bottom:1px solid #f0f0f0; }
+        .r20ts .r20ts-sec:last-child { border-bottom:0; }
+        .r20ts .r20ts-st { margin:0 0 6px; color:#888; font-size:11px; font-weight:700; }
+        .r20ts .r20ts-row { display:flex; align-items:center; gap:6px; min-height:30px; }
+        .r20ts .r20ts-row + .r20ts-row, .r20ts .r20ts-bars + .r20ts-row { margin-top:6px; }
+        .r20ts .r20ts-row.r20ts-top { align-items:flex-start; }
+        .r20ts .r20ts-lb { flex:0 0 52px; margin:0; color:#555; font-size:11px; font-weight:700; }
+        .r20ts .r20ts-grow { flex:1 1 auto; min-width:0; }
+        .r20ts .r20ts-gap { width:10px; }
+        .r20ts input[type=text], .r20ts select { height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid #ccc !important; border-radius:3px !important; background:#fff; color:#333; font-size:12px !important; box-shadow:none !important; box-sizing:border-box !important; }
+        .r20ts select { padding:0 4px !important; min-width:0; }
+        .r20ts .r20ts-num { width:46px !important; text-align:center; padding:0 4px !important; }
+        .r20ts .r20ts-btn { height:28px; margin:0; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:12px; white-space:nowrap; cursor:pointer; }
+        .r20ts .r20ts-btn:hover { background:#f2f2f2; }
+        .r20ts .r20ts-chip { height:26px; margin:0; padding:0 10px; border:1px solid #d4d4d4; border-radius:13px; background:#fff; color:#666; font-size:11px; line-height:24px; white-space:nowrap; cursor:pointer; }
+        .r20ts .r20ts-chip[aria-pressed=true] { background:#1867c7; border-color:#1867c7; color:#fff; }
+        .r20ts .r20ts-seg { display:inline-flex; flex:0 0 auto; gap:2px; padding:2px; background:#e2e2e2; border-radius:5px; }
+        .r20ts .r20ts-seg button { height:22px; margin:0; padding:0 7px; border:0; border-radius:4px; background:transparent; color:#555; font-size:11px; line-height:22px; white-space:nowrap; cursor:pointer; }
+        .r20ts .r20ts-seg button[aria-pressed=true] { background:#fff; color:#222; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,0.12); }
+        .r20ts .r20ts-shape button { width:28px; padding:0; font-size:13px; }
+        .r20ts :is(.r20ts-chip, .r20ts-btn, .r20ts-seg button, .r20ts-fold):focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
+        .r20ts .r20ts-bars { display:grid; grid-template-columns:12px auto minmax(80px, 1fr) auto auto; gap:4px 6px; align-items:center; }
+        .r20ts .r20ts-gh { color:#999; font-size:10.5px; white-space:nowrap; }
+        .r20ts .r20ts-dot { width:10px; height:10px; border-radius:50%; }
+        .r20ts .r20ts-vm { display:flex; align-items:center; gap:3px; color:#888; }
+        .r20ts .r20ts-pair { display:flex; gap:4px; }
+        .r20ts .r20ts-range { flex:1 1 auto; min-width:60px; margin:0; accent-color:#1867c7; }
+        .r20ts .r20ts-pct { width:38px; text-align:right; color:#555; }
+        .r20ts .r20ts-unit { color:#888; }
+        .r20ts .r20ts-color { width:30px; height:28px; padding:0; border:1px solid #ccc; border-radius:4px; background:#fff; }
+        .r20ts .sp-replacer.r20ts-moved { margin:0; }
+        .r20ts .r20ts-fold { display:flex; align-items:center; width:100%; height:24px; margin:0; padding:0; border:0; background:none; color:#888; font-size:11px; font-weight:700; text-align:left; cursor:pointer; }
+        .r20ts .r20ts-aura { margin-top:4px; }
+        .r20ts .r20ts-aura[hidden] { display:none; }
+        .r20ts .r20ts-side { display:flex; flex-direction:column; gap:4px; align-items:stretch; }
+        .r20ts .r20ts-cnt { color:#999; font-size:10.5px; text-align:center; }
+        .r20ts .r20ts-cnt.over { color:#e0245e; font-weight:700; }
+        /* 툴팁: 뒤판(.r20ts-bk)이 150자 넘는 부분에 빨간 바탕을 깔고, 글은 그 위 투명한 글칸에서 보인다 (글꼴 · 여백을 똑같이) */
+        .r20ts .r20ts-tt { position:relative; flex:1 1 auto; min-width:0; }
+        .r20ts .r20ts-tt .r20ts-bk, .r20ts .r20ts-tt textarea { font:12px/1.5 sans-serif !important; letter-spacing:0; padding:6px 8px !important; border:1px solid transparent !important; white-space:pre-wrap; overflow-wrap:break-word; word-break:normal; }
+        .r20ts .r20ts-tt .r20ts-bk { position:absolute; inset:0; overflow:hidden; color:transparent; background:#fff; border-radius:3px; pointer-events:none; }
+        .r20ts .r20ts-tt .r20ts-bk mark { color:transparent; background:rgba(224,36,94,0.3); border-radius:2px; padding:0; }
+        .r20ts .r20ts-tt textarea { position:relative; display:block; width:100% !important; min-height:44px; margin:0 !important; border-radius:3px; box-shadow:none !important; box-sizing:border-box !important; resize:none; overflow:hidden; background:transparent !important; border-color:#ccc !important; color:#333; }
+        .r20ts .r20ts-tt textarea:focus { border-color:#1867c7 !important; outline:none; }
+`);
 addFeature("sidePicker", sidePicker);
 addFeature("tokenMenu", tokenMenu);
 addFeature("tokenActs", tokenActs);
@@ -4970,8 +5216,9 @@ addFeature("deckView", deckView);
 addFeature("screenUI", screenUI);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
-addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
-    members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"]] });
+addFeature("tokenSet", tokenSet);
+addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
+    members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"], ["tokset", "tokenSet"]] });
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 
