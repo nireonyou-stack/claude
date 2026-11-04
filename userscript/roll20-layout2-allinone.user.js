@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.40.0
+// @version      1.40.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.40.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.40.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1239,7 +1239,8 @@ const jukeboxRow = (() => {
     };
     const foldBtn = sel => {
         const b = document.createElement("button");
-        b.type = "button"; b.className = "btn r20-fold"; b.textContent = "폴더 닫기"; b.title = "열린 폴더를 모두 닫아요";
+        b.type = "button"; b.className = "btn r20-fold"; b.textContent = "▲"; b.title = "폴더 닫기 — 열린 폴더를 모두 닫아요";   // 좁은 기본 폭에서도 한 줄에 들도록 글 없이
+        b.setAttribute("aria-label", "폴더 닫기");
         b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); foldAll(sel); });
         return b;
     };
@@ -1401,7 +1402,7 @@ addCss(`
         body.r20jb-on #jukebox .secondarycontrols { display:flex !important; align-items:center; gap:8px; margin:2px 0 6px !important; }
         .r20jb-step { display:none; }
         /* 폴더 닫기 단추 (저널 · 주크박스) */
-        body.r20jb-on :is(#jukebox, #journal) .r20-fold { height:22px; margin:0 !important; padding:0 7px !important; font-size:11px; line-height:20px; white-space:nowrap; }
+        body.r20jb-on :is(#jukebox, #journal) .r20-fold { height:22px; margin:0 !important; padding:0 6px !important; font-size:9px; line-height:20px; white-space:nowrap; }
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:#666; }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
