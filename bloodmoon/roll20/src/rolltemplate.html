@@ -1,7 +1,8 @@
 <!-- 채팅 카드: 검붉은 머리띠(제목 · 《특기》 · 종류 줄) + 흰 본문. 굴림은 sheet worker 가 startRoll 로 보내고, computed:: 칸은 finishRoll 로 채운다.
      computed 칸은 매크로 앞쪽 10칸 안에 있어야 표시되므로 워커가 맨 앞에 넣는다.
      판정: 목표치 · 달성치 · 2D6 눈(1 빨강 · 6 초록) | 도장(ok 1 성공 · 2 실패 · 3 사바트 — 사바트면 카드 전체가 검정+빨강, 셋 다 아니면 글씨만 찍힌 기본 도장)
-     표 굴림: 분야 · 특기 / 결과 + 주사위 눈. 아이템: sub = 레어아이템(빨강) · item = 아이템(회색), count = 개수 -->
+     표 굴림: 분야 · 특기 / 결과 + 주사위 눈. 아이템: sub = 레어아이템(빨강) · item = 아이템(회색), count = 개수
+     대미지(dmg): 합계 · 주사위 | 목표 여유 · 내구력을 넣었으면 계산 줄(calc)과 도장(pk 1 부위 대미지 · 무력화 빨강, 2 회색, ps = 글씨) -->
 <rolltemplate class="sheet-rolltemplate-bloodmoon">
   <div class="sheet-card">
     {{#rollTotal() computed::ok 3}}<div class="sheet-sab"></div>{{/rollTotal() computed::ok 3}}
@@ -17,6 +18,7 @@
     {{^total}}{{#d1}}<div class="sheet-tbl">{{#field}}<div><span class="sheet-lb">분야</span>{{computed::field}}{{#f}} <span class="sheet-dice">1D6 {{f}}</span>{{/f}}</div><div><span class="sheet-lb">특기</span><span class="sheet-big">{{computed::res}}</span> <span class="sheet-dice">2D6 {{d1}} · {{d2}}</span></div>{{/field}}{{^field}}<div><span class="sheet-big">{{computed::res}}</span> <span class="sheet-dice">2D6 {{d1}} · {{d2}}</span></div>{{/field}}</div>{{/d1}}{{/total}}
     {{#die}}<div class="sheet-tbl"><span class="sheet-big">{{computed::res}}</span> <span class="sheet-dice">1D6 {{die}}</span></div>{{/die}}
     {{#dice}}<div class="sheet-tbl"><span class="sheet-big">{{computed::res}}</span> <span class="sheet-dice">{{computed::dice}}{{#mod}}{{#^rollTotal() mod 0}} {{#rollGreater() mod 0}}+{{/rollGreater() mod 0}}{{mod}}{{/^rollTotal() mod 0}}{{/mod}}</span></div>{{/dice}}
+    {{#dmg}}<div class="sheet-chk"><div><div><span class="sheet-big">{{computed::res}}</span> <span class="sheet-dice">{{computed::dmg}}</span></div>{{#calc}}<div class="sheet-calc">{{computed::calc}}</div>{{/calc}}</div>{{#rollTotal() computed::pk 1}}<span class="sheet-stamp sheet-ok">{{computed::ps}}</span>{{/rollTotal() computed::pk 1}}{{#rollTotal() computed::pk 2}}<span class="sheet-stamp sheet-ng">{{computed::ps}}</span>{{/rollTotal() computed::pk 2}}{{#ps}}{{#^rollTotal() computed::pk 1}}{{#^rollTotal() computed::pk 2}}<span class="sheet-stamp">{{computed::ps}}</span>{{/^rollTotal() computed::pk 2}}{{/^rollTotal() computed::pk 1}}{{/ps}}</div>{{/dmg}}
     {{#k1}}<div class="sheet-kv"><span>{{k1}}</span>{{v1}}{{#k2}}<i></i><span>{{k2}}</span>{{v2}}{{/k2}}{{#k3}}<i></i><span>{{k3}}</span>{{v3}}{{/k3}}{{#k4}}<i></i><span>{{k4}}</span>{{v4}}{{/k4}}</div>{{/k1}}
     {{#effect}}<div class="sheet-tx">{{effect}}</div>{{/effect}}
     {{#flavor}}<div class="sheet-fl">{{flavor}}</div>{{/flavor}}

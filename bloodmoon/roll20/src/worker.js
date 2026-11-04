@@ -185,11 +185,12 @@ function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor })
   });
 }
 
-// 메인 페이즈 판정 단추: 누르면 켜지고(check_mode), 다음에 누른 특기로 그 판정 — 특성치가 수정치로 붙는다. 한 번 굴리면 꺼진다
+// 판정 단추(메인 페이즈 · 결전 페이즈 탭): 누르면 켜지고(check_mode), 다음에 누른 특기로 그 판정 — 특성치가 수정치로 붙는다. 한 번 굴리면 꺼진다
 const CHECKS = {
   hunt: ['수렵', 'attack'], skirm: ['전초전', 'strike'], icpt: ['영격', 'defense'], hinder: ['방해', 'defense'],
   social: ['교류', 'action'], rest: ['휴식', 'action'], procure: ['조달', 'action'],
   destroy: ['파괴', 'attack'], raid: ['습격', 'strike'], recup: ['휴양', 'action'], slaughter: ['학살', 'action'], contact: ['접촉', 'action'],
+  retreat: ['후퇴', 'defense'], persuade: ['설득', 'action'],   // 결전 페이즈 탭
 };
 const STAT_NAMES = { attack: '공격력', strike: '타격력', defense: '방어력', action: '행동력' };
 Object.entries(CHECKS).forEach(([k, [name, stat]]) => on(`clicked:chk_${k}`, () => getAttrs(['check_mode', stat], v => {
@@ -264,6 +265,26 @@ on('clicked:rskill', () => getAttrs(['rand_field'], v => {
 }));
 on('clicked:rpart', () => post('&{template:bloodmoon} {{res=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{title=신체부위 결정표}}', R => ({ res: PART_TABLE[R.d1.result + R.d2.result] })));
 on('clicked:rinit', () => post('&{template:bloodmoon} {{res=[[0]]}} {{die=[[1d6]]}} {{title=선제판정표}}', R => ({ res: INIT_TABLE[R.die.result - 1] })));
+
+// 대미지(결전 페이즈 탭): nD6 + 수정치 + 【타격력】. 목표의 여유 · 내구력을 넣었으면 부위 대미지 수를 센다(룰북 6.07)
+//   여유를 먼저 깎고, 남은 대미지 ÷ 내구력(버림)이 부위 대미지. 여유를 비우면 팔로워 — 대미지가 내구력 이상이면 무력화.
+//   블록 · 회피는 굴린 뒤에 끼어들 수 있어서 목표 칸은 바꾸지 않는다
+on('clicked:dmg_up clicked:dmg_dn', e => getAttrs(['dmg_n'], v => {
+  const d = /dmg_up$/.test(e.triggerName || '') ? 1 : -1;
+  setAttrs({ dmg_n: Math.min(20, Math.max(1, (num(v.dmg_n) || 1) + d)) });
+}));
+on('clicked:dmg', () => getAttrs(['dmg_n', 'dmg_mod', 'strike', 'tgt_reserve', 'tgt_dur'], v => {
+  const n = Math.min(20, Math.max(1, num(v.dmg_n) || 1)), m = num(v.dmg_mod) || 0, st = num(v.strike) || 0;
+  const tr = num(v.tgt_reserve), td = num(v.tgt_dur), calc = td !== null && td > 0;
+  const sm = x => (x ? ` ${x > 0 ? '+' : ''}${x}` : '');
+  post(`&{template:bloodmoon} {{res=[[0]]}} {{dmg=[[0]]}}${calc ? ' {{calc=[[0]]}} {{pk=[[0]]}} {{ps=[[0]]}}' : ''} {{nd=[[${n}d6]]}} {{title=대미지}} {{sub=${n}D6${sm(m).replace(' ', '')} · 타격력 +${st}}}`, R => {
+    const D = Math.max(0, R.nd.result + m + st), out = { res: D, dmg: R.nd.dice.join(', ') + sm(m) + ` +${st}` };
+    if (!calc) return out;
+    if (tr === null) return Object.assign(out, { calc: `대미지 ${D} ${D >= td ? '≥' : '<'} 내구력 ${td}`, pk: D >= td ? 1 : 2, ps: D >= td ? '무력화' : '버팀' });
+    const r = Math.max(0, tr), left = Math.max(0, D - r), parts = Math.floor(left / td);
+    return Object.assign(out, { calc: r && D <= r ? `여유 ${r} → ${r - D}` : `여유 ${r}${r ? ' → 0' : ''} · 남은 ${left} ÷ 내구력 ${td}`, pk: parts ? 1 : 2, ps: `부위 ${parts}` });
+  });
+}));
 
 // nD6 + 수정치 (대미지 · 회피 · 방해 등, 수정치는 마이너스 가능)
 on('clicked:rnd', () => getAttrs(['nd_count', 'nd_mod'], v => {

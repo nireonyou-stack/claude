@@ -143,6 +143,34 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   eq('stat 0 → no atk', [last().computed.total, /\{\{atk=/.test(last().macro)], [4, false]);
   has('stat 0 sub', last().macro, '{{sub=행동력 +0}}');
 
+  s.set('defense', '1'); s.click('chk_retreat'); await s.settle(); s.dice.push(3, 3); s.click('rarm4'); await s.settle();
+  has('retreat check (결전)', last().macro, '{{title=후퇴판정}} {{sub=방어력 +1}}');
+  s.click('chk_persuade'); await s.settle();
+  eq('persuade check label', s.get('check_label'), '설득판정 · 행동력 +0'); s.click('chk_cancel'); await s.settle();
+
+  // ── 대미지 (결전 페이즈): nD6 + 수정치 + 타격력, 목표 여유 · 내구력 → 부위 대미지
+  s.set('dmg_n', '1'); s.click('dmg_dn'); await s.settle();
+  eq('dmg dice min 1', String(s.get('dmg_n')), '1');
+  s.click('dmg_up'); await s.settle(); s.click('dmg_up'); await s.settle();
+  eq('dmg dice up', String(s.get('dmg_n')), '3');
+  s.set('dmg_n', '1'); s.set('dmg_mod', '0'); s.set('strike', '3');
+  s.dice.push(4); s.click('dmg'); await s.settle();
+  eq('dmg no target', last().computed, { res: 7, dmg: '4 +3' });
+  has('dmg card', last().macro, '{{title=대미지}} {{sub=1D6 · 타격력 +3}}');
+  eq('dmg no calc fields', /\{\{calc=/.test(last().macro), false);
+  s.set('tgt_reserve', '4'); s.set('tgt_dur', '3'); s.dice.push(4); s.click('dmg'); await s.settle();
+  eq('dmg over reserve → part 1', last().computed, { res: 7, dmg: '4 +3', calc: '여유 4 → 0 · 남은 3 ÷ 내구력 3', pk: 1, ps: '부위 1' });
+  s.set('tgt_reserve', '8'); s.dice.push(4); s.click('dmg'); await s.settle();
+  eq('dmg absorbed', [last().computed.calc, last().computed.pk, last().computed.ps], ['여유 8 → 1', 2, '부위 0']);
+  s.set('tgt_reserve', '0'); s.set('tgt_dur', '6'); s.set('dmg_n', '2'); s.set('dmg_mod', '-1'); s.dice.push(6, 5); s.click('dmg'); await s.settle();
+  eq('dmg reserve 0 → part 2', [last().computed.res, last().computed.dmg, last().computed.calc, last().computed.ps], [13, '6, 5 -1 +3', '여유 0 · 남은 13 ÷ 내구력 6', '부위 2']);
+  has('dmg sub with mod', last().macro, '{{sub=2D6-1 · 타격력 +3}}');
+  s.set('tgt_reserve', ''); s.set('tgt_dur', '5'); s.set('dmg_n', '1'); s.set('dmg_mod', '0'); s.dice.push(4); s.click('dmg'); await s.settle();
+  eq('dmg follower', [last().computed.calc, last().computed.pk, last().computed.ps], ['대미지 7 ≥ 내구력 5', 1, '무력화']);
+  s.dice.push(1); s.click('dmg'); await s.settle();
+  eq('dmg follower holds', [last().computed.calc, last().computed.ps], ['대미지 4 < 내구력 5', '버팀']);
+  s.set('tgt_reserve', ''); s.set('tgt_dur', ''); s.set('strike', '');
+
   // ── 몬스터 종족 · 마녀 사바트
   s.set('sheet_type', 'monster'); s.set('race', '모노비스트'); await s.settle();
   eq('monobeast', [s.get('mkind'), String(s.get('witch'))], ['mono', '0']);
