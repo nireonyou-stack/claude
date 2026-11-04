@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.42.0
+// @version      1.43.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.42.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.43.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2054,7 +2054,7 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
-// ───────── 시트 촬영: 열린 캐릭터 시트를 찍어 미리보기 → 전체 또는 드래그로 고른 부분을 PNG 파일로 저장 (캐릭터 창 제목 옆 단추) ─────────
+// ───────── 시트 촬영: 뺄 부분을 눌러 숨기고(아래가 위로 붙음) 찍기 → 미리보기에서 전체 또는 드래그로 고른 부분을 PNG 파일로 저장 (캐릭터 창 제목 옆 단추) ─────────
 // 시트는 같은 출처 iframe 안에 그려진다 → 그 문서의 .charsheet 를 domShot 으로 찍는다. 스크롤에 가려진 곳까지 전부, 보고 있는 탭 그대로
 const sheetShot = (() => {
     const ICON = {
@@ -2063,7 +2063,7 @@ const sheetShot = (() => {
         ok: '<path d="M20 6 9 17l-5-5"/>',
         bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
     };
-    const TIP = { cam: "시트 촬영: 시트 전체를 찍어 미리보기 — 전체 또는 드래그한 부분을 PNG 파일로 저장", load: "찍는 중…", ok: "PNG 파일로 저장했어요",
+    const TIP = { cam: "시트 촬영: 뺄 부분을 눌러 숨긴 뒤 찍기 → 미리보기에서 전체 또는 드래그한 부분을 PNG 파일로 저장", load: "찍는 중…", ok: "PNG 파일로 저장했어요",
         bad: "찍지 못했어요 — 다시 눌러 주세요", tab: "캐릭터 시트 탭을 연 채로 눌러 주세요" };
     const paint = (b, k, tip = TIP[k]) => {
         b.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
@@ -2171,26 +2171,151 @@ const sheetShot = (() => {
         allB.focus();
     };
 
-    const shoot = async (dlg, b) => {
+    // ── 숨길 부분 고르기: 실제 시트에서 덩어리를 눌러 잠깐 숨긴다(아래가 위로 붙는다) → 찍기 → 미리보기. 닫으면 시트는 그대로 돌아온다 ──
+    // 시트 종류별로 숨긴 자리(시트 안 경로 + 클래스)를 기억해 두면 같은 시트의 다른 캐릭터에도 처음부터 적용한다
+    const MEM_KEY = "r20_sheetshot_hide";
+    const memLoad = () => { try { return JSON.parse(localStorage.getItem(MEM_KEY)) || {}; } catch (e) { return {}; } };
+    const memSave = m => { try { localStorage.setItem(MEM_KEY, JSON.stringify(m)); } catch (e) { /* 저장 공간 없음 */ } };
+    const clsOf = e => String(e.className?.baseVal ?? e.className ?? "").replace(/\br20ss-\S+/g, "").trim();
+    // 시트 종류: 맨 위 몇 층의 태그 · 클래스 모양 (반복 섹션 줄 수와 무관)
+    const kindOf = sheet => {
+        let s = "";
+        const walk = (e, d) => { for (const c of e.children) { if (s.length > 4000) return; s += `${d}${c.localName}.${clsOf(c)};`; if (d < 2 && !c.classList.contains("repcontainer")) walk(c, d + 1); } };
+        walk(sheet, 0);
+        let h = 5381;
+        for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+        return h.toString(36);
+    };
+    const pathOf = (el, root) => { const p = []; for (let e = el; e && e !== root; e = e.parentElement) p.unshift(`${e.localName}:nth-child(${[...e.parentElement.children].indexOf(e) + 1})`); return ":scope > " + p.join(" > "); };
+    let mode = null;
+    const BLOCK = ["mousedown", "mouseup", "click", "dblclick", "pointerdown", "pointerup", "contextmenu", "dragstart", "touchstart"];
+    const pick = (dlg, b) => {
+        if (mode) { const same = mode.dlg === dlg; mode.exit(); if (same) return; }      // 다시 누르면 그만두기
         if (b.dataset.state === "load") return;
         let doc = null;
         try { doc = dlg.querySelector(".characterdialog iframe")?.contentDocument; } catch (e) { /* 다른 출처 */ }
         const sheet = doc && [...doc.querySelectorAll(".charsheet")].find(e => e.getClientRects().length);
         if (!sheet) return blink(b, "bad", TIP.tab);
-        paint(b, "load");
-        try {
-            const win = doc.defaultView, chain = [];
-            for (let e = sheet; e; e = e.parentElement) chain.push(e);
-            const bg = chain.map(e => win.getComputedStyle(e).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") || "#fff";
-            const width = Math.ceil(sheet.getBoundingClientRect().width);
-            const blob = await domShot.paint(domShot.clone([sheet], sheet.parentElement, width, bg), FULL);
-            const base = (dlg.querySelector(".ui-dialog-title")?.textContent || "").trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 80) || "character";
+        const win = doc.defaultView, kind = kindOf(sheet), hidden = [];
+        let hov = null, level = 0, cand = null, note = "";
+        // 고르는 동안만: 숨김 규칙 · 테두리 상자 (시트 밖 body 에 두어 찍히지 않는다)
+        const css = doc.createElement("style");
+        css.textContent = ".r20ss-hide{display:none!important}";
+        doc.head.appendChild(css);
+        const hl = doc.createElement("div");
+        hl.style.cssText = "position:fixed;display:none;pointer-events:none;z-index:2147483647;border:2px solid #1867c7;background:rgba(24,103,199,0.12);box-sizing:border-box;border-radius:2px";
+        doc.body.appendChild(hl);
+        const bar = document.createElement("div");
+        bar.id = "r20ss-bar";
+        bar.setAttribute("role", "toolbar");
+        bar.setAttribute("aria-label", "시트 촬영: 숨길 부분 고르기");
+        bar.innerHTML = '<span class="r20ss-hint" aria-live="polite"></span>'
+            + '<span class="r20ss-grp"><button type="button" data-a="up" title="바깥 상자로 넓히기 (↑)">▲ 넓히기</button><button type="button" data-a="down" title="안쪽으로 좁히기 (↓)">▼</button></span>'
+            + '<span class="r20ss-grp"><b class="r20ss-n"></b><button type="button" data-a="undo" title="마지막에 숨긴 것 되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" data-a="all">모두</button></span>'
+            + '<label class="r20ss-mem"><input type="checkbox"> 이 시트 종류에 기억</label>'
+            + '<span class="r20ss-grp"><button type="button" data-a="cancel" title="그만두기 (Esc)">취소</button><button type="button" data-a="shot" class="pri">찍기 ▶</button></span>';
+        const hint = bar.querySelector(".r20ss-hint"), num = bar.querySelector(".r20ss-n"), mem = bar.querySelector(".r20ss-mem input");
+        mem.checked = localStorage.getItem("r20_sheetshot_remember") !== "false";
+        mem.addEventListener("change", () => localStorage.setItem("r20_sheetshot_remember", String(mem.checked)));
+        const status = () => {
+            num.textContent = `숨김 ${hidden.length}`;
+            bar.querySelector('[data-a="undo"]').disabled = bar.querySelector('[data-a="all"]').disabled = !hidden.length;
+            if (cand) { const r = cand.getBoundingClientRect(); hint.textContent = `누르면 숨김: ${cand.localName}${clsOf(cand) ? "." + clsOf(cand).split(/\s+/)[0] : ""} (${Math.round(r.width)}×${Math.round(r.height)}) · ↑↓ 크기`; }
+            else hint.textContent = note || "숨길 부분을 누르세요 · ↑↓ 로 덩어리 크기";
+        };
+        // 마우스 아래 요소에서 level 층 위 (시트 자체는 고르지 않는다)
+        const draw = () => {
+            cand = null;
+            if (hov && sheet.contains(hov) && hov !== sheet) {
+                let e = hov;
+                for (let i = 0; i < level && e.parentElement && e.parentElement !== sheet; i++) e = e.parentElement;
+                cand = e;
+            }
+            if (cand) { const r = cand.getBoundingClientRect(); Object.assign(hl.style, { display: "block", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); }
+            else hl.style.display = "none";
+            status();
+        };
+        const hide = el => { el.classList.add("r20ss-hide"); hidden.push({ el, p: pathOf(el, sheet), c: clsOf(el) }); note = ""; };
+        const undo = () => { hidden.pop()?.el.classList.remove("r20ss-hide"); note = ""; draw(); };
+        const unhideAll = () => { while (hidden.length) hidden.pop().el.classList.remove("r20ss-hide"); note = ""; };
+        const onMove = e => { hov = e.target; draw(); };
+        const onBlock = e => {
+            if (!sheet.contains(e.target)) return;
+            e.preventDefault(); e.stopImmediatePropagation();
+            if (e.type === "click" && cand) { hide(cand); hov = null; level = 0; draw(); }
+        };
+        const onKey = e => {
+            const k = e.key;
+            if (k === "Escape") exit();
+            else if (k === "ArrowUp") { level++; draw(); }
+            else if (k === "ArrowDown") { level = Math.max(0, level - 1); draw(); }
+            else if (k.toLowerCase() === "z" && (e.ctrlKey || e.metaKey)) undo();
+            else return;
+            e.preventDefault(); e.stopPropagation();
+        };
+        BLOCK.forEach(t => win.addEventListener(t, onBlock, true));
+        win.addEventListener("mousemove", onMove, true);
+        doc.addEventListener("scroll", draw, true);
+        win.addEventListener("keydown", onKey, true);
+        document.addEventListener("keydown", onKey, true);
+        const exit = () => {
+            if (mode !== api) return;
+            mode = null;
+            unhideAll();
+            BLOCK.forEach(t => win.removeEventListener(t, onBlock, true));
+            win.removeEventListener("mousemove", onMove, true);
+            doc.removeEventListener("scroll", draw, true);
+            win.removeEventListener("keydown", onKey, true);
+            document.removeEventListener("keydown", onKey, true);
+            css.remove(); hl.remove(); bar.remove();
+            b.classList.remove("on");
+        };
+        const shot = async () => {
+            if (!sheet.isConnected) return exit();
+            const m = memLoad();
+            if (mem.checked && hidden.length) m[kind] = hidden.map(({ p, c }) => ({ p, c })); else delete m[kind];
+            memSave(m);
+            hl.style.display = "none";
+            bar.querySelectorAll("button").forEach(x => { x.disabled = true; });
+            hint.textContent = "찍는 중…";
+            paint(b, "load");
+            let res = null;
+            try { res = await capture(dlg, sheet, doc); }
+            catch (e) { console.warn("[시트 촬영] 실패:", e); }
+            exit();
+            if (!res) return blink(b, "bad");
             paint(b, "cam");
-            preview(blob, base, width, b);
-        } catch (e) {
-            console.warn("[시트 촬영] 실패:", e);
-            blink(b, "bad");
-        }
+            preview(res.blob, res.base, res.width, b);
+        };
+        bar.addEventListener("click", e => {
+            const a = e.target.closest("button")?.dataset.a;
+            if (a === "up") { level++; draw(); } else if (a === "down") { level = Math.max(0, level - 1); draw(); }
+            else if (a === "undo") undo(); else if (a === "all") { unhideAll(); draw(); }
+            else if (a === "cancel") exit(); else if (a === "shot") shot();
+        });
+        const api = { dlg, exit };
+        mode = api;
+        // 기억해 둔 자리: 같은 경로에 같은 클래스인 것만 다시 숨긴다 (시트가 바뀌었으면 건너뜀)
+        (memLoad()[kind] || []).forEach(({ p, c }) => {
+            let el = null;
+            try { el = sheet.querySelector(p); } catch (e) { /* 잘못된 경로 */ }
+            if (el && clsOf(el) === c && !el.classList.contains("r20ss-hide")) hide(el);
+        });
+        document.body.appendChild(bar);
+        b.classList.add("on");
+        if (hidden.length) note = `기억해 둔 ${hidden.length}곳을 숨겼어요 · 더 누르거나 되돌리기`;
+        draw();
+        bar.querySelector('[data-a="shot"]').focus();
+    };
+
+    const capture = async (dlg, sheet, doc) => {
+        const win = doc.defaultView, chain = [];
+        for (let e = sheet; e; e = e.parentElement) chain.push(e);
+        const bg = chain.map(e => win.getComputedStyle(e).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") || "#fff";
+        const width = Math.ceil(sheet.getBoundingClientRect().width);
+        const blob = await domShot.paint(domShot.clone([sheet], sheet.parentElement, width, bg), FULL);
+        const base = (dlg.querySelector(".ui-dialog-title")?.textContent || "").trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 80) || "character";
+        return { blob, base, width };
     };
     // 캐릭터 창(.characterdialog 안의 시트 iframe)의 제목 옆에 단추 하나
     const inject = () => {
@@ -2203,12 +2328,12 @@ const sheetShot = (() => {
             b.className = "r20shot";
             paint(b, "cam");
             b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
-            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); shoot(dlg, b); });
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); pick(dlg, b); });
             const t = bar.querySelector(".ui-dialog-title");
             t ? t.after(b) : bar.prepend(b);
         });
     };
-    const setEnabled = v => { if (v) return inject(); document.querySelectorAll(".r20shot").forEach(b => b.remove()); document.getElementById("r20ss")?.remove(); };
+    const setEnabled = v => { if (v) return inject(); mode?.exit(); document.querySelectorAll(".r20shot").forEach(b => b.remove()); document.getElementById("r20ss")?.remove(); };
     return { inject, setEnabled, watch: ".ui-dialog" };
 })();
 
@@ -3946,6 +4071,19 @@ addCss(`
         #r20ss .r20ss-foot button.pri { background:#1867c7; border-color:#1867c7; color:#fff; }
         #r20ss .r20ss-foot button:disabled { opacity:0.45; cursor:default; }
         #r20ss button:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
+        .ui-dialog-titlebar .r20shot.on { background:rgba(24,103,199,0.14); color:#1867c7; }
+        /* 숨길 부분 고르기 띠: 화면 아래 가운데에 떠서 시트를 가리지 않는다 */
+        #r20ss-bar { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:100009; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; width:max-content; max-width:calc(100vw - 32px); padding:8px 10px; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,0.25); font:12px/1.4 sans-serif; color:#333; box-sizing:border-box; }
+        #r20ss-bar .r20ss-hint { min-width:220px; max-width:360px; color:#555; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20ss-bar .r20ss-grp { display:inline-flex; align-items:center; gap:4px; }
+        #r20ss-bar .r20ss-n { margin-right:2px; font-weight:bold; color:#1867c7; }
+        #r20ss-bar button { height:28px; margin:0; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:12px; font-weight:bold; cursor:pointer; box-shadow:none; text-shadow:none; }
+        #r20ss-bar button:hover:not(:disabled) { background:#f2f2f4; }
+        #r20ss-bar button.pri { background:#1867c7; border-color:#1867c7; color:#fff; }
+        #r20ss-bar button:disabled { opacity:0.45; cursor:default; }
+        #r20ss-bar button:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
+        #r20ss-bar .r20ss-mem { display:inline-flex; align-items:center; gap:4px; width:auto; margin:0; padding:0; font-size:12px; font-weight:normal; color:#555; cursor:pointer; }
+        #r20ss-bar .r20ss-mem input { margin:0; width:auto; height:auto; }
 `);
 addFeature("chatCapture", chatCapture);
 addFeature("sheetShot", sheetShot);
