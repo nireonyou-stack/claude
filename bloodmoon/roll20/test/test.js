@@ -10,7 +10,7 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   let s = makeSim(HTML); s.open(); await s.settle();
   const items = [...s.attrs.keys()].filter(k => /^repeating_items_.*_row$/.test(k));
   eq('new sheet: 3 item rows', items.length, 3);
-  eq('new sheet: version', String(s.get('sheet_version')), '1');
+  eq('new sheet: version', String(s.get('sheet_version')), '2');
   eq('new sheet: tn all 12', s.get('sk_arm4_tn'), 12);
   eq('new sheet: durability', s.get('durability'), '—');
   s.open(); await s.settle();
@@ -85,20 +85,22 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   // ── 굴림: 특기 행동판정
   const last = () => s.rolls[s.rolls.length - 1];
   s.dice.push(3, 4); s.click('rarm4'); await s.settle();
-  eq('skill roll computed', last().computed, { res: '✓ 성공', ok: 1, total: 7, target: 5, skill: '《베기》' });
+  eq('skill roll computed', last().computed, { res: '성공', ok: 1, total: 7, target: 5, skill: '《베기》' });
+  has('plain skill roll title', last().macro, '{{title=주사위 굴림}}');
   has('skill roll prompt', last().macro, '《베기》 목표치 5');
   s.dice.push(1, 1); s.click('rarm4'); await s.settle();
-  eq('1·1 is just total (no auto fumble)', [last().computed.total, last().computed.res, last().computed.ok], [2, '✗ 실패', 2]);
+  eq('1·1 is just total (no auto fumble)', [last().computed.total, last().computed.res, last().computed.ok], [2, '실패', 2]);
   s.dice.push(6, 6); s.click('renv12'); await s.settle();
-  eq('6·6 is just total (no auto special)', [last().computed.total, last().computed.res, last().computed.ok], [12, '✓ 성공', 1]);
+  eq('6·6 is just total (no auto special)', [last().computed.total, last().computed.res, last().computed.ok], [12, '성공', 1]);
   s.queries['《베기》'] = -3; s.dice.push(3, 4); s.click('rarm4'); await s.settle(); delete s.queries['《베기》'];
-  eq('modifier applied', [last().computed.total, last().computed.res], [4, '✗ 실패']);
+  eq('modifier applied', [last().computed.total, last().computed.res], [4, '실패']);
 
   // ── 굴림: 어빌리티
   s.set('attack', '2');
   const ab = s.addRow('abilities', { name: '일격', type: '공격', cost: '1', skill: '《베기》', effect: '대미지 1점', flavor: '개요' }); await s.settle();
   s.dice.push(2, 1); s.click('use', ab); await s.settle();
-  eq('attack ability adds 공격력', [last().computed.total, last().computed.res], [5, '✓ 성공']);
+  eq('attack ability adds 공격력', [last().computed.total, last().computed.res], [5, '성공']);
+  has('ability meta line', last().macro, '{{sub=공격 / 코스트 1}}');
   has('attack ability macro atk', last().macro, '{{atk=[[2]]}}');
   has('ability effect/flavor', last().macro, '{{effect=대미지 1점}} {{flavor=개요}}');
   const ab2 = s.addRow('abilities', { name: '자세', type: '상주', cost: '1', skill: '없음', effect: '항상' }); await s.settle();
@@ -111,18 +113,56 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   has('free skill query lists sorted', last().macro, '?{판정 특기|듣기 (5),0|베기 (5),1|감각기 (6),2|');
   s.queries['판정 특기'] = 1; s.dice.push(4, 4); s.click('use', ab3); await s.settle(); delete s.queries['판정 특기'];
   eq('free skill picks chosen option', last().computed.skill, '《베기》');
+  const ab4 = s.addRow('abilities', { name: '은탄', type: '공격', lv: '3', group: '실버불렛', cost: '2', skill: '《쏘기》' }); await s.settle();
+  s.dice.push(1, 1); s.click('use', ab4); await s.settle();
+  has('ability meta: type / Lv / group / cost', last().macro, '{{sub=공격 / Lv 3 / 실버불렛 / 코스트 2}}');
+
+  // ── 메인 페이즈 판정 단추: 켜고 → 특기 → 특성치가 수정치로, 굴리면 꺼짐
+  s.set('strike', '3'); s.click('chk_hunt'); await s.settle();
+  eq('check on', [s.get('check_mode'), s.get('check_label')], ['hunt', '수렵판정 · 공격력 +2']);
+  s.dice.push(3, 4); s.click('rarm4'); await s.settle();
+  eq('hunt check adds 공격력', [last().computed.total, last().computed.res], [9, '성공']);
+  has('hunt check title/sub', last().macro, '{{title=수렵판정}} {{sub=공격력 +2}}');
+  has('hunt check atk', last().macro, '{{atk=[[2]]}}');
+  eq('check off after roll', s.get('check_mode'), '');
+  s.click('chk_skirm'); await s.settle(); s.click('chk_skirm'); await s.settle();
+  eq('same button toggles off', s.get('check_mode'), '');
+  s.click('chk_social'); await s.settle(); s.click('chk_raid'); await s.settle();
+  eq('other button switches', [s.get('check_mode'), s.get('check_label')], ['raid', '습격판정 · 타격력 +3']);
+  s.click('chk_cancel'); await s.settle();
+  eq('cancel', [s.get('check_mode'), s.get('check_label')], ['', '']);
+  s.click('chk_rest'); await s.settle(); s.dice.push(2, 2); s.click('rarm4'); await s.settle();
+  eq('stat 0 → no atk', [last().computed.total, /\{\{atk=/.test(last().macro)], [4, false]);
+  has('stat 0 sub', last().macro, '{{sub=행동력 +0}}');
+
+  // ── 몬스터 종족 · 마녀 사바트
+  s.set('sheet_type', 'monster'); s.set('race', '모노비스트'); await s.settle();
+  eq('monobeast', [s.get('mkind'), String(s.get('witch'))], ['mono', '0']);
+  s.set('race', '흡혈귀'); await s.settle();
+  eq('vampire', [s.get('mkind'), String(s.get('witch'))], ['vamp', '0']);
+  s.set('race', '숲의 마녀'); await s.settle();
+  eq('witch = vampire side + sabbat', [s.get('mkind'), String(s.get('witch'))], ['vamp', '1']);
+  s.set('sabbat', '1'); s.dice.push(1, 1); s.click('rarm4'); await s.settle();
+  eq('sabbat: every check succeeds', [last().computed.res, last().computed.ok, last().computed.total], ['사바트', 3, 2]);
+  s.set('race', '인간'); await s.settle();
+  eq('unknown race: both buttons, no sabbat', [s.get('mkind'), String(s.get('witch'))], ['', '0']);
+  s.dice.push(1, 1); s.click('rarm4'); await s.settle();
+  eq('sabbat ignored when not a witch', last().computed.res, '실패');
+  s.set('sabbat', '0'); s.set('race', ''); s.set('sheet_type', 'hunter'); await s.settle();
+  eq('hunter: no witch', String(s.get('witch')), '0');
 
   // ── 굴림: 팔로워
   s.dice.push(3, 3); s.click('roll', f1); await s.settle();
-  eq('follower roll tn 7', [last().computed.total, last().computed.target, last().computed.res, 'skill' in last().computed], [6, 7, '✗ 실패', false]);
+  eq('follower roll tn 7', [last().computed.total, last().computed.target, last().computed.res, 'skill' in last().computed], [6, 7, '실패', false]);
   s.set(`${f1}_ab1_name`, '할퀴기'); s.set(`${f1}_ab1_type`, '공격'); s.set(`${f1}_ab1_skill`, '《베기》'); await s.settle();
   s.dice.push(4, 4); s.click('ab1', f1); await s.settle();
-  eq('follower ability uses 판정치', [last().computed.target, last().computed.res], [7, '✓ 성공']);
+  eq('follower ability uses 판정치', [last().computed.target, last().computed.res], [7, '성공']);
   has('follower ability title', last().macro, '{{title=구울 · 할퀴기}}');
 
   // ── 표 굴림
   s.dice.push(3, 4, 2); s.click('rskill'); await s.settle();
-  eq('random skill all', last().computed, { res: '《뇌》', field: '1D6 2 → 머리' });
+  eq('random skill all', last().computed, { res: '《뇌》', field: '머리' });
+  has('random skill all rolls field die', last().macro, '{{f=[[1d6]]}}');
   s.set('rand_field', 'env'); s.dice.push(1, 1); s.click('rskill'); await s.settle();
   eq('random skill field', last().computed, { res: '《쉬기》', field: '환경' });
   s.dice.push(6, 6); s.click('rpart'); await s.settle();
@@ -130,17 +170,28 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   s.dice.push(6); s.click('rinit'); await s.settle();
   eq('init table', last().computed.res, '《심장/동체7》');
   s.set('nd_count', '3'); s.set('nd_mod', '-1'); s.dice.push(1, 2, 3); s.click('rnd'); await s.settle();
-  eq('nD6', last().computed, { dice: '1, 2, 3', res: '합계 5' });
+  eq('nD6', last().computed, { dice: '1, 2, 3', res: '5' });
   has('nD6 title', last().macro, '{{title=3D6-1}}');
 
   // ── 목록 출력
   const it = items[0].replace(/_row$/, '');
-  s.set(`${it}_name`, '붕대'); s.set(`${it}_kind`, '소모품'); s.set(`${it}_count`, '2'); s.set(`${it}_effect`, '회복 {{x}} [[1d6]]'); await s.settle();
+  s.set(`${it}_name`, '붕대'); s.set(`${it}_kind`, '아이템'); s.set(`${it}_count`, '2'); s.set(`${it}_effect`, '회복 {{x}} [[1d6]]'); await s.settle();
   s.click('say', it); await s.settle();
-  has('item card', last().macro, '{{title=붕대}} {{k1=분류}} {{v1=소모품}} {{k2=개수}} {{v2=2}}');
+  has('item card', last().macro, '{{title=붕대}} {{item=아이템}} {{count=2}}');
+  s.set(`${it}_kind`, '레어아이템'); await s.settle(); s.click('say', it); await s.settle();
+  has('rare item card', last().macro, '{{title=붕대}} {{sub=레어아이템}} {{count=2}}');
   has('user text sanitized', last().macro, '{{effect=회복 ｛｛x｝｝ [ [1d6] ]}}');
   s.set(`${h1}_name`, '가족'); s.set(`${h1}_link`, '일상'); await s.settle(); s.click('say', h1); await s.settle();
   has('happiness card', last().macro, '{{title=【행복】 가족}} {{k1=링크}} {{v1=《일상》}} {{k2=강도}} {{v2=1}}');
+
+  // ── 버전 1 시트: 아이템 분류 옮기기
+  const o = makeSim(HTML); o.set('sheet_version', '1');
+  const oi1 = o.addRow('items', { name: '칼', kind: '무기', effect: '대미지 +1' }), oi2 = o.addRow('items', { name: '부적', kind: '레어' }), oi3 = o.addRow('items', { name: '약', kind: '아이템' });
+  o.open(); await o.settle();
+  eq('v1→2: other kind → 아이템 + [분류] in effect', [o.get(`${oi1}_kind`), o.get(`${oi1}_effect`)], ['아이템', '[무기] 대미지 +1']);
+  eq('v1→2: 레어 → 레어아이템', o.get(`${oi2}_kind`), '레어아이템');
+  eq('v1→2: 아이템 untouched', [o.get(`${oi3}_kind`), o.get(`${oi3}_effect`) || ''], ['아이템', '']);
+  eq('v1→2: version', String(o.get('sheet_version')), '2');
 
   const errs = s.log.filter(l => l[0] !== 'INFO');
   console.log(`\n${pass} passed, ${fail} failed`, errs.length ? errs : '');

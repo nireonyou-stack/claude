@@ -119,13 +119,31 @@ on('change:hunters sheet:opened', () => getAttrs(['hunters'], v => {
 });
 
 // 새 캐릭터: 아이템 3칸을 펼쳐 둔다(값은 비움 — 숨은 row 칸으로 줄만 만든다)
+// 버전 2: 아이템 분류가 [아이템 · 레어아이템] 고르기가 됨 — 예전에 적은 다른 분류는 효과 앞에 [분류] 로 옮겨 둔다
 on('sheet:opened', () => getAttrs(['sheet_version'], v => {
-  if (v.sheet_version) return;
-  getSectionIDs('items', ids => {
-    const out = { sheet_version: 1 };
+  const ver = num(v.sheet_version) || 0;
+  if (ver >= 2) return;
+  if (!ver) return getSectionIDs('items', ids => {
+    const out = { sheet_version: 2 };
     if (!ids.length) for (let i = 0; i < 3; i++) out[`repeating_items_${generateRowID()}_row`] = 1;
     setAttrs(out, { silent: true });
   });
+  readSection('items', ['kind', 'effect'], rows => {
+    const out = { sheet_version: 2 };
+    Object.entries(rows).forEach(([id, r]) => {
+      const k = (r.kind || '').trim(), p = `repeating_items_${id}_`;
+      if (!k || k === '아이템' || k === '레어아이템') return;
+      out[`${p}kind`] = /레어/.test(k) ? '레어아이템' : '아이템';
+      if (!/레어/.test(k)) out[`${p}effect`] = `[${k}] ${r.effect || ''}`.trim();
+    });
+    setAttrs(out, { silent: true });
+  });
+}));
+
+// 몬스터 종족 → 행동력 줄 단추 갈래(모노비스트 학살 · 뱀파이어/흡혈귀/마녀 접촉, 모르면 둘 다), 마녀면 방어력 줄에 사바트 칸
+on('change:race change:sheet_type sheet:opened', () => getAttrs(['race', 'sheet_type'], v => {
+  const r = v.race || '';
+  setAttrs({ mkind: /모노|비스트/.test(r) ? 'mono' : /뱀파|흡혈|마녀/.test(r) ? 'vamp' : '', witch: v.sheet_type === 'monster' && /마녀/.test(r) ? 1 : 0 }, { silent: true });
 }));
 
 // ════════ 굴림 — Custom Roll Parsing (startRoll → finishRoll) ════════
@@ -145,8 +163,9 @@ const post = (s, computed) => startRoll(s, r => finishRoll(r.rollId, computed ? 
 //   (펌블치가 오르는 등 룰이 바뀌므로) — 카드에서 주사위 1 은 빨강, 6 은 초록으로 보인다
 //   skill: 특기 id (목표치 · 사용불능은 sheet worker 가 계산해 둔 값), pick: 자유 · 전부일 때 고를 특기 목록
 //   follower: 팔로워 판정치(특기 없이 판정)
+//   사바트(마녀 몬스터 시트에서 체크): 주사위와 상관없이 ok 3 · '사바트' — 카드 전체가 검정+빨강
 function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor }) {
-  const need = ['sk_' + (skill || 'soc2') + '_tn', 'sk_' + (skill || 'soc2') + '_off', ...(pick ? SKILL_IDS.map(id => `sk_${id}_tn`) : [])];
+  const need = ['sk_' + (skill || 'soc2') + '_tn', 'sk_' + (skill || 'soc2') + '_off', 'sabbat', 'witch', ...(pick ? SKILL_IDS.map(id => `sk_${id}_tn`) : [])];
   getAttrs(need, v => {
     const isF = follower !== undefined;
     const tnOf = id => num(v[`sk_${id}_tn`]) || 12;
@@ -160,16 +179,36 @@ function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor })
     post(s, R => {
       const id = opts ? (opts[R.pick.result] || opts[0]) : skill;
       const t = isF ? follower : tnOf(id), tot = R.d1.result + R.d2.result + (atk || 0) + R.mod.result;
-      const ok = tot >= t;
-      return Object.assign({ res: ok ? '✓ 성공' : '✗ 실패', ok: ok ? 1 : 2, total: tot, target: t }, isF ? {} : { skill: `《${skillName(id)}》` });
+      const ok = tot >= t, sab = on1(v.sabbat) && on1(v.witch);
+      return Object.assign({ res: sab ? '사바트' : ok ? '성공' : '실패', ok: sab ? 3 : ok ? 1 : 2, total: tot, target: t }, isF ? {} : { skill: `《${skillName(id)}》` });
     });
   });
 }
 
-// 특기 칸 이름 → 행동판정
+// 메인 페이즈 판정 단추: 누르면 켜지고(check_mode), 다음에 누른 특기로 그 판정 — 특성치가 수정치로 붙는다. 한 번 굴리면 꺼진다
+const CHECKS = {
+  hunt: ['수렵', 'attack'], skirm: ['전초전', 'strike'], icpt: ['영격', 'defense'], hinder: ['방해', 'defense'],
+  social: ['교류', 'action'], rest: ['휴식', 'action'], procure: ['조달', 'action'],
+  destroy: ['파괴', 'attack'], raid: ['습격', 'strike'], recup: ['휴양', 'action'], slaughter: ['학살', 'action'], contact: ['접촉', 'action'],
+};
+const STAT_NAMES = { attack: '공격력', strike: '타격력', defense: '방어력', action: '행동력' };
+Object.entries(CHECKS).forEach(([k, [name, stat]]) => on(`clicked:chk_${k}`, () => getAttrs(['check_mode', stat], v => {
+  const off = v.check_mode === k;
+  setAttrs({ check_mode: off ? '' : k, check_label: off ? '' : `${name}판정 · ${STAT_NAMES[stat]} +${num(v[stat]) || 0}` });
+})));
+on('clicked:chk_cancel', () => setAttrs({ check_mode: '', check_label: '' }));
+
+// 특기 칸 이름 → 주사위 굴림 (판정 단추가 켜져 있으면 그 판정)
 on(SKILL_IDS.map(id => `clicked:r${id}`).join(' '), e => {
   const id = (e.triggerName || '').replace(/^clicked:r/, '');
-  if (SKILL_IDS.includes(id)) actionCheck({ title: '행동판정', skill: id });
+  if (!SKILL_IDS.includes(id)) return;
+  getAttrs(['check_mode', ...Object.keys(STAT_NAMES)], v => {
+    const ck = CHECKS[v.check_mode];
+    if (!ck) return actionCheck({ title: '주사위 굴림', skill: id });
+    const n = num(v[ck[1]]) || 0;
+    setAttrs({ check_mode: '', check_label: '' });
+    actionCheck({ title: `${ck[0]}판정`, sub: `${STAT_NAMES[ck[1]]} +${n}`, skill: id, atk: n });
+  });
 });
 
 // 반복 섹션 버튼 → 그 행 접두어 (repeating_<section>_<id>_)
@@ -182,9 +221,9 @@ const info = (title, sub, rows, effect, flavor) => post('&{template:bloodmoon}' 
 // 어빌리티: 지정특기로 행동판정(공격 타입은 【공격력】 자동 가산). 상주 · 지정특기 없음은 효과만 출력
 on('clicked:repeating_abilities:use', e => {
   const row = rowOf(e, 'abilities'); if (!row) return;
-  const keys = ['name', 'group', 'type', 'cost', 'skill', 'effect', 'flavor'];
+  const keys = ['name', 'group', 'type', 'lv', 'cost', 'skill', 'effect', 'flavor'];
   getAttrs([...keys.map(k => row + k), 'attack'], v => {
-    const a = pickRow(row, v, keys), sub = [a.type, a.cost && `코스트 ${a.cost}`].filter(Boolean).join(' · ');
+    const a = pickRow(row, v, keys), sub = [a.type, a.lv && `Lv ${a.lv}`, a.group, a.cost && `코스트 ${a.cost}`].filter(Boolean).join(' / ');
     const title = a.name || '어빌리티', skill = a.skill.replace(/[《》\s]/g, '');
     if (a.type === '상주' || !skill || skill === '없음') return info(title, sub, [['지정특기', a.skill || '-']], a.effect, a.flavor);
     actionCheck({ title, sub, skill: NAME_TO_ID[skill], pick: !NAME_TO_ID[skill], atk: a.type === '공격' ? (num(v.attack) || 0) : 0, effect: a.effect, flavor: a.flavor });
@@ -200,14 +239,17 @@ on('clicked:repeating_followers:roll clicked:repeating_followers:ab1 clicked:rep
     const a = pickRow(row, v, keys), who = a.name || '팔로워', lv = num(a.lv), tn = lv === null ? null : Math.max(5, 10 - lv);
     if (!k) return tn === null ? info(`팔로워 · ${who}`, '', [['LV', '미입력']], a.special) : actionCheck({ title: `팔로워 · ${who}`, follower: tn, effect: a.special });
     const ab = a[`${k}_name`] || '어빌리티', ty = a[`${k}_type`], sk = a[`${k}_skill`];
-    const sub = [ty, a[`${k}_cost`] && `코스트 ${a[`${k}_cost`]}`].filter(Boolean).join(' · ');
+    const sub = [ty, a[`${k}_cost`] && `코스트 ${a[`${k}_cost`]}`].filter(Boolean).join(' / ');
     if (ty === '상주' || sk === '없음' || tn === null) return info(`${who} · ${ab}`, sub, [['지정특기', sk || '-'], ['LV', lv === null ? '미입력' : lv]], a[`${k}_effect`]);
     actionCheck({ title: `${who} · ${ab}`, sub, follower: tn, effect: a[`${k}_effect`] });
   });
 });
 
 // 목록 줄 채팅 출력: 아이템 · 행복&배덕 · 관계 · 지배력 (설명은 플레이버로)
-on('clicked:repeating_items:say', e => { const row = rowOf(e, 'items'); if (row) getAttrs(['name', 'kind', 'count', 'effect'].map(k => row + k), v => { const a = pickRow(row, v, ['name', 'kind', 'count', 'effect']); info(a.name || '아이템', '', [['분류', a.kind], ['개수', a.count]], a.effect); }); });
+on('clicked:repeating_items:say', e => { const row = rowOf(e, 'items'); if (row) getAttrs(['name', 'kind', 'count', 'effect'].map(k => row + k), v => {
+  const a = pickRow(row, v, ['name', 'kind', 'count', 'effect']), rare = /레어/.test(a.kind);
+  post('&{template:bloodmoon}' + field('title', a.name || '아이템') + field(rare ? 'sub' : 'item', rare ? '레어아이템' : '아이템') + field('count', a.count) + field('effect', a.effect));
+}); });
 on('clicked:repeating_happiness:say', e => { const row = rowOf(e, 'happiness'); if (row) getAttrs(['kind', 'name', 'link', 'power', 'flavor'].map(k => row + k), v => { const a = pickRow(row, v, ['kind', 'name', 'link', 'power', 'flavor']); info(`【${a.kind || '행복'}】 ${a.name}`, '', [['링크', a.link && `《${a.link}》`], ['강도', a.power]], '', a.flavor); }); });
 on('clicked:repeating_dominance:say', e => { const row = rowOf(e, 'dominance'); if (row) getAttrs(['name', 'link', 'power', 'flavor'].map(k => row + k), v => { const a = pickRow(row, v, ['name', 'link', 'power', 'flavor']); info(`【지배력】 ${a.name}`, '', [['링크', a.link && `《${a.link}》`], ['강도', a.power]], '', a.flavor); }); });
 on('clicked:repeating_relations:say', e => { const row = rowOf(e, 'relations'); if (row) getAttrs(['name', 'attr', 'depth', 'flavor'].map(k => row + k), v => { const a = pickRow(row, v, ['name', 'attr', 'depth', 'flavor']); info(`관계 · ${a.name}`, '', [['속성', a.attr], ['심도', a.depth]], '', a.flavor); }); });
@@ -217,7 +259,7 @@ on('clicked:rskill', () => getAttrs(['rand_field'], v => {
   const f = FIELDS.indexOf(v.rand_field);
   post(`&{template:bloodmoon} {{res=[[0]]}} {{field=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}${f < 0 ? ' {{f=[[1d6]]}}' : ''} {{title=랜덤 특기}}`, R => {
     const c = f < 0 ? R.f.result - 1 : f, row = R.d1.result + R.d2.result;
-    return { res: `《${SKILLS[FIELDS[c]][row - 2]}》`, field: f < 0 ? `1D6 ${c + 1} → ${FIELD_NAMES[FIELDS[c]]}` : FIELD_NAMES[FIELDS[c]] };
+    return { res: `《${SKILLS[FIELDS[c]][row - 2]}》`, field: FIELD_NAMES[FIELDS[c]] };
   });
 }));
 on('clicked:rpart', () => post('&{template:bloodmoon} {{res=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{title=신체부위 결정표}}', R => ({ res: PART_TABLE[R.d1.result + R.d2.result] })));
@@ -227,5 +269,5 @@ on('clicked:rinit', () => post('&{template:bloodmoon} {{res=[[0]]}} {{die=[[1d6]
 on('clicked:rnd', () => getAttrs(['nd_count', 'nd_mod'], v => {
   const n = Math.min(20, Math.max(1, num(v.nd_count) || 1)), m = num(v.nd_mod) || 0;
   post(`&{template:bloodmoon} {{res=[[0]]}} {{dice=[[0]]}} {{nd=[[${n}d6]]}} {{mod=[[${m}]]}} {{title=${n}D6${m ? (m > 0 ? '+' : '') + m : ''}}}`,
-    R => ({ dice: R.nd.dice.join(', '), res: `합계 ${R.nd.result + m}` }));
+    R => ({ dice: R.nd.dice.join(', '), res: `${R.nd.result + m}` }));
 }));

@@ -46,7 +46,7 @@ def skills():
             out.append(
                 f'    <div class="{cls}"><input type="hidden" class="offv" name="attr_sk_{sid}_off" value="0">'
                 f'<input type="checkbox" class="own" name="attr_sk_{sid}" value="1" title="{n} 습득">'
-                f'<button type="action" class="n" name="act_r{sid}" title="{n} 행동판정">{n}{tri}</button>'
+                f'<button type="action" class="n" name="act_r{sid}" title="{n} 주사위 굴림">{n}{tri}</button>'
                 f'<span class="t" name="attr_sk_{sid}_tn">12</span><span class="hatch"></span></div>')
             if i < 5:
                 out.append(f'    <label class="gap"><input type="checkbox" name="attr_gap_{GAPS[i]}" value="1"><span></span></label>')

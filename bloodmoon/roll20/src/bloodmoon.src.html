@@ -5,6 +5,10 @@
 <!-- 시트 종류: 띠의 드롭다운과 같은 속성. 값에 따라 CSS 로 헌터/몬스터 칸을 가른다 -->
 <input type="hidden" class="bm-type" name="attr_sheet_type" value="hunter">
 <input type="hidden" name="attr_sheet_version" value="">
+<!-- 메인 페이즈 판정 단추가 켜졌는지(check_mode) · 몬스터 종족 갈래(mkind: mono 학살 / vamp 접촉) · 마녀(witch: 사바트 칸). 워커가 채우고 CSS 가 본다 -->
+<input type="hidden" class="bm-mode" name="attr_check_mode" value="">
+<input type="hidden" class="bm-kind" name="attr_mkind" value="">
+<input type="hidden" class="bm-witch" name="attr_witch" value="0">
 <div class="bm">
   <!-- 띠 -->
   <div class="band">
@@ -32,10 +36,11 @@
     </div>
     <div class="statcol">
       <div class="hbar">특성치</div>
-      <div class="fr st-r"><b>공격력</b><input type="number" name="attr_attack"></div>
-      <div class="fr st-r"><b>타격력</b><input type="number" name="attr_strike"></div>
-      <div class="fr st-r"><b>방어력</b><input type="number" name="attr_defense"></div>
-      <div class="fr st-r"><b>행동력</b><input type="number" name="attr_action"></div>
+      <!-- 특성치 옆 판정 단추: 누르면 켜지고, 다음에 누른 특기로 그 판정(특성치가 수정치로 붙음) -->
+      <div class="fr st-r"><b>공격력</b><input type="number" name="attr_attack"><span class="chk h-only"><button type="action" name="act_chk_hunt" class="k-hunt" title="수렵판정 — 누른 뒤 특기를 고르세요">수렵</button></span><span class="chk m-only"><button type="action" name="act_chk_destroy" class="k-destroy" title="파괴판정 — 누른 뒤 특기를 고르세요">파괴</button></span></div>
+      <div class="fr st-r"><b>타격력</b><input type="number" name="attr_strike"><span class="chk h-only"><button type="action" name="act_chk_skirm" class="k-skirm" title="전초전판정 — 누른 뒤 특기를 고르세요">전초전</button></span><span class="chk m-only"><button type="action" name="act_chk_raid" class="k-raid" title="습격판정 — 누른 뒤 특기를 고르세요">습격</button></span></div>
+      <div class="fr st-r"><b>방어력</b><input type="number" name="attr_defense"><span class="chk h-only"><button type="action" name="act_chk_icpt" class="k-icpt" title="영격판정 — 누른 뒤 특기를 고르세요">영격</button><button type="action" name="act_chk_hinder" class="k-hinder" title="방해판정 — 누른 뒤 특기를 고르세요">방해</button></span><span class="chk m-only"><label class="sab" title="사바트 — 이 시트의 모든 판정이 성공"><input type="checkbox" name="attr_sabbat" value="1"><span>사바트</span></label></span></div>
+      <div class="fr st-r"><b>행동력</b><input type="number" name="attr_action"><span class="chk h-only"><button type="action" name="act_chk_social" class="k-social" title="교류판정 — 누른 뒤 특기를 고르세요">교류</button><button type="action" name="act_chk_rest" class="k-rest" title="휴식판정 — 누른 뒤 특기를 고르세요">휴식</button><button type="action" name="act_chk_procure" class="k-procure" title="조달판정 — 누른 뒤 특기를 고르세요">조달</button></span><span class="chk m-only"><button type="action" name="act_chk_recup" class="k-recup" title="휴양판정 — 누른 뒤 특기를 고르세요">휴양</button><button type="action" name="act_chk_slaughter" class="k-slaughter" title="학살판정 — 누른 뒤 특기를 고르세요">학살</button><button type="action" name="act_chk_contact" class="k-contact" title="접촉판정 — 누른 뒤 특기를 고르세요">접촉</button></span></div>
       <!-- 내구력 = 기본치(입력) + 강도 합계(헌터: 행복·배덕, 몬스터: 지배력 — sheet worker) -->
       <div class="res3">
         <div class="vbox"><b class="vl">내구력</b><div class="vc col durb"><input type="number" name="attr_dur_base" min="0" placeholder="기본"><span>+ <span name="attr_dur_sum">0</span></span><span class="big" name="attr_durability">—</span></div></div>
@@ -54,6 +59,7 @@
   </div>
 
   <!-- 특기표: 칸마다 습득(◇) · 판정 버튼 · 목표치 · 사용불능 표시. 갭은 열 단위 속성(attr_gap_a~e)이라 머리줄 글자나 막대 어디를 눌러도 열 전체가 바뀐다 -->
+  <div class="armed" role="status"><span class="lbl" name="attr_check_label"></span><span>지정특기를 누르세요</span><button type="action" name="act_chk_cancel">취소</button></div>
   <div class="skwrap"><div class="sk">
 <!--@SKILLS-->
   </div></div>
@@ -64,9 +70,9 @@
   <!-- 어빌리티: 주사위 = 지정특기로 행동판정(공격 타입은 공격력 자동 가산), 상주 · 지정특기 없음은 효과만 출력 -->
   <div class="list">
     <h3>어빌리티 <small>상주 코스트 합계 <span name="attr_passive_cost">0</span></small></h3>
-    <div class="lh ab"><span></span><span>이름</span><span class="g">그룹</span><span>타입</span><span>코스트</span><span class="s">지정특기</span></div>
+    <div class="lh ab"><span></span><span>이름</span><span class="g">그룹</span><span>타입</span><span>Lv</span><span>코스트</span><span class="s">지정특기</span></div>
     <fieldset class="repeating_abilities">
-      <div class="li ab"><button type="action" name="act_use" class="dice" title="어빌리티 사용"></button><input type="text" name="attr_name" placeholder="이름"><input class="g" type="text" name="attr_group" placeholder="그룹"><select class="pill" name="attr_type"><option value="" selected></option><option value="공격">공격</option><option value="보조">보조</option><option value="지원">지원</option><option value="상주">상주</option></select><input type="text" name="attr_cost"><input class="s" type="text" name="attr_skill" placeholder="지정특기">
+      <div class="li ab"><button type="action" name="act_use" class="dice" title="어빌리티 사용"></button><input type="text" name="attr_name" placeholder="이름"><input class="g" type="text" name="attr_group" placeholder="그룹"><select class="pill" name="attr_type"><option value="" selected></option><option value="공격">공격</option><option value="보조">보조</option><option value="지원">지원</option><option value="상주">상주</option></select><input class="lv" type="text" name="attr_lv" placeholder="Lv"><input type="text" name="attr_cost"><input class="s" type="text" name="attr_skill" placeholder="지정특기">
         <textarea class="eff" name="attr_effect" placeholder="효과…"></textarea><textarea class="eff fl" name="attr_flavor" placeholder="개요…"></textarea></div>
     </fieldset>
     <div class="adds h-only"><button type="action" name="act_addmild">+Add 경증광기</button><button type="action" name="act_addsevere">+Add 중증광기</button></div>
@@ -77,7 +83,7 @@
       <h3>아이템</h3>
       <div class="lh it"><span></span><span>아이템</span><span>분류</span><span>개수</span></div>
       <fieldset class="repeating_items">
-        <div class="li it"><input type="hidden" name="attr_row" value=""><button type="action" name="act_say" class="say" title="채팅에 출력"></button><input type="text" name="attr_name" placeholder="아이템"><input type="text" name="attr_kind" placeholder="분류"><input type="number" name="attr_count" min="0">
+        <div class="li it"><input type="hidden" name="attr_row" value=""><button type="action" name="act_say" class="say" title="채팅에 출력"></button><input type="text" name="attr_name" placeholder="아이템"><select class="pill" name="attr_kind"><option value="아이템" selected>아이템</option><option value="레어아이템">레어아이템</option></select><input type="number" name="attr_count" min="0">
           <textarea class="eff" name="attr_effect" placeholder="효과…"></textarea></div>
       </fieldset>
     </div>

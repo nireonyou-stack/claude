@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@900&display=swap');
 /* Blood Moon hunter / monster sheet. Layout: bloodmoon/roll20/mockup.html. Dark mode follows Roll20 (.sheet-darkmode on body). ASCII only: non-ASCII in this file drops the roll template CSS in chat. */
 
 .bm{--bg:#fff;--ink:#222226;--sub:#8b8b93;--line:#d9d9de;--cell:#f4f4f6;--bar:#26262b;--bar-ink:#fff;--accent:#e0394b;--hatch:rgba(224,57,75,.16);--band:#1b0a0e;--band-ink:#f4e7e7;
@@ -114,7 +114,7 @@
 .bm .li{border-bottom:1px solid var(--line)}
 .bm .li .eff{grid-column:1/-1;height:28px;font-size:12px;color:var(--sub);background:var(--cell);border:0;border-radius:4px;padding:3px 8px}
 .bm .li .eff.fl{font-style:italic}
-.bm .ab{grid-template-columns:22px minmax(0,1.6fr) minmax(0,1fr) 66px 48px minmax(0,1fr)}
+.bm .ab{grid-template-columns:22px minmax(0,1.6fr) minmax(0,1fr) 66px 40px 48px minmax(0,1fr)}
 .bm .it{grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) 44px}
 .bm .hp{grid-template-columns:22px minmax(0,1.2fr) minmax(0,1fr) 44px}
 .bm .dp{grid-template-columns:22px minmax(0,1.2fr) 76px 44px}
@@ -168,6 +168,32 @@
 .bm textarea.memo{min-height:110px;background:var(--cell);border:0;border-radius:2px;padding:10px}
 .bm .foot{margin:20px -20px 0;background:var(--band);color:rgba(244,231,231,.6);text-align:center;font-size:11px;padding:6px;clip-path:polygon(4% 0,96% 0,100% 100%,0 100%)}
 
+/* Main-phase check buttons beside the stats: press one (attr_check_mode), then a skill - the stat is added as a modifier. Monsters: slaughter (monobeast) or contact (vampire, witch) by attr_mkind */
+.bm .st-r{grid-template-columns:62px 40px minmax(0,1fr)}
+.bm .chk{display:flex;gap:3px;min-width:0}
+.bm .chk button[type=action]{flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:3px;border:1px solid var(--line);background:var(--bg);font-size:11.5px;font-weight:700;white-space:nowrap}
+.bm .chk button[type=action]::before{content:"";flex:none;width:11px;height:11px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2326262b' stroke-width='1.8' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.6v8.8L12 21l-8-4.6V7.6z'/%3E%3Cpath d='M4 7.6l8 4.6 8-4.6M12 12.2V21' opacity='.5'/%3E%3C/svg%3E") center/contain no-repeat}
+.sheet-darkmode .bm .chk button[type=action]::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ececf0' stroke-width='1.8' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.6v8.8L12 21l-8-4.6V7.6z'/%3E%3Cpath d='M4 7.6l8 4.6 8-4.6M12 12.2V21' opacity='.5'/%3E%3C/svg%3E")}
+.bm .chk button[type=action]:hover{border-color:var(--bar)}
+.bm-mode[value="hunt"] ~ .bm .chk .k-hunt,.bm-mode[value="skirm"] ~ .bm .chk .k-skirm,.bm-mode[value="icpt"] ~ .bm .chk .k-icpt,.bm-mode[value="hinder"] ~ .bm .chk .k-hinder,.bm-mode[value="social"] ~ .bm .chk .k-social,.bm-mode[value="rest"] ~ .bm .chk .k-rest,.bm-mode[value="procure"] ~ .bm .chk .k-procure,.bm-mode[value="destroy"] ~ .bm .chk .k-destroy,.bm-mode[value="raid"] ~ .bm .chk .k-raid,.bm-mode[value="recup"] ~ .bm .chk .k-recup,.bm-mode[value="slaughter"] ~ .bm .chk .k-slaughter,.bm-mode[value="contact"] ~ .bm .chk .k-contact{background:var(--accent);border-color:var(--accent);color:#fff}
+.bm-mode[value="hunt"] ~ .bm .chk .k-hunt::before,.bm-mode[value="skirm"] ~ .bm .chk .k-skirm::before,.bm-mode[value="icpt"] ~ .bm .chk .k-icpt::before,.bm-mode[value="hinder"] ~ .bm .chk .k-hinder::before,.bm-mode[value="social"] ~ .bm .chk .k-social::before,.bm-mode[value="rest"] ~ .bm .chk .k-rest::before,.bm-mode[value="procure"] ~ .bm .chk .k-procure::before,.bm-mode[value="destroy"] ~ .bm .chk .k-destroy::before,.bm-mode[value="raid"] ~ .bm .chk .k-raid::before,.bm-mode[value="recup"] ~ .bm .chk .k-recup::before,.bm-mode[value="slaughter"] ~ .bm .chk .k-slaughter::before,.bm-mode[value="contact"] ~ .bm .chk .k-contact::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.6v8.8L12 21l-8-4.6V7.6z'/%3E%3Cpath d='M4 7.6l8 4.6 8-4.6M12 12.2V21' opacity='.5'/%3E%3C/svg%3E")}
+.bm-kind[value="mono"] ~ .bm .chk .k-contact,.bm-kind[value="vamp"] ~ .bm .chk .k-slaughter{display:none}
+.bm .armed{display:none;align-items:center;gap:8px;margin-top:6px;padding:4px 10px;background:var(--accent);color:#fff;font-size:12px}
+.bm-mode:not([value=""]) ~ .bm .armed{display:flex}
+.bm-mode:not([value=""]) ~ .bm .skwrap{outline:2px solid var(--accent);outline-offset:1px}
+.bm .armed .lbl{font-size:13px;font-weight:700}
+.bm .armed button[type=action]{margin-left:auto;border:1px solid rgba(255,255,255,.6);border-radius:9em;padding:0 9px;font-size:11px;color:#fff}
+/* Sabbath (monster sheet, race contains the word for witch): every check from this sheet succeeds */
+.bm-witch:not([value="1"]) ~ .bm .sab{display:none}
+.bm .sab{position:relative;flex:1;display:flex;width:auto;margin:0;padding:0;font-weight:700;cursor:pointer}
+.bm .sab input{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.bm .sab span{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--line);font-size:11.5px}
+.bm .sab span::before{content:"";width:10px;height:10px;border:1.5px solid currentColor;border-radius:2px}
+.bm .sab input:checked+span{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 8px rgba(224,57,75,.55)}
+.bm .sab input:checked+span::before{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0394b' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E") center/9px no-repeat;border-color:#fff}
+.bm .sab input:focus-visible+span{outline:2px solid var(--accent);outline-offset:1px}
+.bm .ab .lv{text-align:center}
+
 /* Narrow window */
 @media (max-width:720px){
   .bm{padding:0 12px}
@@ -175,40 +201,41 @@
   .bm .top{grid-template-columns:1fr;height:auto}.bm .portrait{width:100%;max-width:220px;justify-self:center}.bm .res3{min-height:96px}
   .bm .state{grid-template-columns:1fr;height:auto}.bm .cells{grid-auto-rows:28px}
   .bm .two{grid-template-columns:1fr}
-  .bm .ab{grid-template-columns:22px 1fr 66px 48px}.bm .ab .g,.bm .ab .s{display:none}
+  .bm .ab{grid-template-columns:22px 1fr 66px 40px 48px}.bm .ab .g,.bm .ab .s{display:none}
   .bm .fw{grid-template-columns:22px minmax(0,1fr) 40px 40px 48px 36px}.bm .fw .kd,.bm .fw .itm{display:none}
   .bm .fa,.bm .fab-h{grid-template-columns:22px 1fr 62px 52px}.bm .fa .ag,.bm .fa .as,.bm .fab-h .ag,.bm .fab-h .as{display:none}
 }
 
-/* Chat card (roll template): layout after the Shinobigami / Insane cards. Corner brackets, centered title, dice block | skill + result bar */
-.sheet-rolltemplate-bloodmoon .sheet-card{--c-ink:#222226;--c-sub:#8b8b93;--c-line:#e3e3e8;--c-chip:#fff;color:var(--c-ink);background:linear-gradient(#26262b,#26262b) left top/14px 3px no-repeat,linear-gradient(#26262b,#26262b) left top/3px 14px no-repeat,linear-gradient(#26262b,#26262b) right top/14px 3px no-repeat,linear-gradient(#26262b,#26262b) right top/3px 14px no-repeat,linear-gradient(#26262b,#26262b) left bottom/14px 3px no-repeat,linear-gradient(#26262b,#26262b) left bottom/3px 14px no-repeat,linear-gradient(#26262b,#26262b) right bottom/14px 3px no-repeat,linear-gradient(#26262b,#26262b) right bottom/3px 14px no-repeat,#fff;border:1px solid #e3e3e8;padding:12px 14px 12px;margin-left:-7px;font:13px/1.5 'Noto Sans KR','Malgun Gothic',Arial,sans-serif}
-.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-card{--c-ink:#ececf0;--c-sub:#9a9aa3;--c-line:#3a3a42;--c-chip:#26262b;background:linear-gradient(#ececf0,#ececf0) left top/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) left top/3px 14px no-repeat,linear-gradient(#ececf0,#ececf0) right top/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) right top/3px 14px no-repeat,linear-gradient(#ececf0,#ececf0) left bottom/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) left bottom/3px 14px no-repeat,linear-gradient(#ececf0,#ececf0) right bottom/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) right bottom/3px 14px no-repeat,#1d1d21;border-color:#3a3a42}
+/* Chat card (roll template): dark red header (title, skill, meta line) over a white body. Check: target / total / 2D6 left, stamp right (ok 1 success red, 2 failure gray, 3 sabbath - the whole card turns black+red via .sheet-sab). Dark mode darkens the body only. */
+.sheet-rolltemplate-bloodmoon .sheet-card{--ink:#2a1a1e;--sub:#8d7f83;--red:#c8323f;--ok6:#23885a;--hair:rgba(42,26,30,.1);--ng:#9a8f92;position:relative;overflow:hidden;margin-left:-7px;padding:0 0 11px;background:#fff;box-shadow:inset 0 0 0 1px rgba(42,26,30,.25);color:var(--ink);font:12px/18px 'Noto Sans KR','Malgun Gothic',Arial,sans-serif;text-align:left;word-break:keep-all;overflow-wrap:anywhere;font-feature-settings:'palt'}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-card{--ink:#ebe5e7;--sub:#9a8a8f;--red:#ff6b7a;--ok6:#4cc786;--hair:rgba(239,230,231,.12);--ng:#8a7f83;background:#1d191a;box-shadow:inset 0 0 0 1px #3a3235}
 .sheet-rolltemplate-bloodmoon .inlinerollresult,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullcrit,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullfail,.sheet-rolltemplate-bloodmoon .inlinerollresult.importantroll{background:none;border:0;padding:0;color:inherit;font-weight:inherit}
-.sheet-rolltemplate-bloodmoon .sheet-hd{text-align:center}
-.sheet-rolltemplate-bloodmoon .sheet-sub{color:#e0394b;font-size:12px;font-weight:700}
-.sheet-rolltemplate-bloodmoon .sheet-ttl{font-size:16px;font-weight:900;line-height:1.3}
-.sheet-rolltemplate-bloodmoon .sheet-main{display:flex;align-items:center;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--c-line)}
-.sheet-rolltemplate-bloodmoon .sheet-dk{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none}
-.sheet-rolltemplate-bloodmoon .sheet-ico{width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%2326262b' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M30 3l24 13.5v27L30 57 6 43.5v-27z'/%3E%3Cpath d='M6 16.5L30 30l24-13.5M30 30v27' opacity='.14'/%3E%3C/svg%3E") center/contain no-repeat;font-size:24px;font-weight:900;line-height:1}
-.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-ico{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%23ececf0' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M30 3l24 13.5v27L30 57 6 43.5v-27z'/%3E%3Cpath d='M6 16.5L30 30l24-13.5M30 30v27' opacity='.14'/%3E%3C/svg%3E")}
-.sheet-rolltemplate-bloodmoon .sheet-dd{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
-.sheet-rolltemplate-bloodmoon .sheet-dd .inlinerollresult{display:inline-block;min-width:20px;padding:0 4px;border:1px solid var(--c-line);border-radius:4px;background:var(--c-chip);font-size:13px;text-align:center}
-.sheet-rolltemplate-bloodmoon .sheet-dd .inlinerollresult.fullfail{color:#e0394b;border-color:#e0394b;background:rgba(224,57,75,.1)}
-.sheet-rolltemplate-bloodmoon .sheet-dd .inlinerollresult.fullcrit{color:#1f9d55;border-color:#1f9d55;background:rgba(31,157,85,.1)}
-.sheet-rolltemplate-bloodmoon .sheet-md{color:var(--c-sub);font-size:12px;font-weight:700}
-.sheet-rolltemplate-bloodmoon .sheet-dd .sheet-md .inlinerollresult{min-width:0;padding:0;border:0;background:none;font-size:12px;color:inherit}
-.sheet-rolltemplate-bloodmoon .sheet-rt{flex:1;min-width:0;text-align:right}
-.sheet-rolltemplate-bloodmoon .sheet-sk{font-size:16px;font-weight:900;line-height:1.3}
-.sheet-rolltemplate-bloodmoon .sheet-bar{margin-top:5px;padding:2px 10px;border-radius:2px;background:linear-gradient(90deg,rgba(38,38,43,0),#26262b 70%);color:#fff;font-size:16px;font-weight:900;letter-spacing:1px}
-.sheet-rolltemplate-bloodmoon .sheet-bar.sheet-ok{background:linear-gradient(90deg,rgba(31,157,85,0),#1f9d55 70%)}
-.sheet-rolltemplate-bloodmoon .sheet-bar.sheet-ng{background:linear-gradient(90deg,rgba(224,57,75,0),#e0394b 70%)}
-.sheet-rolltemplate-bloodmoon .sheet-tn{margin-top:3px;color:var(--c-sub);font-size:12px}
-.sheet-rolltemplate-bloodmoon .sheet-tn b{color:var(--c-ink);font-size:14px}
-.sheet-rolltemplate-bloodmoon .sheet-tbl .sheet-dd .inlinerollresult{min-width:26px;font-size:16px;padding:1px 5px}
-.sheet-rolltemplate-bloodmoon .sheet-dl{font-size:15px;font-weight:700}
-.sheet-rolltemplate-bloodmoon .sheet-out{font-size:18px;font-weight:900}
-.sheet-rolltemplate-bloodmoon .sheet-kv{margin-top:8px;text-align:center;font-size:12px}
-.sheet-rolltemplate-bloodmoon .sheet-kv span{color:var(--c-sub)}
-.sheet-rolltemplate-bloodmoon .sheet-kv i{display:inline-block;width:1px;height:10px;margin:0 6px;background:var(--c-line)}
-.sheet-rolltemplate-bloodmoon .sheet-tx{margin-top:10px;padding-top:10px;border-top:1px solid var(--c-line);text-align:center}
-.sheet-rolltemplate-bloodmoon .sheet-fl{margin-top:4px;text-align:center;color:var(--c-sub);font-size:12px}
+.sheet-rolltemplate-bloodmoon .sheet-top{position:relative;padding:10px 12px 10px;color:#efe6e7;background:linear-gradient(90deg,#e0394b,#7a1220) left bottom/100% 2px no-repeat,radial-gradient(circle at calc(100% - 6px) -8px,#a3192b 0,#6e0f1c 26px,transparent 27px),radial-gradient(circle at calc(100% - 6px) -8px,rgba(224,57,75,.28) 27px,transparent 46px),linear-gradient(#1b0a0e,#140e10)}
+.sheet-rolltemplate-bloodmoon .sheet-hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet-rolltemplate-bloodmoon .sheet-ttl{font-size:14px;font-weight:700;letter-spacing:.3px}
+.sheet-rolltemplate-bloodmoon .sheet-sk{flex:none;padding-right:2px;color:#f4dfe2;font-size:12px;font-weight:500}
+.sheet-rolltemplate-bloodmoon .sheet-meta{margin-top:1px;color:#ff6b7a;font-size:10.5px}
+.sheet-rolltemplate-bloodmoon .sheet-meta.sheet-mute{color:#9a8a8f}
+.sheet-rolltemplate-bloodmoon .sheet-chk{position:relative;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px 0}
+.sheet-rolltemplate-bloodmoon .sheet-chk b{margin-right:12px;font-size:13px;font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-lb{margin-right:4px;color:var(--sub);font-size:10.5px}
+.sheet-rolltemplate-bloodmoon .sheet-dice{color:var(--sub);font-size:11px;letter-spacing:.5px}
+.sheet-rolltemplate-bloodmoon .sheet-dice .inlinerollresult{color:var(--ink);font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-dice .inlinerollresult.fullfail{color:var(--red)}
+.sheet-rolltemplate-bloodmoon .sheet-dice .inlinerollresult.fullcrit{color:var(--ok6)}
+.sheet-rolltemplate-bloodmoon .sheet-stamp{flex:none;margin-right:2px;padding:0 8px;border:3px double currentColor;border-radius:3px;transform:rotate(-7deg);font:900 15px/24px 'Noto Serif KR','Nanum Myeongjo','Batang',serif;letter-spacing:4px}
+.sheet-rolltemplate-bloodmoon .sheet-stamp.sheet-ok{color:var(--red)}
+.sheet-rolltemplate-bloodmoon .sheet-stamp.sheet-ng{color:var(--ng)}
+.sheet-rolltemplate-bloodmoon .sheet-stamp.sheet-sb{color:#ff6b7a;text-shadow:0 0 8px rgba(224,57,75,.8);box-shadow:0 0 8px rgba(224,57,75,.5)}
+.sheet-rolltemplate-bloodmoon .sheet-tbl{position:relative;padding:9px 12px 0}
+.sheet-rolltemplate-bloodmoon .sheet-big{font-size:14px;font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-kv{position:relative;padding:9px 12px 0;font-size:11px}
+.sheet-rolltemplate-bloodmoon .sheet-kv span{margin-right:4px;color:var(--sub)}
+.sheet-rolltemplate-bloodmoon .sheet-kv i{display:inline-block;width:1px;height:9px;margin:0 7px;background:var(--hair);vertical-align:-1px}
+.sheet-rolltemplate-bloodmoon .sheet-tx{position:relative;margin:9px 12px 0;padding-top:8px;border-top:1px solid var(--hair)}
+.sheet-rolltemplate-bloodmoon .sheet-top + .sheet-tx{margin-top:0;padding-top:9px;border-top:0}
+.sheet-rolltemplate-bloodmoon .sheet-fl{position:relative;margin:2px 12px 0;color:var(--sub);font-size:11px;line-height:16px}
+.sheet-rolltemplate-bloodmoon .sheet-top + .sheet-fl{margin-top:9px}
+.sheet-rolltemplate-bloodmoon .sheet-sab{position:absolute;top:0;right:0;bottom:0;left:0;background:radial-gradient(circle at calc(100% - 6px) -8px,#a3192b 0,#6e0f1c 26px,transparent 27px),radial-gradient(circle at calc(100% - 6px) -8px,rgba(224,57,75,.28) 27px,transparent 46px),linear-gradient(#1b0a0e,#120d0f 60%)}
+.sheet-rolltemplate-bloodmoon .sheet-sab ~ div{--ink:#efe6e7;--sub:#9a8a8f;--hair:rgba(239,230,231,.12);color:var(--ink)}
+.sheet-rolltemplate-bloodmoon .sheet-sab ~ .sheet-top{background:linear-gradient(90deg,rgba(224,57,75,.6),rgba(224,57,75,0)) left bottom/100% 1px no-repeat}
