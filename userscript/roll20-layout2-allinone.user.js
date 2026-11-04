@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.41.1
+// @version      1.42.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.41.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.42.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2054,26 +2054,124 @@ const chatCapture = (() => {
     return { inject, setEnabled };
 })();
 
-// ───────── 시트 촬영: 열린 캐릭터 시트를 처음부터 끝까지 PNG 파일로 저장 (캐릭터 창 제목 옆 단추) ─────────
+// ───────── 시트 촬영: 열린 캐릭터 시트를 찍어 미리보기 → 전체 또는 드래그로 고른 부분을 PNG 파일로 저장 (캐릭터 창 제목 옆 단추) ─────────
 // 시트는 같은 출처 iframe 안에 그려진다 → 그 문서의 .charsheet 를 domShot 으로 찍는다. 스크롤에 가려진 곳까지 전부, 보고 있는 탭 그대로
 const sheetShot = (() => {
     const ICON = {
-        save: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+        cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
         load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
         ok: '<path d="M20 6 9 17l-5-5"/>',
         bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
     };
-    const TIP = { save: "시트 촬영: 시트 전체를 PNG 파일로 저장", load: "찍는 중…", ok: "PNG 파일로 저장했어요", bad: "저장하지 못했어요 — 다시 눌러 주세요", tab: "캐릭터 시트 탭을 연 채로 눌러 주세요" };
+    const TIP = { cam: "시트 촬영: 시트 전체를 찍어 미리보기 — 전체 또는 드래그한 부분을 PNG 파일로 저장", load: "찍는 중…", ok: "PNG 파일로 저장했어요",
+        bad: "찍지 못했어요 — 다시 눌러 주세요", tab: "캐릭터 시트 탭을 연 채로 눌러 주세요" };
     const paint = (b, k, tip = TIP[k]) => {
         b.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
         b.dataset.state = k;
         b.title = tip; b.setAttribute("aria-label", tip);
     };
-    const blink = (b, k, tip) => { paint(b, k, tip); clearTimeout(b._t); b._t = setTimeout(() => paint(b, "save"), 1800); };
+    const blink = (b, k, tip) => { paint(b, k, tip); clearTimeout(b._t); b._t = setTimeout(() => paint(b, "cam"), 1800); };
     // 캔버스 한계(Chrome: 한 변 32767px · 넓이 268M 픽셀) 안에서 2배. 그보다 길면 한계에 맞춰 배율만 낮추고 자르지 않는다
     const FULL = (w, h) => Math.min(2, 0.999 * Math.min(32767 / w, 32767 / h, Math.sqrt(268435456 / (w * h))));
     const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
-    const save = async (dlg, b) => {
+    const download = (blob, file) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = file;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    };
+
+    // ── 미리보기: 찍은 시트 전체를 보여 주고, 드래그로 고른 부분 또는 전체를 저장 ──
+    const preview = (blob, base, width, b) => {
+        document.getElementById("r20ss")?.remove();
+        const url = URL.createObjectURL(blob);
+        const box = document.createElement("div");
+        box.id = "r20ss";
+        box.innerHTML = '<div class="r20ss-panel" role="dialog" aria-modal="true" aria-labelledby="r20ss-t">'
+            + '<div class="r20ss-head"><strong id="r20ss-t"></strong><button type="button" class="r20ss-x" title="닫기 (Esc)" aria-label="닫기">✕</button></div>'
+            + '<div class="r20ss-body"><div class="r20ss-pic"><img alt="시트 미리보기" draggable="false"><div class="r20ss-sel" style="display:none"></div></div></div>'
+            + '<div class="r20ss-foot"><span class="r20ss-info" aria-live="polite"></span>'
+            + '<button type="button" class="r20ss-all">전체 저장</button><button type="button" class="r20ss-part" disabled>고른 부분 저장</button></div></div>';
+        const $ = s => box.querySelector(s);
+        const body = $(".r20ss-body"), pic = $(".r20ss-pic"), img = $("img"), sel = $(".r20ss-sel"), info = $(".r20ss-info"), allB = $(".r20ss-all"), partB = $(".r20ss-part");
+        $("#r20ss-t").textContent = "시트 촬영 · " + base;
+        img.style.width = width + "px";            // 화면에서 본 크기 그대로 (좁으면 창 폭에 맞춰 줄어든다)
+        img.src = url;
+        let rect = null, drag = null;               // rect: 그림 위 표시 좌표(px)
+        const ratio = () => img.naturalWidth / img.getBoundingClientRect().width;
+        const show = () => {
+            const ok = !!rect && rect.w >= 4 && rect.h >= 4;
+            sel.style.display = ok ? "block" : "none";
+            if (ok) Object.assign(sel.style, { left: rect.x + "px", top: rect.y + "px", width: rect.w + "px", height: rect.h + "px" });
+            partB.disabled = !ok;
+            partB.classList.toggle("pri", ok); allB.classList.toggle("pri", !ok);
+            const k = ratio();
+            info.textContent = ok ? `고른 부분 ${Math.round(rect.w * k)} × ${Math.round(rect.h * k)}px · 다시 끌면 새로 고름`
+                : "그림 위를 드래그해서 저장할 부분을 고르세요";
+        };
+        const at = (cx, cy) => { const r = img.getBoundingClientRect(); return { x: Math.max(0, Math.min(r.width, cx - r.left)), y: Math.max(0, Math.min(r.height, cy - r.top)) }; };
+        const move = () => {
+            const p = at(drag.cx, drag.cy);
+            rect = { x: Math.min(drag.x, p.x), y: Math.min(drag.y, p.y), w: Math.abs(p.x - drag.x), h: Math.abs(p.y - drag.y) };
+            show();
+        };
+        // 위 · 아래 가장자리 가까이 끌고 있으면 저절로 스크롤 (긴 시트)
+        const tick = () => {
+            if (!drag) return;
+            const r = body.getBoundingClientRect(), d = drag.cy < r.top + 40 ? -1 : drag.cy > r.bottom - 40 ? 1 : 0;
+            if (d) { body.scrollTop += d * 16; move(); }
+            requestAnimationFrame(tick);
+        };
+        pic.addEventListener("pointerdown", e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            pic.setPointerCapture(e.pointerId);
+            const p = at(e.clientX, e.clientY);
+            drag = { x: p.x, y: p.y, cx: e.clientX, cy: e.clientY };
+            move(); tick();
+        });
+        pic.addEventListener("pointermove", e => { if (drag) { drag.cx = e.clientX; drag.cy = e.clientY; move(); } });
+        const end = () => { if (!drag) return; drag = null; if (rect && (rect.w < 4 || rect.h < 4)) rect = null; show(); };
+        pic.addEventListener("pointerup", end);
+        pic.addEventListener("pointercancel", end);
+        const crop = () => {
+            const k = ratio(), sx = Math.round(rect.x * k), sy = Math.round(rect.y * k);
+            const sw = Math.min(img.naturalWidth - sx, Math.max(1, Math.round(rect.w * k))), sh = Math.min(img.naturalHeight - sy, Math.max(1, Math.round(rect.h * k)));
+            const cv = document.createElement("canvas");
+            cv.width = sw; cv.height = sh;
+            cv.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+            return new Promise((res, rej) => cv.toBlob(x => x ? res(x) : rej(new Error("toBlob 실패")), "image/png"));
+        };
+        const close = () => {
+            box.remove();
+            URL.revokeObjectURL(url);
+            document.removeEventListener("keydown", onKey, true);
+            if (b.isConnected) b.focus();
+        };
+        // Esc 로 닫기, Tab 은 창 안에서만 돈다. 그 밖의 키는 Roll20 단축키로 새지 않게 막는다
+        const onKey = e => {
+            if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); return close(); }
+            if (e.key !== "Tab") return;
+            const f = [...box.querySelectorAll("button:not(:disabled)")], i = f.indexOf(document.activeElement);
+            e.preventDefault();
+            f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length]?.focus();
+        };
+        document.addEventListener("keydown", onKey, true);
+        box.addEventListener("keydown", e => e.stopPropagation());
+        box.addEventListener("mousedown", e => { if (e.target === box) close(); });
+        $(".r20ss-x").addEventListener("click", close);
+        allB.addEventListener("click", () => { download(blob, `${base}_${stamp()}.png`); close(); blink(b, "ok"); });
+        partB.addEventListener("click", async () => {
+            try { download(await crop(), `${base}_${stamp()}_부분.png`); close(); blink(b, "ok"); }
+            catch (e) { console.warn("[시트 촬영] 자르기 실패:", e); info.textContent = "저장하지 못했어요 — 다시 눌러 주세요"; }
+        });
+        document.body.appendChild(box);
+        img.decode().catch(() => {}).then(show);
+        allB.focus();
+    };
+
+    const shoot = async (dlg, b) => {
         if (b.dataset.state === "load") return;
         let doc = null;
         try { doc = dlg.querySelector(".characterdialog iframe")?.contentDocument; } catch (e) { /* 다른 출처 */ }
@@ -2081,17 +2179,14 @@ const sheetShot = (() => {
         if (!sheet) return blink(b, "bad", TIP.tab);
         paint(b, "load");
         try {
-            const win = doc.defaultView, bgOf = e => win.getComputedStyle(e).backgroundColor;
-            const chain = []; for (let e = sheet; e; e = e.parentElement) chain.push(e);
-            const bg = chain.map(bgOf).find(c => c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") || "#fff";
-            const blob = await domShot.paint(domShot.clone([sheet], sheet.parentElement, Math.ceil(sheet.getBoundingClientRect().width), bg), FULL);
-            const name = (dlg.querySelector(".ui-dialog-title")?.textContent || "").trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 80) || "character";
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `${name}_${stamp()}.png`;
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-            blink(b, "ok");
+            const win = doc.defaultView, chain = [];
+            for (let e = sheet; e; e = e.parentElement) chain.push(e);
+            const bg = chain.map(e => win.getComputedStyle(e).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") || "#fff";
+            const width = Math.ceil(sheet.getBoundingClientRect().width);
+            const blob = await domShot.paint(domShot.clone([sheet], sheet.parentElement, width, bg), FULL);
+            const base = (dlg.querySelector(".ui-dialog-title")?.textContent || "").trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 80) || "character";
+            paint(b, "cam");
+            preview(blob, base, width, b);
         } catch (e) {
             console.warn("[시트 촬영] 실패:", e);
             blink(b, "bad");
@@ -2106,14 +2201,14 @@ const sheetShot = (() => {
             const b = document.createElement("button");
             b.type = "button";
             b.className = "r20shot";
-            paint(b, "save");
+            paint(b, "cam");
             b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
-            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); save(dlg, b); });
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); shoot(dlg, b); });
             const t = bar.querySelector(".ui-dialog-title");
             t ? t.after(b) : bar.prepend(b);
         });
     };
-    const setEnabled = v => { if (v) return inject(); document.querySelectorAll(".r20shot").forEach(b => b.remove()); };
+    const setEnabled = v => { if (v) return inject(); document.querySelectorAll(".r20shot").forEach(b => b.remove()); document.getElementById("r20ss")?.remove(); };
     return { inject, setEnabled, watch: ".ui-dialog" };
 })();
 
@@ -3834,6 +3929,23 @@ addCss(`
         .ui-dialog-titlebar .r20shot[data-state="bad"] { color:#c0392b; }
         .ui-dialog-titlebar .r20shot[data-state="load"] { cursor:progress; }
         .ui-dialog-titlebar .r20shot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
+        /* 시트 촬영 미리보기: 드래그로 고른 곳만 밝게(바깥은 그림자로 어둡게) */
+        #r20ss { position:fixed; inset:0; z-index:100010; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.5); box-sizing:border-box; }
+        #r20ss .r20ss-panel { display:flex; flex-direction:column; width:min(920px, 100%); max-height:100%; background:#fff; border-radius:6px; box-shadow:0 8px 30px rgba(0,0,0,0.35); overflow:hidden; font:13px/1.4 sans-serif; color:#333; }
+        #r20ss .r20ss-head { display:flex; align-items:center; gap:8px; padding:8px 8px 8px 14px; border-bottom:1px solid #e5e5e8; }
+        #r20ss .r20ss-head strong { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+        #r20ss .r20ss-x { width:30px; height:30px; margin:0; padding:0; border:0; border-radius:4px; background:none; color:#888; font-size:16px; line-height:30px; cursor:pointer; box-shadow:none; }
+        #r20ss .r20ss-x:hover { background:#f0f0f2; color:#333; }
+        #r20ss .r20ss-body { flex:1; min-height:0; overflow:auto; padding:12px; background:#e9e9ec; }
+        #r20ss .r20ss-pic { position:relative; width:fit-content; max-width:100%; margin:0 auto; overflow:hidden; cursor:crosshair; user-select:none; touch-action:none; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+        #r20ss .r20ss-pic img { display:block; max-width:100%; height:auto; margin:0; pointer-events:none; }
+        #r20ss .r20ss-sel { position:absolute; border:2px solid #1867c7; background:rgba(24,103,199,0.06); box-shadow:0 0 0 9999px rgba(0,0,0,0.35); box-sizing:border-box; pointer-events:none; }
+        #r20ss .r20ss-foot { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 12px; border-top:1px solid #e5e5e8; }
+        #r20ss .r20ss-info { flex:1; min-width:160px; color:#777; font-size:12px; }
+        #r20ss .r20ss-foot button { height:30px; margin:0; padding:0 14px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:12px; font-weight:bold; cursor:pointer; box-shadow:none; text-shadow:none; }
+        #r20ss .r20ss-foot button.pri { background:#1867c7; border-color:#1867c7; color:#fff; }
+        #r20ss .r20ss-foot button:disabled { opacity:0.45; cursor:default; }
+        #r20ss button:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
 `);
 addFeature("chatCapture", chatCapture);
 addFeature("sheetShot", sheetShot);
