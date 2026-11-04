@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.41.0
+// @version      1.41.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.41.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.41.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1848,6 +1848,7 @@ const domShot = (() => {
         };
         let pn = 0;
         const pseudoRule = (cl, ps, pcs) => {
+            families.add(pcs.fontFamily);           // ::before 에만 쓴 글꼴(Roll20 주사위 단추의 dicefontd20 등)도 넣는다
             const cls = "r20cp" + (++pn);
             cl.classList.add(cls);
             const body = [];
