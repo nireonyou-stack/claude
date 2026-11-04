@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.39.0
+// @version      1.39.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.39.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.39.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4780,12 +4780,13 @@ addCss(`
         /* 가는 구분선 · 묶음 안 아이콘 한 줄(3칸) · 말풍선 */
         .context-menu > .r20tm-hr { flex:0 0 auto; height:1px; margin:3px 8px; background:rgba(128,128,128,0.25); }
         .context-menu > .r20tm-hr[hidden] { display:none; }
-        .context-menu .r20tm-irow { display:grid; grid-template-columns:repeat(3, 1fr); gap:2px; padding:2px 4px; }
-        .context-menu .r20tm-ib { display:flex; align-items:center; justify-content:center; height:30px; min-width:0; margin:0; padding:0; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+        /* Roll20 하위 메뉴 판(세로 flex)이 줄을 내용 폭으로 줄이고 단추 · 아이콘 크기를 덮어써서 3칸이 몰렸다 → 판 폭으로 늘리고 크기는 !important */
+        .context-menu .r20tm-irow { display:grid !important; grid-template-columns:repeat(3, 1fr) !important; align-self:stretch !important; width:auto !important; box-sizing:border-box; gap:2px; padding:2px 4px; }
+        .context-menu .r20tm-ib { display:flex !important; align-items:center !important; justify-content:center !important; width:auto !important; height:30px !important; min-width:0 !important; margin:0 !important; padding:0 !important; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
         .context-menu .r20tm-ib:hover { background:rgba(128,128,128,0.16); }
         .context-menu .r20tm-ib.is-on { background:rgba(128,128,128,0.26); }
         .context-menu .r20tm-ib.disabled { opacity:.4; cursor:default; }
-        .context-menu .r20tm-ib svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+        .context-menu .r20tm-ib svg { width:17px !important; height:17px !important; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
         .context-menu .r20tm-ib:focus-visible { outline:2px solid #1867c7; outline-offset:-2px; }
         .r20tm-tip { position:fixed; z-index:100006; padding:3px 8px; border-radius:4px; background:rgba(20,20,22,0.92); color:#fff; font:11px/1.4 sans-serif; white-space:nowrap; pointer-events:none; }
         /* 덱 창: 반투명 판에 카드 더미만 (폭 70px, 높이는 그림 비율대로). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
