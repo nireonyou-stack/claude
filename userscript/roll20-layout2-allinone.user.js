@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.40.1
+// @version      1.40.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.40.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.40.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5927,6 +5927,7 @@ const assetBank = (() => {
                 if (open) g.vis.forEach(({ t, i, ok }) => {
                     if (rows++ >= ROWS) return;
                     html += `<div class="r20ab-tr"><span title="${esc(t.t + (t.tags ? "\n" + t.tags : ""))}">${esc(t.t || "(제목 없음)")}</span>`
+                        + `<button type="button" class="r20ab-pv" data-pv="${esc(a.uid)}|${i}" aria-label="미리듣기 — ${esc(t.t || "")}">▶</button>`
                         + (ok ? `<span class="r20ab-ok">✓ 있음</span>` : `<button type="button" class="r20ab-btn" data-u="${esc(a.uid)}" data-i="${i}">넣기</button>`) + "</div>";
                 });
             });
@@ -5935,8 +5936,35 @@ const assetBank = (() => {
         panel.querySelector(".r20ab-list").innerHTML = html || `<p class="r20ab-empty">${accts.length ? (onlyMissing && !v ? "빠진 곡이 없어요 ✓" : "찾는 곡이 없어요")
             : "아직 모은 트랙이 없어요<br>저장소 계정으로 트랙이 든 게임에 들어가서<br>그림 탭 › 모은 목록 › [이 계정 모으기]"}</p>`;
         panel.querySelector(".r20ab-foot").textContent = accts.length ? `${who ? 1 : accts.length}계정 · ${total}곡 · 이 게임에 없는 곡 ${miss}` : "";
+        pvMark();
     };
     const drawSoon = () => { clearTimeout(dt); dt = setTimeout(draw, 200); };
+
+    // ── 미리듣기: 주크박스 BGM 미리듣기와 같은 재생 주소(오디오 번호). 나만 듣는다(Roll20 재생과 무관)
+    //    이 게임에 없는 곡을 Roll20 이 막으면 그 곡은 ✕ (콘솔에 남김) ──
+    let pv = null, pvKey = "";
+    const pvBad = new Set();
+    const pvUrl = t => /^https?:\/\//.test(t.tid) ? t.tid
+        : (!t.src || t.src === "My Audio") && t.tid ? `${window.IS_EMBEDDED ? "/.proxy" : ""}/audio_library/play/${window.campaign_id}/${String(t.tid).split(/[-#]/)[0]}` : null;
+    const pvMark = () => panel?.querySelectorAll(".r20ab-pv").forEach(b => {
+        const on = b.dataset.pv === pvKey, bad = pvBad.has(b.dataset.pv);
+        b.setAttribute("aria-pressed", String(on)); b.textContent = bad ? "✕" : on ? "■" : "▶";
+        b.title = bad ? "미리듣기를 못 했어요 — 이 게임에 넣은 뒤 들어 보세요" : on ? "멈추기" : "미리듣기";
+    });
+    const pvStop = () => { if (pv) { pv.pause(); pv.removeAttribute("src"); pv.load(); } pv = null; pvKey = ""; pvMark(); };
+    const pvPlay = (t, key) => {
+        if (pvKey === key) return pvStop();
+        pvStop();
+        const url = t && pvUrl(t);
+        if (!url) { pvBad.add(key); return pvMark(); }
+        pvKey = key;
+        const a = pv = new Audio(url);
+        a.volume = Math.min(1, Math.max(0, (Number(t.vol) || 30) / 100));       // 방에서 정한 볼륨(없으면 30)
+        a.addEventListener("ended", () => { if (a === pv) pvStop(); });
+        a.addEventListener("error", () => { if (a !== pv) return; console.warn("[모은 트랙] 미리듣기 실패:", t.t, url); pvBad.add(key); pvStop(); });
+        a.play().catch(() => {});
+        pvMark();
+    };
 
     // 새 트랙을 같은 이름의 재생목록 끝에 넣는다 (없으면 맨 아래에 새로 만들고, 재생 방식은 원래 재생목록 것)
     const intoPlaylist = (ids, pl, extra) => {
@@ -6019,7 +6047,7 @@ const assetBank = (() => {
         toast(/모았어요$/.test(msg) ? msg + " · 이제 로그아웃해도 돼요" : msg, job);
     };
 
-    const closePanel = () => { panel?.remove(); panel = null; btn?.setAttribute("aria-expanded", "false"); };
+    const closePanel = () => { pvStop(); panel?.remove(); panel = null; btn?.setAttribute("aria-expanded", "false"); };
     const openPanel = () => {
         if (panel) return closePanel();
         panel = document.createElement("div");
@@ -6040,6 +6068,10 @@ const assetBank = (() => {
             const b = e.target.closest("button");
             if (!b) return;
             if (b.dataset.a === "close") return closePanel();
+            if (b.dataset.pv) {
+                const [u, i] = [b.dataset.pv.slice(0, b.dataset.pv.lastIndexOf("|")), +b.dataset.pv.slice(b.dataset.pv.lastIndexOf("|") + 1)];
+                return pvPlay((await list()).find(x => x.uid === u)?.tracks[i], b.dataset.pv);
+            }
             if (b.dataset.g != null) {
                 if (q || onlyMissing) return;           // 검색 · 빠진 곡만 볼 땐 모두 펼쳐 둔다
                 if (opened.has(b.dataset.g)) opened.delete(b.dataset.g); else opened.add(b.dataset.g);
@@ -6067,8 +6099,11 @@ const assetBank = (() => {
         if (!btnVisible.artroom) return;
         // 게임이 다 뜬 뒤(계정 정보 · 주크박스) 한 번만
         if (!autoTried && window.currentPlayer?.get && autoCfg()) { autoTried = true; setTimeout(autoRun, 5000); }
-        const host = document.querySelector("#jukebox .secondarycontrols");
-        if (!host || host.querySelector(".r20ab-open")) return;
+        if (document.querySelector("#jukebox .r20ab-open")) return;
+        // '오디오 관리' 옆에 (그 단추와 같은 float 로 바로 앞에 끼우면 화면에선 옆에 선다). 못 찾으면 아래 단추 줄에
+        const aud = [...document.querySelectorAll("#jukebox button, #jukebox .btn")].find(b => !b.closest(".dd-list") && /^(오디오 관리|Audio Library|Manage Audio)$/i.test(b.textContent.trim()));
+        const host = aud?.parentElement || document.querySelector("#jukebox .secondarycontrols");
+        if (!host) return;
         btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn r20ab-open";
@@ -6077,7 +6112,8 @@ const assetBank = (() => {
         btn.setAttribute("aria-haspopup", "dialog");
         btn.setAttribute("aria-expanded", String(!!panel));
         btn.addEventListener("click", openPanel);
-        host.insertBefore(btn, host.querySelector(".r20jb-step"));
+        if (aud) { btn.classList.add("r20ab-top"); btn.style.float = getComputedStyle(aud).float; aud.before(btn); }
+        else host.insertBefore(btn, host.querySelector(".r20jb-step"));
     };
     const setEnabled = on => {
         if (on) return inject();
@@ -6634,6 +6670,13 @@ addCss(`
         .r20ab-tr > span:first-child { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; }
         .r20ab .r20ab-btn { flex-shrink:0; height:24px; padding:0 9px; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#555; font-size:11px; white-space:nowrap; }
         .r20ab .r20ab-btn:hover { border-color:#b8215f; color:#b8215f; }
+        .r20ab .r20ab-pv { flex-shrink:0; width:26px; height:24px; margin:0; padding:0; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#666; font-size:9px; line-height:22px; cursor:pointer; }
+        .r20ab .r20ab-pv:hover { border-color:#b8215f; color:#b8215f; }
+        .r20ab .r20ab-pv[aria-pressed=true] { background:#b8215f; border-color:#b8215f; color:#fff; }
+        .r20ab .r20ab-pv:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        /* 위쪽 '오디오 관리' 옆: 일괄 편집 단추와 같은 모양 */
+        #jukebox button.r20ab-open.r20ab-top { display:inline-flex; align-items:center; height:24px; margin:2px 0 0 3px; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; }
+        #jukebox button.r20ab-open.r20ab-top:hover { background:#f2f2f2; }
         .r20ab.r20ab-busy .r20ab-btn { pointer-events:none; opacity:0.6; }
         .r20ab-ok { flex-shrink:0; color:#2a8a4a; font-size:11px; white-space:nowrap; }
         .r20ab-foot { flex-shrink:0; padding:8px 10px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
