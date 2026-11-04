@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.39.3
+// @version      1.39.4
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.39.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.39.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2406,8 +2406,23 @@ const mapShot = (() => {
         ctx.rotate(num(g, "rotation") * Math.PI / 180);
         ctx.scale(g.get("fliph") ? -1 : 1, g.get("flipv") ? -1 : 1);
         ctx.globalAlpha = Math.max(0, Math.min(1, num(g, "baseOpacity", 1)));
-        ctx.drawImage(im, -w / 2, -h / 2, w, h);
+        ctx.drawImage(tinted(im, g.get("tint_color"), w, h) || im, -w / 2, -h / 2, w, h);
         ctx.restore();
+    };
+    // 색조 입히기(토큰 설정, tint_color): 그림 색에 그 색을 곱하고 투명한 곳은 그대로 — 검정이면 실루엣.
+    // 따로 작은 캔버스에 그려 넘긴다(크기는 놓인 크기, 4096px 까지). 색조가 없으면 null
+    const tinted = (im, c, w, h) => {
+        if (!usable(c) || !/^#?[0-9a-f]{3,8}$/i.test(c) || /^#?f{3}(f{3})?$/i.test(c)) return null;
+        const s = Math.min(1, 4096 / Math.max(w, h, 1)), cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(w * s)); cv.height = Math.max(1, Math.round(h * s));
+        const x = cv.getContext("2d");
+        x.drawImage(im, 0, 0, cv.width, cv.height);
+        x.globalCompositeOperation = "multiply";
+        x.fillStyle = c.startsWith("#") ? c : "#" + c;
+        x.fillRect(0, 0, cv.width, cv.height);
+        x.globalCompositeOperation = "destination-in";
+        x.drawImage(im, 0, 0, cv.width, cv.height);
+        return cv;
     };
     const render = async () => {
         const pg = Campaign.activePage?.() || Campaign.pages?.get(Campaign.get("playerpageid"));
