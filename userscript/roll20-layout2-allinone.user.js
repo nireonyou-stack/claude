@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.40.3
+// @version      1.41.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.40.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.41.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -58,6 +58,7 @@ const btnVisible = {
     screenui:  localStorage.getItem("r20_show_screenui") !== "false",
     tokact:    localStorage.getItem("r20_show_tokact") !== "false",
     capture:   localStorage.getItem("r20_show_capture") !== "false",
+    sheetshot: localStorage.getItem("r20_show_sheetshot") !== "false",
     deckview:  localStorage.getItem("r20_show_deckview") !== "false",
     macrobar:  localStorage.getItem("r20_show_macrobar") !== "false",
     mapshot:   localStorage.getItem("r20_show_mapshot") !== "false",
@@ -1672,6 +1673,259 @@ addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간�
 
 // ══════════ 묶음 2 · 대화 캡처 · 맵시트 촬영 ══════════
 
+// ───────── 요소 촬영(공용): 요소를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG ─────────
+// 대화 캡처 · 시트 촬영이 같이 쓴다. 같은 출처 iframe 안의 요소(캐릭터 시트)도 그 문서의 스타일 · 글꼴로 찍는다
+const domShot = (() => {
+    // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
+    const INHERIT = new Set(["color", "font-family", "font-size", "font-style", "font-variant", "font-weight", "font-stretch", "line-height", "letter-spacing",
+        "word-spacing", "text-align", "text-indent", "text-transform", "text-shadow", "white-space", "word-break", "overflow-wrap", "visibility", "direction",
+        "list-style-type", "list-style-position", "list-style-image", "quotes", "tab-size", "hyphens", "font-kerning", "font-feature-settings",
+        "font-variation-settings", "-webkit-text-fill-color", "-webkit-text-stroke-color", "-webkit-text-stroke-width", "text-rendering",
+        "border-collapse", "border-spacing", "caption-side", "empty-cells", "cursor"]);
+    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor)/;
+    // 기본값 재기 · 크기 재기는 스타일시트가 하나도 없는 빈 문서에서 한다 — 이미지 안에도 Roll20 CSS 가 없으니
+    // (Roll20 화면에서 재면 label · input 같은 태그 규칙이 기본값에 섞여, 그 값과 같은 속성이 이미지에서 빠진다)
+    let blank = null, sandbox = null;
+    const defaults = new Map();
+    const blankDoc = () => {
+        if (!blank?.isConnected) {
+            blank = document.createElement("iframe");
+            blank.setAttribute("aria-hidden", "true");
+            blank.tabIndex = -1;
+            blank.style.cssText = "position:fixed;left:-99999px;top:0;width:4000px;height:100px;border:0;visibility:hidden;pointer-events:none";
+            document.body.appendChild(blank);
+            const d = blank.contentDocument;
+            d.open(); d.write('<!doctype html><html><head></head><body style="margin:0"></body></html>'); d.close();
+            defaults.clear(); forced.clear(); sandbox = null;
+        }
+        return blank.contentDocument;
+    };
+    const defaultsOf = el => {
+        const doc = blankDoc(), key = el.namespaceURI + ":" + el.localName;
+        if (defaults.has(key)) return defaults.get(key);
+        if (!sandbox) { sandbox = doc.createElement("div"); sandbox.style.cssText = "all:initial"; doc.body.appendChild(sandbox); }
+        const d = doc.createElementNS(el.namespaceURI, el.localName);
+        sandbox.appendChild(d);
+        const cs = doc.defaultView.getComputedStyle(d), map = {};
+        for (let i = 0; i < cs.length; i++) map[cs[i]] = cs.getPropertyValue(cs[i]);
+        d.remove();
+        defaults.set(key, map);
+        return map;
+    };
+    // 브라우저가 태그 자체에 정해 두는 물려받는 속성(단추 · 입력칸의 글꼴, 링크 색, b 의 굵기 등) — 부모와 같아도 꼭 적어야 이미지에서 안 바뀐다.
+    // 별난 값을 준 부모 밑에 그 태그를 놓아 보고 부모 값을 그대로 물려받지 않는 속성을 고른다
+    const forced = new Map();
+    const forcedOf = el => {
+        const doc = blankDoc(), key = el.namespaceURI + ":" + el.localName;
+        if (forced.has(key)) return forced.get(key);
+        const par = doc.createElement("div");
+        par.style.cssText = "all:initial;color:rgb(1,2,3);font:italic 300 13px/7px zz;letter-spacing:3px;word-spacing:5px;text-align:right;text-indent:9px;"
+            + "text-transform:uppercase;white-space:pre;direction:rtl;list-style-type:square;text-shadow:1px 1px red;cursor:crosshair;-webkit-text-fill-color:rgb(4,5,6)";
+        const d = doc.createElementNS(el.namespaceURI, el.localName);
+        if (el.localName === "a" && el.hasAttribute("href")) d.setAttribute("href", "#");
+        par.appendChild(d); doc.body.appendChild(par);
+        const pcs = doc.defaultView.getComputedStyle(par), dcs = doc.defaultView.getComputedStyle(d), set = new Set();
+        INHERIT.forEach(p => { if (dcs.getPropertyValue(p) !== pcs.getPropertyValue(p)) set.add(p); });
+        par.remove();
+        forced.set(key, set);
+        return set;
+    };
+    const styleText = (cs, parentCs, def, force) => {
+        const out = [];
+        for (let i = 0; i < cs.length; i++) {
+            const p = cs[i];
+            if (SKIP.test(p)) continue;
+            const v = cs.getPropertyValue(p);
+            if (INHERIT.has(p) ? (!parentCs || v !== parentCs.getPropertyValue(p) || force?.has(p)) : v !== def[p]) out.push(`${p}:${v}`);
+        }
+        return out.join(";");
+    };
+    // 그림 · 글꼴은 주소 대신 데이터로 넣어야 이미지 안에 보인다 (못 가져오면 비워 둔다)
+    const dataCache = new Map();
+    const toData = url => {
+        if (!url || url.startsWith("data:")) return Promise.resolve(url);
+        const get = u => fetch(u, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
+            .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
+            .catch(() => null);
+        // fetch 가 막히면(Roll20 이 바깥 주소로의 연결을 막는 경우 등) 그림으로 불러 캔버스에서 데이터로 — imgur 처럼 CORS 를 허락하는 곳이면 된다.
+        // 채팅이 이미 CORS 없이 받아 둔 같은 주소는 캐시 때문에 실패할 수 있어 한 번 더 주소를 살짝 바꿔 받는다
+        const viaImg = u => new Promise(res => {
+            const im = new Image();
+            im.crossOrigin = "anonymous";
+            im.onload = () => {
+                try {
+                    const c = document.createElement("canvas");
+                    c.width = im.naturalWidth; c.height = im.naturalHeight;
+                    c.getContext("2d").drawImage(im, 0, 0);
+                    res(c.toDataURL("image/png"));
+                } catch (e) { res(null); }
+            };
+            im.onerror = () => res(null);
+            im.src = u;
+        });
+        const bust = u => u + (u.includes("?") ? "&" : "?") + "r20cap=1";
+        // s3.amazonaws.com/files.d20.io 주소는 CORS 가 막혀 있어 files.d20.io 로 먼저 받는다
+        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null))
+            .then(d => d || viaImg(r20img(url))).then(d => d || viaImg(bust(r20img(url)))));
+        return dataCache.get(url);
+    };
+    const inlineUrls = async (css, base = location.href) => {
+        const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map(m => m[1]).filter(u => !u.startsWith("data:"));
+        for (const u of new Set(urls)) {
+            const d = await toData(new URL(u, base).href);
+            css = css.split(u).join(d || "");
+        }
+        return css;
+    };
+    // ── 글꼴 ──
+    // 쓰인 글꼴의 @font-face 를 데이터로 넣는다. 다른 곳(Google 글꼴 등) 스타일시트는 규칙을 못 읽으니 글을 받아서 읽는다.
+    // 글자 범위(unicode-range)로 쪼개진 글꼴(한글 글꼴)은 실제로 쓴 글자 · 굵기에 걸리는 조각만 넣는다
+    const remote = new Map();
+    const remoteRules = href => {
+        if (!remote.has(href)) remote.set(href, fetch(href, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.text() : "").catch(() => "")
+            .then(t => { const s = new CSSStyleSheet(); try { s.replaceSync(t); } catch (e) { return []; } return [...s.cssRules]; }));
+        return remote.get(href);
+    };
+    // iframe 문서의 규칙은 다른 창의 객체라 instanceof 대신 type 번호로 가린다 (3 @import · 5 @font-face)
+    const collectFaces = async (rules, base, out, depth = 0) => {
+        for (const r of rules) {
+            if (r.type === 5) out.push([r, base]);
+            else if (r.type === 3 && depth < 3) {
+                const href = new URL(r.href, base).href;
+                let sub = null;
+                try { sub = r.styleSheet && [...r.styleSheet.cssRules]; } catch (e) { /* 다른 출처 */ }
+                await collectFaces(sub || await remoteRules(href), href, out, depth + 1);
+            } else if (r.type !== 1 && r.cssRules) await collectFaces(r.cssRules, base, out, depth);     // @media · @supports 안
+        }
+    };
+    const unq = s => s.trim().replace(/^["']|["']$/g, "").toLowerCase();
+    const ranges = s => (s || "").split(",").map(x => x.trim().replace(/^u\+/i, "")).filter(Boolean).map(x => {
+        if (x.includes("?")) return [parseInt(x.replace(/\?/g, "0"), 16), parseInt(x.replace(/\?/g, "F"), 16)];
+        const [a, b] = x.split("-");
+        return [parseInt(a, 16), parseInt(b || a, 16)];
+    });
+    const weights = r => { const v = r.style.getPropertyValue("font-weight").trim().replace(/\bnormal\b/g, "400").replace(/\bbold\b/g, "700").split(/\s+/).map(Number); return [v[0] || 400, v[1] || v[0] || 400]; };
+    // CSS 글꼴 고르기(굵기): 원하는 굵기에 대해 있는 굵기 중 어느 것을 쓰는지
+    const pickWeight = (want, have) => {
+        if (have.includes(want)) return want;
+        const up = have.filter(w => w > want).sort((a, b) => a - b), down = have.filter(w => w < want).sort((a, b) => b - a);
+        if (want >= 400 && want <= 500) return up.find(w => w <= 500) ?? down[0] ?? up[0];
+        return want < 400 ? (down[0] ?? up[0]) : (up[0] ?? down[0]);
+    };
+    const fontFaces = async (families, doc, used) => {
+        const want = new Set([...families].flatMap(f => f.split(",")).map(unq));
+        const faces = [];
+        for (const sh of doc.styleSheets) {
+            let rules = null;
+            try { rules = [...sh.cssRules]; } catch (e) { if (sh.href) rules = await remoteRules(sh.href); }
+            if (rules) await collectFaces(rules, sh.href || doc.baseURI, faces);
+        }
+        const hits = faces.filter(([r]) => want.has(unq(r.style.getPropertyValue("font-family"))));
+        const have = new Map();         // 글꼴 → 있는 (하나짜리) 굵기
+        hits.forEach(([r]) => { const f = unq(r.style.getPropertyValue("font-family")), [a, b] = weights(r); if (a === b) have.set(f, [...new Set([...(have.get(f) || []), a])]); });
+        const out = [], seen = new Set();
+        for (const [r, base] of hits) {
+            const f = unq(r.style.getPropertyValue("font-family")), [lo, hi] = weights(r), rg = ranges(r.style.getPropertyValue("unicode-range"));
+            const take = [...used].some(([w, chars]) => (lo === hi ? pickWeight(w, have.get(f) || [lo]) === lo : w >= lo && w <= hi)
+                && (!rg.length || [...chars].some(c => rg.some(([a, b]) => c >= a && c <= b))));
+            if (!take) continue;
+            const css = r.cssText.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/g, (m0, u) => `url("${new URL(u, base).href}")`);
+            if (seen.has(css)) continue;
+            seen.add(css);
+            out.push(inlineUrls(css));
+        }
+        return (await Promise.all(out)).join("\n");
+    };
+    // ── 복제: nodes 를 box(바깥 상자)의 글꼴 · 색으로 감싸 width 폭 · bg 바탕에 놓는다. 계산된 스타일은 지금 화면 그대로 읽는다
+    const clone = (nodes, box, width, bg) => {
+        const gcs = (el, ps) => el.ownerDocument.defaultView.getComputedStyle(el, ps);
+        const wrap = document.createElement("div"), boxCs = gcs(box), rules = [], families = new Set([boxCs.fontFamily]), used = new Map();
+        const addText = (s, cs) => {
+            if (!s) return;
+            const w = parseInt(cs.fontWeight, 10) || 400;
+            if (!used.has(w)) used.set(w, new Set());
+            for (const ch of s) used.get(w).add(ch.codePointAt(0));
+        };
+        let pn = 0;
+        const pseudoRule = (cl, ps, pcs) => {
+            const cls = "r20cp" + (++pn);
+            cl.classList.add(cls);
+            const body = [];
+            for (let i = 0; i < pcs.length; i++) if (!SKIP.test(pcs[i])) body.push(`${pcs[i]}:${pcs.getPropertyValue(pcs[i])}`);
+            rules.push(`.${cls}${ps}{${body.join(";")}}`);
+        };
+        wrap.setAttribute("style", styleText(boxCs, null, defaultsOf(wrap)) + `;width:${width}px;background-color:${bg};margin:0;padding:0;overflow:hidden;height:auto;max-height:none;position:static;inset:auto;transform:none`);
+        const walk = (orig, parentCs) => {
+            const cl = orig.cloneNode(false);
+            if (orig.nodeType === 3) addText(orig.nodeValue, parentCs);
+            if (orig.nodeType !== 1) return cl;
+            const cs = gcs(orig), tag = orig.localName;
+            families.add(cs.fontFamily);
+            cl.removeAttribute("id");
+            // 스크롤되지 않던 상자는 이미지에서 스크롤바가 생기지 않게 (글자 폭이 조금만 달라도 생겨서 모양이 무너진다)
+            const still = /auto|scroll/.test(cs.overflow) && orig.scrollWidth <= orig.clientWidth && orig.scrollHeight <= orig.clientHeight;
+            cl.setAttribute("style", styleText(cs, parentCs, defaultsOf(orig), forcedOf(orig)) + (still ? ";overflow:hidden" : ""));
+            if (cs.display === "none") return cl;           // 안 보이는 것은 속까지 옮기지 않는다
+            // ::before · ::after 는 복제에 없으니 규칙으로 따로 적는다
+            ["::before", "::after"].forEach(ps => {
+                const pcs = gcs(orig, ps), c = pcs.getPropertyValue("content");
+                if (!c || c === "none" || c === "normal") return;
+                pseudoRule(cl, ps, pcs);
+                (c.match(/"(?:[^"\\]|\\.)*"/g) || []).forEach(q => addText(q.slice(1, -1), pcs));
+            });
+            // 입력칸: 복제는 처음 값만 가지므로 지금 값 · 체크 · 고른 항목을 적는다 (빈 칸이면 안내 글자 모양도)
+            if (tag === "input" || tag === "textarea") {
+                if (/^(checkbox|radio)$/i.test(orig.type)) orig.checked ? cl.setAttribute("checked", "") : cl.removeAttribute("checked");
+                else if (tag === "input") cl.setAttribute("value", orig.value);
+                else cl.textContent = orig.value;
+                addText(orig.value, cs);
+                if (!orig.value && orig.placeholder) { pseudoRule(cl, "::placeholder", gcs(orig, "::placeholder")); addText(orig.placeholder, cs); }
+                if (tag === "textarea") return cl;
+            } else if (tag === "option") orig.selected ? cl.setAttribute("selected", "") : cl.removeAttribute("selected");
+            orig.childNodes.forEach(ch => cl.appendChild(walk(ch, cs)));
+            if (tag === "img") { cl.setAttribute("data-src", orig.currentSrc || orig.src); cl.removeAttribute("srcset"); cl.removeAttribute("loading"); }
+            return cl;
+        };
+        nodes.forEach(n => wrap.appendChild(walk(n, boxCs)));
+        return { wrap, rules, families, used, doc: box.ownerDocument };
+    };
+    // ── 그리기: 복제를 PNG 로. scaleFor(w, h) 가 배율을 정한다
+    const paint = async ({ wrap, rules, families, used, doc }, scaleFor) => {
+        // 그림 · 배경 그림 → 데이터
+        for (const img of wrap.querySelectorAll("img[data-src]")) {
+            const d = await toData(img.getAttribute("data-src"));
+            img.removeAttribute("data-src");
+            if (d) img.setAttribute("src", d); else { img.removeAttribute("src"); img.style.visibility = "hidden"; }
+        }
+        for (const el of [wrap, ...wrap.querySelectorAll("[style*='url(']")]) el.setAttribute("style", await inlineUrls(el.getAttribute("style")));
+        const style = document.createElement("style");
+        style.textContent = (await fontFaces(families, doc, used)) + "\n" + (await inlineUrls(rules.join("\n")));
+        wrap.prepend(style);
+        // 크기는 빈 문서에 실제로 놓아 보고 잰다 (글꼴을 다 읽은 뒤)
+        const bd = blankDoc(), meas = bd.createElement("div");
+        meas.style.cssText = "position:absolute;left:0;top:0";
+        meas.appendChild(wrap);
+        bd.body.appendChild(meas);
+        wrap.getBoundingClientRect();
+        await bd.fonts.ready;
+        const box = wrap.getBoundingClientRect(), w = Math.ceil(box.width), h = Math.ceil(box.height);
+        meas.remove();
+        const xml = new XMLSerializer().serializeToString(wrap);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="100%" height="100%">${xml}</foreignObject></svg>`;
+        const img = new Image();
+        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        await img.decode();
+        const scale = scaleFor(w, h);
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
+        const ctx = cv.getContext("2d");
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("toBlob 실패")), "image/png"));
+    };
+    return { clone, paint };
+})();
+
 // ───────── 대화 캡처: 채팅 메시지를 골라 Roll20 채팅에 보이는 모양 그대로 이미지로 만들어 클립보드에 복사 ─────────
 // 외부 라이브러리 없이: 고른 메시지를 복제해 계산된 스타일·그림·글꼴을 안에 넣고 → SVG foreignObject → canvas → PNG
 const chatCapture = (() => {
@@ -1738,156 +1992,18 @@ const chatCapture = (() => {
     document.addEventListener("mousedown", e => { if (on && e.target.closest?.("#textchat .content > .message")) e.preventDefault(); }, true);
     document.addEventListener("keydown", e => { if (on && e.key === "Escape") stop(); }, true);
 
-    // ── 그리기 ──
-    // 물려받는 속성은 부모와 다를 때만, 나머지는 그 태그의 기본값과 다를 때만 적는다 (이미지 크기를 줄이려고)
-    const INHERIT = new Set(["color", "font-family", "font-size", "font-style", "font-variant", "font-weight", "font-stretch", "line-height", "letter-spacing",
-        "word-spacing", "text-align", "text-indent", "text-transform", "text-shadow", "white-space", "word-break", "overflow-wrap", "visibility", "direction",
-        "list-style-type", "list-style-position", "list-style-image", "quotes", "tab-size", "hyphens", "font-kerning", "font-feature-settings",
-        "font-variation-settings", "-webkit-text-fill-color", "-webkit-text-stroke-color", "-webkit-text-stroke-width", "text-rendering",
-        "border-collapse", "border-spacing", "caption-side", "empty-cells", "cursor"]);
-    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor)/;
-    let sandbox = null;
-    const defaults = new Map();
-    const defaultsOf = el => {
-        const key = el.namespaceURI + ":" + el.tagName;
-        if (defaults.has(key)) return defaults.get(key);
-        if (!sandbox) { sandbox = document.createElement("div"); sandbox.style.cssText = "all:initial;position:fixed;left:-99999px;top:0;visibility:hidden"; document.body.appendChild(sandbox); }
-        const d = document.createElementNS(el.namespaceURI, el.tagName);
-        sandbox.appendChild(d);
-        const cs = getComputedStyle(d), map = {};
-        for (let i = 0; i < cs.length; i++) map[cs[i]] = cs.getPropertyValue(cs[i]);
-        d.remove();
-        defaults.set(key, map);
-        return map;
-    };
-    const styleText = (cs, parentCs, def) => {
-        const out = [];
-        for (let i = 0; i < cs.length; i++) {
-            const p = cs[i];
-            if (SKIP.test(p)) continue;
-            const v = cs.getPropertyValue(p);
-            if (INHERIT.has(p) ? (!parentCs || v !== parentCs.getPropertyValue(p)) : v !== def[p]) out.push(`${p}:${v}`);
-        }
-        return out.join(";");
-    };
-    // 그림 · 글꼴은 주소 대신 데이터로 넣어야 이미지 안에 보인다 (못 가져오면 비워 둔다)
-    const dataCache = new Map();
-    const toData = url => {
-        if (!url || url.startsWith("data:")) return Promise.resolve(url);
-        const get = u => fetch(u, { mode: "cors", credentials: "omit" }).then(r => r.ok ? r.blob() : null)
-            .then(b => b && new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); }))
-            .catch(() => null);
-        // fetch 가 막히면(Roll20 이 바깥 주소로의 연결을 막는 경우 등) 그림으로 불러 캔버스에서 데이터로 — imgur 처럼 CORS 를 허락하는 곳이면 된다.
-        // 채팅이 이미 CORS 없이 받아 둔 같은 주소는 캐시 때문에 실패할 수 있어 한 번 더 주소를 살짝 바꿔 받는다
-        const viaImg = u => new Promise(res => {
-            const im = new Image();
-            im.crossOrigin = "anonymous";
-            im.onload = () => {
-                try {
-                    const c = document.createElement("canvas");
-                    c.width = im.naturalWidth; c.height = im.naturalHeight;
-                    c.getContext("2d").drawImage(im, 0, 0);
-                    res(c.toDataURL("image/png"));
-                } catch (e) { res(null); }
-            };
-            im.onerror = () => res(null);
-            im.src = u;
-        });
-        const bust = u => u + (u.includes("?") ? "&" : "?") + "r20cap=1";
-        // s3.amazonaws.com/files.d20.io 주소는 CORS 가 막혀 있어 files.d20.io 로 먼저 받는다
-        if (!dataCache.has(url)) dataCache.set(url, get(r20img(url)).then(d => d || (r20img(url) !== url ? get(url) : null))
-            .then(d => d || viaImg(r20img(url))).then(d => d || viaImg(bust(r20img(url)))));
-        return dataCache.get(url);
-    };
-    const inlineUrls = async css => {
-        const urls = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)].map(m => m[1]).filter(u => !u.startsWith("data:"));
-        for (const u of new Set(urls)) {
-            const d = await toData(new URL(u, location.href).href);
-            css = css.split(u).join(d || "");
-        }
-        return css;
-    };
-    // 쓰인 글꼴의 @font-face 를 찾아 데이터로 넣는다 (다른 곳 스타일시트는 읽을 수 없어 건너뛴다)
-    const fontFaces = async families => {
-        const want = new Set([...families].flatMap(f => f.split(",")).map(f => f.trim().replace(/^["']|["']$/g, "").toLowerCase()));
-        const out = [];
-        for (const sh of document.styleSheets) {
-            let rules;
-            try { rules = sh.cssRules; } catch (e) { continue; }
-            for (const r of rules || []) {
-                if (!(r instanceof CSSFontFaceRule)) continue;
-                const fam = r.style.getPropertyValue("font-family").trim().replace(/^["']|["']$/g, "").toLowerCase();
-                if (!want.has(fam)) continue;
-                let css = r.cssText;
-                const base = sh.href || location.href;
-                css = css.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/g, (m0, u) => `url("${new URL(u, base).href}")`);
-                out.push(await inlineUrls(css));
-            }
-        }
-        return out.join("\n");
-    };
+    // ── 그리기 (domShot 공용) ──
     const render = async list => {
         const lg = logEl();
-        const wrap = document.createElement("div"), lgCs = getComputedStyle(lg), rules = [], families = new Set([lgCs.fontFamily]);
-        let pn = 0;
         // 맨 바깥: 채팅창 글꼴·색·배경을 그대로 (투명하면 흰 바탕)
         const bg = [lg, lg.parentElement, document.getElementById("textchat")].map(x => x && getComputedStyle(x).backgroundColor).find(c => c && c !== "rgba(0, 0, 0, 0)") || "#fff";
-        wrap.setAttribute("style", styleText(lgCs, null, defaultsOf(wrap)) + `;width:${lg.clientWidth}px;background-color:${bg};margin:0;padding:0;overflow:hidden;height:auto;max-height:none;position:static;inset:auto;transform:none`);
-        const walk = (orig, parentCs) => {
-            const cl = orig.cloneNode(false);
-            if (orig.nodeType !== 1) return cl;
-            const cs = getComputedStyle(orig);
-            families.add(cs.fontFamily);
-            cl.removeAttribute("id");
-            cl.setAttribute("style", styleText(cs, parentCs, defaultsOf(orig)));
-            // ::before · ::after 는 복제에 없으니 규칙으로 따로 적는다
-            ["::before", "::after"].forEach(ps => {
-                const pcs = getComputedStyle(orig, ps), c = pcs.getPropertyValue("content");
-                if (!c || c === "none" || c === "normal") return;
-                const cls = "r20cp" + (++pn);
-                cl.classList.add(cls);
-                const body = [];
-                for (let i = 0; i < pcs.length; i++) if (!SKIP.test(pcs[i])) body.push(`${pcs[i]}:${pcs.getPropertyValue(pcs[i])}`);
-                rules.push(`.${cls}${ps}{${body.join(";")}}`);
-            });
-            orig.childNodes.forEach(ch => cl.appendChild(walk(ch, cs)));
-            if (orig.tagName === "IMG") { cl.setAttribute("data-src", orig.currentSrc || orig.src); cl.removeAttribute("srcset"); cl.removeAttribute("loading"); }
-            return cl;
-        };
         // 고른 표시는 빼고 계산된 스타일을 읽는다
         document.getElementById("textchat")?.classList.remove("r20cap-on");
         list.forEach(m => m.classList.remove("r20cap-sel"));
-        try { list.forEach(m => wrap.appendChild(walk(m, lgCs))); }
+        let shot;
+        try { shot = domShot.clone(list, lg, lg.clientWidth, bg); }
         finally { list.forEach(m => m.classList.add("r20cap-sel")); if (on) document.getElementById("textchat")?.classList.add("r20cap-on"); }
-        // 그림 · 배경 그림 → 데이터
-        for (const img of wrap.querySelectorAll("img[data-src]")) {
-            const d = await toData(img.getAttribute("data-src"));
-            img.removeAttribute("data-src");
-            if (d) img.setAttribute("src", d); else { img.removeAttribute("src"); img.style.visibility = "hidden"; }
-        }
-        for (const el of [wrap, ...wrap.querySelectorAll("[style*='url(']")]) el.setAttribute("style", await inlineUrls(el.getAttribute("style")));
-        const style = document.createElement("style");
-        style.textContent = (await fontFaces(families)) + "\n" + (await inlineUrls(rules.join("\n")));
-        wrap.prepend(style);
-        // 높이는 실제로 놓아 보고 잰다
-        const meas = document.createElement("div");
-        meas.style.cssText = "position:fixed;left:-99999px;top:0;visibility:hidden";
-        meas.appendChild(wrap);
-        document.body.appendChild(meas);
-        const w = Math.ceil(wrap.getBoundingClientRect().width), h = Math.ceil(wrap.getBoundingClientRect().height);
-        meas.remove();
-        const xml = new XMLSerializer().serializeToString(wrap);
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject x="0" y="0" width="100%" height="100%">${xml}</foreignObject></svg>`;
-        const img = new Image();
-        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-        await img.decode();
-        const scale = h * 2 <= 16000 ? 2 : Math.max(0.5, 16000 / h);       // 선명하게, 너무 길면 줄여서
-        const cv = document.createElement("canvas");
-        cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
-        const ctx = cv.getContext("2d");
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, 0, 0, w, h);
-        return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("toBlob 실패")), "image/png"));
+        return domShot.paint(shot, (w, h) => h * 2 <= 16000 ? 2 : Math.max(0.5, 16000 / h));       // 선명하게, 너무 길면 줄여서
     };
     const copy = async () => {
         const list = picked();
@@ -1935,6 +2051,69 @@ const chatCapture = (() => {
         capBtn()?.remove(); copyBtn()?.remove();
     };
     return { inject, setEnabled };
+})();
+
+// ───────── 시트 촬영: 열린 캐릭터 시트를 처음부터 끝까지 PNG 파일로 저장 (캐릭터 창 제목 옆 단추) ─────────
+// 시트는 같은 출처 iframe 안에 그려진다 → 그 문서의 .charsheet 를 domShot 으로 찍는다. 스크롤에 가려진 곳까지 전부, 보고 있는 탭 그대로
+const sheetShot = (() => {
+    const ICON = {
+        save: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+        load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
+        ok: '<path d="M20 6 9 17l-5-5"/>',
+        bad: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>'
+    };
+    const TIP = { save: "시트 촬영: 시트 전체를 PNG 파일로 저장", load: "찍는 중…", ok: "PNG 파일로 저장했어요", bad: "저장하지 못했어요 — 다시 눌러 주세요", tab: "캐릭터 시트 탭을 연 채로 눌러 주세요" };
+    const paint = (b, k, tip = TIP[k]) => {
+        b.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+        b.dataset.state = k;
+        b.title = tip; b.setAttribute("aria-label", tip);
+    };
+    const blink = (b, k, tip) => { paint(b, k, tip); clearTimeout(b._t); b._t = setTimeout(() => paint(b, "save"), 1800); };
+    // 캔버스 한계(Chrome: 한 변 32767px · 넓이 268M 픽셀) 안에서 2배. 그보다 길면 한계에 맞춰 배율만 낮추고 자르지 않는다
+    const FULL = (w, h) => Math.min(2, 0.999 * Math.min(32767 / w, 32767 / h, Math.sqrt(268435456 / (w * h))));
+    const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
+    const save = async (dlg, b) => {
+        if (b.dataset.state === "load") return;
+        let doc = null;
+        try { doc = dlg.querySelector(".characterdialog iframe")?.contentDocument; } catch (e) { /* 다른 출처 */ }
+        const sheet = doc && [...doc.querySelectorAll(".charsheet")].find(e => e.getClientRects().length);
+        if (!sheet) return blink(b, "bad", TIP.tab);
+        paint(b, "load");
+        try {
+            const win = doc.defaultView, bgOf = e => win.getComputedStyle(e).backgroundColor;
+            const chain = []; for (let e = sheet; e; e = e.parentElement) chain.push(e);
+            const bg = chain.map(bgOf).find(c => c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") || "#fff";
+            const blob = await domShot.paint(domShot.clone([sheet], sheet.parentElement, Math.ceil(sheet.getBoundingClientRect().width), bg), FULL);
+            const name = (dlg.querySelector(".ui-dialog-title")?.textContent || "").trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 80) || "character";
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `${name}_${stamp()}.png`;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+            blink(b, "ok");
+        } catch (e) {
+            console.warn("[시트 촬영] 실패:", e);
+            blink(b, "bad");
+        }
+    };
+    // 캐릭터 창(.characterdialog 안의 시트 iframe)의 제목 옆에 단추 하나
+    const inject = () => {
+        if (!btnVisible.sheetshot) return;
+        document.querySelectorAll(".ui-dialog").forEach(dlg => {
+            const bar = dlg.querySelector(":scope > .ui-dialog-titlebar");
+            if (!bar || bar.querySelector(".r20shot") || !dlg.querySelector(".characterdialog iframe")) return;
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "r20shot";
+            paint(b, "save");
+            b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); save(dlg, b); });
+            const t = bar.querySelector(".ui-dialog-title");
+            t ? t.after(b) : bar.prepend(b);
+        });
+    };
+    const setEnabled = v => { if (v) return inject(); document.querySelectorAll(".r20shot").forEach(b => b.remove()); };
+    return { inject, setEnabled, watch: ".ui-dialog" };
 })();
 
 // @share-swap-start logBackup — 배포판은 share/logBackup.share.js 로 바꾼다 (홈페이지 전용 문법)
@@ -3646,12 +3825,21 @@ addCss(`
         #custom-capture-copy b { font:700 10px/1 sans-serif; }
         #custom-capture-copy .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
         @keyframes r20cap-spin { to { transform:rotate(360deg); } }
+        /* 시트 촬영: 캐릭터 창 제목(float:left) 바로 옆 단추 — 제목 글자 가운데 높이에 맞춘다. 창을 접으면 Roll20 이 제목줄 단추와 함께 숨긴다 */
+        .ui-dialog-titlebar .r20shot { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:0; border-radius:4px; background:none; color:#999; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:none; }
+        .ui-dialog-titlebar .r20shot:hover { background:rgba(24,103,199,0.1); color:#1867c7; }
+        .ui-dialog-titlebar .r20shot:focus-visible { outline:2px solid #1867c7; outline-offset:1px; }
+        .ui-dialog-titlebar .r20shot[data-state="ok"] { color:#2e8b57; }
+        .ui-dialog-titlebar .r20shot[data-state="bad"] { color:#c0392b; }
+        .ui-dialog-titlebar .r20shot[data-state="load"] { cursor:progress; }
+        .ui-dialog-titlebar .r20shot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
 `);
 addFeature("chatCapture", chatCapture);
+addFeature("sheetShot", sheetShot);
 addFeature("mapShot", mapShot);
 addFeature("logBackup", logBackup);
-addBundle({ place: "main", order: 6, label: "대화 캡처 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
-    members: [["capture", "chatCapture"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
+addBundle({ place: "main", order: 6, label: "대화 캡처 · 시트 촬영 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "시트 촬영 단추는 캐릭터 창 제목 옆 · 로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
+    members: [["capture", "chatCapture"], ["sheetshot", "sheetShot"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
 
 // ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
 
