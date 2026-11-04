@@ -1,25 +1,23 @@
-<!-- 채팅 카드: 굴림은 sheet worker 가 startRoll 로 보내고, computed:: 칸(결과 · 달성치 · 특기 · 목표치 · 분야 · 주사위 목록)은 finishRoll 로 채운다.
+<!-- 채팅 카드 (시노비가미 · 인세인 카드 구성을 따름): 굴림은 sheet worker 가 startRoll 로 보내고, computed:: 칸(결과 · 성패 · 달성치 · 특기 · 목표치 · 분야 · 주사위 목록)은 finishRoll 로 채운다.
      computed 칸은 매크로 앞쪽 10칸 안에 있어야 표시되므로 워커가 맨 앞에 넣는다.
-     줄: 지정특기 | 목표치 / 주사위 + 수정치 | 달성치 / 결과 — 한 줄에 두 칸(왼쪽 · 오른쪽 끝)
-     주사위 1 · 6 은 Roll20 이 붙이는 fullfail · fullcrit 로 빨강 · 초록(펌블 · 스페셜은 자동으로 정하지 않는다).
-     결과 띠: computed ok 가 1 이면 성공(초록), 2 면 실패(빨강), 없으면(표 굴림 · Roll20 이 computed 비교를 못 하면) 어두운 띠 -->
+     위: 종류(빨강 · 작게) · 이름(굵게) 가운데 / 판정: 왼쪽 큰 주사위 그림 안에 달성치, 그 아래 주사위 칩(1 빨강 · 6 초록) · 공격력 · 수정치,
+     오른쪽에 지정특기 · 성패 띠(성공 초록 · 실패 빨강 · computed 비교를 못 하면 어두운 띠) · 목표치 / 표 굴림: 주사위 칩 | 결과 / 아래: 효과 · 개요 가운데 -->
 <rolltemplate class="sheet-rolltemplate-bloodmoon">
   <div class="sheet-card">
-    <div class="sheet-h">{{title}}{{#sub}} <small>{{sub}}</small>{{/sub}}</div>
-    <div class="sheet-b">
-      {{#skill}}<div class="sheet-row"><span class="sheet-c"><span class="sheet-k">지정특기</span><b>{{computed::skill}}</b></span>{{#target}}<span class="sheet-c sheet-e"><span class="sheet-k">목표치</span><b>{{computed::target}}</b></span>{{/target}}</div>{{/skill}}
-      {{^skill}}{{#target}}<div class="sheet-row"><span class="sheet-c sheet-e"><span class="sheet-k">목표치</span><b>{{computed::target}}</b></span></div>{{/target}}{{/skill}}
-      {{#field}}<div class="sheet-row"><span class="sheet-c"><span class="sheet-k">분야</span><b>{{computed::field}}</b></span></div>{{/field}}
-      {{#d1}}<div class="sheet-row"><span class="sheet-c"><span class="sheet-k">2D6</span><b class="sheet-d">{{d1}} · {{d2}}</b>{{#atk}}<span class="sheet-m">+{{atk}}</span>{{/atk}}{{#mod}}{{#^rollTotal() mod 0}}<span class="sheet-m">{{#rollGreater() mod 0}}+{{/rollGreater() mod 0}}{{mod}}</span>{{/^rollTotal() mod 0}}{{/mod}}</span>{{#total}}<span class="sheet-c sheet-e"><span class="sheet-k">달성치</span><b class="sheet-big">{{computed::total}}</b></span>{{/total}}</div>{{/d1}}
-      {{#die}}<div class="sheet-row"><span class="sheet-c"><span class="sheet-k">1D6</span><b class="sheet-d">{{die}}</b></span></div>{{/die}}
-      {{#dice}}<div class="sheet-row"><span class="sheet-c"><span class="sheet-k">주사위</span><b>{{computed::dice}}</b>{{#mod}}{{#^rollTotal() mod 0}}<span class="sheet-m">{{#rollGreater() mod 0}}+{{/rollGreater() mod 0}}{{mod}}</span>{{/^rollTotal() mod 0}}{{/mod}}</span></div>{{/dice}}
-      {{#k1}}<div class="sheet-row"><span class="sheet-k">{{k1}}</span><b class="sheet-e">{{v1}}</b></div>{{/k1}}
-      {{#k2}}<div class="sheet-row"><span class="sheet-k">{{k2}}</span><b class="sheet-e">{{v2}}</b></div>{{/k2}}
-      {{#k3}}<div class="sheet-row"><span class="sheet-k">{{k3}}</span><b class="sheet-e">{{v3}}</b></div>{{/k3}}
-      {{#k4}}<div class="sheet-row"><span class="sheet-k">{{k4}}</span><b class="sheet-e">{{v4}}</b></div>{{/k4}}
-      {{#effect}}<div class="sheet-tx">{{effect}}</div>{{/effect}}
-      {{#flavor}}<div class="sheet-fl">{{flavor}}</div>{{/flavor}}
-      {{#res}}{{#rollTotal() computed::ok 1}}<div class="sheet-res sheet-ok">{{computed::res}}</div>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<div class="sheet-res sheet-ng">{{computed::res}}</div>{{/rollTotal() computed::ok 2}}{{#^rollTotal() computed::ok 1}}{{#^rollTotal() computed::ok 2}}<div class="sheet-res">{{computed::res}}</div>{{/^rollTotal() computed::ok 2}}{{/^rollTotal() computed::ok 1}}{{/res}}
-    </div>
+    <div class="sheet-hd">{{#sub}}<div class="sheet-sub">{{sub}}</div>{{/sub}}<div class="sheet-ttl">{{title}}</div></div>
+    {{#total}}<div class="sheet-main">
+      <div class="sheet-dk"><div class="sheet-ico">{{computed::total}}</div><div class="sheet-dd">{{d1}}{{d2}}{{#atk}}<span class="sheet-md">+{{atk}}</span>{{/atk}}{{#mod}}{{#^rollTotal() mod 0}}<span class="sheet-md">{{#rollGreater() mod 0}}+{{/rollGreater() mod 0}}{{mod}}</span>{{/^rollTotal() mod 0}}{{/mod}}</div></div>
+      <div class="sheet-rt">
+        {{#skill}}<div class="sheet-sk">{{computed::skill}}</div>{{/skill}}
+        {{#rollTotal() computed::ok 1}}<div class="sheet-bar sheet-ok">{{computed::res}}</div>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<div class="sheet-bar sheet-ng">{{computed::res}}</div>{{/rollTotal() computed::ok 2}}{{#^rollTotal() computed::ok 1}}{{#^rollTotal() computed::ok 2}}<div class="sheet-bar">{{computed::res}}</div>{{/^rollTotal() computed::ok 2}}{{/^rollTotal() computed::ok 1}}
+        <div class="sheet-tn">목표치 <b>{{computed::target}}</b></div>
+      </div>
+    </div>{{/total}}
+    {{^total}}{{#d1}}<div class="sheet-main sheet-tbl"><div class="sheet-dd">{{d1}}{{d2}}</div><div class="sheet-rt">{{#field}}<div class="sheet-tn">{{computed::field}}</div>{{/field}}<div class="sheet-out">{{computed::res}}</div></div></div>{{/d1}}{{/total}}
+    {{#die}}<div class="sheet-main sheet-tbl"><div class="sheet-dd">{{die}}</div><div class="sheet-rt"><div class="sheet-out">{{computed::res}}</div></div></div>{{/die}}
+    {{#dice}}<div class="sheet-main sheet-tbl"><div class="sheet-dl">{{computed::dice}}{{#mod}}{{#^rollTotal() mod 0}}<span class="sheet-md">{{#rollGreater() mod 0}}+{{/rollGreater() mod 0}}{{mod}}</span>{{/^rollTotal() mod 0}}{{/mod}}</div><div class="sheet-rt"><div class="sheet-out">{{computed::res}}</div></div></div>{{/dice}}
+    {{#k1}}<div class="sheet-kv"><span>{{k1}}</span> {{v1}}{{#k2}} <i></i> <span>{{k2}}</span> {{v2}}{{/k2}}{{#k3}} <i></i> <span>{{k3}}</span> {{v3}}{{/k3}}{{#k4}} <i></i> <span>{{k4}}</span> {{v4}}{{/k4}}</div>{{/k1}}
+    {{#effect}}<div class="sheet-tx">{{effect}}</div>{{/effect}}
+    {{#flavor}}<div class="sheet-fl">{{flavor}}</div>{{/flavor}}
   </div>
 </rolltemplate>

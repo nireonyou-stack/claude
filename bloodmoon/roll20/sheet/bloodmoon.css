@@ -180,27 +180,35 @@
   .bm .fa,.bm .fab-h{grid-template-columns:22px 1fr 62px 52px}.bm .fa .ag,.bm .fa .as,.bm .fab-h .ag,.bm .fab-h .as{display:none}
 }
 
-/* Chat card (roll template) */
-.sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#fff;--c-ink:#222226;--c-sub:#8b8b93;--c-line:#dddde2;background:var(--c-bg);color:var(--c-ink);border:1px solid #26262b;font:13px/1.45 'Noto Sans KR','Malgun Gothic',Arial,sans-serif;margin-left:-7px}
-.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-card{--c-bg:#1d1d21;--c-ink:#ececf0;--c-sub:#9a9aa3;--c-line:#3a3a42;border-color:#55555e}
-.sheet-rolltemplate-bloodmoon .sheet-h{background:#26262b;color:#fff;font-weight:700;font-size:14px;padding:5px 9px;border-left:4px solid #e0394b}
-.sheet-rolltemplate-bloodmoon .sheet-h small{font-weight:400;opacity:.75;font-size:11px}
-.sheet-rolltemplate-bloodmoon .sheet-b{padding:6px 8px}
-.sheet-rolltemplate-bloodmoon .sheet-row{display:flex;align-items:baseline;gap:10px;border-bottom:1px dashed var(--c-line);padding:4px 0}
-.sheet-rolltemplate-bloodmoon .sheet-row b{font-size:15px}
-.sheet-rolltemplate-bloodmoon .sheet-c{display:flex;align-items:baseline;gap:6px;min-width:0}
-.sheet-rolltemplate-bloodmoon .sheet-e{margin-left:auto;text-align:right}
-.sheet-rolltemplate-bloodmoon .sheet-k{color:var(--c-sub);font-size:12px;white-space:nowrap}
-.sheet-rolltemplate-bloodmoon .sheet-m{color:var(--c-sub);font-weight:700}
-.sheet-rolltemplate-bloodmoon .sheet-row b.sheet-big{font-size:22px;line-height:1}
-.sheet-rolltemplate-bloodmoon .sheet-tx{padding-top:4px}
-.sheet-rolltemplate-bloodmoon .sheet-fl{padding-top:3px;font-style:italic;opacity:.75}
-.sheet-rolltemplate-bloodmoon .sheet-res{margin-top:6px;text-align:center;font-size:17px;font-weight:900;letter-spacing:1px;color:#fff;background:#26262b;border-radius:6px;padding:5px 6px}
-.sheet-rolltemplate-bloodmoon .sheet-res.sheet-ok{background:#1f9d55}
-.sheet-rolltemplate-bloodmoon .sheet-res.sheet-ng{background:#e0394b}
-.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-res{background:#3a3a42}
-.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-res.sheet-ok{background:#1f9d55}
-.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-res.sheet-ng{background:#e0394b}
-.sheet-rolltemplate-bloodmoon .inlinerollresult,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullcrit,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullfail,.sheet-rolltemplate-bloodmoon .inlinerollresult.importantroll{background:none;border:0;padding:0;color:inherit;font-weight:700}
-.sheet-rolltemplate-bloodmoon .sheet-d .inlinerollresult.fullfail{color:#e0394b}
-.sheet-rolltemplate-bloodmoon .sheet-d .inlinerollresult.fullcrit{color:#1f9d55}
+/* Chat card (roll template): layout after the Shinobigami / Insane cards. Corner brackets, centered title, dice block | skill + result bar */
+.sheet-rolltemplate-bloodmoon .sheet-card{--c-ink:#222226;--c-sub:#8b8b93;--c-line:#e3e3e8;--c-chip:#fff;color:var(--c-ink);background:linear-gradient(#26262b,#26262b) left top/14px 3px no-repeat,linear-gradient(#26262b,#26262b) left top/3px 14px no-repeat,linear-gradient(#26262b,#26262b) right top/14px 3px no-repeat,linear-gradient(#26262b,#26262b) right top/3px 14px no-repeat,linear-gradient(#26262b,#26262b) left bottom/14px 3px no-repeat,linear-gradient(#26262b,#26262b) left bottom/3px 14px no-repeat,linear-gradient(#26262b,#26262b) right bottom/14px 3px no-repeat,linear-gradient(#26262b,#26262b) right bottom/3px 14px no-repeat,#fff;border:1px solid #e3e3e8;padding:12px 14px 12px;margin-left:-7px;font:13px/1.5 'Noto Sans KR','Malgun Gothic',Arial,sans-serif}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-card{--c-ink:#ececf0;--c-sub:#9a9aa3;--c-line:#3a3a42;--c-chip:#26262b;background:linear-gradient(#ececf0,#ececf0) left top/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) left top/3px 14px no-repeat,linear-gradient(#ececf0,#ececf0) right top/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) right top/3px 14px no-repeat,linear-gradient(#ececf0,#ececf0) left bottom/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) left bottom/3px 14px no-repeat,linear-gradient(#ececf0,#ececf0) right bottom/14px 3px no-repeat,linear-gradient(#ececf0,#ececf0) right bottom/3px 14px no-repeat,#1d1d21;border-color:#3a3a42}
+.sheet-rolltemplate-bloodmoon .inlinerollresult,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullcrit,.sheet-rolltemplate-bloodmoon .inlinerollresult.fullfail,.sheet-rolltemplate-bloodmoon .inlinerollresult.importantroll{background:none;border:0;padding:0;color:inherit;font-weight:inherit}
+.sheet-rolltemplate-bloodmoon .sheet-hd{text-align:center}
+.sheet-rolltemplate-bloodmoon .sheet-sub{color:#e0394b;font-size:12px;font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-ttl{font-size:16px;font-weight:900;line-height:1.3}
+.sheet-rolltemplate-bloodmoon .sheet-main{display:flex;align-items:center;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--c-line)}
+.sheet-rolltemplate-bloodmoon .sheet-dk{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none}
+.sheet-rolltemplate-bloodmoon .sheet-ico{width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%2326262b' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M30 3l24 13.5v27L30 57 6 43.5v-27z'/%3E%3Cpath d='M6 16.5L30 30l24-13.5M30 30v27' opacity='.14'/%3E%3C/svg%3E") center/contain no-repeat;font-size:24px;font-weight:900;line-height:1}
+.sheet-rolltemplate-darkmode .sheet-rolltemplate-bloodmoon .sheet-ico{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' fill='none' stroke='%23ececf0' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M30 3l24 13.5v27L30 57 6 43.5v-27z'/%3E%3Cpath d='M6 16.5L30 30l24-13.5M30 30v27' opacity='.14'/%3E%3C/svg%3E")}
+.sheet-rolltemplate-bloodmoon .sheet-dd{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
+.sheet-rolltemplate-bloodmoon .sheet-dd .inlinerollresult{display:inline-block;min-width:20px;padding:0 4px;border:1px solid var(--c-line);border-radius:4px;background:var(--c-chip);font-size:13px;text-align:center}
+.sheet-rolltemplate-bloodmoon .sheet-dd .inlinerollresult.fullfail{color:#e0394b;border-color:#e0394b;background:rgba(224,57,75,.1)}
+.sheet-rolltemplate-bloodmoon .sheet-dd .inlinerollresult.fullcrit{color:#1f9d55;border-color:#1f9d55;background:rgba(31,157,85,.1)}
+.sheet-rolltemplate-bloodmoon .sheet-md{color:var(--c-sub);font-size:12px;font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-dd .sheet-md .inlinerollresult{min-width:0;padding:0;border:0;background:none;font-size:12px;color:inherit}
+.sheet-rolltemplate-bloodmoon .sheet-rt{flex:1;min-width:0;text-align:right}
+.sheet-rolltemplate-bloodmoon .sheet-sk{font-size:16px;font-weight:900;line-height:1.3}
+.sheet-rolltemplate-bloodmoon .sheet-bar{margin-top:5px;padding:2px 10px;border-radius:2px;background:linear-gradient(90deg,rgba(38,38,43,0),#26262b 70%);color:#fff;font-size:16px;font-weight:900;letter-spacing:1px}
+.sheet-rolltemplate-bloodmoon .sheet-bar.sheet-ok{background:linear-gradient(90deg,rgba(31,157,85,0),#1f9d55 70%)}
+.sheet-rolltemplate-bloodmoon .sheet-bar.sheet-ng{background:linear-gradient(90deg,rgba(224,57,75,0),#e0394b 70%)}
+.sheet-rolltemplate-bloodmoon .sheet-tn{margin-top:3px;color:var(--c-sub);font-size:12px}
+.sheet-rolltemplate-bloodmoon .sheet-tn b{color:var(--c-ink);font-size:14px}
+.sheet-rolltemplate-bloodmoon .sheet-tbl .sheet-dd .inlinerollresult{min-width:26px;font-size:16px;padding:1px 5px}
+.sheet-rolltemplate-bloodmoon .sheet-dl{font-size:15px;font-weight:700}
+.sheet-rolltemplate-bloodmoon .sheet-out{font-size:18px;font-weight:900}
+.sheet-rolltemplate-bloodmoon .sheet-kv{margin-top:8px;text-align:center;font-size:12px}
+.sheet-rolltemplate-bloodmoon .sheet-kv span{color:var(--c-sub)}
+.sheet-rolltemplate-bloodmoon .sheet-kv i{display:inline-block;width:1px;height:10px;margin:0 6px;background:var(--c-line)}
+.sheet-rolltemplate-bloodmoon .sheet-tx{margin-top:10px;padding-top:10px;border-top:1px solid var(--c-line);text-align:center}
+.sheet-rolltemplate-bloodmoon .sheet-fl{margin-top:4px;text-align:center;color:var(--c-sub);font-size:12px}
