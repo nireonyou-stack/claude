@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.45.1
+// @version      1.46.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.45.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.46.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7075,14 +7075,29 @@ const bulkEditor = (() => {
             n.isNew || !FEAT.bgmPreview ? null : pvBlock(n));
     };
 
+    // 플레이리스트 곡을 이름순으로: 숫자 → 알파벳 → 가나다 (대소문자 무시, 숫자는 크기순). 자리가 바뀐 곡만 옮김 표시 — 저장해야 반영
+    const byName = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+    const sortKids = (t, n) => {
+        const sorted = [...n.kids].sort((a, b) => byName.compare(a.cur.name || "", b.cur.name || ""));
+        if (sorted.every((k, i) => k === n.kids[i])) return false;
+        sorted.forEach((k, i) => { if (n.kids[i] !== k) k.moved = true; });
+        n.kids.splice(0, n.kids.length, ...sorted);
+        t.structDirty = true;
+        return true;
+    };
     const groupPane = n => {
         const t = cur();
         return el("div", { class: "r20be-pane-in" }, paneHead(n),
             field(`${KIND_NAME[n.kind]} 이름`, nameInput(n)),
             el("p", { class: "r20be-note" }, `안에 든 항목 ${n.kids.length}개 · 지우면 안의 항목은 한 단계 위로 옮겨집니다`),
-            el("div", {}, el("button", { type: "button", class: "r20be-sec", disabled: !n.kids.length,
+            el("div", { class: "r20be-btns" }, el("button", { type: "button", class: "r20be-sec", disabled: !n.kids.length,
                 onclick: () => { t.checked = new Set(n.kids.map(k => k.id)); t.collapsed.delete(n.id); renderTree(); renderPane(); } },
-                "안의 항목 모두 선택 → 한꺼번에 바꾸기")));
+                "안의 항목 모두 선택 → 한꺼번에 바꾸기"),
+                t.which === "bgm" ? el("button", { type: "button", class: "r20be-sec", disabled: n.kids.length < 2, title: "숫자 → 알파벳 → 가나다 순 (저장해야 반영)",
+                    onclick: e => {
+                        if (!sortKids(t, n)) { const b = e.currentTarget; b.textContent = "이미 이름순이에요"; setTimeout(() => { b.textContent = "곡 이름순 정렬"; }, 1500); return; }
+                        t.collapsed.delete(n.id); renderTree(); renderPane(); updateBar();
+                    } }, "곡 이름순 정렬") : null));
     };
 
     const bulkPane = list => {
@@ -8595,6 +8610,7 @@ addCss(`
         #r20be .r20be-sp { width:22px; flex-shrink:0; }
         #r20be .r20be-cb { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:#fff; cursor:pointer; flex-shrink:0; }
         #r20be .r20be-cb svg { visibility:hidden; }
+        #r20be .r20be-btns { display:flex; flex-wrap:wrap; gap:6px; }
         #r20be .r20be-cb.on, #r20be .r20be-cb2.on { background:var(--aio-accent); border-color:var(--aio-accent); }
         #r20be .r20be-cb.on svg { visibility:visible; }
         #r20be .r20be-nm { flex:1; min-width:0; display:flex; align-items:center; gap:5px; height:26px; padding:0 4px; border:0; background:transparent; color:var(--aio-ink); font-size:12px; text-align:left; cursor:pointer; }
