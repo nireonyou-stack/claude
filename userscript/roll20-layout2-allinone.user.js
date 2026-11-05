@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.46.0
+// @version      1.47.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.46.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.47.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7075,10 +7075,16 @@ const bulkEditor = (() => {
             n.isNew || !FEAT.bgmPreview ? null : pvBlock(n));
     };
 
-    // 플레이리스트 곡을 이름순으로: 숫자 → 알파벳 → 가나다 (대소문자 무시, 숫자는 크기순). 자리가 바뀐 곡만 옮김 표시 — 저장해야 반영
+    // 플레이리스트 곡 정렬: 숫자 → 알파벳 → 가나다 (대소문자 무시, 숫자는 크기순). 자리가 바뀐 곡만 옮김 표시 — 저장해야 반영
+    //   태그순: 첫 태그끼리 묶고 그 안은 이름순, 태그 없는 곡은 맨 뒤
     const byName = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
-    const sortKids = (t, n) => {
-        const sorted = [...n.kids].sort((a, b) => byName.compare(a.cur.name || "", b.cur.name || ""));
+    const nameCmp = (a, b) => byName.compare(a.cur.name || "", b.cur.name || "");
+    const tagCmp = (a, b) => {
+        const x = tagList(a.cur.tags)[0], y = tagList(b.cur.tags)[0];
+        return x && y ? byName.compare(x, y) || nameCmp(a, b) : x ? -1 : y ? 1 : nameCmp(a, b);
+    };
+    const sortKids = (t, n, cmp) => {
+        const sorted = [...n.kids].sort(cmp);
         if (sorted.every((k, i) => k === n.kids[i])) return false;
         sorted.forEach((k, i) => { if (n.kids[i] !== k) k.moved = true; });
         n.kids.splice(0, n.kids.length, ...sorted);
@@ -7093,11 +7099,13 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-btns" }, el("button", { type: "button", class: "r20be-sec", disabled: !n.kids.length,
                 onclick: () => { t.checked = new Set(n.kids.map(k => k.id)); t.collapsed.delete(n.id); renderTree(); renderPane(); } },
                 "안의 항목 모두 선택 → 한꺼번에 바꾸기"),
-                t.which === "bgm" ? el("button", { type: "button", class: "r20be-sec", disabled: n.kids.length < 2, title: "숫자 → 알파벳 → 가나다 순 (저장해야 반영)",
-                    onclick: e => {
-                        if (!sortKids(t, n)) { const b = e.currentTarget; b.textContent = "이미 이름순이에요"; setTimeout(() => { b.textContent = "곡 이름순 정렬"; }, 1500); return; }
-                        t.collapsed.delete(n.id); renderTree(); renderPane(); updateBar();
-                    } }, "곡 이름순 정렬") : null));
+                t.which === "bgm" ? [["곡 이름순 정렬", nameCmp, "숫자 → 알파벳 → 가나다 순 (저장해야 반영)", "이미 이름순이에요"],
+                    ["곡 태그순 정렬", tagCmp, "첫 태그끼리 묶고 그 안은 이름순, 태그 없는 곡은 맨 뒤 (저장해야 반영)", "이미 태그순이에요"]].map(([label, cmp, tip, same]) =>
+                    el("button", { type: "button", class: "r20be-sec", disabled: n.kids.length < 2, title: tip,
+                        onclick: e => {
+                            if (!sortKids(t, n, cmp)) { const b = e.currentTarget; b.textContent = same; setTimeout(() => { b.textContent = label; }, 1500); return; }
+                            t.collapsed.delete(n.id); renderTree(); renderPane(); updateBar();
+                        } }, label)) : null));
     };
 
     const bulkPane = list => {
@@ -7105,14 +7113,16 @@ const bulkEditor = (() => {
         const prev = el("div", { class: "r20be-prev" });
         // 공개 범위(저널에 표시 · 매크로 보이는 사람): "_keep" 이면 바꾸지 않음
         const shareOn = () => (t.which === "journal" || t.which === "macros") && st.share != null && st.share !== "_keep";
+        // 이름: 찾아 바꾸기 → 앞에 붙이기 (이미 그 말로 시작하면 건너뜀)
+        const rename = s => { if (st.find) s = s.split(st.find).join(st.rep); return st.pre && !s.startsWith(st.pre) ? st.pre + s : s; };
         const apply = el("button", { type: "button", class: "r20be-pri", onclick: () => {
-            if (st.find) list.forEach(n => { const v = n.cur.name.split(st.find).join(st.rep); if (v !== n.cur.name) setField(n, "name", v); });
+            if (st.find || st.pre) list.forEach(n => { const v = rename(n.cur.name); if (v !== n.cur.name) setField(n, "name", v); });
             if (shareOn()) list.forEach(n => { if (!n.kids && n.cur.share !== st.share) setField(n, "share", st.share); });
             if (st.move) {
                 const p = st.move === "_root" ? null : find(t, st.move);
                 list.forEach(n => { if (!(t.which === "bgm" && n.kids)) moveNode(t, n, p, null); });
             }
-            t.bulk = { find: "", rep: "", move: "", share: "_keep" };
+            t.bulk = { find: "", rep: "", pre: "", move: "", share: "_keep" };
             renderTree(); renderPane();
             setStatus(`${list.length}개에 적용했습니다 (저장해야 Roll20에 반영)`, "ok");
         } }, `${list.length}개에 적용`);
@@ -7120,7 +7130,7 @@ const bulkEditor = (() => {
             prev.textContent = "";
             prev.append(el("div", {}, el("span", {}, "지금"), el("span", {}, "바뀐 뒤 (미리보기)")));
             list.slice(0, 50).forEach(n => {
-                const after = st.find ? n.cur.name.split(st.find).join(st.rep) : n.cur.name;
+                const after = rename(n.cur.name);
                 prev.append(el("div", {}, el("span", {}, n.cur.name),
                     el("span", { class: after !== n.cur.name ? "chg" : "same" }, after !== n.cur.name ? after : "(변경 없음)")));
             });
@@ -7131,7 +7141,7 @@ const bulkEditor = (() => {
                 prev.append(el("div", {}, el("span", { class: "same" }, t.which === "journal" ? "저널에 표시" : "보이는 사람"),
                     el("span", { class: changing ? "chg" : "same" }, changing ? `${changing}개 → ${t.which === "macros" && !st.share ? "나만" : label}` : "(변경 없음)")));
             }
-            apply.disabled = !st.find && !st.move && !shareOn();
+            apply.disabled = !st.find && !st.pre && !st.move && !shareOn();
         };
         const setTok = on => {
             list.forEach(n => { if (n.cur.token !== on) setField(n, "token", on); });
@@ -7144,6 +7154,7 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-grid" },
                 field("찾을 말", el("input", { class: "r20be-in", value: st.find, oninput: e => { st.find = e.target.value; draw(); } })),
                 field("바꿀 말", el("input", { class: "r20be-in", value: st.rep, oninput: e => { st.rep = e.target.value; draw(); } }))),
+            field("앞에 붙일 말 (이미 그 말로 시작하면 건너뜀)", el("input", { class: "r20be-in", value: st.pre || "", placeholder: "예: [전투] ", oninput: e => { st.pre = e.target.value; draw(); } })),
             t.which === "tables" || t.which === "decks" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "r20be-sec", onclick: () => dupMany(list, false) }, "선택 항목 복제"),
                 el("button", { type: "button", class: "r20be-sec", title: "목록 순서대로 복제본이 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
