@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.50.0
+// @version      1.51.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.50.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.51.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6646,7 +6646,13 @@ const bulkEditor = (() => {
     const hasNote = () => typeof window.jQuery?.fn?.summernote === "function";
     // 편집 방식 rich(서식) · text(글자) · html — 마지막에 고른 방식으로 연다. rich · html 은 n.cur 에 HTML 을 둔다
     const docMode = () => { const m = localStorage.getItem("r20be_doc_mode") || "rich"; return m === "rich" && !hasNote() ? "text" : m; };
-    const initMode = (n, k) => { n.mode[k] = docMode(); n.htmlMode[k] = n.mode[k] !== "text"; };
+    // 표가 있는 내용은 '파트'(표 칸의 글자만 고치기)로 연다
+    const TABLE_RE = /<table[\s>]/i;
+    const initMode = (n, k) => { n.mode[k] = TABLE_RE.test(n.raw[k] || "") ? "part" : docMode(); n.htmlMode[k] = n.mode[k] !== "text"; };
+    // ㊙ 비밀 표시: 이름 뒤 ' ㊙️' (공개 · 비밀 짝이 이름순으로 붙어 있게). 손으로 넣던 (㊙️비밀) · ㊙ · [비밀] 도 알아보고 같은 모양으로
+    const SECRET_RE = /\s*(?:\(\s*㊙\uFE0F?\s*비밀\s*\)|\[\s*비밀\s*\]|㊙\uFE0F?)\s*/g;
+    const isSecret = s => new RegExp(SECRET_RE.source).test(s || "");
+    const secretName = (s, on) => String(s || "").replace(SECRET_RE, " ").replace(/\s{2,}/g, " ").trim() + (on ? " ㊙️" : "");
     const ATELIER = "https://atelier.zyuna.link/?type=handout";
     const NOTE_TOOLBAR = [["style", ["style"]], ["font", ["bold", "italic", "underline", "strikethrough", "clear"]], ["fontname", ["fontname", "fontsize"]],
         ["color", ["color"]], ["para", ["ul", "ol", "paragraph"]], ["insert", ["table", "picture", "link", "hr"]], ["history", ["undo", "redo"]]];
@@ -7070,7 +7076,7 @@ const bulkEditor = (() => {
             setField(n, k, v);
         }
         n.mode[k] = m;
-        localStorage.setItem("r20be_doc_mode", m);
+        if (m !== "part") localStorage.setItem("r20be_doc_mode", m);     // 파트는 표가 있을 때만 저절로
         return true;
     };
     // 지금 떠 있는 서식 편집기. 오른쪽 칸을 다시 그리기 전에 내용을 받아 두고 치운다
@@ -7107,6 +7113,59 @@ const bulkEditor = (() => {
             b.title = b.dataset.originalTitle;
         });
     };
+    // ── 파트 편집: 맨 안쪽 표 칸(td · th)마다 글자만 고친다. 표 모양 · 그림 · 칸의 서식은 그대로 ──
+    // 칸에만 contenteditable 을 켜고, 고칠 때마다 표시용 속성을 뺀 HTML 로 저장값을 바꾼다
+    const PART_NAME = { title: "제목", subtitle: "부제", body: "본문", header: "머리", footer: "꼬리" };
+    const partPane = (n, k) => {
+        const stage = el("div", { class: "r20be-stage" });
+        stage.innerHTML = n.cur[k] ?? "";
+        const cells = [...stage.querySelectorAll("td, th")].filter(c => !c.querySelector("td, th") && c.textContent.trim());
+        if (!cells.length) return el("p", { class: "r20be-empty" }, "글자가 든 표 칸이 없어요 — 위의 [서식] 으로 편집하세요");
+        const names = cells.map(c => PART_NAME[c.closest("[data-handout-part]")?.getAttribute("data-handout-part")] || "");
+        const seen = {};
+        // 목록 미리보기: 줄바꿈은 띄어쓰기로
+        const textOf = c => { const x = c.cloneNode(true); x.querySelectorAll("br").forEach(b => b.replaceWith(" ")); return x.textContent.replace(/\s+/g, " ").trim(); };
+        const items = cells.map((c, i) => {
+            const base = names[i], dup = base && names.filter(x => x === base).length > 1;
+            const lb = !base ? `칸 ${i + 1}` : dup ? `${base} ${(seen[base] = (seen[base] || 0) + 1)}` : base;
+            c.setAttribute("contenteditable", "true");
+            c.setAttribute("data-r20be-part", String(i));
+            c.setAttribute("data-r20be-lb", lb);
+            const prev = el("span", {}, textOf(c));
+            const row = el("button", { type: "button", role: "listitem", onclick: () => { c.focus(); c.scrollIntoView({ block: "nearest" }); } }, el("b", {}, lb), prev);
+            return { c, prev, row };
+        });
+        const serialize = () => {
+            const copy = stage.cloneNode(true);
+            copy.querySelectorAll("[data-r20be-part]").forEach(x => ["contenteditable", "data-r20be-part", "data-r20be-lb"].forEach(a => x.removeAttribute(a)));
+            return copy.innerHTML;
+        };
+        const partOf = e => e.target.closest?.("[data-r20be-part]") || e.target.parentElement?.closest("[data-r20be-part]");
+        stage.addEventListener("input", e => {
+            setField(n, k, serialize()); refreshRow(n);
+            const it = items[partOf(e)?.getAttribute("data-r20be-part")];
+            if (it) it.prev.textContent = textOf(it.c);
+        });
+        // 붙여넣기는 글자만 (줄은 줄바꿈으로), Enter 도 줄바꿈 — 칸 안에 새 단락 · 표가 생기지 않게
+        stage.addEventListener("paste", e => {
+            if (!partOf(e)) return;
+            e.preventDefault();
+            (e.clipboardData?.getData("text/plain") || "").split(/\r?\n/).forEach((line, i) => {
+                if (i) document.execCommand("insertLineBreak");
+                if (line) document.execCommand("insertText", false, line);
+            });
+        });
+        stage.addEventListener("keydown", e => { if (e.key === "Enter" && partOf(e)) { e.preventDefault(); document.execCommand("insertLineBreak"); } });
+        stage.addEventListener("drop", e => e.preventDefault());
+        stage.addEventListener("focusin", e => { const p = partOf(e); items.forEach(it => it.row.classList.toggle("on", it.c === p)); });
+        // 넓으면 오른쪽에 파트 목록, 좁으면 위에 작은 단추줄로 (칸 폭 기준 — 컨테이너 쿼리)
+        return el("div", { class: "r20be-part" }, el("div", { class: "r20be-pin" },
+            el("div", { class: "r20be-pside" },
+                el("div", { class: "r20be-phd" }, "이 내용의 파트 · Tab: 다음 칸"),
+                el("div", { class: "r20be-plist", role: "list" }, items.map(it => it.row)),
+                el("p", { class: "r20be-note" }, "점선 칸의 글자만 바뀌고 표 · 그림 · 서식은 그대로 · 붙여넣기는 글자만 · Enter: 줄바꿈")),
+            stage));
+    };
     // ◀ 이전 · 다음 ▶ : 목록에 보이는 순서대로 핸드아웃 · 캐릭터만 (Alt+↑/↓)
     const stepDoc = d => {
         const t = cur(), byId = new Map(allNodes(t).map(x => [x.id, x]));
@@ -7141,8 +7200,9 @@ const bulkEditor = (() => {
     const docPane = n => {
         const t = cur(), k = t.ctab, ready = n.loaded && !n.dupOf && !n.loadError;
         const mode = ready ? n.mode[k] || (n.htmlMode[k] ? "html" : "text") : null;
-        const modes = [["rich", "서식"], ["text", "글자"], ["html", "HTML"]].filter(([m]) => m !== "rich" || hasNote());
-        const ed = el("div", { class: "r20be-ed" + (mode === "rich" ? " rich" : "") },
+        const hasTable = ready && TABLE_RE.test((n.htmlMode[k] ? n.cur[k] : n.raw[k]) || "");
+        const modes = [["part", "파트"], ["rich", "서식"], ["text", "글자"], ["html", "HTML"]].filter(([m]) => m === "part" ? hasTable : m !== "rich" || hasNote());
+        const ed = el("div", { class: "r20be-ed" + (mode === "rich" ? " rich" : mode === "part" ? " part" : "") },
             el("div", { class: "r20be-ctabs", role: "tablist" },
                 [["notes", n.kind === "char" ? "소개" : "내용"], ["gm", "GM 노트"]].map(([key, label]) =>
                     el("button", { type: "button", role: "tab", "aria-selected": String(k === key), class: "r20be-ctab" + (k === key ? " on" : ""),
@@ -7154,6 +7214,7 @@ const bulkEditor = (() => {
         else if (n.loadError) ed.append(el("p", { class: "r20be-empty" }, "내용을 불러오지 못했습니다 ",
             el("button", { type: "button", class: "r20be-sec", onclick: () => { n.loadError = false; renderPane(); } }, "다시 시도")));
         else if (!n.loaded) { ed.append(el("p", { class: "r20be-empty" }, "불러오는 중…")); if (!n.loading) loadContent(n); }
+        else if (mode === "part") ed.append(partPane(n, k));
         else if (mode === "rich") {
             const host = el("div", { class: "r20be-rte" });
             host.innerHTML = n.cur[k] ?? "";        // Summernote 가 이 안의 HTML 로 시작한다 (renderPane 이 붙인 뒤 noteOn)
@@ -7167,11 +7228,14 @@ const bulkEditor = (() => {
                 oninput: e => { setField(n, k, e.target.value); autosize(e.target); refreshRow(n); } }));
         }
         // 머리줄: ◀ 이전 · 다음 ▶ · 크게 · 아틀리에
-        const head = paneHead(n), wide = ui.root.classList.contains("r20be-wide");
+        const head = paneHead(n), wide = ui.root.classList.contains("r20be-wide"), secret = isSecret(n.cur.name);
         head.querySelector(".r20be-flex").after(
             el("span", { class: "r20be-docnav" },
                 el("button", { type: "button", class: "r20be-sec", title: "목록에서 이전 항목 (Alt+↑)", onclick: () => stepDoc(-1) }, "◀ 이전"),
                 el("button", { type: "button", class: "r20be-sec", title: "목록에서 다음 항목 (Alt+↓)", onclick: () => stepDoc(1) }, "다음 ▶")),
+            n.deleted ? null : el("button", { type: "button", class: "r20be-sec r20be-secret" + (secret ? " on" : ""), "aria-pressed": String(secret),
+                title: secret ? "비밀 표시 빼기" : "이름 뒤에 ㊙️ 붙이기 (공개 · 비밀 짝이 이름순으로 붙어 있게)",
+                onclick: () => { setField(n, "name", secretName(n.cur.name, !secret)); refreshRow(n); renderPane(); } }, "㊙ 비밀"),
             el("button", { type: "button", class: "r20be-sec", "aria-pressed": String(wide), title: wide ? "목록 다시 보이기" : "목록을 숨기고 편집 칸을 창 가득",
                 onclick: () => { noteFlush(); ui.root.classList.toggle("r20be-wide"); renderPane(); } }, wide ? "⤡ 작게" : "⤢ 크게"),
             el("a", { class: "r20be-sec r20be-link", href: ATELIER, target: "_blank", rel: "noopener noreferrer",
@@ -7413,6 +7477,18 @@ const bulkEditor = (() => {
                 el("button", { type: "button", class: "r20be-sec", title: "목록 순서대로 복제본이 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
                     onclick: () => dupMany(list, true) }, "복제 후 원본 삭제"),
                 t.which === "tables" ? el("button", { type: "button", class: "r20be-sec", onclick: () => openRollMacro(list) }, "굴림 매크로 만들기") : null) : null,
+            t.which === "journal" ? (() => {
+                const docs = list.filter(n => !n.kids && !n.deleted);
+                const op = on => {
+                    let c = 0;
+                    docs.forEach(n => { const v = secretName(n.cur.name, on); if (v !== n.cur.name) { setField(n, "name", v); c++; } });
+                    renderTree(); renderPane();
+                    setStatus(`${c}개에 비밀 표시를 ${on ? "넣었" : "뺐"}습니다 (저장해야 Roll20에 반영)`, "ok");
+                };
+                return field("㊙ 비밀 표시 (이름 뒤 ㊙️ · 폴더는 빼고)", el("div", { class: "r20be-acts" },
+                    el("button", { type: "button", class: "r20be-sec r20be-secret", disabled: !docs.length, onclick: () => op(true) }, "고른 것에 넣기"),
+                    el("button", { type: "button", class: "r20be-sec", disabled: !docs.length, onclick: () => op(false) }, "고른 것에서 빼기")));
+            })() : null,
             t.which === "journal" || t.which === "macros" ? field(t.which === "journal" ? "저널에 표시 (폴더는 빼고)" : "보이는 사람",
                 el("select", { class: "r20be-in", onchange: e => { st.share = e.target.value; draw(); } },
                     el("option", { value: "_keep", selected: !shareOn() }, "바꾸지 않음"),
@@ -8962,6 +9038,39 @@ addCss(`
         #r20be .r20be-mode button:first-child { border-left:0; }
         #r20be .r20be-mode button[aria-checked="true"] { background:var(--aio-accent); color:#fff; }
         #r20be .r20be-ed.rich { overflow:visible; }
+        #r20be .r20be-sec.r20be-secret { border-color:#c62828; color:#c62828; }
+        #r20be .r20be-sec.r20be-secret.on { background:#c62828; color:#fff; }
+        /* 파트 편집 */
+        #r20be .r20be-part { container-type:inline-size; padding:10px 12px 12px; }
+        #r20be .r20be-pin { display:flex; flex-direction:column; gap:10px; }
+        #r20be .r20be-stage { min-width:0; overflow-x:auto; padding:12px 4px; }
+        #r20be .r20be-stage [data-r20be-part] { position:relative; outline:1.5px dashed var(--aio-accent-soft); outline-offset:-2px; cursor:text; }
+        #r20be .r20be-stage [data-r20be-part]:hover, #r20be .r20be-stage [data-r20be-part]:focus { outline-color:var(--aio-accent); box-shadow:inset 0 0 0 999px rgba(225,0,133,0.05); }
+        #r20be .r20be-stage [data-r20be-part]::before { content:attr(data-r20be-lb); position:absolute; left:2px; top:2px; z-index:1; padding:0 5px; border-radius:3px; background:var(--aio-accent); color:#fff; font:700 10px/14px sans-serif; letter-spacing:0; text-indent:0; text-transform:none; pointer-events:none; opacity:0.85; }
+        #r20be .r20be-pside { display:flex; flex-direction:column; gap:6px; }
+        #r20be .r20be-phd { font-size:11px; font-weight:700; color:var(--aio-ink-4); }
+        #r20be .r20be-plist { display:flex; flex-direction:column; border:1px solid var(--aio-line-3); border-radius:var(--aio-r); overflow:hidden; }
+        #r20be .r20be-plist button { display:flex; align-items:baseline; gap:8px; margin:0; padding:6px 9px; border:0; border-bottom:1px solid var(--aio-line-4); border-radius:0; background:var(--aio-bg); text-align:left; font-size:12px; cursor:pointer; }
+        #r20be .r20be-plist button:last-child { border-bottom:0; }
+        #r20be .r20be-plist button:hover { background:var(--aio-bg-2); }
+        #r20be .r20be-plist button.on { background:var(--aio-accent-bg); }
+        #r20be .r20be-plist b { flex:none; min-width:36px; color:var(--aio-accent); }
+        #r20be .r20be-plist span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--aio-ink-3); }
+        /* 좁을 때: 파트 목록은 위에 작은 단추줄 */
+        @container (max-width:639px) {
+            #r20be .r20be-plist { flex-direction:row; flex-wrap:wrap; gap:4px; border:0; overflow:visible; }
+            #r20be .r20be-plist button { padding:2px 9px; border:1px solid var(--aio-line-2); border-radius:12px; font-size:11px; }
+            #r20be .r20be-plist button:last-child { border-bottom:1px solid var(--aio-line-2); }
+            #r20be .r20be-plist b { min-width:0; }
+            #r20be .r20be-plist span { max-width:8em; }
+            #r20be .r20be-pside .r20be-note { display:none; }
+        }
+        /* 넓을 때: 왼쪽 핸드아웃 · 오른쪽 파트 목록 (내려도 따라옴) */
+        @container (min-width:640px) {
+            #r20be .r20be-pin { flex-direction:row-reverse; align-items:flex-start; gap:14px; }
+            #r20be .r20be-pside { flex:0 0 220px; position:sticky; top:0; }
+            #r20be .r20be-stage { flex:1 1 0; }
+        }
         #r20be .r20be-ed.rich .note-editor { flex:1 0 auto; margin:0; border:0; border-radius:0; box-shadow:none; }
         #r20be .r20be-ed.rich :is(.note-toolbar-wrapper, .note-editor > .note-toolbar) { position:sticky; top:-14px; z-index:3; }     /* 긴 글을 내려도 단추줄은 위에 */
         body > .note-popover { z-index:10006 !important; }     /* 서식 편집기의 링크 · 그림 말풍선은 body 에 붙으므로 이 창보다 위로 */
