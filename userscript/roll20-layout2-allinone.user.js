@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.49.1
+// @version      1.50.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.49.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.50.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7201,7 +7201,7 @@ const bulkEditor = (() => {
         box._sync();
         return box;
     };
-    FEAT.bgmPreview?.onChange(() => ui?.pane.querySelector(".r20be-pv")?._sync?.());     // 미리듣기 묶음이 없으면 칸도 없다
+    FEAT.bgmPreview?.onChange(() => { ui?.pane.querySelector(".r20be-pv")?._sync?.(); ui?.pane.querySelector(".r20be-tlist")?._sync?.(); });     // 미리듣기 묶음이 없으면 칸도 없다
 
     const trackPane = n => {
         const t = cur();
@@ -7244,9 +7244,107 @@ const bulkEditor = (() => {
         t.structDirty = true;
         return true;
     };
+    // ── 저널 폴더 안 보기: 바로 안의 항목 + 하위 폴더별 묶음 (아이콘 보기 카드를 그대로 쓴다) ──
+    // 카드를 누르면 그 항목 편집, 다른 묶음으로 끌어 놓으면 그 폴더로 (왼쪽 목록과도 서로 끌어 옮길 수 있다)
+    const folderView = g => {
+        const t = cur(), box = el("div", { class: "r20be-fv" });
+        box.style.setProperty("--be-icon", VIEW.size + "px");
+        const sec = (f, depth) => {
+            const items = f.kids.filter(k => !k.kids), shut = f !== g && t.collapsed.has(f.id);
+            const s = el("section", { class: "r20be-fsec", "data-fid": f.id, style: depth ? `margin-left:${Math.min(depth, 4) * 16}px` : null },
+                el("header", {}, ico("folder"), el("b", {}, f.cur.name || "(이름 없음)"),
+                    el("small", {}, (f === g ? "바로 안 · " : "") + `${items.length}개` + (shut ? " · 접힘" : "")),
+                    el("span", { class: "r20be-flex" }),
+                    items.length > 1 ? el("button", { type: "button", class: "r20be-xs", title: "이 묶음의 항목을 골라 한꺼번에 바꾸기",
+                        onclick: () => { t.checked = new Set(items.map(k => k.id)); renderTree(); renderPane(); } }, "모두 선택") : null,
+                    f !== g ? el("button", { type: "button", class: "r20be-xs", onclick: () => { t.collapsed.delete(f.id); select(f.id); rowEl(f.id)?.scrollIntoView({ block: "nearest" }); } }, "열기") : null,
+                    f !== g ? el("button", { type: "button", class: "r20be-xs", "aria-expanded": String(!shut),
+                        onclick: () => { if (shut) t.collapsed.delete(f.id); else t.collapsed.add(f.id); renderTree(); renderPane(); } }, shut ? "펼치기" : "접기") : null));
+            if (!shut) s.append(items.length ? el("div", { class: "r20be-igrid", role: "group", html: items.map(tileHtml).join("") })
+                : el("p", { class: "r20be-fempty" }, "비어 있음 · 카드를 여기로 끌어 놓으면 이 폴더로"));
+            return [s, ...(shut ? [] : f.kids.filter(k => k.kids).flatMap(k => sec(k, depth + 1)))];
+        };
+        box.append(...sec(g, 0));
+        box.querySelectorAll(".r20be-tile").forEach(x => { x.draggable = true; });
+        box.addEventListener("click", e => {
+            const id = e.target.closest("[data-act=pick]") && e.target.closest(".r20be-tile")?.dataset.id;
+            if (id) { select(id); rowEl(id)?.scrollIntoView({ block: "nearest" }); }
+        });
+        const clear = () => box.querySelectorAll(".drop").forEach(x => x.classList.remove("drop"));
+        box.addEventListener("dragstart", e => {
+            const tile = e.target.closest?.(".r20be-tile");
+            if (!tile) return;
+            dragId = tile.dataset.id;
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", dragId);
+        });
+        const target = e => {
+            const secEl = e.target.closest?.(".r20be-fsec"), f = secEl && find(t, secEl.dataset.fid), d = dragId && find(t, dragId);
+            if (!f || !d || d === f || isAncestor(d, f)) return null;
+            const tile = e.target.closest(".r20be-tile"), b = tile && find(t, tile.dataset.id);
+            return { secEl, f, d, before: b && b !== d && b.parent === f ? b : null };
+        };
+        box.addEventListener("dragover", e => { const tg = target(e); if (!tg) return; e.preventDefault(); clear(); tg.secEl.classList.add("drop"); });
+        box.addEventListener("dragleave", e => { if (!box.contains(e.relatedTarget)) clear(); });
+        box.addEventListener("drop", e => {
+            const tg = target(e);
+            clear();
+            if (!tg) return;
+            e.preventDefault();
+            dragId = null;
+            if (moveNode(t, tg.d, tg.f, tg.before)) { renderTree(); renderPane(); setStatus(`'${tg.d.cur.name}' → ${tg.f.cur.name} (저장해야 Roll20에 반영)`, "ok"); }
+        });
+        box.addEventListener("dragend", () => { dragId = null; clear(); });
+        return box;
+    };
+    // ── 플레이리스트 곡 목록: ▶ 미리듣기(나만) · 줄을 누르면 그 곡 편집 · 끌어서 순서 바꾸기 ──
+    const trackList = g => {
+        const t = cur(), pv = FEAT.bgmPreview;
+        const list = el("div", { class: "r20be-tlist", role: "list" },
+            el("div", { class: "r20be-tkrow hd" }, el("span"), el("span", {}, "곡 이름"), el("span", {}, "태그"), el("span", {}, "볼륨"), el("span", {}, "반복")),
+            g.kids.map(n => el("div", { class: "r20be-tkrow" + (n.deleted ? " del" : ""), "data-id": n.id, draggable: "true", role: "listitem" },
+                pv ? el("button", { type: "button", class: "r20be-tplay", "data-play": n.id, "aria-label": `${n.cur.name} 미리듣기 (나만)` }) : el("span"),
+                el("span", { class: "r20be-tkn", title: n.cur.name }, n.cur.name || "(이름 없음)", isDirty(n) ? el("span", { class: "r20be-dot", title: "저장 안 한 변경" }) : null),
+                el("span", { class: "r20be-ttags" }, tagList(n.cur.tags).map(x => el("span", {}, x))),
+                el("span", { class: "r20be-tvol", title: `볼륨 ${n.cur.vol}%` }, el("i", { style: `width:${Math.max(0, Math.min(100, n.cur.vol))}%` })),
+                el("span", { title: n.cur.loop ? "반복" : "반복 안 함" }, n.cur.loop ? "🔁" : ""))));
+        list._sync = () => list.querySelectorAll("[data-play]").forEach(b => {
+            const on = pv.current() === b.dataset.play;
+            b.classList.toggle("on", on); b.textContent = on ? "❚❚" : "▶";
+        });
+        if (pv) list._sync();
+        list.addEventListener("click", e => {
+            const row = e.target.closest(".r20be-tkrow[data-id]");
+            if (!row) return;
+            const p = e.target.closest("[data-play]"), n = find(t, row.dataset.id);
+            if (p && n) { if (pv.current() === n.id) pv.stop(); else pv.play(n.id, n.cur.vol / 100); return; }
+            select(row.dataset.id); rowEl(row.dataset.id)?.scrollIntoView({ block: "nearest" });
+        });
+        const clear = () => list.querySelectorAll(".ins").forEach(x => x.classList.remove("ins"));
+        list.addEventListener("dragstart", e => { const row = e.target.closest?.(".r20be-tkrow[data-id]"); if (!row) return; dragId = row.dataset.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragId); });
+        const before = e => { const row = e.target.closest?.(".r20be-tkrow[data-id]"); return row ? find(t, row.dataset.id) : null; };
+        list.addEventListener("dragover", e => {
+            const d = dragId && find(t, dragId);
+            if (!d || d.kids) return;
+            e.preventDefault(); clear();
+            const b = before(e); if (b) list.querySelector(`.r20be-tkrow[data-id="${CSS.escape(b.id)}"]`)?.classList.add("ins");
+        });
+        list.addEventListener("drop", e => {
+            const d = dragId && find(t, dragId), b = before(e);
+            clear();
+            if (!d || d.kids) return;
+            e.preventDefault(); dragId = null;
+            if (b !== d && moveNode(t, d, g, b)) { renderTree(); renderPane(); }
+        });
+        list.addEventListener("dragend", () => { dragId = null; clear(); });
+        return list;
+    };
     const groupPane = n => {
         const t = cur();
-        return el("div", { class: "r20be-pane-in" }, paneHead(n),
+        const head = paneHead(n);
+        if (t.which === "journal") head.querySelector(".r20be-flex").after(
+            el("button", { type: "button", class: "r20be-sec r20be-new", title: "이 폴더 안에 새 폴더", onclick: () => createNode("folder") }, "＋ 하위 폴더"));
+        return el("div", { class: "r20be-pane-in" }, head,
             field(`${KIND_NAME[n.kind]} 이름`, nameInput(n)),
             el("p", { class: "r20be-note" }, `안에 든 항목 ${n.kids.length}개 · 지우면 안의 항목은 한 단계 위로 옮겨집니다`),
             el("div", { class: "r20be-btns" }, el("button", { type: "button", class: "r20be-sec", disabled: !n.kids.length,
@@ -7259,7 +7357,8 @@ const bulkEditor = (() => {
                         onclick: e => {
                             if (!sortKids(t, n, cmp)) { const b = e.currentTarget; b.textContent = same; setTimeout(() => { b.textContent = label; }, 1500); return; }
                             t.collapsed.delete(n.id); renderTree(); renderPane(); updateBar();
-                        } }, label))));
+                        } }, label))),
+            t.which === "journal" ? folderView(n) : t.which === "bgm" && n.kids.length ? trackList(n) : null);
     };
 
     const bulkPane = list => {
@@ -8829,6 +8928,35 @@ addCss(`
         #r20be .r20be-ctab.on { border-bottom-color:var(--aio-accent); color:var(--aio-accent); }
         #r20be .r20be-ta { flex:1 0 auto; width:100%; min-height:200px; overflow:hidden; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
         #r20be .r20be-ta.mono { font-family:Consolas, monospace; font-size:12px; }
+        /* 폴더 안 보기 · 곡 목록 */
+        #r20be .r20be-fv { display:flex; flex-direction:column; gap:8px; }
+        #r20be .r20be-fsec { border:1px solid var(--aio-line-3); border-radius:var(--aio-r); }
+        #r20be .r20be-fsec > header { display:flex; align-items:center; gap:6px; min-height:32px; padding:0 8px 0 10px; background:var(--aio-bg-2); border-radius:var(--aio-r) var(--aio-r) 0 0; font-size:12px; }
+        #r20be .r20be-fsec > header small { color:var(--aio-ink-4); }
+        #r20be .r20be-fsec > header .r20be-ico { color:var(--aio-ink-4); }
+        #r20be .r20be-fsec .r20be-igrid { padding:8px; }
+        #r20be .r20be-fsec.drop { outline:2px dashed var(--aio-accent); outline-offset:-1px; background:#fff8fc; }
+        #r20be .r20be-fsec.drop > header { background:var(--aio-accent-bg); color:var(--aio-accent); }
+        #r20be .r20be-fv .r20be-cb { display:none; }
+        #r20be .r20be-fv .r20be-tile { cursor:grab; }
+        #r20be .r20be-fempty { margin:0; padding:12px; text-align:center; color:var(--aio-ink-4); font-size:12px; }
+        #r20be .r20be-xs { height:22px; margin:0; padding:0 7px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
+        #r20be .r20be-xs:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+        #r20be .r20be-sec.r20be-new { border-color:var(--aio-accent); color:var(--aio-accent); }
+        #r20be .r20be-tlist { border:1px solid var(--aio-line-3); border-radius:var(--aio-r); overflow:hidden; }
+        #r20be .r20be-tkrow { display:grid; grid-template-columns:26px minmax(0, 1fr) minmax(0, 150px) 60px 24px; align-items:center; gap:8px; min-height:34px; padding:0 10px; border-bottom:1px solid var(--aio-line-4); font-size:12.5px; cursor:pointer; }
+        #r20be .r20be-tkrow:last-child { border-bottom:0; }
+        #r20be .r20be-tkrow.hd { min-height:28px; background:var(--aio-bg-2); font-size:11px; font-weight:700; color:var(--aio-ink-4); cursor:default; }
+        #r20be .r20be-tkrow[data-id]:hover { background:var(--aio-bg-2); }
+        #r20be .r20be-tkrow.ins { box-shadow:inset 0 2px 0 var(--aio-accent); }
+        #r20be .r20be-tkrow .r20be-tkn { display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #r20be .r20be-tkrow.del .r20be-tkn { color:var(--aio-ink-5); text-decoration:line-through; }
+        #r20be .r20be-tplay { width:24px; height:24px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:50%; background:var(--aio-bg); color:var(--aio-ink-3); font-size:9px; line-height:1; cursor:pointer; }
+        #r20be .r20be-tplay.on { border-color:var(--aio-accent); color:var(--aio-accent); }
+        #r20be .r20be-ttags { overflow:hidden; white-space:nowrap; }
+        #r20be .r20be-ttags span { display:inline-block; margin-right:3px; padding:0 6px; border-radius:9px; background:var(--aio-bg-4); font-size:10.5px; }
+        #r20be .r20be-tvol { position:relative; height:4px; border-radius:2px; background:var(--aio-line-2); overflow:hidden; }
+        #r20be .r20be-tvol i { position:absolute; inset:0 auto 0 0; background:var(--aio-accent); }
         #r20be .r20be-mode { display:flex; align-self:center; margin:0 2px 0 auto; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); overflow:hidden; }
         #r20be .r20be-mode button { height:22px; margin:0; padding:0 9px; border:0; border-left:1px solid var(--aio-line); border-radius:0; background:var(--aio-bg); color:var(--aio-ink-4); font-size:11px; font-weight:700; cursor:pointer; }
         #r20be .r20be-mode button:first-child { border-left:0; }
