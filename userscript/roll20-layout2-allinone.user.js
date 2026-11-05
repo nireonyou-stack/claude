@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.45.0
+// @version      1.45.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.45.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.45.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -902,8 +902,8 @@ const addCss = css => CSS_PARTS.push(css);
 const DIRTY = { all: true, set: new Set() };
 
 const CORE_CSS = `
-        /* 색 · 모서리 이름표 — 강조색은 빨강. 바꿀 땐 여기만 */
-        :root { --aio-accent:#c62828; --aio-accent-dark:#a51f1f; --aio-accent-bg:#fdecec; --aio-accent-soft:#f6d0d0; --aio-accent-mid:#e8a0a0; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; }
+        /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
+        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; }
         /* 올인원이 만든 창 안의 체크 상자 · 라디오 · 슬라이더도 강조색 (Roll20 것은 그대로) */
         :is(#custom-settings-popup, #cs-side-panel, #custom-journal-popup, #r20be, #r20ss, #r20ss-bar, #r20-ccf, #r20-fit, #r20-emoji, #imagedialog .r20ri, .r20ts, .r20so-dlg) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color:var(--aio-accent); }
         #custom-settings-popup { position:fixed; width:300px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:var(--aio-ink-2); overflow-y:auto; max-height:70vh; }
@@ -1457,7 +1457,7 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { display:none !important; content:"" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:var(--aio-ink-5) !important; opacity:0; }
         body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::after { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem > .dd-content { -webkit-user-select:none; user-select:none; display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 2px 0 0 !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
-        body.r20jb-on #jukebox li.jukeboxitem.r20jb-lift > .dd-content { background:rgba(198,40,40,0.1) !important; }
+        body.r20jb-on #jukebox li.jukeboxitem.r20jb-lift > .dd-content { background:rgba(225,0,133,0.1) !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
         body.r20jb-on #jukebox li.jukeboxitem .title { order:2; flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 2px 0 0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:12px !important; font-weight:400 !important; line-height:26px !important; }
@@ -1522,7 +1522,7 @@ addCss(`
         body.r20jb-on #deckstables table.table { width:100% !important; margin:0 !important; border-collapse:collapse !important; }
         body.r20jb-on #deckstables table.table thead { display:none !important; }
         body.r20jb-on #deckstables table.table td { height:26px; padding:0 4px !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none !important; font-size:12px !important; line-height:26px !important; vertical-align:middle !important; white-space:nowrap; }
-        body.r20jb-on #deckstables table.table tr:hover td { background:rgba(198,40,40,0.06) !important; }
+        body.r20jb-on #deckstables table.table tr:hover td { background:rgba(225,0,133,0.06) !important; }
         body.r20jb-on #deckstables table.table td.name { width:100%; max-width:0; overflow:hidden; text-overflow:clip; cursor:pointer; }
         body.r20jb-on #deckstables td.name a.rollmacro { display:inline-block; width:16px; margin:0 2px 0 0 !important; color:var(--aio-ink-5) !important; font-size:12px !important; text-align:center; text-decoration:none !important; }
         body.r20jb-on #deckstables td.name a.rollmacro:hover { color:var(--aio-ink) !important; }
@@ -1531,7 +1531,7 @@ addCss(`
         body.r20jb-on #deckstables tr.deck > td:nth-child(2), body.r20jb-on #deckstables tr.rollabletable > td:nth-child(2) { color:var(--aio-ink-5) !important; font-size:10px !important; text-align:right; }
         body.r20jb-on #deckstables td.actions { text-align:right !important; }
         body.r20jb-on #deckstables td.actions .btn { float:none !important; height:20px !important; margin:0 0 0 2px !important; padding:0 6px !important; font-size:10px !important; line-height:18px !important; vertical-align:middle; }
-        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(198,40,40,0.08) !important; }
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) > .dd-content { background:rgba(225,0,133,0.08) !important; }
         body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .title { color:var(--aio-accent) !important; font-weight:700 !important; }
 `);
 // ───────── 주크박스 자동 백업: GM 으로 들어올 때 · 폴더 구조가 바뀔 때 이 브라우저(IndexedDB)에 저장해 두고 되돌린다 ─────────
@@ -1957,7 +1957,7 @@ const chatCapture = (() => {
         cb.innerHTML = svg(busy ? "load" : "copy") + (n ? `<b>${n}</b>` : "");
         paint(cb, n ? CONFIG.activeBg : IDLE_BG, n ? CONFIG.activeText : IDLE_FG);
         mb.innerHTML = svg(note || (on ? "x" : "cam"));
-        paint(mb, on ? "rgba(198,40,40,0.12)" : IDLE_BG, note === "ok" ? "#2e8b57" : note === "bad" ? "#c0392b" : on ? CONFIG.activeBg : IDLE_FG);
+        paint(mb, on ? "rgba(225,0,133,0.12)" : IDLE_BG, note === "ok" ? "#2e8b57" : note === "bad" ? "#c0392b" : on ? CONFIG.activeBg : IDLE_FG);
         const tip = note === "ok" ? "클립보드에 복사했어요" : note === "bad" ? "복사하지 못했어요 — 다시 눌러 주세요"
             : on ? "캡처 그만두기 (Esc)" : "대화 캡처: 메시지를 눌러 고르고(Shift: 범위) 이미지로 복사";
         mb.title = tip; mb.setAttribute("aria-label", tip);
@@ -2203,7 +2203,7 @@ const sheetShot = (() => {
         css.textContent = ".r20ss-hide{display:none!important}";
         doc.head.appendChild(css);
         const hl = doc.createElement("div");
-        hl.style.cssText = "position:fixed;display:none;pointer-events:none;z-index:2147483647;border:2px solid #c62828;background:rgba(198,40,40,0.12);box-sizing:border-box;border-radius:2px";
+        hl.style.cssText = "position:fixed;display:none;pointer-events:none;z-index:2147483647;border:2px solid #e10085;background:rgba(225,0,133,0.12);box-sizing:border-box;border-radius:2px";
         doc.body.appendChild(hl);
         const bar = document.createElement("div");
         bar.id = "r20ss-bar";
@@ -2645,7 +2645,7 @@ const LB_CSS = `
         #r20-logbak .sw { display:flex; align-items:center; gap:6px; align-self:flex-start; padding:0; border:0; background:none; font-weight:400; }
         #r20-logbak .sw i { position:relative; width:26px; height:14px; border-radius:7px; background:#c8c8cc; }
         #r20-logbak .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
-        #r20-logbak .sw[aria-checked=true] i { background:#c62828; }
+        #r20-logbak .sw[aria-checked=true] i { background:#e10085; }
         #r20-logbak .sw[aria-checked=true] i::after { left:14px; }
         #r20-logbak .lbl b { color:#8a3d9e; }
         #r20-logbak .imgs { display:flex; flex-direction:column; gap:4px; }
@@ -2657,7 +2657,7 @@ const LB_CSS = `
         #r20-logbak .imgs .ok input { border-color:#2e8b57; background:#f1fbf5; }
         #r20-logbak .noimg { color:#aaa; font-size:11px; }
         #r20-logbak .go { display:flex; gap:5px; margin-top:2px; }
-        #r20-logbak .go .pri { background:#c62828; border-color:#c62828; color:#fff; }
+        #r20-logbak .go .pri { background:#e10085; border-color:#e10085; color:#fff; }
         /* 범위: 밖은 흐리게, 시작 · 끝에 표시 */
         .message.r20lb-out { opacity:.3; }
         .message.r20lb-a, .message.r20lb-b { position:relative; }
@@ -4038,13 +4038,13 @@ addCss(`
         /* 대화 캡처: 고르는 동안 메시지를 눌러 고르고, 고른 것은 왼쪽 막대 + 옅은 배경 */
         #textchat.r20cap-on .content > .message { cursor:pointer; user-select:none; }
         #textchat.r20cap-on .content > .message:hover { box-shadow:inset 3px 0 0 var(--aio-accent-mid) !important; }
-        #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 var(--aio-accent) !important; background-color:rgba(198,40,40,0.08) !important; }
+        #textchat .content > .message.r20cap-sel { box-shadow:inset 3px 0 0 var(--aio-accent) !important; background-color:rgba(225,0,133,0.08) !important; }
         #custom-capture-copy:disabled { cursor:default; }
         #custom-capture-copy b { font:700 10px/1 sans-serif; }
         @keyframes r20cap-spin { to { transform:rotate(360deg); } }
         /* 시트 촬영: 캐릭터 창 제목(float:left) 바로 옆 단추 — 제목 글자 가운데 높이에 맞춘다. 창을 접으면 Roll20 이 제목줄 단추와 함께 숨긴다 */
         .ui-dialog-titlebar .r20shot { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:0; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-5); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:none; }
-        .ui-dialog-titlebar .r20shot:hover { background:rgba(198,40,40,0.1); color:var(--aio-accent); }
+        .ui-dialog-titlebar .r20shot:hover { background:rgba(225,0,133,0.1); color:var(--aio-accent); }
         .ui-dialog-titlebar .r20shot:focus-visible, #r20ss button:focus-visible, #r20ss-bar button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         .ui-dialog-titlebar .r20shot[data-state="ok"] { color:#2e8b57; }
         .ui-dialog-titlebar .r20shot[data-state="bad"] { color:#c0392b; }
@@ -4059,13 +4059,13 @@ addCss(`
         #r20ss .r20ss-body { flex:1; min-height:0; overflow:auto; padding:12px; background:var(--aio-bg-4); }
         #r20ss .r20ss-pic { position:relative; width:fit-content; max-width:100%; margin:0 auto; overflow:hidden; cursor:crosshair; user-select:none; touch-action:none; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
         #r20ss .r20ss-pic img { display:block; max-width:100%; height:auto; margin:0; pointer-events:none; }
-        #r20ss .r20ss-sel { position:absolute; border:2px solid var(--aio-accent); background:rgba(198,40,40,0.06); box-shadow:0 0 0 9999px rgba(0,0,0,0.35); box-sizing:border-box; pointer-events:none; }
+        #r20ss .r20ss-sel { position:absolute; border:2px solid var(--aio-accent); background:rgba(225,0,133,0.06); box-shadow:0 0 0 9999px rgba(0,0,0,0.35); box-sizing:border-box; pointer-events:none; }
         #r20ss .r20ss-foot { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 12px; border-top:1px solid var(--aio-line-3); }
         #r20ss .r20ss-info { flex:1; min-width:160px; color:var(--aio-ink-4); font-size:12px; }
         #r20ss .r20ss-foot button { height:30px; margin:0; padding:0 14px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font-size:12px; font-weight:bold; cursor:pointer; box-shadow:none; text-shadow:none; }
         #r20ss .r20ss-foot button.pri, #r20ss-bar button.pri { background:var(--aio-accent); border-color:var(--aio-accent); color:#fff; }
         #r20ss .r20ss-foot button:disabled, #r20ss-bar button:disabled { opacity:0.45; cursor:default; }
-        .ui-dialog-titlebar .r20shot.on { background:rgba(198,40,40,0.14); color:var(--aio-accent); }
+        .ui-dialog-titlebar .r20shot.on { background:rgba(225,0,133,0.14); color:var(--aio-accent); }
         /* 숨길 부분 고르기 띠: 화면 아래 가운데에 떠서 시트를 가리지 않는다 */
         #r20ss-bar { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:100009; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; width:max-content; max-width:calc(100vw - 32px); padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 6px 24px rgba(0,0,0,0.25); font:12px/1.4 sans-serif; color:var(--aio-ink-2); box-sizing:border-box; }
         #r20ss-bar .r20ss-hint { min-width:220px; max-width:360px; color:var(--aio-ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -5342,7 +5342,7 @@ addCss(`
         /* 마우스를 올려도 단추 칸 크기가 그대로 (Roll20 이 올렸을 때 오른쪽에 주는 여백·장식 없애기) */
         body.r20mb-on #macrobar #macrobar_macros .macrobox:hover { width:auto !important; margin:0 4px 4px 0 !important; padding:0 !important; }
         body.r20mb-on #macrobar_macros .macrobox::before, body.r20mb-on #macrobar_macros .macrobox::after, body.r20mb-on #macrobar_macros .macrobox > button::after { display:none !important; }
-        body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(198,40,40,0.55); }
+        body.r20mb-on #macrobar_macros .macrobox > button:hover { box-shadow:0 0 0 2px rgba(225,0,133,0.55); }
         body.r20mb-on #macrobar_macros .ui-sortable-helper > button { transform:scale(1.08); box-shadow:0 6px 14px rgba(0,0,0,0.4) !important; }
         body.r20mb-on #macrobar_macros.r20mb-drag > .macrobox:not(.ui-sortable-helper):not(.ui-sortable-placeholder) { opacity:0.55; }
         body.r20mb-on #macrobar_macros > .ui-sortable-placeholder { display:inline-block !important; visibility:visible !important; width:3px !important; min-width:3px; height:26px !important; padding:0 !important; border-radius:2px; background:#ffd84d; box-shadow:0 0 6px #ffd84d; }
@@ -5631,7 +5631,7 @@ addCss(`
         .r20ts .r20ts-tt { position:relative; flex:1 1 auto; min-width:0; }
         .r20ts .r20ts-tt .r20ts-bk, .r20ts .r20ts-tt textarea { font:12px/1.5 sans-serif !important; letter-spacing:0; padding:6px 8px !important; border:1px solid transparent !important; white-space:pre-wrap; overflow-wrap:break-word; word-break:normal; }
         .r20ts .r20ts-tt .r20ts-bk { position:absolute; inset:0; overflow:hidden; color:transparent; background:var(--aio-bg); border-radius:var(--aio-r-sm); pointer-events:none; }
-        .r20ts .r20ts-tt .r20ts-bk mark { color:transparent; background:rgba(198,40,40,0.3); border-radius:2px; padding:0; }
+        .r20ts .r20ts-tt .r20ts-bk mark { color:transparent; background:rgba(225,0,133,0.3); border-radius:2px; padding:0; }
         .r20ts .r20ts-tt textarea { position:relative; display:block; width:100% !important; min-height:44px; margin:0 !important; border-radius:var(--aio-r-sm); box-shadow:none !important; box-sizing:border-box !important; resize:none; overflow:hidden; background:transparent !important; border-color:var(--aio-line) !important; color:var(--aio-ink-2); }
         .r20ts .r20ts-tt textarea:focus { border-color:var(--aio-accent) !important; outline:none; }
 `);
@@ -8575,7 +8575,7 @@ addCss(`
         #r20be .r20be-col { position:relative; min-height:0; display:flex; }
         #r20be .r20be-col.tree { flex:0 0 300px; min-width:200px; max-width:calc(100% - 280px); border-right:1px solid var(--aio-line-3); }
         #r20be .r20be-split { position:absolute; top:0; bottom:0; right:-4px; z-index:5; width:8px; cursor:col-resize; touch-action:none; }
-        #r20be .r20be-split:hover, #r20be .r20be-split:focus-visible, #r20be .r20be-split.on { background:rgba(198,40,40,0.22); outline:none; }
+        #r20be .r20be-split:hover, #r20be .r20be-split:focus-visible, #r20be .r20be-split.on { background:rgba(225,0,133,0.22); outline:none; }
         #r20be .r20be-col.pane, #r20be .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
         /* 기본 스크롤바 대신 직접 만든 스크롤바(.r20be-sb)를 쓴다 */
         #r20be .r20be-tree, #r20be .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:none; }
