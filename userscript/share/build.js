@@ -1,6 +1,6 @@
 // 배포판 만들기: node userscript/share/build.js → userscript/share/out/roll20-layout2-share.user.js
 // 원본(../roll20-layout2-allinone.user.js)에 달린 표시를 따라 자르고 바꾼다.
-//   @share-cut-start 이름 … @share-cut-end 이름   그 줄들째 지운다 (이 방의 이미지 · 모은 목록)
+//   @share-cut-start 이름 … @share-cut-end 이름   그 줄들째 지운다 (이 방의 이미지)
 //   @share-swap-start 이름 … @share-swap-end 이름 같은 폴더의 이름.share.js 로 바꾼다 (로그 백업)
 //   @share-cut-line                                 그 줄만 지운다
 // 아래 FIX 는 원본 글자를 그대로 찾아 바꾼다 — 원본이 바뀌어 못 찾으면 멈춘다(조용히 빠뜨리지 않게).
@@ -31,9 +31,9 @@ const FIX = [
      "// 자동완성 데이터: ruledata.template.js 를 고쳐서 설정(⚙) → 기본시트 데이터 자동완성 → [파일]로 불러옵니다.\n"
      + "// 로그 백업 형식을 바꾸려면 이 파일의 logBackup 구역 설명을 보세요 (formatLog 만 고치면 됨).\n"
      + "// 맵 단추 · 일괄 편집기는 그 방의 GM 일 때만 나옵니다.\n"],
-    ['    members: [["artroom", "roomImages"], ["artroom", "assetBank"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });',
+    ['    members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });',
      '    members: [["qpick", "queryPicker"], ["journal", "quickJournal"]] });'],
-    ['label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 모은 목록(저장소 계정 그림 · 트랙) · 매크로 선택 썸네일 · 빠른 저널 뷰어",',
+    ['label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 빠른 저널 뷰어",',
      'label: "매크로&저널 뷰어", sub: "매크로 선택 썸네일 · 빠른 저널 뷰어",'],
     ['label: "대화 캡처 · 시트 촬영 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "시트 촬영 단추는 캐릭터 창 제목 옆 · 로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",',
      'label: "대화 캡처 · 시트 촬영 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "시트 촬영 단추는 캐릭터 창 제목 옆 · 맵 단추는 GM 만 · 로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",']

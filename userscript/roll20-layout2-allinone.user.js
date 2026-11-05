@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.43.0
+// @version      1.44.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.43.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.44.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5662,7 +5662,7 @@ addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 �
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 
-// @share-cut-start bank — 이 방의 이미지 · 모은 목록 (배포판에서 뺌)
+// @share-cut-start room — 이 방의 이미지 (배포판에서 뺌)
 // ───────── 그림 라이브러리 · 이 방의 이미지: 페이지·캐릭터·핸드아웃·굴림표·덱에 쓰인 그림을 한곳에서 본다 ─────────
 // 맵에 놓기는 Roll20 라이브러리 항목과 같은 모양(.draggableresult + data-fullsizeurl)으로 만들어 Roll20 드롭을 그대로 쓴다
 // → 계정 라이브러리에는 아무것도 추가되지 않는다. (보는 동안 라이브러리 정리 영역은 숨겨 실수로 넣는 일도 막는다)
@@ -5679,13 +5679,10 @@ const roomImages = (() => {
 
     let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
     let mode = localStorage.getItem("r20_ri_mode");
-    if (mode !== "room" && mode !== "bank") mode = "lib";
+    if (mode !== "room") mode = "lib";
     let src = "all", q = "", groups = [], items = new Map(), unread = 0, shown = 0;
     let loading = null, root = null, ro = null, wasVisible = false, dragBase = null;
     const opened = new Set();       // 펼친 묶음 이름 (기본은 모두 접힘, 검색 중엔 모두 펼침)
-    // 모은 목록 탭: bank = { accts: [{ a: 계정 기록, its }], items } · acct = 고른 계정("" 전체) · job = 모으기·불러오기 알림
-    let bank = null, acct = "", job = null;
-    const limits = new Map();       // 계정 묶음별로 더 보기를 누른 것 (그림이 많아도 처음엔 200장까지만 그린다)
 
     // ── 모으기: 불러온 페이지의 토큰(여러 면 포함) · 캐릭터 아바타/기본 토큰 · 핸드아웃 · 굴림표 항목 · 덱 카드 ──
     const gather = () => {
@@ -5757,12 +5754,6 @@ const roomImages = (() => {
     const foot = () => {
         if (!root) return;
         const note = root.querySelector(".r20ri-note"), nb = note.querySelector("button");
-        if (mode === "bank") {
-            root.querySelector(".r20ri-sum").textContent = `${bank?.accts.length || 0}계정 · ${shown}장`;
-            note.hidden = !job;
-            if (job) { note.querySelector("span").textContent = job.msg; nb.textContent = job.done ? "닫기" : "멈추기"; nb.dataset.a = job.done ? "jobclose" : "jobstop"; }
-            return;
-        }
         root.querySelector(".r20ri-sum").textContent = `총 ${shown}장`;
         note.hidden = !unread && !loading;
         note.querySelector("span").textContent = loading ? `페이지 읽는 중 ${loading.done}/${loading.total}` : `아직 안 읽은 페이지 ${unread}개`;
@@ -5772,7 +5763,6 @@ const roomImages = (() => {
     const render = () => {
         if (!root) return;
         closePop();
-        if (mode === "bank") return renderBank();
         const v = norm(q), seen = new Set();
         const vis = groups.filter(g => src === "all" || g.kind === src).map(g => ({ g,
             its: v && !norm(g.name).includes(v) ? g.list.filter(it => norm(it.name + it.uses.map(u => u.label).join("")).includes(v)) : g.list }));
@@ -5791,57 +5781,6 @@ const roomImages = (() => {
         foot();
     };
     const refresh = () => { collect(); render(); };
-
-    // ── 모은 목록: 저장소 계정에서 모아 둔 라이브러리 그림 (assetBank 가 보관) ──
-    const md = t => { const d = new Date(t || 0); return `${d.getMonth() + 1}/${d.getDate()}`; };
-    const loadBank = async () => {
-        let accts = [];
-        try { accts = await assetBank.list(); } catch (e) { console.warn("[모은 목록] 읽기 실패:", e); }
-        const map = new Map();
-        bank = { items: map, accts: accts.map(a => ({ a, its: (a.imgs || []).map(m => {
-            const it = { k: `b:${a.uid}:${m.id}`, url: m.u, img: m.u, name: m.n, gw: m.gw, gh: m.gh, sz: m.sz, acct: a, uses: [{ label: a.name }] };
-            map.set(it.k, it);
-            return it;
-        }) })) };
-        if (!bank.accts.some(x => x.a.uid === acct)) acct = "";
-        const sel = root?.querySelector(".r20ri-acct");
-        if (sel) {
-            sel.innerHTML = `<option value="">계정: 전체</option>` + bank.accts.map(({ a, its }) => `<option value="${esc(a.uid)}">${esc(a.name)} (${its.length})</option>`).join("");
-            sel.value = acct;
-        }
-        if (mode === "bank") render();
-    };
-    const renderBank = () => {
-        const v = norm(q), box = root.querySelector(".r20ri-list");
-        shown = 0;
-        if (!bank) { box.innerHTML = `<p class="r20ri-empty">읽는 중…</p>`; return foot(); }
-        let html = "", budget = v ? 400 : Infinity;         // 검색 중엔 모든 계정을 펼치므로 다 합쳐 400장까지만 먼저
-        bank.accts.forEach(({ a, its }) => {
-            if (acct && a.uid !== acct) return;
-            if (v) its = its.filter(it => norm(it.name).includes(v));
-            if (!its.length) return;
-            shown += its.length;
-            const key = "bank:" + a.uid, open = !!v || opened.has(key), lim = limits.get(key);
-            const n = open ? Math.max(0, Math.min(its.length, lim ?? Math.min(200, budget))) : 0;
-            if (lim == null) budget -= n;
-            html += `<section><button type="button" class="r20ri-gh" data-g="${esc(key)}" aria-expanded="${open}"${a.game ? ` title="트랙: ${esc(a.game)}"` : ""}><span aria-hidden="true">${open ? "▾" : "▸"}</span>${esc(a.name)} <small>${its.length}장 · ${md(a.at)} 모음</small></button>`
-                + (n ? `<ul class="r20ri-grid">${its.slice(0, n).map(tileHtml).join("")}</ul>` : "")
-                + (open && n < its.length ? `<button type="button" class="r20ri-more" data-more="${esc(key)}">${n ? `나머지 ${its.length - n}장 더 보기` : `${its.length}장 보기`}</button>` : "") + "</section>";
-        });
-        box.innerHTML = html || `<p class="r20ri-empty">${bank.accts.length ? "찾는 그림이 없어요" : "아직 모은 계정이 없어요<br>저장소 계정으로 게임에 들어가서 [이 계정 모으기]를 눌러 주세요"}</p>`;
-        foot();
-    };
-    const tellJob = (msg, done = false) => { job = job || {}; job.msg = msg; job.done = done; foot(); };       // 같은 job 을 고쳐 써야 [멈추기]가 모으기에 닿는다
-    const runCollect = async () => {
-        if (job && !job.done) return;
-        job = { msg: "모으는 중…", done: false, stop: false };
-        job.tell = m => tellJob(m);
-        foot();
-        let msg;
-        try { msg = await assetBank.collect(job); } catch (e) { console.warn("[모은 목록] 모으기 실패:", e); msg = "못 모았어요 — " + (e?.message || e); }
-        tellJob(msg, true);
-        loadBank();
-    };
 
     // 안 읽은 페이지: Roll20 이 페이지 복제 때 쓰는 fullyLoadPage() 로 하나씩 불러온다 (누르면 멈춤)
     // 진행 상황은 일괄 편집기 방 이미지 탭에도 알린다 (fn(loading) — 끝나면 null)
@@ -5921,32 +5860,15 @@ const roomImages = (() => {
         im.onerror = () => res(1);
         im.src = u;
     });
-    // 원래 크기: 라이브러리에 정해 둔 칸 수가 있으면 그것(칸 × 70px), 없으면 그림 자체 크기 (못 읽으면 null)
-    const naturalOf = it => new Promise(res => {
-        if (it.gw > 0 && it.gh > 0) return res({ w: it.gw * 70, h: it.gh * 70 });
-        const u = r20img(sized(it.url, "max")), vid = isAnimVideo(u), m = document.createElement(vid ? "video" : "img");
-        let fin = false, t = 0;
-        const done = d => { if (fin) return; fin = true; clearTimeout(t); res(d); };
-        t = setTimeout(() => done(null), 15000);
-        m.onerror = () => done(null);
-        if (vid) { m.muted = true; m.preload = "metadata"; m.onloadedmetadata = () => done(m.videoWidth ? { w: m.videoWidth, h: m.videoHeight } : null); }
-        else m.onload = () => done(m.naturalWidth ? { w: m.naturalWidth, h: m.naturalHeight } : null);
-        m.src = u;
-    });
     // 지금 페이지에 바로 놓기: 토큰 층은 가운데에 긴 변 2칸(140px), 맵 층은 페이지에 맞춰 가운데
-    // how = "full" 이면 어느 층이든 원래 크기로 가운데 (모은 목록)
-    const place = async (it, layer, btn, how) => {
+    const place = async (it, layer, btn) => {
         const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null;
         if (!pg?.thegraphics) return say(btn, "지금 페이지를 못 찾았어요");
         const W = (parseFloat(pg.get("width")) || 25) * 70, H = (parseFloat(pg.get("height")) || 25) * 70;
         let w, h;
-        const d = how === "full" ? await naturalOf(it) : null;
-        if (d) ({ w, h } = d);
-        else {
-            const r = await ratioOf(r20img(sized(it.url, "thumb")));
-            if (layer === "map" && !how) { if (W / H > r) { h = H; w = H * r; } else { w = W; h = W / r; } }
-            else if (r >= 1) { w = 140; h = 140 / r; } else { h = 140; w = 140 * r; }
-        }
+        const r = await ratioOf(r20img(sized(it.url, "thumb")));
+        if (layer === "map") { if (W / H > r) { h = H; w = H * r; } else { w = W; h = W / r; } }
+        else if (r >= 1) { w = 140; h = 140 / r; } else { h = 140; w = 140 * r; }
         try {
             pg.thegraphics.create({ imgsrc: it.img || r20img(sized(it.url, "max")), left: Math.round(W / 2), top: Math.round(H / 2),
                 width: Math.round(w), height: Math.round(h), layer, page_id: pg.id });
@@ -5982,26 +5904,21 @@ const roomImages = (() => {
         root?.querySelectorAll(".r20ri-tile.on").forEach(t => t.classList.remove("on"));
     };
     const openPop = (tile, kb) => {
-        const bk = mode === "bank", it = (bk ? bank?.items : items)?.get(tile.dataset.k);
+        const it = items.get(tile.dataset.k);
         if (!it) return;
         closePop();
         const pop = document.createElement("div");
         pop.className = "r20ri-pop";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "그림 메뉴");
-        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${bk ? esc(it.acct.name + (it.sz ? " · " + it.sz : "")) : `${it.uses.length}곳에서 씀`}</span></div>`
+        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
             + `<button type="button" class="r20ri-x" data-a="close" aria-label="닫기">✕</button></div>`
-            + (bk ? `<button type="button" class="r20ri-mi" data-a="map" data-how="full">맵 층에 놓기 (원래 크기)</button>`
-                + `<button type="button" class="r20ri-mi" data-a="objects" data-how="full">토큰 층에 놓기 (원래 크기)</button>`
-                + `<button type="button" class="r20ri-mi" data-a="gmlayer" data-how="full">GM 층에 놓기 (원래 크기)</button>`
-                + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
-                + `<button type="button" class="r20ri-mi" data-a="copy">이미지 주소 복사</button>` : "")
-            + (bk ? "" : `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
+            + `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
             + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
             + `<button type="button" class="r20ri-mi" data-a="copy">이미지 주소 복사</button>`
             + `<button type="button" class="r20ri-mi" data-a="handout">핸드아웃으로 만들기</button>`
             + `<div class="r20ri-uses"><small>사용처</small>` + it.uses.map((u, i) => u.kind === "char" || u.kind === "handout"
-                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>");
+                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>";
         pop._it = it;
         root.querySelector(".r20ri-body").appendChild(pop);
         tile.classList.add("on");
@@ -6010,7 +5927,7 @@ const roomImages = (() => {
     const onPop = (pop, b) => {
         const it = pop._it, a = b.dataset.a;
         if (a === "close") closePop();
-        else if (a === "objects" || a === "map" || a === "gmlayer") place(it, a, b, b.dataset.how);
+        else if (a === "objects" || a === "map") place(it, a, b);
         else if (a === "copy") copyText(r20img(sized(it.url, "max"))).then(ok => say(b, ok ? "복사했어요" : "복사하지 못했어요"));
         else if (a === "handout") makeHandout(it, b);
         else if (a === "open") openJournal(it.uses[+b.dataset.i]);
@@ -6028,11 +5945,8 @@ const roomImages = (() => {
         dlg?.classList.toggle("r20ri-room", m !== "lib");
         if (root) root.dataset.m = m;
         root?.querySelectorAll(".r20ri-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === m)));
-        const input = root?.querySelector(".r20ri-q input");
-        if (input) input.placeholder = m === "bank" ? "그림 이름 검색" : "이름·사용처 검색";
         if (m !== "lib" && dlg) dlg.scrollTop = 0;
         if (m === "room") refresh();
-        else if (m === "bank") { render(); loadBank(); }
         else closePop();
         fit();
     };
@@ -6043,26 +5957,18 @@ const roomImages = (() => {
         r.style.setProperty("--ri-size", size + "px");
         r.innerHTML = `<div class="r20ri-seg" role="group" aria-label="그림 보기">`
             + `<button type="button" data-m="lib" aria-pressed="${mode === "lib"}">내 라이브러리</button>`
-            + `<button type="button" data-m="room" aria-pressed="${mode === "room"}">이 방의 이미지</button>`
-            + `<button type="button" data-m="bank" aria-pressed="${mode === "bank"}" title="저장소 계정에서 모아 둔 그림">모은 목록</button></div>`
+            + `<button type="button" data-m="room" aria-pressed="${mode === "room"}">이 방의 이미지</button></div>`
             + `<div class="r20ri-body">`
-            + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="${mode === "bank" ? "그림 이름 검색" : "이름·사용처 검색"}" aria-label="이미지 검색"></label>`
-            + `<select class="r20ri-acct" data-only="bank" aria-label="계정"><option value="">계정: 전체</option></select>`
+            + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="이름·사용처 검색" aria-label="이미지 검색"></label>`
             + `<span class="r20ri-zoom"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
-            + `<label class="r20ri-auto" data-only="bank" title="켜 두면 아직 안 모은 계정으로 게임에 들어올 때 저절로 모아요 (플레이어여도 됨). 지금 계정은 빼요. 다 돌고 나면 꺼 주세요">`
-            + `<input type="checkbox"${assetBank.autoOn() ? " checked" : ""}>들어오면 자동으로 모으기 <small>(지금 계정은 빼고)</small></label>`
             + `<div class="r20ri-chips">${KINDS.map(([k, l]) => `<button type="button" data-src="${k}" aria-pressed="${src === k}">${l}</button>`).join("")}</div>`
             + `<div class="r20ri-note" hidden><span></span><button type="button" data-a="load"></button></div>`
             + `<div class="r20ri-list"></div>`
             + `<div class="r20ri-foot"><span class="r20ri-sum" title="같은 그림은 하나로 셉니다 · 그림을 끌어서 맵에 놓기"></span>`
-            + `<button type="button" data-only="room" data-a="openall">전부 펼치기</button><button type="button" data-only="room" data-a="closeall">전부 접기</button><button type="button" data-only="room" data-a="reload">다시 읽기</button>`
-            + `<button type="button" data-only="bank" data-a="collect" title="지금 로그인한 계정의 라이브러리 그림과 그 계정이 올린 곡을 모아 둡니다 (재생목록은 이 게임 주크박스에서)">이 계정 모으기</button>`
-            + `<button type="button" data-only="bank" data-a="export" title="모은 목록을 파일로 (백업 · 다른 PC로 옮기기)">내보내기</button><button type="button" data-only="bank" data-a="import" title="내보낸 파일 불러오기">불러오기</button></div></div>`;
+            + `<button type="button" data-only="room" data-a="openall">전부 펼치기</button><button type="button" data-only="room" data-a="closeall">전부 접기</button><button type="button" data-only="room" data-a="reload">다시 읽기</button></div></div>`;
         const input = r.querySelector(".r20ri-q input"), list = r.querySelector(".r20ri-list");
         let qt = null;
         input.addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(() => { q = input.value; render(); }, 150); });
-        r.querySelector(".r20ri-acct").addEventListener("change", e => { acct = e.target.value; render(); });
-        r.querySelector(".r20ri-auto input").addEventListener("change", e => assetBank.setAuto(e.target.checked));
         r.addEventListener("keydown", e => {
             e.stopPropagation();                 // Roll20 단축키 막기
             if (e.key === "Escape") closePop();
@@ -6089,15 +5995,7 @@ const roomImages = (() => {
                 size = Math.max(48, Math.min(160, size + Number(b.dataset.d) * 16));
                 localStorage.setItem("r20_ri_size", size);
                 r.style.setProperty("--ri-size", size + "px");
-            } else if (b.dataset.more) { limits.set(b.dataset.more, Infinity); render(); }
-            else if (b.dataset.a === "load") loadPages();
-            else if (b.dataset.a === "jobstop") { if (job) job.stop = true; }
-            else if (b.dataset.a === "jobclose") { job = null; foot(); }
-            else if (/^(?:collect|export|import)$/.test(b.dataset.a) && job && !job.done) return;      // 모으는 중엔 기다린다
-            else if (b.dataset.a === "collect") runCollect();
-            else if (b.dataset.a === "export") assetBank.exportFile().then(n => tellJob(n ? `${n}계정을 파일로 내보냈어요` : "아직 모은 게 없어요", true), e => tellJob("못 내보냈어요 — " + (e?.message || e), true));
-            else if (b.dataset.a === "import") assetBank.importFile().then(r => { if (r) { tellJob(`${r.took}계정을 불러왔어요` + (r.took < r.got ? ` (더 새로 모은 ${r.got - r.took}계정은 그대로)` : ""), true); loadBank(); } },
-                e => tellJob("못 불러왔어요 — " + (e?.message || e), true));
+            } else if (b.dataset.a === "load") loadPages();
             else if (b.dataset.a === "reload") refresh();
             else if (b.dataset.a === "openall") { groups.forEach(g => opened.add(g.name)); render(); }
             else if (b.dataset.a === "closeall") { opened.clear(); render(); }
@@ -6114,7 +6012,6 @@ const roomImages = (() => {
     const onResize = () => {
         const vis = !!root?.offsetParent;
         if (vis && !wasVisible && mode === "room") refresh();
-        else if (vis && !wasVisible && mode === "bank") loadBank();
         wasVisible = vis;
         fit();
     };
@@ -6142,429 +6039,7 @@ const roomImages = (() => {
     return { inject, setEnabled, gather, ownerMap, sized, loadPages, onPages: fn => hooks.add(fn), loadingNow: () => loading };
 })();
 
-// ───────── 모은 목록: 저장소로 쓰는 계정들의 라이브러리 그림 · 주크박스 트랙 목록을 모아 두고 메인 계정에서 쓴다 ─────────
-// app.roll20.net 의 IndexedDB 는 같은 브라우저면 로그인한 계정이 달라도 같은 곳 → 계정마다 [이 계정 모으기] 한 번이면 쌓인다.
-// 그림은 라이브러리 목록 주소(폴더 밖 그림 — 폴더는 안 씀)를 한 쪽씩 쉬면서 읽고, 트랙은 그 계정이 올린 곡(내 오디오)만 — 재생목록은 지금 게임 주크박스에서.
-// 그림 쓰기는 '이 방의 이미지' 창의 모은 목록 탭, 트랙 넣기는 주크박스 탭의 [모은 트랙] 창
-const assetBank = (() => {
-    const esc = escAttr;
-    const norm = s => String(s || "").replace(/\s+/g, "").toLowerCase();
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-    // ── 보관: 계정 하나 = 기록 하나 { uid, name, at, imgs, tracks, pls, game } ──
-    let dbp = null, cache = null;
-    const db = () => dbp || (dbp = new Promise((res, rej) => {
-        const r = indexedDB.open("r20_asset_bank", 1);
-        r.onupgradeneeded = () => r.result.createObjectStore("acct", { keyPath: "uid" });
-        r.onsuccess = () => res(r.result);
-        r.onerror = () => { dbp = null; rej(r.error); };
-    }));
-    const store = async (mode, fn) => {
-        const d = await db();
-        return new Promise((res, rej) => {
-            const t = d.transaction("acct", mode), q = fn(t.objectStore("acct"));
-            t.oncomplete = () => res(q?.result);
-            t.onerror = t.onabort = () => rej(t.error);
-        });
-    };
-    // 계정 기록들 + 방 주크박스 기억(uid "~room", 계정 목록엔 안 보임)
-    const ROOM = "~room";
-    const load = async () => {
-        if (!cache) {
-            const rows = (await store("readonly", s => s.getAll())) || [];
-            cache = { accts: rows.filter(a => !a.room).sort((a, b) => String(a.name).localeCompare(String(b.name), "ko", { numeric: true })), room: rows.find(a => a.room) || null };
-        }
-        return cache;
-    };
-    const list = async () => (await load()).accts;
-    const put = async recs => { cache = null; await store("readwrite", s => { recs.forEach(r => s.put(r)); }); cache = null; };
-    // 다른 탭에서 모았을 수 있으니 이 탭으로 돌아오면 다시 읽는다
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) cache = null; });
-
-    const me = () => {
-        const p = window.currentPlayer, name = String(p?.get?.("displayname") || "");
-        const uid = String(p?.get?.("d20userid") || name);
-        return uid ? { uid, name: name || uid } : null;
-    };
-
-    // ── 모으기 ──
-    const readLib = async job => {
-        const out = [], seen = new Set();
-        for (let p = 1; p <= 3000; p++) {
-            if (job.stop) return null;
-            const r = await fetch(`/image_library/fetchorphanassets/false/${p}`, { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } });
-            if (!r.ok) throw new Error(`라이브러리 목록 ${p}쪽을 못 읽었어요 (${r.status})`);
-            const page = await r.json();
-            if (!Array.isArray(page) || !page.length) break;
-            let fresh = 0;
-            page.forEach(a => {
-                if (!a?.fullsize_url || seen.has(a.id)) return;
-                seen.add(a.id); fresh++;
-                out.push({ id: a.id, n: String(a.name || ""), u: String(a.fullsize_url), gw: a.grid_width || null, gh: a.grid_height || null, sz: String(a.file_size || ""), t: a.upload_date || 0 });
-            });
-            if (!fresh) break;                  // 같은 쪽이 되풀이되면 끝으로 본다
-            job.tell(`그림 읽는 중 · ${p}쪽 · ${out.length}장`);
-            await sleep(500);                   // Roll20 에 부담 주지 않게 쪽마다 쉰다
-        }
-        return out;
-    };
-    // 주크박스: 재생목록 순서대로, 재생목록 밖 곡은 맨 뒤. 재생목록의 재생 방식 등(n·i·id 밖의 값)은 새로 만들 때 그대로 쓴다
-    const readTracks = () => {
-        const models = window.Jukebox?.playlist?.models;
-        if (!models?.length) return null;
-        let tree = [];
-        try { tree = JSON.parse(window.Campaign?.get?.("jukeboxfolder") || "[]"); } catch (e) {}
-        const where = new Map(), pls = [];
-        const walk = (l, pl) => (Array.isArray(l) ? l : []).forEach(x => {
-            if (typeof x === "string") { if (!where.has(x)) where.set(x, pl); }
-            else if (x && typeof x === "object") {
-                const { n, i, id, ...extra } = x;
-                const name = String(n || "(이름 없는 재생목록)");
-                if (!pls.some(p => p.n === name)) pls.push({ n: name, x: extra });
-                walk(i, name);
-            }
-        });
-        walk(tree, "");
-        const byId = new Map(models.map(m => [m.id, m])), tracks = [];
-        const add = (m, pl) => {
-            const a = m.attributes;
-            if (a.track_id) tracks.push({ t: String(a.title || ""), src: a.source || "", tid: String(a.track_id), sk: a.storagekey || "", tags: a.tags || "", vol: a.volume, loop: !!a.loop, pl });
-        };
-        where.forEach((pl, id) => { const m = byId.get(id); if (m) { add(m, pl); byId.delete(id); } });
-        byId.forEach(m => add(m, ""));
-        return { tracks, pls };
-    };
-    // 내 오디오: 이 계정이 올린 곡 전부 { id, title, accountid, tags, storagekey } (항목이 JSON 글자로 한 번 더 싸여 온다)
-    const readMyAudio = async () => {
-        const r = await fetch("/audio_library/search?alltracks=true", { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } });
-        if (!r.ok) throw new Error(r.status);
-        const d = await r.json();
-        return (Array.isArray(d?.tracks) ? d.tracks : []).map(x => { try { return typeof x === "string" ? JSON.parse(x) : x; } catch (e) { return null; } }).filter(x => x?.id);
-    };
-    // 방 주크박스엔 다른 계정 곡도 섞여 있다 → 내 오디오에 있는 곡만 (주크박스 track_id 의 # 앞 = 오디오 번호).
-    // 방에 있는 곡은 방 설정(재생목록 · 볼륨 · 반복)대로 → 없으면 기억해 둔 방 주크박스 → 예전에 모은 것 → 재생목록 밖
-    const aid = tid => String(tid || "").split("#")[0];
-    const ownTracks = (mine, room, old, mem) => {
-        const ids = new Set(mine.map(a => String(a.id))), was = new Map(), out = [];
-        (old?.tracks || []).forEach(t => { if (!was.has(aid(t.tid))) was.set(aid(t.tid), t); });
-        [...(room?.tracks || []), ...(mem?.tracks || [])].forEach(t => { const k = aid(t.tid); if (ids.has(k) && (!t.src || t.src === "My Audio")) { out.push(t); ids.delete(k); } });
-        mine.forEach(a => {
-            const k = String(a.id);
-            if (!ids.has(k)) return;
-            ids.delete(k);
-            const w = was.get(k);
-            out.push(w ? { ...w, t: String(a.title || w.t) } : { t: String(a.title || ""), src: "My Audio", tid: k, sk: a.storagekey || "", tags: a.tags || "", vol: undefined, loop: false, pl: "" });
-        });
-        const used = new Set(out.map(t => t.pl)), pls = [];
-        [...(room?.pls || []), ...(mem?.pls || []), ...(old?.pls || [])].forEach(p => { if (used.has(p.n) && !pls.some(x => x.n === p.n)) pls.push(p); });
-        return { tracks: out, pls };
-    };
-    // GM 으로 모을 때 방 주크박스 전체(재생목록 · 볼륨 · 반복)를 기억해 둔다 → 주크박스가 안 보이는 플레이어로 모아도 재생목록이 붙는다
-    const remember = (room, game, prev) => {
-        const seen = new Set(), tracks = [], pls = [...room.pls];
-        [...room.tracks, ...(prev?.tracks || [])].forEach(t => { const k = aid(t.tid); if (!seen.has(k)) { seen.add(k); tracks.push(t); } });
-        (prev?.pls || []).forEach(p => { if (!pls.some(x => x.n === p.n)) pls.push(p); });
-        return { uid: ROOM, room: true, at: Date.now(), game, tracks, pls };
-    };
-    // 지금 로그인한 계정의 그림 + 그 계정이 올린 곡. 멈추면 예전 목록 그대로, 내 오디오를 못 읽으면 트랙은 예전 그대로
-    const collect = async job => {
-        const who = me();
-        if (!who) throw new Error("로그인한 계정을 못 찾았어요");
-        const old = (await list()).find(a => a.uid === who.uid);
-        job.tell(`${who.name} 모으는 중…`);
-        const imgs = await readLib(job);
-        if (!imgs) return `멈췄어요 — ${who.name} 목록은 예전 그대로예요`;
-        let mine = null;
-        try { mine = await readMyAudio(); } catch (e) { console.warn("[모은 목록] 내 오디오 읽기 실패:", e); }
-        const room = readTracks(), game = document.title.replace(/\s*\|\s*Roll20.*$/i, "").trim();
-        const memRec = room ? remember(room, game, (await load()).room) : null, mem = memRec || (await load()).room;
-        const rec = { ...(old || {}), uid: who.uid, name: who.name, at: Date.now(), imgs, tracks: old?.tracks || [], pls: old?.pls || [] };
-        if (mine) Object.assign(rec, ownTracks(mine, room, old, mem));
-        if (mine && (room || mem)) rec.game = room ? game : mem.game;
-        await put(memRec ? [rec, memRec] : [rec]);
-        const gone = (a, b, k) => { const s = new Set((b || []).map(k)); return (a || []).filter(x => !s.has(k(x))).length; };
-        const diff = (now, was, k) => { if (!was) return ""; const p = gone(now, was, k), m = gone(was, now, k); return p || m ? ` (+${p} −${m})` : ""; };
-        return `${who.name}: 그림 ${imgs.length}장${diff(imgs, old?.imgs, x => x.id)}`
-            + (mine ? ` · 올린 곡 ${rec.tracks.length}곡${diff(rec.tracks, old?.tracks, x => aid(x.tid))}` : " · 내 오디오 목록을 못 읽어 트랙은 예전 그대로") + " 모았어요";
-    };
-
-    // ── 파일로 내보내기 · 불러오기 (백업 · 다른 PC) ──
-    const exportFile = async () => {
-        const accts = await list();
-        if (!accts.length) return 0;
-        const a = document.createElement("a"), d = new Date(), p2 = n => String(n).padStart(2, "0");
-        a.href = URL.createObjectURL(new Blob([JSON.stringify({ kind: "r20-asset-bank", v: 1, at: Date.now(), accts })], { type: "application/json" }));
-        a.download = `roll20-asset-bank-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}.json`;
-        document.body.append(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-        return accts.length;
-    };
-    const pickFile = () => new Promise(res => {
-        const inp = Object.assign(document.createElement("input"), { type: "file", accept: ".json,application/json" });
-        inp.style.cssText = "display:none !important";
-        const end = f => { inp.remove(); res(f); };
-        inp.addEventListener("change", () => end(inp.files[0] || null));
-        inp.addEventListener("cancel", () => end(null));
-        document.body.append(inp); inp.click();
-    });
-    // 같은 계정은 더 나중에 모은 쪽을 남긴다
-    const importFile = async () => {
-        const f = await pickFile();
-        if (!f) return null;
-        let data = null;
-        try { data = JSON.parse(await f.text()); } catch (e) {}
-        const recs = (data?.kind === "r20-asset-bank" && Array.isArray(data.accts) ? data.accts : []).filter(a => a?.uid && Array.isArray(a.imgs));
-        if (!recs.length) throw new Error("모은 목록 파일이 아니에요");
-        const cur = new Map((await list()).map(a => [a.uid, a]));
-        const take = recs.filter(a => (a.at || 0) >= (cur.get(String(a.uid))?.at || 0));
-        if (take.length) await put(take.map(a => ({ ...a, uid: String(a.uid), name: String(a.name || a.uid), tracks: Array.isArray(a.tracks) ? a.tracks : [], pls: Array.isArray(a.pls) ? a.pls : [] })));
-        return { got: recs.length, took: take.length };
-    };
-
-    // ── 모은 트랙 창 ──
-    // 이 게임에 이미 있는지: 같은 출처의 같은 오디오 (track_id 의 # 앞)
-    const audioKey = (src, tid) => (src || "") + "|" + String(tid || "").split("#")[0];
-    const haveSet = () => new Set((window.Jukebox?.playlist?.models || []).map(m => audioKey(m.get("source"), m.get("track_id"))));
-    const newId = () => typeof window.generateUUID === "function" ? window.generateUUID()
-        : "-r20ab" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    let panel = null, btn = null, q = "", who = "", busy = false, bound = false, qt = 0, dt = 0;
-    let onlyMissing = localStorage.getItem("r20_ab_missing") === "true";
-    const opened = new Set();       // 펼친 재생목록 (계정 uid|이름)
-    const ROWS = 800;
-
-    const draw = async () => {
-        if (!panel || busy) return;
-        let accts = [];
-        try { accts = (await list()).filter(a => a.tracks?.length); } catch (e) { console.warn("[모은 트랙] 읽기 실패:", e); }
-        if (!panel) return;
-        const have = haveSet(), v = norm(q), sel = panel.querySelector("select");
-        if (!accts.some(a => a.uid === who)) who = "";
-        const opts = `<option value="">계정: 전체</option>` + accts.map(a => `<option value="${esc(a.uid)}">${esc(a.name)} (${a.tracks.length})</option>`).join("");
-        if (sel.dataset.sig !== opts) { sel.innerHTML = opts; sel.dataset.sig = opts; }
-        sel.value = who;
-        let html = "", total = 0, miss = 0, rows = 0;
-        accts.forEach(a => {
-            if (who && a.uid !== who) return;
-            const groups = new Map();       // 재생목록 이름 → { all, lack, vis }
-            a.tracks.forEach((t, i) => {
-                const ok = have.has(audioKey(t.src, t.tid));
-                let g = groups.get(t.pl);
-                if (!g) groups.set(t.pl, g = { all: 0, lack: 0, vis: [] });
-                g.all++; if (!ok) g.lack++;
-                if (v && !norm(t.t + t.tags + t.pl).includes(v)) return;
-                total++; if (!ok) miss++;
-                if (!onlyMissing || !ok) g.vis.push({ t, i, ok });
-            });
-            const shown = [...groups].filter(([, g]) => g.vis.length).sort(([x], [y]) => (x === "") - (y === ""));      // 재생목록 밖은 맨 아래
-            if (!shown.length) return;
-            html += `<div class="r20ab-acc">${esc(a.name)}${a.game ? ` <small>${esc(a.game)}</small>` : ""}</div>`;
-            shown.forEach(([pl, g]) => {
-                const key = a.uid + "|" + pl, open = !!v || onlyMissing || opened.has(key);
-                html += `<div class="r20ab-pl"><button type="button" class="r20ab-gh" data-g="${esc(key)}" aria-expanded="${open}"><span aria-hidden="true">${open ? "▾" : "▸"}</span>`
-                    + `<em>${esc(pl || "재생목록 밖")}</em> <small>${g.all}곡${g.lack ? ` · <b>빠짐 ${g.lack}</b>` : ""}</small></button>`
-                    + (g.lack ? `<button type="button" class="r20ab-btn" data-u="${esc(a.uid)}" data-pl="${esc(pl)}">빠진 ${g.lack}곡 넣기</button>` : `<span class="r20ab-ok">다 있음</span>`) + "</div>";
-                if (open) g.vis.forEach(({ t, i, ok }) => {
-                    if (rows++ >= ROWS) return;
-                    html += `<div class="r20ab-tr"><span title="${esc(t.t + (t.tags ? "\n" + t.tags : ""))}">${esc(t.t || "(제목 없음)")}</span>`
-                        + `<button type="button" class="r20ab-pv" data-pv="${esc(a.uid)}|${i}" aria-label="미리듣기 — ${esc(t.t || "")}">▶</button>`
-                        + (ok ? `<span class="r20ab-ok">✓ 있음</span>` : `<button type="button" class="r20ab-btn" data-u="${esc(a.uid)}" data-i="${i}">넣기</button>`) + "</div>";
-                });
-            });
-        });
-        if (rows > ROWS) html += `<p class="r20ab-empty">줄이 많아 앞 ${ROWS}줄만 보여요 — 검색이나 계정으로 좁혀 주세요</p>`;
-        panel.querySelector(".r20ab-list").innerHTML = html || `<p class="r20ab-empty">${accts.length ? (onlyMissing && !v ? "빠진 곡이 없어요 ✓" : "찾는 곡이 없어요")
-            : "아직 모은 트랙이 없어요<br>저장소 계정으로 트랙이 든 게임에 들어가서<br>그림 탭 › 모은 목록 › [이 계정 모으기]"}</p>`;
-        panel.querySelector(".r20ab-foot").textContent = accts.length ? `${who ? 1 : accts.length}계정 · ${total}곡 · 이 게임에 없는 곡 ${miss}` : "";
-        pvMark();
-    };
-    const drawSoon = () => { clearTimeout(dt); dt = setTimeout(draw, 200); };
-
-    // ── 미리듣기: 주크박스 BGM 미리듣기와 같은 재생 주소(오디오 번호). 나만 듣는다(Roll20 재생과 무관)
-    //    이 게임에 없는 곡을 Roll20 이 막으면 그 곡은 ✕ (콘솔에 남김) ──
-    let pv = null, pvKey = "";
-    const pvBad = new Set();
-    const pvUrl = t => /^https?:\/\//.test(t.tid) ? t.tid
-        : (!t.src || t.src === "My Audio") && t.tid ? `${window.IS_EMBEDDED ? "/.proxy" : ""}/audio_library/play/${window.campaign_id}/${String(t.tid).split(/[-#]/)[0]}` : null;
-    const pvMark = () => panel?.querySelectorAll(".r20ab-pv").forEach(b => {
-        const on = b.dataset.pv === pvKey, bad = pvBad.has(b.dataset.pv);
-        b.setAttribute("aria-pressed", String(on)); b.textContent = bad ? "✕" : on ? "■" : "▶";
-        b.title = bad ? "미리듣기를 못 했어요 — 이 게임에 넣은 뒤 들어 보세요" : on ? "멈추기" : "미리듣기";
-    });
-    const pvStop = () => { if (pv) { pv.pause(); pv.removeAttribute("src"); pv.load(); } pv = null; pvKey = ""; pvMark(); };
-    const pvPlay = (t, key) => {
-        if (pvKey === key) return pvStop();
-        pvStop();
-        const url = t && pvUrl(t);
-        if (!url) { pvBad.add(key); return pvMark(); }
-        pvKey = key;
-        const a = pv = new Audio(url);
-        a.volume = Math.min(1, Math.max(0, (Number(t.vol) || 30) / 100));       // 방에서 정한 볼륨(없으면 30)
-        a.addEventListener("ended", () => { if (a === pv) pvStop(); });
-        a.addEventListener("error", () => { if (a !== pv) return; console.warn("[모은 트랙] 미리듣기 실패:", t.t, url); pvBad.add(key); pvStop(); });
-        a.play().catch(() => {});
-        pvMark();
-    };
-
-    // 새 트랙을 같은 이름의 재생목록 끝에 넣는다 (없으면 맨 아래에 새로 만들고, 재생 방식은 원래 재생목록 것)
-    const intoPlaylist = (ids, pl, extra) => {
-        const C = window.Campaign;
-        let tree = [];
-        try { tree = JSON.parse(C.get("jukeboxfolder") || "[]"); } catch (e) {}
-        if (!Array.isArray(tree)) tree = [];
-        const add = new Set(ids);
-        // Roll20 이 새 곡을 어딘가에 먼저 넣어 두었으면 빼고 옮긴다
-        const strip = l => l.filter(x => !(typeof x === "string" && add.has(x))).map(x => x && typeof x === "object" && Array.isArray(x.i) ? { ...x, i: strip(x.i) } : x);
-        tree = strip(tree);
-        const find = l => { for (const x of l) if (x && typeof x === "object") { if (x.n === pl) return x; const f = Array.isArray(x.i) && find(x.i); if (f) return f; } return null; };
-        const f = find(tree);
-        if (f) f.i = [...(Array.isArray(f.i) ? f.i : []), ...ids];
-        else tree.push({ ...(extra || {}), n: pl, i: ids, id: newId() });
-        C.save({ jukeboxfolder: JSON.stringify(tree) });
-    };
-    const insert = async (a, tracks, b) => {
-        const J = window.Jukebox?.playlist;
-        if (busy || typeof J?.create !== "function") return;
-        busy = true;
-        panel?.classList.add("r20ab-busy");
-        const have = haveSet(), placed = new Map();     // 재생목록 이름 → 새 트랙 id
-        const todo = tracks.filter(t => t && !have.has(audioKey(t.src, t.tid)));
-        let n = 0;
-        try {
-            for (const t of todo) {
-                const k = audioKey(t.src, t.tid);
-                if (have.has(k)) continue;              // 같은 곡이 목록에 두 번 있으면 한 번만
-                if (b?.isConnected) b.textContent = `넣는 중 ${++n}/${todo.length}`;
-                // 방 주크박스에 없던 곡은 track_id 가 오디오 번호뿐 → Roll20 처럼 # 뒤에 곡마다 다른 번호를 붙인다 (재생엔 # 앞만 쓴다)
-                const tid = t.tid.includes("#") ? t.tid : t.tid + "#" + (10000 + Math.floor(Math.random() * 90000));
-                const m = J.create({ title: t.t, source: t.src, track_id: tid, storagekey: t.sk, tags: t.tags || "", volume: t.vol ?? 30, loop: !!t.loop, playing: false, softstop: false });
-                if (!m?.id) continue;
-                have.add(k);
-                if (t.pl) { if (!placed.has(t.pl)) placed.set(t.pl, []); placed.get(t.pl).push(m.id); }
-                if (todo.length > 1) await sleep(200);  // 많이 넣을 때 한꺼번에 몰리지 않게
-            }
-            if (placed.size) {
-                await sleep(400);                       // Roll20 이 새 곡을 폴더 구조에 넣을 틈
-                placed.forEach((ids, pl) => intoPlaylist(ids, pl, (a.pls || []).find(p => p.n === pl)?.x));
-            }
-        } catch (e) { console.warn("[모은 트랙] 넣기 실패:", e); }
-        busy = false;
-        panel?.classList.remove("r20ab-busy");
-        draw();
-    };
-
-    // ── 자동 모으기: 켜 두면 아직 안 모은 계정으로 게임에 들어올 때 저절로 모은다 (플레이어여도 됨 · 켠 계정은 빼고) ──
-    // 설정은 localStorage — 같은 브라우저면 계정을 바꿔도 그대로다
-    const AUTO = "r20_ab_auto";
-    const autoCfg = () => { try { return JSON.parse(localStorage.getItem(AUTO) || "null"); } catch (e) { return null; } };
-    const setAuto = on => { const w = me(); if (on) localStorage.setItem(AUTO, JSON.stringify({ skip: w ? [w.uid] : [] })); else localStorage.removeItem(AUTO); };
-    let autoTried = false, toastEl = null, toastT = 0;
-    const toast = (msg, job, ms) => {
-        if (!toastEl) {
-            toastEl = document.createElement("div");
-            toastEl.className = "r20ab-toast";
-            toastEl.setAttribute("role", "status");
-            toastEl.innerHTML = `<strong>모은 목록</strong><span></span><button type="button"></button>`;
-            toastEl.querySelector("button").addEventListener("click", () => { if (toastEl._job && !toastEl._job.done) toastEl._job.stop = true; else { toastEl.remove(); toastEl = null; } });
-            document.body.append(toastEl);
-        }
-        toastEl._job = job;
-        toastEl.querySelector("span").textContent = msg;
-        toastEl.querySelector("button").textContent = job && !job.done ? "멈추기" : "닫기";
-        clearTimeout(toastT);
-        if (ms) toastT = setTimeout(() => { toastEl?.remove(); toastEl = null; }, ms);
-    };
-    const autoRun = async () => {
-        const cfg = autoCfg(), w = me();
-        if (!cfg || !w || (cfg.skip || []).includes(w.uid)) return;
-        const had = (await list()).find(a => a.uid === w.uid);
-        if (had) { const d = new Date(had.at); return toast(`${w.name} — 이미 모은 계정이에요 (${d.getMonth() + 1}/${d.getDate()}) · 다시 모으려면 그림 탭 › 모은 목록`, null, 8000); }
-        const job = { stop: false, done: false };
-        job.tell = m => toast(m, job);
-        let msg;
-        try { msg = await collect(job); } catch (e) { console.warn("[모은 목록] 자동 모으기 실패:", e); msg = "못 모았어요 — " + (e?.message || e); }
-        job.done = true;
-        toast(/모았어요$/.test(msg) ? msg + " · 이제 로그아웃해도 돼요" : msg, job);
-    };
-
-    const closePanel = () => { pvStop(); panel?.remove(); panel = null; btn?.setAttribute("aria-expanded", "false"); };
-    const openPanel = () => {
-        if (panel) return closePanel();
-        panel = document.createElement("div");
-        panel.className = "r20ab";
-        panel.setAttribute("role", "dialog");
-        panel.setAttribute("aria-label", "모은 트랙");
-        panel.innerHTML = `<div class="r20ab-h"><strong>모은 트랙</strong><button type="button" class="r20ab-x" data-a="close" aria-label="닫기">✕</button></div>`
-            + `<div class="r20ab-bar"><input type="search" placeholder="곡 · 재생목록 검색" aria-label="트랙 검색" value="${esc(q)}"><select aria-label="계정"></select>`
-            + `<label class="r20ab-miss"><input type="checkbox"${onlyMissing ? " checked" : ""}>빠진 곡만</label></div>`
-            + `<div class="r20ab-list"><p class="r20ab-empty">읽는 중…</p></div><div class="r20ab-foot"></div>`;
-        panel.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") { closePanel(); btn?.focus(); } });   // Roll20 단축키 막기
-        panel.addEventListener("input", e => { if (e.target.type === "search") { clearTimeout(qt); qt = setTimeout(() => { q = e.target.value; draw(); }, 150); } });
-        panel.addEventListener("change", e => {
-            if (e.target.tagName === "SELECT") { who = e.target.value; draw(); }
-            else if (e.target.type === "checkbox") { onlyMissing = e.target.checked; localStorage.setItem("r20_ab_missing", String(onlyMissing)); draw(); }
-        });
-        panel.addEventListener("click", async e => {
-            const b = e.target.closest("button");
-            if (!b) return;
-            if (b.dataset.a === "close") return closePanel();
-            if (b.dataset.pv) {
-                const [u, i] = [b.dataset.pv.slice(0, b.dataset.pv.lastIndexOf("|")), +b.dataset.pv.slice(b.dataset.pv.lastIndexOf("|") + 1)];
-                return pvPlay((await list()).find(x => x.uid === u)?.tracks[i], b.dataset.pv);
-            }
-            if (b.dataset.g != null) {
-                if (q || onlyMissing) return;           // 검색 · 빠진 곡만 볼 땐 모두 펼쳐 둔다
-                if (opened.has(b.dataset.g)) opened.delete(b.dataset.g); else opened.add(b.dataset.g);
-                return draw();
-            }
-            const a = b.dataset.u != null && (await list()).find(x => x.uid === b.dataset.u);
-            if (!a) return;
-            if (b.dataset.i != null) insert(a, [a.tracks[+b.dataset.i]], b);
-            else if (b.dataset.pl != null) insert(a, a.tracks.filter(t => t.pl === b.dataset.pl), b);
-        });
-        // 주크박스 탭 왼쪽에 띄운다 (창이 좁으면 오른쪽 끝)
-        const side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const right = side?.width ? innerWidth - side.left + 8 : 16;
-        panel.style.right = (innerWidth - right < 356 ? 8 : right) + "px";
-        panel.style.top = Math.max(8, Math.round(side?.top ?? 0) + 40) + "px";
-        document.body.append(panel);
-        btn?.setAttribute("aria-expanded", "true");
-        // 이 게임 주크박스가 바뀌면 '있음' 표시도 다시
-        if (!bound && window.Jukebox?.playlist?.on) { bound = true; window.Jukebox.playlist.on("add remove", drawSoon); }
-        panel.querySelector("input[type=search]").focus();
-        draw();
-    };
-
-    const inject = () => {
-        if (!btnVisible.artroom) return;
-        // 게임이 다 뜬 뒤(계정 정보 · 주크박스) 한 번만
-        if (!autoTried && window.currentPlayer?.get && autoCfg()) { autoTried = true; setTimeout(autoRun, 5000); }
-        if (document.querySelector("#jukebox .r20ab-open")) return;
-        // '오디오 관리' 옆에 (그 단추와 같은 float 로 바로 앞에 끼우면 화면에선 옆에 선다). 못 찾으면 아래 단추 줄에
-        const aud = [...document.querySelectorAll("#jukebox button, #jukebox .btn")].find(b => !b.closest(".dd-list") && /^(오디오 관리|Audio Library|Manage Audio)$/i.test(b.textContent.trim()));
-        const host = aud?.parentElement || document.querySelector("#jukebox .secondarycontrols");
-        if (!host) return;
-        btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "btn r20ab-open";
-        btn.textContent = "모은 트랙";
-        btn.title = "저장소 계정에서 모아 둔 트랙 — 이 게임에 빠진 곡 넣기";
-        btn.setAttribute("aria-haspopup", "dialog");
-        btn.setAttribute("aria-expanded", String(!!panel));
-        btn.addEventListener("click", openPanel);
-        if (aud) { btn.classList.add("r20ab-top"); btn.style.float = getComputedStyle(aud).float; aud.before(btn); }
-        else host.insertBefore(btn, host.querySelector(".r20jb-step"));
-    };
-    const setEnabled = on => {
-        if (on) return inject();
-        closePanel();
-        toastEl?.remove(); toastEl = null;
-        document.querySelectorAll(".r20ab-open").forEach(b => b.remove());
-        btn = null;
-    };
-    return { inject, setEnabled, list, collect, exportFile, importFile, autoOn: () => !!autoCfg(), setAuto };
-})();
-
-// @share-cut-end bank
+// @share-cut-end room
 // ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
 // 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
 const queryPicker = (() => {
@@ -7013,7 +6488,7 @@ addCss(`
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid #ddd !important; border-radius:3px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
         .ui-dialog.r20qp img.r20qp-img { padding:0; }
         .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:clip; }
-        /* @share-cut-start css-bank — 이 방의 이미지 · 모은 목록 (배포판에서 뺌) */
+        /* @share-cut-start css-room — 이 방의 이미지 (배포판에서 뺌) */
         #imagedialog .r20ri { display:flex; flex-direction:column; color:#333; font-size:12px; }
         #imagedialog .r20ri button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
         #imagedialog .r20ri-seg { display:flex; flex-shrink:0; gap:2px; margin:4px 0 6px; padding:2px; border-radius:7px; background:#efeff2; }
@@ -7069,66 +6544,17 @@ addCss(`
         #imagedialog .r20ri-foot { display:flex; flex-shrink:0; align-items:center; gap:6px; height:34px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
         #imagedialog .r20ri-foot button { padding:0 7px; }
         #imagedialog .r20ri-sum { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; }
-        #imagedialog .r20ri[data-m="bank"] .r20ri-chips, #imagedialog .r20ri[data-m="bank"] [data-only="room"], #imagedialog .r20ri:not([data-m="bank"]) [data-only="bank"] { display:none !important; }
         #imagedialog .r20ri-q { min-width:0; }
         #imagedialog .r20ri-gh small { display:inline !important; position:static !important; top:auto !important; }
-        #imagedialog label.r20ri-auto { display:flex; align-items:center; gap:6px; margin:0 0 6px !important; padding:0; font-size:11px !important; font-weight:400 !important; color:#555; cursor:pointer; }
-        #imagedialog label.r20ri-auto input { margin:0 !important; }
-        #imagedialog label.r20ri-auto small { display:inline !important; position:static !important; color:#8a8a90; }
-        .r20ab-toast { position:fixed; right:16px; bottom:16px; z-index:10003; display:flex; align-items:center; gap:8px; max-width:min(380px, calc(100vw - 32px)); padding:10px 10px 10px 12px; border:1px solid #f0d6e2; border-radius:8px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.18); color:#333; font:12px/1.45 sans-serif; }
-        .r20ab-toast strong { flex-shrink:0; color:#b8215f; }
-        .r20ab-toast span { flex:1; min-width:0; overflow-wrap:anywhere; }
-        .r20ab-toast button { flex-shrink:0; height:24px; margin:0; padding:0 9px; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#555; font:11px sans-serif; cursor:pointer; }
-        #imagedialog select.r20ri-acct { flex-shrink:0; width:auto !important; max-width:96px; height:28px !important; margin:0 !important; padding:0 4px !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
-        #imagedialog button.r20ri-more { display:block; width:100%; height:26px; margin:2px 0 6px; padding:0; border:1px dashed #d6d6dc; border-radius:6px; background:#fff; color:#b8215f; font-size:11px; }
-        #imagedialog .r20ri-foot button[data-a="collect"] { border-color:#b8215f; background:#b8215f; color:#fff; font-weight:700; }
         #imagedialog .r20ri-note span { overflow-wrap:anywhere; }
-        .r20ab { position:fixed; z-index:10002; display:flex; flex-direction:column; width:340px; max-width:calc(100vw - 16px); max-height:calc(100vh - 80px); border:1px solid #e6e6ea; border-radius:8px; background:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.2); color:#333; font:12px/1.4 sans-serif; }
-        .r20ab button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
-        .r20ab button:focus-visible, .r20ab input:focus-visible, .r20ab select:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
-        .r20ab-h { display:flex; align-items:center; flex-shrink:0; height:34px; padding:0 6px 0 12px; border-bottom:1px solid #efeff2; }
-        .r20ab-h strong { flex:1; font-size:13px; }
-        .r20ab .r20ab-x { width:26px; height:26px; padding:0; border:0; border-radius:5px; background:transparent; color:#777; }
-        .r20ab .r20ab-x:hover { background:#f4f4f6; }
-        .r20ab-bar { display:flex; flex-wrap:wrap; flex-shrink:0; align-items:center; gap:6px; padding:8px 10px 6px; }
-        .r20ab-bar input[type="search"] { flex:1 1 120px; min-width:0; width:auto !important; height:28px !important; margin:0 !important; padding:0 8px !important; border:0 !important; border-radius:6px !important; background:#f4f4f6 !important; box-shadow:none !important; font-size:12px !important; }
-        .r20ab-bar select { width:auto !important; max-width:120px; height:28px !important; margin:0 !important; padding:0 4px !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
-        .r20ab-miss { display:flex; align-items:center; gap:4px; margin:0 !important; font-size:11px !important; font-weight:400 !important; color:#555; white-space:nowrap; cursor:pointer; }
-        .r20ab-miss input { margin:0 !important; }
-        .r20ab-list { flex:1; min-height:120px; overflow-y:auto; overscroll-behavior:contain; padding:0 10px 6px; }
-        .r20ab-acc { display:flex; align-items:center; gap:6px; margin-top:6px; padding:6px 0 4px; font-size:11px; font-weight:700; color:#7a1a42; }
-        .r20ab-acc small { font-weight:400; color:#a07088; }
-        .r20ab-acc::after { content:""; flex:1; height:1px; background:#f0d6e2; }
-        .r20ab-pl { display:flex; align-items:center; gap:6px; border-bottom:1px solid #f2f2f4; }
-        .r20ab .r20ab-gh { flex:1; min-width:0; display:flex; align-items:center; gap:6px; height:30px; padding:0; border:0; background:none; color:#333; font-size:12px; text-align:left; white-space:nowrap; overflow:hidden; }
-        .r20ab-gh > span { width:10px; flex-shrink:0; color:#9a9aa0; font-size:10px; }
-        .r20ab-gh em { min-width:0; overflow:hidden; font-style:normal; font-weight:700; text-overflow:clip; }
-        .r20ab-gh small { flex-shrink:0; color:#8a8a90; }
-        .r20ab-gh small b { color:#b8215f; }
-        .r20ab-tr { display:flex; align-items:center; gap:6px; height:28px; padding-left:16px; border-bottom:1px solid #f6f6f8; }
-        .r20ab-tr > span:first-child { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; }
-        .r20ab .r20ab-btn { flex-shrink:0; height:24px; padding:0 9px; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#555; font-size:11px; white-space:nowrap; }
-        .r20ab .r20ab-btn:hover { border-color:#b8215f; color:#b8215f; }
-        .r20ab .r20ab-pv { flex-shrink:0; width:26px; height:24px; margin:0; padding:0; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#666; font-size:9px; line-height:22px; cursor:pointer; }
-        .r20ab .r20ab-pv:hover { border-color:#b8215f; color:#b8215f; }
-        .r20ab .r20ab-pv[aria-pressed=true] { background:#b8215f; border-color:#b8215f; color:#fff; }
-        .r20ab .r20ab-pv:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
         /* 위쪽 '오디오 관리' 옆: 일괄 편집 단추와 같은 모양 */
-        #jukebox button.r20ab-open.r20ab-top { display:inline-flex; align-items:center; height:24px; margin:2px 0 0 3px; padding:0 10px; border:1px solid #ccc; border-radius:4px; background:#fff; color:#333; font-size:11px; font-weight:700; }
-        #jukebox button.r20ab-open.r20ab-top:hover { background:#f2f2f2; }
-        .r20ab.r20ab-busy .r20ab-btn { pointer-events:none; opacity:0.6; }
-        .r20ab-ok { flex-shrink:0; color:#2a8a4a; font-size:11px; white-space:nowrap; }
-        .r20ab-foot { flex-shrink:0; padding:8px 10px; border-top:1px solid #efeff2; font-size:11px; color:#6b6b70; }
-        .r20ab-foot:empty { display:none; }
-        .r20ab-empty { margin:20px 0; color:#8a8a90; text-align:center; line-height:1.6; }
-        /* @share-cut-end css-bank */
+        /* @share-cut-end css-room */
 `);
 addFeature("roomImages", roomImages);    // @share-cut-line
-addFeature("assetBank", assetBank);      // @share-cut-line
 addFeature("queryPicker", queryPicker);
 addFeature("quickJournal", quickJournal);
-addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 모은 목록(저장소 계정 그림 · 트랙) · 매크로 선택 썸네일 · 빠른 저널 뷰어",
-    members: [["artroom", "roomImages"], ["artroom", "assetBank"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
+addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 빠른 저널 뷰어",
+    members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
 
 // ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
 
