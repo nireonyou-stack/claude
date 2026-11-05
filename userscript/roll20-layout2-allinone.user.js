@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.47.1
+// @version      1.48.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.47.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.48.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -397,8 +397,8 @@ function applyCocofoliaLayout() {
                 sideColor = "";
             }
             const spRect = settingsPopup.getBoundingClientRect();
-            sidePanel.style.right = (window.innerWidth - spRect.left + 6) + "px";
-            sidePanel.style.bottom = (window.innerHeight - spRect.bottom) + "px";
+            sidePanel.style.right = zpx(window.innerWidth - spRect.left + 6);
+            sidePanel.style.bottom = zpx(window.innerHeight - spRect.bottom);
             sidePanel.style.left = "auto";
             sidePanel.style.top = "auto";
             paintSwatches();
@@ -468,9 +468,9 @@ function applyCocofoliaLayout() {
             if (!csTip) { csTip = document.createElement("div"); csTip.className = "cs-tip"; csTip.setAttribute("role", "tooltip"); }
             csTip.textContent = t.dataset.tip;
             document.body.appendChild(csTip);
-            const r = t.getBoundingClientRect(), w = csTip.offsetWidth, h = csTip.offsetHeight;
-            csTip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
-            csTip.style.top = (r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
+            const r = t.getBoundingClientRect(), { width: w, height: h } = csTip.getBoundingClientRect();
+            csTip.style.left = zpx(Math.max(4, Math.min(r.left, innerWidth - w - 4)));
+            csTip.style.top = zpx(r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4);
         });
         settingsPopup.addEventListener("mouseout", e => { const t = e.target.closest?.(".cs-text[data-tip]"); if (t && !t.contains(e.relatedTarget)) csTip?.remove(); });
         // 기능 묶음: 스위치 하나로 묶음 안 기능을 다 켜고 끈다 (기능마다 켜짐 값은 따로 저장해 둔다)
@@ -486,6 +486,15 @@ function applyCocofoliaLayout() {
             return [row, ...(b.extra?.(row) || [])];
         };
         const byPlace = place => BUNDLES.filter(b => b.place === place).sort((x, y) => x.order - y.order);
+        // 맨 위: 글자 크기 (올인원 창 전체) · 채팅도 같이
+        const zRow = document.createElement("div");
+        zRow.className = "cs-row";
+        const zText = document.createElement("span");
+        zText.className = "cs-text";
+        zText.dataset.tip = "올인원이 띄우는 창 전체 — 일괄 편집기 · 빠른 저널 · 설정 · 이모지 · 시트 촬영 · 말풍선 …";
+        zText.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "글자 크기" }));
+        zRow.append(zText, aioZoom.control("cs-seg"));
+        settingsPopup.append(zRow, switchRow("Roll20 채팅 글자도 같이", "채팅 기록 · 입력칸도 같은 배율로", aioZoom.chat(), on => aioZoom.chat(on)), sep());
         byPlace("main").forEach(b => settingsPopup.append(...bundleRows(b)));
         settingsPopup.appendChild(sep());
         settingsPopup.appendChild(switchRow("desc", "", btnVisible.desc, on => {
@@ -614,8 +623,8 @@ function applyCocofoliaLayout() {
                 return;
             }
             const r = settingsBtn.getBoundingClientRect();
-            settingsPopup.style.right  = (window.innerWidth  - r.right)  + "px";
-            settingsPopup.style.bottom = (window.innerHeight - r.top + 4) + "px";
+            settingsPopup.style.right  = zpx(window.innerWidth  - r.right);
+            settingsPopup.style.bottom = zpx(window.innerHeight - r.top + 4);
             settingsPopup.style.left = "auto"; settingsPopup.style.top = "auto";
             settingsPopup.classList.add("show");
         });
@@ -901,12 +910,74 @@ const addCss = css => CSS_PARTS.push(css);
 // all: 다음 번엔 전부 (처음 · 설정을 바꾼 뒤)
 const DIRTY = { all: true, set: new Set() };
 
+// ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
+// 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
+// vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
+const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji";
+const aioZoom = (() => {
+    const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
+    let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
+    const ctrls = new Set();
+    const paint = () => ctrls.forEach(c => {
+        c.querySelector(".aio-zv").textContent = Math.round(z * 100) + "%";
+        c.querySelector("[data-d='-1']").disabled = z <= MIN;
+        c.querySelector("[data-d='1']").disabled = z >= MAX;
+    });
+    const apply = () => document.documentElement.style.setProperty("--aio-z", z);
+    const chat = on => {
+        if (on !== undefined) localStorage.setItem(CHAT, String(on));
+        const v = localStorage.getItem(CHAT) === "true";
+        document.documentElement.classList.toggle("r20-zchat", v);
+        return v;
+    };
+    // 왼쪽 위로 놓인 창이 화면 밖으로 나가면 안으로 들인다 (다른 배율에서 기억한 자리로 열 때)
+    const fit = e => {
+        const r = e.getBoundingClientRect();
+        if (e.style.left.endsWith("px")) { const x = Math.max(0, Math.min(r.left, innerWidth - r.width)); if (x !== r.left) e.style.left = x / z + "px"; }
+        if (e.style.top.endsWith("px")) { const y = Math.max(0, Math.min(r.top, innerHeight - r.height)); if (y !== r.top) e.style.top = y / z + "px"; }
+    };
+    const set = v => {
+        v = Math.min(MAX, Math.max(MIN, Math.round(v * 20) / 20));
+        if (v === z) return;
+        const k = z / v;
+        z = v; localStorage.setItem(KEY, String(z)); apply(); paint();
+        // 떠 있는 창은 화면에서의 자리를 그대로 (JS 로 넣은 px 값을 새 배율로 바꿔 둔다)
+        document.querySelectorAll(AIO_ZOOMED).forEach(e => {
+            ["left", "top", "right", "bottom", "max-height"].forEach(p => {
+                const s = e.style.getPropertyValue(p);
+                if (s.endsWith("px")) e.style.setProperty(p, parseFloat(s) * k + "px", e.style.getPropertyPriority(p));
+            });
+            if (e.isConnected && e.getClientRects().length) fit(e);
+        });
+    };
+    // − · 지금 배율(누르면 100%) · + 단추 묶음. 어디에 몇 개를 두어도 같이 바뀐다
+    const control = cls => {
+        const c = document.createElement("span");
+        c.className = "aio-zm " + cls;
+        c.setAttribute("role", "group");
+        c.setAttribute("aria-label", "글자 크기");
+        c.innerHTML = '<button type="button" data-d="-1" aria-label="글자 작게" title="작게">−</button><button type="button" class="aio-zv" data-d="0" title="눌러서 100%로"></button><button type="button" data-d="1" aria-label="글자 크게" title="크게">+</button>';
+        c.addEventListener("click", e => { const d = e.target.closest("button")?.dataset.d; if (d !== undefined) set(d === "0" ? 1 : z + d * 0.1); });
+        ctrls.add(c); paint();
+        return c;
+    };
+    apply(); chat();
+    return { get: () => z, set, fit, chat, control };
+})();
+const zpx = v => v / aioZoom.get() + "px";
+
 const CORE_CSS = `
         /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
         :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; }
+        /* 글자 크기 (aioZoom): 올인원 창 · (켜면) 채팅 기록과 입력칸 */
+        :is(${AIO_ZOOMED}) { zoom:var(--aio-z, 1); }
+        html.r20-zchat #textchat .content { zoom:var(--aio-z, 1); }
+        html.r20-zchat #textchat-input textarea { font-size:calc(13px * var(--aio-z, 1)) !important; line-height:1.4 !important; }
+        .aio-zm .aio-zv { min-width:44px; font-variant-numeric:tabular-nums; }
+        .aio-zm button:disabled { opacity:0.4; cursor:default; }
         /* 올인원이 만든 창 안의 체크 상자 · 라디오 · 슬라이더도 강조색 (Roll20 것은 그대로) */
         :is(#custom-settings-popup, #cs-side-panel, #custom-journal-popup, #r20be, #r20ss, #r20ss-bar, #r20-ccf, #r20-fit, #r20-emoji, #imagedialog .r20ri, .r20ts, .r20so-dlg) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color:var(--aio-accent); }
-        #custom-settings-popup { position:fixed; width:300px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:var(--aio-ink-2); overflow-y:auto; max-height:70vh; }
+        #custom-settings-popup { position:fixed; width:300px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 4px 10px rgba(0,0,0,0.15); z-index:10003; display:none; flex-direction:column; font-family:sans-serif; font-size:12px; color:var(--aio-ink-2); overflow-y:auto; max-height:calc(70vh / var(--aio-z, 1)); }
         #custom-settings-popup.show { display:flex !important; }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
         #textchat-input.layout-applied-v11 { border-top:0 !important; }
@@ -1171,9 +1242,9 @@ const jukeboxRow = (() => {
         if (!tip) { tip = document.createElement("div"); tip.className = "r20jb-tip"; tip.setAttribute("role", "tooltip"); }
         tip.textContent = ti.dataset.r20jbTags;
         document.body.appendChild(tip);
-        const r = ti.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-        tip.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
-        tip.style.top = (r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
+        const r = ti.getBoundingClientRect(), { width: w, height: h } = tip.getBoundingClientRect();
+        tip.style.left = zpx(Math.max(4, Math.min(r.left, innerWidth - w - 4)));
+        tip.style.top = zpx(r.bottom + 4 + h > innerHeight ? r.top - h - 4 : r.bottom + 4);
     });
     document.addEventListener("mouseout", e => { const ti = e.target.closest?.(TAGGED); if (ti && !ti.contains(e.relatedTarget)) tip?.remove(); });
     document.addEventListener("wheel", () => tip?.remove(), { capture: true, passive: true });
@@ -1648,13 +1719,13 @@ const jbBackup = (() => {
     return { inject, setEnabled, list, restore, fmt };
 })();
 addCss(`
-        .r20jbb-toast { position:fixed; right:16px; bottom:16px; z-index:10010; display:flex; flex-direction:column; gap:6px; width:min(340px, calc(100vw - 32px)); padding:12px 14px;
+        .r20jbb-toast { position:fixed; right:16px; bottom:16px; z-index:10010; display:flex; flex-direction:column; gap:6px; width:min(340px, calc((100vw - 32px) / var(--aio-z, 1))); padding:12px 14px;
             border:1px solid #e3b3a8; border-left:4px solid #c0392b; border-radius:var(--aio-r); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.5 sans-serif; }
         .r20jbb-toast b { font-size:13px; color:#a0322a; }
         .r20jbb-toast div { display:flex; gap:6px; justify-content:flex-end; }
         .r20jbb-toast button { height:26px; margin:0; padding:0 10px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font:12px sans-serif; cursor:pointer; }
         .r20jbb-toast button[data-a="restore"] { border-color:var(--aio-accent); background:var(--aio-accent); color:#fff; font-weight:700; }
-        #r20be .r20be-bk { position:absolute; top:34px; right:10px; z-index:3; display:flex; flex-direction:column; width:min(360px, calc(100vw - 40px)); max-height:60vh; overflow-y:auto; padding:6px 0;
+        #r20be .r20be-bk { position:absolute; top:34px; right:10px; z-index:3; display:flex; flex-direction:column; width:min(360px, calc((100vw - 40px) / var(--aio-z, 1))); max-height:calc(60vh / var(--aio-z, 1)); overflow-y:auto; padding:6px 0;
             background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 4px 12px rgba(0,0,0,0.15); font-size:12px; }
         #r20be .r20be-bk[hidden] { display:none; }
         #r20be .r20be-bk p { margin:4px 12px 6px; color:var(--aio-ink-4); }
@@ -1682,7 +1753,7 @@ const domShot = (() => {
         "list-style-type", "list-style-position", "list-style-image", "quotes", "tab-size", "hyphens", "font-kerning", "font-feature-settings",
         "font-variation-settings", "-webkit-text-fill-color", "-webkit-text-stroke-color", "-webkit-text-stroke-width", "text-rendering",
         "border-collapse", "border-spacing", "caption-side", "empty-cells", "cursor"]);
-    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor)/;
+    const SKIP = /^(transition|animation|will-change|pointer-events|user-select|-webkit-user-select|cursor|zoom)/;     // zoom: 글자 크기 배율과 상관없이 100% 로 찍는다
     // 기본값 재기 · 크기 재기는 스타일시트가 하나도 없는 빈 문서에서 한다 — 이미지 안에도 Roll20 CSS 가 없으니
     // (Roll20 화면에서 재면 label · input 같은 태그 규칙이 기본값에 섞여, 그 값과 같은 속성이 이미지에서 빠진다)
     let blank = null, sandbox = null;
@@ -2103,7 +2174,7 @@ const sheetShot = (() => {
         const show = () => {
             const ok = !!rect && rect.w >= 4 && rect.h >= 4;
             sel.style.display = ok ? "block" : "none";
-            if (ok) Object.assign(sel.style, { left: rect.x + "px", top: rect.y + "px", width: rect.w + "px", height: rect.h + "px" });
+            if (ok) Object.assign(sel.style, { left: zpx(rect.x), top: zpx(rect.y), width: zpx(rect.w), height: zpx(rect.h) });
             partB.disabled = !ok;
             partB.classList.toggle("pri", ok); allB.classList.toggle("pri", !ok);
             const k = ratio();
@@ -2628,7 +2699,7 @@ const logBackup = (() => {
 })();
 
 const LB_CSS = `
-        #r20-logbak { position:fixed; z-index:10006; display:flex; flex-direction:column; max-height:70vh; background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:#333; }
+        #r20-logbak { position:fixed; z-index:10006; display:flex; flex-direction:column; max-height:calc(70vh / var(--aio-z, 1)); background:#fff; border:1px solid #ccc; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:#333; }
         #r20-logbak[hidden] { display:none; }
         #r20-logbak .hd { display:flex; align-items:center; gap:6px; padding:6px 8px; border-bottom:1px solid #eee; }
         #r20-logbak .hd b { font-size:12px; }
@@ -3615,7 +3686,7 @@ const ccfImport = (() => {
     const place = () => {
         if (!pop || !anchor?.isConnected) return;
         const r = anchor.getBoundingClientRect();
-        Object.assign(pop.style, { top: Math.round(r.top) + "px", right: Math.round(innerWidth - r.left + 8) + "px" });
+        Object.assign(pop.style, { top: zpx(Math.round(r.top)), right: zpx(Math.round(innerWidth - r.left + 8)) });
     };
     const build = () => {
         pop = document.createElement("div");
@@ -3953,7 +4024,7 @@ const mapFit = (() => {
     const place = () => {
         if (!pop || !anchor?.isConnected) return;
         const r = anchor.getBoundingClientRect();
-        Object.assign(pop.style, { top: Math.round(r.top) + "px", right: Math.round(innerWidth - r.left + 8) + "px" });
+        Object.assign(pop.style, { top: zpx(Math.round(r.top)), right: zpx(Math.round(innerWidth - r.left + 8)) });
     };
     const isOpen = () => !!pop && !pop.hidden;
     const open = at => { if (!isGM()) return; anchor = at; if (!pop) build(); pop.hidden = false; place(); say(""); draw(); };
@@ -3965,7 +4036,7 @@ const mapFit = (() => {
 })();
 addCss(`
         /* 맵 맞추기 판 (맵 단추 밑) — 가져오기 판과 같은 모양 */
-        #r20-fit { position:fixed; z-index:10006; display:flex; flex-direction:column; width:330px; max-width:calc(100vw - 32px); max-height:80vh; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
+        #r20-fit { position:fixed; z-index:10006; display:flex; flex-direction:column; width:330px; max-width:calc((100vw - 32px) / var(--aio-z, 1)); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
         #r20-fit[hidden] { display:none; }
         #r20-fit .hd { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid var(--aio-line-4); }
         #r20-fit .bd { display:flex; flex-direction:column; gap:5px; padding:6px 8px 8px; overflow-y:auto; }
@@ -4003,7 +4074,7 @@ addCss(`
         #r20-mapshot .spin, #custom-capture-copy .spin, .ui-dialog-titlebar .r20shot .spin { transform-origin:12px 12px; animation:r20cap-spin .8s linear infinite; }
         @media (prefers-reduced-motion: reduce) { #r20-mapshot .tray { transition:none; } }
         /* 코코포리아 맵 가져오기 판 (맵 단추 밑) */
-        #r20-ccf { position:fixed; z-index:10006; display:flex; flex-direction:column; width:320px; max-width:calc(100vw - 32px); max-height:80vh; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
+        #r20-ccf { position:fixed; z-index:10006; display:flex; flex-direction:column; width:320px; max-width:calc((100vw - 32px) / var(--aio-z, 1)); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 8px 24px rgba(0,0,0,0.2); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
         #r20-ccf[hidden] { display:none; }
         #r20-ccf .hd { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid var(--aio-line-4); }
         #r20-ccf .bd { display:flex; flex-direction:column; gap:6px; padding:6px 8px 8px; overflow-y:auto; }
@@ -4067,7 +4138,7 @@ addCss(`
         #r20ss .r20ss-foot button:disabled, #r20ss-bar button:disabled { opacity:0.45; cursor:default; }
         .ui-dialog-titlebar .r20shot.on { background:rgba(225,0,133,0.14); color:var(--aio-accent); }
         /* 숨길 부분 고르기 띠: 화면 아래 가운데에 떠서 시트를 가리지 않는다 */
-        #r20ss-bar { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:100009; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; width:max-content; max-width:calc(100vw - 32px); padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 6px 24px rgba(0,0,0,0.25); font:12px/1.4 sans-serif; color:var(--aio-ink-2); box-sizing:border-box; }
+        #r20ss-bar { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:100009; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; width:max-content; max-width:calc((100vw - 32px) / var(--aio-z, 1)); padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:0 6px 24px rgba(0,0,0,0.25); font:12px/1.4 sans-serif; color:var(--aio-ink-2); box-sizing:border-box; }
         #r20ss-bar .r20ss-hint { min-width:220px; max-width:360px; color:var(--aio-ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         #r20ss-bar .r20ss-grp { display:inline-flex; align-items:center; gap:4px; }
         #r20ss-bar .r20ss-n { margin-right:2px; font-weight:bold; color:var(--aio-accent); }
@@ -4312,7 +4383,7 @@ const sideOrder = (() => {
 })();
 addCss(`
     .r20so { position:fixed; inset:0; z-index:100005; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; }
-    .r20so-dlg { width:min(470px, calc(100vw - 32px)); max-height:calc(100vh - 40px); display:flex; flex-direction:column; background:var(--aio-bg); color:var(--aio-ink);
+    .r20so-dlg { width:min(470px, calc((100vw - 32px) / var(--aio-z, 1))); max-height:calc((100vh - 40px) / var(--aio-z, 1)); display:flex; flex-direction:column; background:var(--aio-bg); color:var(--aio-ink);
         border-radius:var(--aio-r-lg); box-shadow:0 10px 34px rgba(0,0,0,0.3); font:14px/1.5 system-ui, "Malgun Gothic", sans-serif; }
     .r20so-h { display:flex; align-items:baseline; gap:8px; padding:12px 14px 10px; border-bottom:1px solid var(--aio-line-3); }
     .r20so-h b { font-size:15px; } .r20so-h small { color:var(--aio-ink-4); font-size:12px; }
@@ -4866,9 +4937,9 @@ const tokenMenu = (() => {
         tip ||= Object.assign(document.createElement("div"), { className: "r20tm-tip" });
         tip.textContent = b.dataset.tip || "";
         document.body.appendChild(tip);
-        const r = b.getBoundingClientRect(), w = tip.offsetWidth;
-        tip.style.left = Math.max(4, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 4)) + "px";
-        tip.style.top = r.bottom + 4 + "px";
+        const r = b.getBoundingClientRect(), w = tip.getBoundingClientRect().width;
+        tip.style.left = zpx(Math.max(4, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 4)));
+        tip.style.top = zpx(r.bottom + 4);
     }, true);
     document.addEventListener("pointerdown", hideTip, true);
     // 메뉴가 뜬 순간 붙인다(instant) — 100ms 뒤면 원래 메뉴가 잠깐 보인다. 감시는 시작 쪽 본체 감시자가 한다
@@ -5016,9 +5087,9 @@ const tokenActs = (() => {
             pop.appendChild(b);
         });
         document.body.appendChild(pop);
-        const w = pop.offsetWidth, h = pop.offsetHeight;
-        pop.style.left = Math.max(4, Math.min(at.x + 10, innerWidth - w - 4)) + "px";
-        pop.style.top = Math.max(4, Math.min(at.y + 10, innerHeight - h - 4)) + "px";
+        const { width: w, height: h } = pop.getBoundingClientRect();
+        pop.style.left = zpx(Math.max(4, Math.min(at.x + 10, innerWidth - w - 4)));
+        pop.style.top = zpx(Math.max(4, Math.min(at.y + 10, innerHeight - h - 4)));
     };
     // 위쪽 줄에 토큰 액션만 있을 때는 줄을 숨긴다 (그리기 도구 설정 등 다른 줄은 그대로)
     const inject = () => {
@@ -6201,12 +6272,12 @@ const quickJournal = (() => {
             if (e.target.closest(".cj-close-btn, .cj-zoom")) return;
             e.preventDefault();
             const r = popup.getBoundingClientRect();
-            popup.style.left = r.left + "px"; popup.style.top = r.top + "px";
+            popup.style.left = zpx(r.left); popup.style.top = zpx(r.top);
             popup.style.right = "auto"; popup.style.bottom = "auto";
             const sx = e.clientX, sy = e.clientY;
             const onMove = (e) => {
-                popup.style.left = (r.left + e.clientX - sx) + "px";
-                popup.style.top  = (r.top  + e.clientY - sy) + "px";
+                popup.style.left = zpx(r.left + e.clientX - sx);
+                popup.style.top  = zpx(r.top  + e.clientY - sy);
             };
             const onUp = () => {
                 popup.dataset.userMoved = "true";
@@ -6371,8 +6442,8 @@ const quickJournal = (() => {
                 const rect = journalBtn.getBoundingClientRect();
                 // 단추가 대화 판 안(⚙ 옆)에 있으니 판 왼쪽 바깥에 연다
                 const sideL = document.getElementById("rightsidebar")?.getBoundingClientRect().left;
-                popup.style.right  = (window.innerWidth - (sideL > 0 ? sideL - 8 : rect.left - 210)) + "px";
-                popup.style.bottom = (window.innerHeight - rect.top + 8) + "px";
+                popup.style.right  = zpx(window.innerWidth - (sideL > 0 ? sideL - 8 : rect.left - 210));
+                popup.style.bottom = zpx(window.innerHeight - rect.top + 8);
                 popup.style.left   = "auto"; popup.style.top = "auto";
             }
             const savedW = localStorage.getItem("r20_popup_w");
@@ -6380,11 +6451,12 @@ const quickJournal = (() => {
             if (savedW) popup.style.width = savedW;
             if (savedH) popup.style.height = savedH;
             popup.classList.add("show");
+            aioZoom.fit(popup);
             // 캐릭터가 많아도 팝업이 화면 밖으로 넘치지 않게 (목록은 안에서 스크롤)
             popup.style.maxHeight = "";
             const pr = popup.getBoundingClientRect();
             const room = popup.style.top && popup.style.top !== "auto" ? window.innerHeight - pr.top : pr.bottom;
-            popup.style.maxHeight = Math.max(160, room - 8) + "px";
+            popup.style.maxHeight = zpx(Math.max(160, room - 8));
             journalBtn.style.setProperty("background-color", "#444", "important");
             journalBtn.style.setProperty("color", "#fff", "important");
             searchInput.value = ""; updateList("");
@@ -6400,8 +6472,8 @@ const quickJournal = (() => {
             const startX = e.clientX, startY = e.clientY;
             const startW = popup.offsetWidth, startH = popup.offsetHeight;
             const onMove = (ev) => {
-                popup.style.width  = Math.max(150, startW + (ev.clientX - startX)) + "px";
-                popup.style.height = Math.max(120, startH + (ev.clientY - startY)) + "px";
+                popup.style.width  = Math.max(150, startW + (ev.clientX - startX) / aioZoom.get()) + "px";
+                popup.style.height = Math.max(120, startH + (ev.clientY - startY) / aioZoom.get()) + "px";
             };
             const onUp = () => {
                 localStorage.setItem("r20_popup_w", popup.style.width);
@@ -8359,8 +8431,8 @@ const bulkEditor = (() => {
             e.preventDefault();
             const r = p.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
             const mv = ev => {
-                p.style.left = Math.min(Math.max(0, r.left + ev.clientX - sx), window.innerWidth - 80) + "px";
-                p.style.top = Math.min(Math.max(0, r.top + ev.clientY - sy), window.innerHeight - 40) + "px";
+                p.style.left = zpx(Math.min(Math.max(0, r.left + ev.clientX - sx), window.innerWidth - 80));
+                p.style.top = zpx(Math.min(Math.max(0, r.top + ev.clientY - sy), window.innerHeight - 40));
             };
             const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); keep(); };
             window.addEventListener("mousemove", mv);
@@ -8417,7 +8489,7 @@ const bulkEditor = (() => {
             const sy = e.clientY, st = area.scrollTop;
             const ratio = (area.scrollHeight - area.clientHeight) / Math.max(1, track.clientHeight - thumb.offsetHeight);
             thumb.classList.add("drag");
-            const mv = ev => { area.scrollTop = st + (ev.clientY - sy) * ratio; };
+            const mv = ev => { area.scrollTop = st + (ev.clientY - sy) / aioZoom.get() * ratio; };
             const up = () => { thumb.classList.remove("drag"); window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); };
             window.addEventListener("mousemove", mv);
             window.addEventListener("mouseup", up);
@@ -8441,13 +8513,13 @@ const bulkEditor = (() => {
             e.preventDefault();
             bar.setPointerCapture(e.pointerId);
             bar.classList.add("on");
-            const x0 = e.clientX, w0 = col.getBoundingClientRect().width;
-            const move = ev => set(w0 + ev.clientX - x0);
+            const x0 = e.clientX, w0 = col.offsetWidth;
+            const move = ev => set(w0 + (ev.clientX - x0) / aioZoom.get());
             const up = () => {
                 bar.removeEventListener("pointermove", move);
                 bar.removeEventListener("pointerup", up);
                 bar.classList.remove("on");
-                localStorage.setItem(KEY, Math.round(col.getBoundingClientRect().width));       // max-width 로 잘린 실제 폭
+                localStorage.setItem(KEY, col.offsetWidth);       // max-width 로 잘린 실제 폭
             };
             bar.addEventListener("pointermove", move);
             bar.addEventListener("pointerup", up);
@@ -8475,6 +8547,7 @@ const bulkEditor = (() => {
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
             el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI),
             el("span", { class: "r20be-flex" }),
+            aioZoom.control("r20be-zm r20be-tz"),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
         ui.search = el("input", { class: "r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
             oninput: debounce(() => { cur().q = ui.search.value; renderTree(); if (cur().which === "images") renderPane(); }, 150) });
@@ -8532,6 +8605,7 @@ const bulkEditor = (() => {
         ensureUi();
         if (!dirtyCount()) TABS.forEach(k => { S[k] = null; });     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
         ui.root.classList.add("r20be-show");
+        aioZoom.fit(ui.root);
         setStatus();
         switchTab(tab || S.tab);
     };
@@ -8563,7 +8637,7 @@ const bulkEditor = (() => {
 })();
 
 addCss(`
-        #r20be { position:fixed; z-index:10005; display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 8px 24px rgba(0,0,0,0.22); font-family:sans-serif; font-size:12px; color:var(--aio-ink-2); resize:both; overflow:hidden; box-sizing:border-box; }
+        #r20be { position:fixed; z-index:10005; display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc((100vw - 16px) / var(--aio-z, 1)); max-height:calc((100vh - 16px) / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 8px 24px rgba(0,0,0,0.22); font-family:sans-serif; font-size:12px; color:var(--aio-ink-2); resize:both; overflow:hidden; box-sizing:border-box; }
         /* Roll20(Bootstrap)의 .show { display:block !important } 와 겹치지 않게 전용 클래스를 쓴다 */
         #r20be.r20be-show { display:flex !important; }
         #r20be *, #r20be *::before, #r20be *::after { box-sizing:border-box; }
@@ -8637,6 +8711,7 @@ addCss(`
         #r20be .r20be-zm { display:flex; gap:2px; }
         #r20be .r20be-zm button { width:22px; height:22px; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:13px; line-height:1; cursor:pointer; }
         #r20be .r20be-zm button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+        #r20be .r20be-tz .aio-zv { width:auto; padding:0 6px; font-size:12px; }
         #r20be .r20be-fold button { width:auto; padding:0 7px; font-size:11px; white-space:nowrap; }
         #r20be .r20be-tree.r20be-icons { padding:2px 10px 12px; }
         #r20be .r20be-igh { display:flex; align-items:center; gap:6px; padding:10px 4px 4px; font-size:11px; font-weight:700; color:var(--aio-ink-3); }
@@ -8937,12 +9012,13 @@ const autofill = (() => {
             ox += fr.left + w.frameElement.clientLeft; oy += fr.top + w.frameElement.clientTop;
         }
         const top = rc.top + oy, bottom = rc.bottom + oy;
-        box.style.left = Math.min(rc.left + ox, window.innerWidth - 230) + "px";
-        box.style.minWidth = Math.max(220, rc.width) + "px";
+        const z = aioZoom.get();
+        box.style.left = zpx(Math.min(rc.left + ox, window.innerWidth - 230 * z));
+        box.style.minWidth = zpx(Math.max(220 * z, rc.width));
         // 아래 공간이 부족하면 위로 띄운다
         const below = window.innerHeight - bottom;
-        box.style.top = below > 270 ? (bottom + 2) + "px" : "auto";
-        box.style.bottom = below > 270 ? "auto" : (window.innerHeight - top + 2) + "px";
+        box.style.top = below > 270 * z ? zpx(bottom + 2) : "auto";
+        box.style.bottom = below > 270 * z ? "auto" : zpx(window.innerHeight - top + 2);
         box.classList.add("show");
         box.children[sel]?.scrollIntoView({ block: "nearest" });
     };
@@ -9209,10 +9285,11 @@ const emojiPalette = (() => {
         const c = document.getElementById("textchat-input");
         if (!pop || !c) return;
         const r = c.getBoundingClientRect();
-        pop.style.width = Math.round(Math.max(220, Math.min(330, r.width - 8))) + "px";
-        pop.style.right = Math.round(innerWidth - r.right + 4) + "px";
-        pop.style.bottom = Math.round(innerHeight - r.top + 4) + "px";
-        pop.style.height = Math.round(Math.max(180, Math.min(330, r.top - 8))) + "px";
+        const z = aioZoom.get();
+        pop.style.width = zpx(Math.round(Math.max(220, Math.min(330 * z, r.width - 8))));
+        pop.style.right = zpx(Math.round(innerWidth - r.right + 4));
+        pop.style.bottom = zpx(Math.round(innerHeight - r.top + 4));
+        pop.style.height = zpx(Math.round(Math.max(180, Math.min(330 * z, r.top - 8))));
     };
     const build = () => {
         pop = document.createElement("div");
