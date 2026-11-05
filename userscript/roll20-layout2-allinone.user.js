@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.49.0
+// @version      1.49.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.49.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.49.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6684,6 +6684,9 @@ const bulkEditor = (() => {
     };
     const textToHtml = text => String(text).split("\n").map(l => `<p>${esc(l) || "<br>"}</p>`).join("");
     // 일부 내용은 escape() 형식(%3C…, %uB9D1…)으로 저장돼 있다 → 풀어서 보여주고, 저장할 때 같은 형식으로 되돌린다
+    // 저장: 불러온 형식 그대로. 단 % 가 든 내용(아틀리에 그림 data:…%23… 주소 등)은 날 HTML 로 두면 Roll20 이 풀어 읽다가
+    // %23 → # 으로 바뀌어 그림 주소가 잘린다 → Roll20 편집기처럼 escape() 형식으로
+    const encodeBlob = (html, enc) => enc || html.includes("%") ? escape(html) : html;
     const decodeBlob = s => {
         s = String(s || "");
         if (/[<>]/.test(s) || !/%(?:[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4})/.test(s)) return { html: s, enc: false };
@@ -8100,8 +8103,8 @@ const bulkEditor = (() => {
                 blobs[bn] = await getBlob(n.dupOf, bn);
                 blobs[bg] = await getBlob(n.dupOf, bg);
             } else {
-                if (n.cur.notes) blobs[bn] = toHtml(n, "notes");
-                if (n.cur.gm) blobs[bg] = toHtml(n, "gm");
+                if (n.cur.notes) blobs[bn] = encodeBlob(toHtml(n, "notes"));
+                if (n.cur.gm) blobs[bg] = encodeBlob(toHtml(n, "gm"));
             }
             const base = n.dupOf ? n.dupOf.toJSON() : { ...(n.copyAttrs || {}) };
             delete base.id;
@@ -8141,7 +8144,7 @@ const bulkEditor = (() => {
         CONTENT.forEach((k, i) => {
             if (!n.changed.has(k)) return;
             html[k] = toHtml(n, k);
-            blobs[BLOBS[n.kind][i]] = n.enc[k] ? escape(html[k]) : html[k];     // 불러온 형식 그대로
+            blobs[BLOBS[n.kind][i]] = encodeBlob(html[k], n.enc[k]);
         });
         if (Object.keys(blobs).length) n.model.updateBlobs(blobs);
         n.model.save(a);
