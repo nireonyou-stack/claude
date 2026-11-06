@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.55.0
+// @version      1.56.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.55.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.56.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6060,28 +6060,63 @@ const roomImages = (() => {
     const closePop = () => {
         root?.querySelector(".r20ri-pop")?.remove();
         root?.querySelectorAll(".r20ri-tile.on").forEach(t => t.classList.remove("on"));
+        document.querySelectorAll("#imagedialog .r20ri-libon").forEach(t => t.classList.remove("r20ri-libon"));
     };
-    const openPop = (tile, kb) => {
-        const it = items.get(tile.dataset.k);
+    // lib: 내 라이브러리 그림 { url, name, uses: [] } — 메뉴를 그 그림 옆에 화면 기준으로 띄운다
+    const openPop = (tile, kb, lib) => {
+        const it = lib || items.get(tile.dataset.k);
         if (!it) return;
         closePop();
         const pop = document.createElement("div");
         pop.className = "r20ri-pop";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "그림 메뉴");
-        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${it.uses.length}곳에서 씀</span></div>`
+        pop.innerHTML = `<div class="r20ri-ph">${previewHtml(it.url)}<div><strong>${esc(it.name || "이름 없음")}</strong><span>${lib ? "내 라이브러리" : it.uses.length + "곳에서 씀"}</span></div>`
             + `<button type="button" class="r20ri-x" data-a="close" aria-label="닫기">✕</button></div>`
             + `<button type="button" class="r20ri-mi" data-a="objects">지금 페이지 가운데에 놓기 (토큰 층)</button>`
             + `<button type="button" class="r20ri-mi" data-a="map">지금 페이지에 맞춰 놓기 (맵 층)</button>`
             + `<button type="button" class="r20ri-mi" data-a="copy">이미지 주소 복사</button>`
             + `<button type="button" class="r20ri-mi" data-a="handout">핸드아웃으로 만들기</button>`
-            + `<div class="r20ri-uses"><small>사용처</small>` + it.uses.map((u, i) => u.kind === "char" || u.kind === "handout"
-                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>";
+            + (it.uses.length ? `<div class="r20ri-uses"><small>사용처</small>` + it.uses.map((u, i) => u.kind === "char" || u.kind === "handout"
+                ? `<button type="button" data-a="open" data-i="${i}" title="열기">${esc(u.label)}</button>` : `<span>${esc(u.label)}</span>`).join("") + "</div>" : "");
         pop._it = it;
-        root.querySelector(".r20ri-body").appendChild(pop);
-        tile.classList.add("on");
+        if (lib) { root.appendChild(pop); pinPop(pop, tile); } else root.querySelector(".r20ri-body").appendChild(pop);
+        tile.classList.add(lib ? "r20ri-libon" : "on");
         if (kb) pop.querySelector(".r20ri-mi").focus();
     };
+    // 라이브러리 목록은 따로 스크롤되므로 메뉴를 그 그림 밑(모자라면 위)에 화면 기준으로 띄운다
+    const pinPop = (pop, tile) => {
+        const r = tile.getBoundingClientRect(), w = 240;
+        pop.style.cssText = `position:fixed; right:auto; bottom:auto; width:${w}px; max-height:${Math.min(360, innerHeight - 16)}px; z-index:100001;`;
+        const h = pop.offsetHeight;
+        pop.style.left = Math.max(4, Math.min(r.left, innerWidth - w - 4)) + "px";
+        pop.style.top = (r.bottom + 4 + h <= innerHeight - 4 ? r.bottom + 4 : Math.max(4, r.top - h - 4)) + "px";
+    };
+    // ── 내 라이브러리 그림에도 같은 메뉴: 그림 위 ⋯ 단추 (끌어 놓기는 Roll20 그대로 — jQuery UI 는 button 에서 끌기를 시작하지 않는다) ──
+    const LIB = "#imagedialog .draggableresult[data-fullsizeurl]:not(.r20ri-tile)";
+    const libItem = li => ({ url: li.dataset.fullsizeurl, name: (li.querySelector(".namecontainer")?.textContent || li.getAttribute("title") || "").trim(), uses: [] });
+    const decorateLib = () => document.querySelectorAll(LIB).forEach(li => {
+        if (li.querySelector(":scope > .r20ri-more")) return;
+        li.classList.add("r20ri-lib");
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "r20ri-more";
+        b.textContent = "⋯";
+        b.title = "맵에 놓기 · 주소 복사 · 핸드아웃으로 만들기";
+        b.setAttribute("aria-label", "그림 메뉴");
+        li.appendChild(b);
+    });
+    document.addEventListener("click", e => {
+        const b = e.target.closest?.(".r20ri-more");
+        if (b) {
+            e.preventDefault(); e.stopPropagation();
+            const li = b.closest(".draggableresult");
+            if (!li || !root) return;
+            return li.classList.contains("r20ri-libon") ? closePop() : openPop(li, e.detail === 0, libItem(li));
+        }
+        if (root?.querySelector(":scope > .r20ri-pop") && !e.target.closest?.(".r20ri-pop")) closePop();
+    }, true);
+    document.addEventListener("scroll", e => { if (root?.querySelector(":scope > .r20ri-pop") && !e.target.closest?.(".r20ri-pop")) closePop(); }, true);
     const onPop = (pop, b) => {
         const it = pop._it, a = b.dataset.a;
         if (a === "close") closePop();
@@ -6104,8 +6139,8 @@ const roomImages = (() => {
         if (root) root.dataset.m = m;
         root?.querySelectorAll(".r20ri-seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === m)));
         if (m !== "lib" && dlg) dlg.scrollTop = 0;
+        closePop();
         if (m === "room") refresh();
-        else closePop();
         fit();
     };
     const build = () => {
@@ -6176,6 +6211,7 @@ const roomImages = (() => {
     const inject = () => {
         if (!btnVisible.artroom) return;
         bindEditors();
+        decorateLib();
         const dlg = document.getElementById("imagedialog");
         if (!dlg || root?.parentNode === dlg) return;
         root = build();
@@ -6190,6 +6226,8 @@ const roomImages = (() => {
     const setEnabled = on => {
         if (on) return inject();
         ro?.disconnect(); ro = null;
+        closePop();
+        document.querySelectorAll("#imagedialog .r20ri-more").forEach(b => b.remove());
         root?.parentNode?.classList.remove("r20ri-room");
         root?.remove(); root = null;
     };
@@ -6689,6 +6727,11 @@ addCss(`
         li.r20ri-tile.ui-draggable-dragging .r20ri-cnt { display:none; }
         .r20ri-drop.r20ri-dropin { outline:2px dashed var(--aio-accent) !important; outline-offset:-2px; }
         #imagedialog .r20ri-pop { position:absolute; left:0; right:0; bottom:40px; z-index:5; max-height:70%; overflow-y:auto; padding:6px 0; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.15); }
+        #imagedialog .draggableresult.r20ri-lib { position:relative; }
+        #imagedialog .r20ri-lib > .r20ri-more { position:absolute; right:2px; top:2px; z-index:2; display:flex; align-items:center; justify-content:center; width:22px; height:18px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:rgba(0,0,0,0.6); color:#fff; font-size:13px; line-height:1; cursor:pointer; opacity:0; }
+        #imagedialog .r20ri-lib:hover > .r20ri-more, #imagedialog .r20ri-lib > .r20ri-more:focus-visible, #imagedialog .r20ri-lib.r20ri-libon > .r20ri-more { opacity:1; }
+        #imagedialog .r20ri-lib > .r20ri-more:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        #imagedialog .r20ri-lib.r20ri-libon { box-shadow:0 0 0 2px var(--aio-accent); }
         #imagedialog .r20ri-ph { display:flex; align-items:center; gap:8px; padding:2px 6px 8px 10px; border-bottom:1px solid var(--aio-line-4); }
         #imagedialog .r20ri-ph img, #imagedialog .r20ri-ph video { flex-shrink:0; width:44px; height:44px; border-radius:var(--aio-r); background:var(--aio-bg-3); object-fit:contain; }
         #imagedialog .r20ri-ph div { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--aio-ink-3); }
@@ -6714,7 +6757,7 @@ addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰�
 
 // ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
 
-// ───────── 빠른 찾기 (Ctrl+K): 핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 한 칸에서 찾아 바로 열기 · 재생 · 실행 ─────────
+// ───────── 빠른 찾기 (Ctrl+F): 핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 한 칸에서 찾아 바로 열기 · 재생 · 실행 ─────────
 // 이름 일부 · 한글 초성(ㅁㄴ → 마녀의 편지) · 띄어쓰기 없이 · #태그. Enter = 종류에 맞게, Shift+Enter = 일괄 편집기에서(GM)
 // 플레이어는 자기에게 보이는 핸드아웃 · 캐릭터와 자기 매크로만 (주크박스는 GM 만)
 const quickFind = (() => {
@@ -6976,10 +7019,9 @@ const quickFind = (() => {
         if (back?.isConnected) try { back.focus({ preventScroll: true }); } catch (e) { /* 포커스 못 돌림 */ }
         back = null;
     }
-    // Ctrl+K (맥은 ⌘K) — 한글 자판이어도 같은 자리(KeyK). 서식 편집기 안에선 그 편집기의 링크 넣기로 둔다
+    // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
     document.addEventListener("keydown", e => {
-        if (!btnVisible.qfind || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyK") return;
-        if (e.target.closest?.(".note-editor")) return;
+        if (!btnVisible.qfind || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyF") return;
         e.preventDefault(); e.stopPropagation();
         if (isOpen()) close(); else open();
     }, true);
@@ -6987,9 +7029,10 @@ const quickFind = (() => {
     return { setEnabled, open, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
 })();
 
-// ───────── 창 자리 · 크기 기억: 캐릭터 시트 · 핸드아웃 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
+// ───────── 창 자리 · 크기 기억: Roll20 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
 // 기억 방식: 항목마다(그 캐릭터 · 핸드아웃만) / 종류별 하나(시트끼리 · 핸드아웃끼리 같은 자리). 화면 밖이면 안으로 당겨 연다
-// 📌 길게(0.6초) 누르면 기억한 자리만 지운다 → 다음에 열 때 Roll20 기본 자리. 다른 창(토큰 설정 등)은 건드리지 않는다
+// 그 밖의 창(덱 선택창 등)은 제목으로 기억하고, 꺼 둔 📌 는 제목줄에 마우스를 올릴 때만 보인다
+// 📌 길게(0.6초) 누르면 기억한 자리만 지운다 → 다음에 열 때 Roll20 기본 자리
 const winMemory = (() => {
     const KEY = "r20_win_mem", MODE = "r20_win_mode";
     let mem = (() => { try { const o = JSON.parse(localStorage.getItem(KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
@@ -7010,9 +7053,9 @@ const winMemory = (() => {
         const hid = c.dataset.handoutid || c.querySelector("[data-handoutid]")?.dataset.handoutid;
         const byName = !hid && t && (C?.handouts?.models || []).find(m => m.get("name") === t);
         if (hid || byName || (/\bhandout/i.test(c.className) && t)) return { kind: "handout", id: hid || byName?.id || t };
-        return null;
+        return t ? { kind: "dlg", id: t } : null;
     };
-    const keyOf = f => mode === "kind" ? f.kind : f.kind + ":" + f.id;
+    const keyOf = f => mode === "kind" && f.kind !== "dlg" ? f.kind : f.kind + ":" + f.id;
     const geom = dlg => ({ l: Math.round(dlg.offsetLeft), t: Math.round(dlg.offsetTop), w: Math.round(dlg.offsetWidth), h: Math.round(dlg.offsetHeight) });
     const save = dlg => {
         const f = info(dlg);
@@ -7043,8 +7086,9 @@ const winMemory = (() => {
     const paint = (b, dlg) => {
         const f = info(dlg), on = !!(f && mem[keyOf(f)]);
         b.classList.toggle("on", on);
+        b.classList.toggle("other", f?.kind === "dlg");
         b.setAttribute("aria-pressed", String(on));
-        b.title = on ? `자리 · 크기 기억 중 (${mode === "kind" ? "이 종류 창 모두" : "이 창만"}) · 누르면 끄기 · 길게 누르면 기본 자리로`
+        b.title = on ? `자리 · 크기 기억 중 (${mode === "kind" && f.kind !== "dlg" ? "이 종류 창 모두" : "이 창만"}) · 누르면 끄기 · 길게 누르면 기본 자리로`
             : "📌 자리 · 크기 기억 — 켜면 옮기거나 크기를 바꾼 그대로 다음에 열려요";
     };
     const paintAll = () => document.querySelectorAll(".ui-dialog .r20wm-pin").forEach(b => paint(b, b.closest(".ui-dialog")));
@@ -7130,7 +7174,7 @@ const winMemory = (() => {
         row.className = "cs-row";
         const name = Object.assign(document.createElement("span"), { className: "cs-text" });
         name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "기억 방식" }));
-        name.dataset.tip = "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리";
+        name.dataset.tip = "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리 (덱 선택창 등 그 밖의 창은 늘 창 제목마다)";
         const seg = document.createElement("div");
         seg.className = "cs-seg";
         seg.setAttribute("role", "radiogroup");
@@ -7152,7 +7196,7 @@ const winMemory = (() => {
 })();
 
 addCss(`
-        /* 빠른 찾기 (Ctrl+K) */
+        /* 빠른 찾기 (Ctrl+F) */
         #r20-qf { position:fixed; inset:0; z-index:10010; display:none; font-family:sans-serif; }
         #r20-qf.show { display:block; }
         #r20-qf .qf-dim { position:absolute; inset:0; background:rgba(0,0,0,0.35); }
@@ -7184,6 +7228,8 @@ addCss(`
         /* 창 자리 · 크기 기억 📌 (캐릭터 시트 · 핸드아웃 제목줄) */
         .ui-dialog-titlebar .r20wm-pin { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:1px solid transparent; border-radius:var(--aio-r-sm); background:none; font-size:12px; line-height:22px; cursor:pointer; box-shadow:none; filter:grayscale(1); opacity:0.45; }
         .ui-dialog-titlebar .r20wm-pin:hover { opacity:0.8; }
+        .ui-dialog-titlebar .r20wm-pin.other:not(.on):not(:focus-visible) { opacity:0; }
+        .ui-dialog-titlebar:hover .r20wm-pin.other:not(.on) { opacity:0.45; }
         .ui-dialog-titlebar .r20wm-pin.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); filter:none; opacity:1; }
         .ui-dialog-titlebar .r20wm-pin.flash { animation:r20wm-flash 0.4s ease-in-out 3 alternate; }
         .ui-dialog-titlebar .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
@@ -7192,10 +7238,10 @@ addCss(`
 
 addFeature("quickFind", quickFind);
 addFeature("winMemory", winMemory);
-addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+K)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서)",
+addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서)",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
-addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억", sub: "캐릭터 시트 · 핸드아웃 창 제목줄의 📌 를 켠 창만 · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로",
+addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
 
