@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.53.0
+// @version      1.54.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.53.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.54.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1184,10 +1184,25 @@ const jukeboxRow = (() => {
 
     // ◂ ▸ 조절 단위(%)는 주크박스 위 칸에서 그때그때 바꾼다 (수동 페이드용)
     let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
+    // 페이드 아웃: ◂ ▸ 와 같은 길(Roll20 볼륨 막대 + 저장)로 FADE 초 동안 0 까지 줄이기만 하고, 정지는 직접 누른다.
+    // (예전 '정지 페이드'는 저장값만 줄이고 정지를 대신 눌러서, Roll20 이 막대에 남은 옛 볼륨으로 잠깐 크게 되살아났다)
+    // 줄이기 전 볼륨은 기억했다가 그 곡을 다음에 재생할 때 되돌린다. 멈춘 동안 ◂ ▸ 로 직접 바꾸면 그 값을 따른다
+    let FADE = Math.max(1, Math.min(30, parseInt(localStorage.getItem("r20jb_fade"), 10) || 3));
+    const held = (() => { try { return new Map(Object.entries(JSON.parse(localStorage.getItem("r20jb_held") || "{}"))); } catch (e) { return new Map(); } })();
+    const keepHeld = () => { try { localStorage.setItem("r20jb_held", JSON.stringify(Object.fromEntries(held))); } catch (e) { /* 저장 못 함 */ } };
+    const fading = new Map();       // 곡 id → 페이드 멈추기
+    const rowOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
+    const isPlaying = li => li?.querySelector("a.play")?.dataset.isplaying === "true";
     // Roll20 슬라이더 값을 바꿔 원래 처리기를 태우고, 안 먹으면 모델에 직접 저장
     const step = (li, dir) => {
         const now = volOf(li);
         const v = Math.max(0, Math.min(100, dir > 0 ? Math.floor(now / STEP) * STEP + STEP : Math.ceil(now / STEP) * STEP - STEP));
+        const id = trackOf(li)?.id;
+        if (id && fading.has(id)) fading.get(id)();         // 줄이는 중에 직접 바꾸면 페이드는 멈춘다
+        else if (id && held.has(id)) { held.delete(id); keepHeld(); }
+        setVolTo(li, v);
+    };
+    const setVolTo = (li, v) => {
         const slider = li.querySelector(".volume input.slider");
         if (slider) {
             slider.value = v;
@@ -1198,6 +1213,35 @@ const jukeboxRow = (() => {
         if (m && isGM() && Number(m.get("volume")) !== v) m.save({ volume: v });
         const label = li.querySelector(".r20jb-vol span");
         if (label) label.textContent = v;
+    };
+    const fadeOut = li => {
+        const m = trackOf(li);
+        if (!m || !isGM()) return;
+        const id = m.id;
+        if (fading.has(id)) { fading.get(id)(); return; }      // 페이드 중 한 번 더 누르면 그 볼륨에서 멈춘다
+        const v0 = volOf(li);
+        if (v0 <= 0 || !isPlaying(li)) return;
+        if (!held.has(id)) { held.set(id, v0); keepHeld(); }
+        const steps = Math.max(1, Math.round(FADE * 5));
+        let i = 0;
+        const mark = on => rowOf(id)?.querySelector(".r20jb-fade")?.classList.toggle("on", on);
+        const stop = () => { clearInterval(t); fading.delete(id); mark(false); };
+        const t = setInterval(() => {
+            const row = rowOf(id) || li;            // Roll20 이 줄을 다시 그려도 지금 줄로
+            if (!isPlaying(row)) return stop();     // 그사이 정지를 누르면 거기서 끝
+            i++;
+            setVolTo(row, Math.round(v0 * (1 - i / steps)));
+            if (i >= steps) stop();
+        }, 200);
+        fading.set(id, stop);
+        mark(true);
+    };
+    // 기억해 둔 볼륨은 '재생을 시작할 때'만 되돌린다 (정지할 때 되돌리면 소리가 다시 커진다)
+    const restoreHeld = li => {
+        const id = trackOf(li)?.id;
+        if (!id || !held.has(id) || isPlaying(li) || fading.has(id)) return;
+        setVolTo(li, Math.round(Number(held.get(id)) || 0));
+        held.delete(id); keepHeld();
     };
 
     // 곡 줄 하나에 ◂ ▸ 볼륨 · ↻ 반복 · 태그 말풍선을 붙인다 (이미 있으면 건너뜀)
@@ -1217,6 +1261,13 @@ const jukeboxRow = (() => {
             b.setAttribute("aria-label", "반복 재생");
             setLoop(b, !!trackOf(li)?.get("loop"));
             c.appendChild(b);
+        }
+        if (c && !c.querySelector(":scope > .r20jb-fade")) {
+            const f = document.createElement("button");
+            f.type = "button"; f.className = "r20jb-fade"; f.textContent = "↘";
+            f.setAttribute("aria-label", "페이드 아웃");
+            f.title = "페이드 아웃 — 정한 초 동안 볼륨을 0 까지 (정지는 직접) · 원래 볼륨은 다음에 재생할 때 되돌려요 · 줄이는 중에 다시 누르면 멈춤";
+            c.appendChild(f);
         }
         tagOne(li);
         li.querySelectorAll(":scope > .dd-content > .title:not([tabindex])").forEach(ti => { ti.tabIndex = 0; ti.setAttribute("role", "button"); });
@@ -1338,6 +1389,20 @@ const jukeboxRow = (() => {
         inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
         wrap.append(inp, "%");
         host.appendChild(wrap);
+        const fw = document.createElement("label");
+        fw.className = "r20jb-step";
+        fw.title = "↘ 페이드 아웃에 걸리는 시간";
+        fw.append("페이드");
+        const fi = document.createElement("input");
+        fi.type = "number"; fi.min = "1"; fi.max = "30"; fi.value = FADE;
+        fi.setAttribute("aria-label", "페이드 아웃 시간(초)");
+        fi.addEventListener("input", () => {
+            const v = parseInt(fi.value, 10);
+            if (v >= 1 && v <= 30) { FADE = v; localStorage.setItem("r20jb_fade", v); }
+        });
+        fi.addEventListener("keydown", e => e.stopPropagation());
+        fw.append(fi, "초");
+        host.appendChild(fw);
     };
 
     // Roll20 이 곡 줄을 다시 그리면 그 줄만 다시 붙인다
@@ -1404,7 +1469,7 @@ const jukeboxRow = (() => {
     }, true);
     // 곡 제목을 누르면 숨겨 둔 Roll20 재생 단추를 대신 누른다 (재생 ↔ 정지)
     const TITLE = "#jukebox li.jukeboxitem > .dd-content > .title";
-    const playOf = ti => ti.closest("li.jukeboxitem").querySelector("a.play")?.click();
+    const playOf = ti => { const li = ti.closest("li.jukeboxitem"); restoreHeld(li); li.querySelector("a.play")?.click(); };
     document.addEventListener("keydown", e => {
         if ((e.key === "Enter" || e.key === " ") && btnVisible.jbrow && e.target.matches?.(TITLE)) { e.preventDefault(); e.stopPropagation(); playOf(e.target); }
     }, true);
@@ -1418,6 +1483,8 @@ const jukeboxRow = (() => {
             if (tg) { e.preventDefault(); tg.click(); }
             return;
         }
+        const fb = e.target.closest?.(".r20jb-fade");
+        if (fb) { e.preventDefault(); e.stopPropagation(); fadeOut(fb.closest("li.jukeboxitem")); return; }
         const lb = e.target.closest?.(".r20jb-loop");
         if (lb) {
             e.preventDefault(); e.stopPropagation();
@@ -1541,7 +1608,12 @@ addCss(`
         /* 볼륨: 슬라이더 대신 ◂ 값 ▸ */
         body.r20jb-on #jukebox li.jukeboxitem .volume { order:4; display:inline-flex !important; align-items:center; width:auto !important; height:26px; margin:0 !important; }
         body.r20jb-on #jukebox li.jukeboxitem .volume input.slider { display:none !important; }
-        .r20jb-vol, .r20jb-loop { display:none; }
+        .r20jb-vol, .r20jb-loop, .r20jb-fade { display:none; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-fade { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:14px; height:22px; margin:0 2px 0 0; padding:0; border:0; background:none; color:var(--aio-ink-5); font-size:12px; line-height:22px; cursor:pointer; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-fade:hover { color:var(--aio-ink-4); }
+        body.r20jb-on #jukebox li.jukeboxitem:has(a.play[data-isplaying="true"]) .r20jb-fade { display:inline-flex; }
+        body.r20jb-on #jukebox li.jukeboxitem .r20jb-fade.on { color:var(--aio-accent); font-weight:700; animation:r20jb-fade 1s ease-in-out infinite alternate; }
+        @keyframes r20jb-fade { to { opacity:0.35; } }
         body.r20jb-on #jukebox li.jukeboxitem .loopcontainer { display:none !important; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop { order:0; display:none; align-items:center; justify-content:center; flex-shrink:0; width:12px; height:22px; margin:0 2px 0 0; padding:0; border:0; background:none; color:var(--aio-ink-5); font-size:12px; line-height:22px; cursor:pointer; }
         body.r20jb-on #jukebox li.jukeboxitem .r20jb-loop:hover { color:var(--aio-ink-4); }
@@ -6878,6 +6950,12 @@ const bulkEditor = (() => {
     const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables].filter(Boolean);
     const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + allNodes(t).reduce((c, n) =>
         c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
+    // 저장 안 한 변경이 있으면 새로고침 · 탭 닫기 전에 브라우저가 한 번 묻는다
+    window.addEventListener("beforeunload", e => {
+        if (!ui) return;
+        try { noteFlush(); } catch (err) { /* 서식 편집기 없음 */ }
+        if (dirtyCount() > 0) { e.preventDefault(); e.returnValue = ""; }
+    });
     const needStruct = t => (t.which === "journal" || t.which === "bgm")
         && (t.structDirty || t.removed > 0 || allNodes(t).some(n => n.kids && (n.isNew || n.changed.has("name"))));
     // 굴림표 이름에는 공백을 쓸 수 없다
