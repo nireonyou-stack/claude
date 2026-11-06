@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.54.0
+// @version      1.54.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.54.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.54.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1239,9 +1239,10 @@ const jukeboxRow = (() => {
     // 기억해 둔 볼륨은 '재생을 시작할 때'만 되돌린다 (정지할 때 되돌리면 소리가 다시 커진다)
     const restoreHeld = li => {
         const id = trackOf(li)?.id;
-        if (!id || !held.has(id) || isPlaying(li) || fading.has(id)) return;
+        if (!id || !held.has(id) || isPlaying(li) || fading.has(id)) return false;
         setVolTo(li, Math.round(Number(held.get(id)) || 0));
         held.delete(id); keepHeld();
+        return true;
     };
 
     // 곡 줄 하나에 ◂ ▸ 볼륨 · ↻ 반복 · 태그 말풍선을 붙인다 (이미 있으면 건너뜀)
@@ -1469,7 +1470,12 @@ const jukeboxRow = (() => {
     }, true);
     // 곡 제목을 누르면 숨겨 둔 Roll20 재생 단추를 대신 누른다 (재생 ↔ 정지)
     const TITLE = "#jukebox li.jukeboxitem > .dd-content > .title";
-    const playOf = ti => { const li = ti.closest("li.jukeboxitem"); restoreHeld(li); li.querySelector("a.play")?.click(); };
+    // 볼륨을 되돌리면 Roll20 이 그 줄을 다시 그려 손에 든 재생 단추가 문서에서 떨어진다 → 조금 뒤 지금 줄의 단추를 누른다
+    const playOf = ti => {
+        const li = ti.closest("li.jukeboxitem"), id = li.dataset.itemid;
+        const press = () => (rowOf(id) || li).querySelector("a.play")?.click();
+        if (restoreHeld(li)) setTimeout(press, 60); else press();
+    };
     document.addEventListener("keydown", e => {
         if ((e.key === "Enter" || e.key === " ") && btnVisible.jbrow && e.target.matches?.(TITLE)) { e.preventDefault(); e.stopPropagation(); playOf(e.target); }
     }, true);
