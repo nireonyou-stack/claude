@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.51.0
+// @version      1.52.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.51.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.52.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6634,6 +6634,8 @@ const bulkEditor = (() => {
         list:    SVG('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
         macro:   SVG('<path d="m7 8-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"/>', ' style="color:#be185d"'),
         deck:    SVG('<rect x="4" y="3" width="12" height="16" rx="2"/><path d="M8 21h10a2 2 0 0 0 2-2V7"/>', ' style="color:#7c3a7c"'),
+        gfx:     SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-8 8"/>', ' style="color:#0f766e"'),
+        mlayer:  SVG('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>', ' style="color:#64748b"'),
         grid:    SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')
     };
     const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표", macro: "매크로", deck: "덱" };
@@ -6658,6 +6660,7 @@ const bulkEditor = (() => {
         ["color", ["color"]], ["para", ["ul", "ol", "paragraph"]], ["insert", ["table", "picture", "link", "hr"]], ["history", ["undo", "redo"]]];
     const HINT = "더블클릭: 이름 바꾸기 · 체크(Shift: 범위)로 여러 개 한꺼번에 · 끌어서 폴더 이동 · Ctrl+S: 저장";
     const HINT_IMG = "그림을 눌러 고르기 (Shift: 범위) · 고른 그림을 덱 카드 · 굴림표 항목으로 넣거나 주소를 따서 매크로에 쓰기 · 같은 그림은 한 번만";
+    const HINT_MAP = "지금 페이지의 그림 · 체크(Shift: 범위)로 여러 개 골라 오른쪽에서 한꺼번에 · 덮임 = 위의 그림 하나가 통째로 덮음(덮은 그림에 투명한 곳이 있으면 보일 수도) · Ctrl+S: 저장";
     const HINT_ICON = "아이콘을 누르면 오른쪽에서 편집 · 왼쪽 위 네모(Shift: 범위)로 여러 개 골라 폴더 이동·삭제 · −/+ 아이콘 크기 · Ctrl+S: 저장";
 
     const esc = escAttr;
@@ -6706,7 +6709,7 @@ const bulkEditor = (() => {
     });
 
     // ── 작업용 트리 ──
-    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images"];
+    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images", "map"];
     const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null };
     // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
     const VIEW = {
@@ -6717,7 +6720,7 @@ const bulkEditor = (() => {
     const cur = () => S[S.tab];
 
     const mkNode = (id, kind, model, attrs) => ({
-        id, kind, model, parent: null, kids: kind === "folder" || kind === "group" ? [] : null, extra: {},
+        id, kind, model, parent: null, kids: kind === "folder" || kind === "group" || kind === "mlayer" ? [] : null, extra: {},
         orig: { ...attrs }, cur: { ...attrs }, changed: new Set(),
         raw: {}, origText: {}, rich: {}, htmlMode: {}, mode: {}, enc: {}, loaded: false, loading: false, loadError: false,
         isNew: false, deleted: false, moved: false, orphan: false, dupOf: null
@@ -6791,7 +6794,71 @@ const bulkEditor = (() => {
 
     // 방 이미지: '이 방의 이미지'와 같은 모음 (편집 대상이 아니라 덱·굴림표 탭으로 보내는 곳)
     const buildImages = () => ({ ...flatTab("images", []), data: FEAT.roomImages.gather(), gsel: "" });
+    // ── 맵: 지금 페이지에 올라간 그림 전부 (층별 · 위에 있는 것부터). 안 보이게 된 것에 표시를 붙이고,
+    // 고른 것을 지우기 · 겹침 순서 · 페이지 가운데 · 페이지 크기에 맞추기 · 층 옮기기 → 다른 탭처럼 저장 때 Roll20 에 반영 ──
+    const MAP_LAYERS = [["objects", "토큰 층"], ["map", "지도 층"], ["gmlayer", "GM 층"], ["foreground", "전경 층"]];
+    const LAYER_RANK = { map: 0, objects: 1, foreground: 2 };       // 그려지는 차례 (GM 층은 플레이어에게 안 보여 덮는 것에서 뺀다)
+    const MAP_FLAG = { cov: "덮임", out: "페이지 밖", tiny: "아주 작음" };
+    const pageNow = () => typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null;
+    const numOf = (m, k, d = 0) => { const v = parseFloat(m?.get?.(k)); return Number.isFinite(v) ? v : d; };
+    const layerName = L => (MAP_LAYERS.find(x => x[0] === L) || [L, L || "기타 층"])[1];
+    // 회전까지 넣은 바깥 상자 [x0, y0, x1, y1] (Roll20 left · top 은 그림의 가운데)
+    const gBox = c => {
+        const r = (c.rotation || 0) * Math.PI / 180, co = Math.abs(Math.cos(r)), si = Math.abs(Math.sin(r));
+        const w = c.width * co + c.height * si, h = c.width * si + c.height * co;
+        return [c.left - w / 2, c.top - h / 2, c.left + w / 2, c.top + h / 2];
+    };
+    // 층 묶음 안은 위에 있는 것부터 (t.z = 아래 → 위)
+    const mapRegroup = t => {
+        const at = new Map(t.z.map((id, i) => [id, i])), groups = new Map(t.roots.map(g => [g.id, g]));
+        const gfx = t.roots.flatMap(g => g.kids);
+        t.roots.forEach(g => { g.kids = []; });
+        gfx.forEach(n => {
+            const gid = "L:" + n.cur.layer;
+            if (!groups.has(gid)) { const g = mkNode(gid, "mlayer", null, { name: layerName(n.cur.layer) }); groups.set(gid, g); t.roots.push(g); }
+            const g = groups.get(gid); n.parent = g; g.kids.push(n);
+        });
+        t.roots.forEach(g => g.kids.sort((a, b) => (at.get(b.id) ?? -1) - (at.get(a.id) ?? -1)));
+        const rank = g => { const i = MAP_LAYERS.findIndex(x => "L:" + x[0] === g.id); return i < 0 ? 99 : i; };
+        t.roots = t.roots.filter(g => g.kids.length).sort((a, b) => rank(a) - rank(b));
+    };
+    const buildMap = () => {
+        const pg = pageNow(), t = Object.assign(flatTab("map", []), { page: pg, z: [], flags: new Map() });
+        if (!pg?.thegraphics) return t;
+        const gs = pg.thegraphics.models.filter(m => m.get("imgsrc") !== undefined);
+        const zi = new Map(String(pg.get("zorder") || "").split(",").filter(Boolean).map((id, i) => [id, i]));
+        // zorder 에 없는 그림(스크립트로 만든 것 등)은 맨 위로 본다
+        const key = m => zi.has(m.id) ? zi.get(m.id) : 1e9 + gs.indexOf(m);
+        t.z = [...gs].sort((a, b) => key(a) - key(b)).map(m => m.id);
+        t.roots = [];
+        const tmp = mkNode("L:objects", "mlayer", null, { name: layerName("objects") });
+        tmp.kids = gs.map(m => mkNode(m.id, "gfx", m, { name: m.get("name") || "", layer: m.get("layer") || "objects",
+            left: numOf(m, "left"), top: numOf(m, "top"), width: numOf(m, "width"), height: numOf(m, "height"), rotation: numOf(m, "rotation") }));
+        t.roots = [tmp];
+        mapRegroup(t);
+        t.W = numOf(pg, "width", 25) * 70; t.H = numOf(pg, "height", 25) * 70; t.pageName = pg.get("name") || "";
+        return t;
+    };
+    // 표시: 덮임(위에 있는 그림 하나가 통째로 덮음 — 덮은 쪽이 90° 단위로만 돌았을 때) · 페이지 밖 · 아주 작음(한 변 5px 미만)
+    const mapFlags = t => {
+        const out = new Map(), at = new Map(t.z.map((id, i) => [id, i]));
+        const live = t.roots.flatMap(g => g.kids).filter(n => !n.deleted);
+        const above = (m, n) => n.cur.layer === "gmlayer" ? m.cur.layer === "gmlayer" && at.get(m.id) > at.get(n.id)
+            : m.cur.layer !== "gmlayer" && ((LAYER_RANK[m.cur.layer] ?? -1) > (LAYER_RANK[n.cur.layer] ?? -1)
+                || (m.cur.layer === n.cur.layer && at.get(m.id) > at.get(n.id)));
+        const boxes = new Map(live.map(n => [n, gBox(n.cur)]));
+        live.forEach(n => {
+            const f = new Set(), b = boxes.get(n);
+            if (n.cur.width < 5 || n.cur.height < 5) f.add("tiny");
+            if (b[2] <= 0 || b[0] >= t.W || b[3] <= 0 || b[1] >= t.H) f.add("out");
+            if (live.some(m => m !== n && Math.abs(m.cur.rotation % 90) < 0.01 && above(m, n)
+                && (([x0, y0, x1, y1]) => x0 <= b[0] + 0.5 && y0 <= b[1] + 0.5 && x1 >= b[2] - 0.5 && y1 >= b[3] - 0.5)(boxes.get(m)))) f.add("cov");
+            if (f.size) out.set(n.id, f);
+        });
+        return out;
+    };
     const buildTab = which => {
+        if (which === "map") return buildMap();
         if (which === "images") return buildImages();
         if (which === "tables") return buildTables();
         if (which === "macros") return buildMacros();
@@ -6856,7 +6923,7 @@ const bulkEditor = (() => {
     const toHtml = (n, k) => n.htmlMode[k] ? n.cur[k] : textToHtml(n.cur[k]);
     const nodeDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
     const isDirty = n => nodeDirty(n) || !!n.items?.some(itemDirty);       // 목록의 주황 점
-    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables].filter(Boolean);
+    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables, S.map].filter(Boolean);
     const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + allNodes(t).reduce((c, n) =>
         c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
     const needStruct = t => (t.which === "journal" || t.which === "bgm")
@@ -6894,6 +6961,7 @@ const bulkEditor = (() => {
     // ── 목록 ──
     const meta = n => {
         if (n.kids) return `${n.kids.length}개`;
+        if (n.kind === "gfx") return `${Math.round(n.cur.width)}×${Math.round(n.cur.height)}`;
         if (n.kind === "rtable") return `${n.items.filter(it => !it.deleted).length}개`;
         if (n.kind === "deck") return `${n.items.filter(it => !it.deleted).length}장`;
         if (n.kind === "macro") return n.cur.token ? "토큰" : "";
@@ -6908,7 +6976,8 @@ const bulkEditor = (() => {
         // 핸드아웃·캐릭터만 볼 때는 폴더 없이 한 줄로 모은다 (어느 폴더인지는 오른쪽에 표시)
         if (isFlat(t)) return allNodes(t).filter(n => !n.kids && n.kind === t.filter && hit(n)).map(n => ({ n, depth: 0, flat: true }));
         const walk = (list, depth) => list.flatMap(n => {
-            if (!n.kids) return (t.filter === "all" || n.kind === t.filter) && hit(n) ? [{ n, depth }] : [];
+            if (!n.kids) return (t.which === "map" ? t.filter === "all" || (t.filter === "hidden" ? t.flags.has(n.id) : !!t.flags.get(n.id)?.has(t.filter))
+                : t.filter === "all" || n.kind === t.filter) && hit(n) ? [{ n, depth }] : [];
             const inner = walk(n.kids, depth + 1);
             const selfOk = !filtering || ((t.filter === "all" || t.filter === n.kind) && hit(n));
             if (filtering && !inner.length && !selfOk) return [];
@@ -6924,8 +6993,9 @@ const bulkEditor = (() => {
             + `${n.kids ? ` aria-expanded="${!shut}"` : ""} draggable="true" style="padding-left:${4 + depth * 16}px">`
             + (n.kids ? `<button type="button" class="r20be-ib" data-act="toggle" aria-label="펼치기/접기">${shut ? ICON.right : ICON.down}</button>` : `<span class="r20be-sp"></span>`)
             + `<button type="button" class="r20be-cb${chk ? " on" : ""}" data-act="check" aria-label="선택" aria-pressed="${chk}">${ICON.check}</button>`
-            + `<button type="button" class="r20be-nm" data-act="pick" title="더블클릭: 이름 바꾸기">${ICON[n.kind]}<span>${esc(n.cur.name || "(이름 없음)")}</span></button>`
+            + `<button type="button" class="r20be-nm" data-act="pick" title="더블클릭: 이름 바꾸기">${n.kind === "gfx" ? previewHtml(n.model.get("imgsrc"), "r20be-gth") : ICON[n.kind]}<span>${esc(n.cur.name || "(이름 없음)")}</span></button>`
             + (isDirty(n) ? `<span class="r20be-dot" title="저장 안 한 변경"></span>` : "")
+            + (n.kind === "gfx" ? [...(t.flags?.get(n.id) || [])].map(f => `<span class="r20be-gfl ${f}">${MAP_FLAG[f]}</span>`).join("") : "")
             + `<span class="r20be-meta">${esc((flat && n.parent ? n.parent.cur.name + " · " : "") + meta(n))}</span></div>`;
     };
     // ── 아이콘 보기: 포트레이트 + 이름, 폴더별로 묶는다 (이름 바꾸기는 오른쪽 편집칸에서) ──
@@ -6983,6 +7053,7 @@ const bulkEditor = (() => {
     const rowEl = id => ui.tree.querySelector(`.r20be-row[data-id="${CSS.escape(id)}"]`);
     const renderTree = () => {
         if (cur().which === "images") return renderImgTree();
+        if (cur().which === "map") cur().flags = mapFlags(cur());
         const t = cur(), rows = visibleRows(t), icons = iconMode(t);
         t.visible = rows.map(r => r.n.id);
         ui.tree.classList.toggle("r20be-icons", icons);
@@ -7010,7 +7081,7 @@ const bulkEditor = (() => {
         ui.save.disabled = !c || saving;
         ui.revert.disabled = !c || saving;
     };
-    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (cur()?.which === "images" ? HINT_IMG : iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
+    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (cur()?.which === "images" ? HINT_IMG : cur()?.which === "map" ? HINT_MAP : iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
 
     const select = id => {
         cur().sel = id;
@@ -8030,11 +8101,105 @@ const bulkEditor = (() => {
         });
     };
 
+    // ── 맵 탭 오른쪽 칸: 고른 그림(체크한 것, 없으면 지금 고른 하나)에 한꺼번에 ──
+    const mapTargets = t => {
+        const gfx = t.roots.flatMap(g => g.kids), checked = gfx.filter(n => t.checked.has(n.id));
+        if (checked.length) return checked;
+        const n = t.sel && find(t, t.sel);
+        return n?.kind === "gfx" ? [n] : [];
+    };
+    const mapAct = (t, list, fn, msg) => {
+        fn(list);
+        mapRegroup(t);
+        renderTree(); renderPane();
+        setStatus(`${msg} (저장해야 Roll20에 반영)`, "ok");
+    };
+    // 겹침 순서: 고른 것들을 서로의 차례 그대로 맨 위 · 맨 아래로
+    const mapZ = (t, list, front) => {
+        const ids = new Set(list.map(n => n.id)), mine = t.z.filter(id => ids.has(id)), rest = t.z.filter(id => !ids.has(id));
+        t.z = front ? [...rest, ...mine] : [...mine, ...rest];
+        list.forEach(n => { n.moved = true; });
+    };
+    // 페이지 가운데로: 고른 것들을 한 덩어리로(서로 간격 그대로) — 우클릭 레이어 메뉴의 가운데 정렬과 같은 계산.
+    // 격자가 반 칸(35px) 이상이면 칸 단위로만 옮긴다 (격자에 맞던 것은 계속 맞고, 반 칸 남으면 오른쪽 · 아래로)
+    const mapCenter = (t, list, axis) => {
+        const bs = list.map(n => gBox(n.cur));
+        const x0 = Math.min(...bs.map(b => b[0])), y0 = Math.min(...bs.map(b => b[1])), x1 = Math.max(...bs.map(b => b[2])), y1 = Math.max(...bs.map(b => b[3]));
+        const snap = numOf(t.page, "snapping_increment", 1), cell = 70 * (snap > 0 ? snap : 1);
+        const step = v => cell >= 35 ? Math.floor(v / cell + 0.5 - 1e-9) * cell : Math.round(v);
+        const dx = axis === "y" ? 0 : step(t.W / 2 - (x0 + x1) / 2), dy = axis === "x" ? 0 : step(t.H / 2 - (y0 + y1) / 2);
+        list.forEach(n => { if (dx) setField(n, "left", n.cur.left + dx); if (dy) setField(n, "top", n.cur.top + dy); });
+    };
+    // 페이지 크기에 맞추기: 하나씩 페이지 한가운데에. fit = 비율 그대로 페이지 안에 꽉, fill = 페이지 크기 그대로
+    // (90° · 270° 로 돌아간 그림은 가로 · 세로를 바꿔서 맞춘다)
+    const mapFit = (t, list, mode) => {
+        list.forEach(n => {
+            const turned = Math.abs(((n.cur.rotation % 180) + 180) % 180 - 90) < 1;
+            const W = turned ? t.H : t.W, H = turned ? t.W : t.H, r = n.cur.width / Math.max(1, n.cur.height);
+            let w = W, h = H;
+            if (mode === "fit") { if (W / H > r) w = H * r; else h = W / r; }
+            [["width", Math.round(w)], ["height", Math.round(h)], ["left", Math.round(t.W / 2)], ["top", Math.round(t.H / 2)]]
+                .forEach(([k, v]) => { if (n.cur[k] !== v) setField(n, k, v); });
+        });
+    };
+    // 미리보기: 페이지(점선)와 그림 상자들 — 고른 것은 노랑, 왼쪽 목록에 마우스를 올린 것은 분홍
+    const mapPreview = (t, list) => {
+        const gfx = t.roots.flatMap(g => g.kids).filter(n => !n.deleted), picked = new Set(list.map(n => n.id)), at = new Map(t.z.map((id, i) => [id, i]));
+        const all = [[0, 0, t.W, t.H], ...gfx.map(n => gBox(n.cur))];
+        const bx0 = Math.min(...all.map(b => b[0])), by0 = Math.min(...all.map(b => b[1]));
+        const bw = Math.max(...all.map(b => b[2])) - bx0 || 1, bh = Math.max(...all.map(b => b[3])) - by0 || 1;
+        const pct = (v, o, d) => ((v - o) / d * 100).toFixed(3) + "%";
+        const box = el("div", { class: "r20be-gprev", style: `aspect-ratio:${bw}/${bh};width:min(100%, ${Math.round(190 * bw / bh)}px)`, "aria-hidden": "true" },
+            el("i", { class: "pg", style: `left:${pct(0, bx0, bw)};top:${pct(0, by0, bh)};width:${pct(t.W, 0, bw)};height:${pct(t.H, 0, bh)}` }));
+        [...gfx].sort((a, b) => (LAYER_RANK[a.cur.layer] ?? 3) - (LAYER_RANK[b.cur.layer] ?? 3) || at.get(a.id) - at.get(b.id)).forEach(n => {
+            const c = n.cur;
+            box.append(el("i", { class: "o" + (picked.has(n.id) ? " sel" : "") + (c.layer === "gmlayer" ? " gm" : ""), "data-id": n.id,
+                style: `left:${pct(c.left - c.width / 2, bx0, bw)};top:${pct(c.top - c.height / 2, by0, bh)};width:${pct(c.width, 0, bw)};height:${pct(c.height, 0, bh)};transform:rotate(${c.rotation}deg)` }));
+        });
+        return box;
+    };
+    const mapPane = t => {
+        if (!t.page) return el("p", { class: "r20be-empty" }, "지금 페이지를 찾지 못했어요 — 페이지를 연 뒤 다시 열어 주세요");
+        const list = mapTargets(t), live = list.filter(n => !n.deleted), allDel = list.length && !live.length;
+        const head = el("div", { class: "r20be-ph" },
+            el("strong", {}, list.length > 1 ? `${list.length}개 선택됨` : list.length ? (list[0].cur.name || "(이름 없는 그림)") : `${t.pageName || "지금 페이지"}`),
+            el("span", { class: "r20be-flex" }),
+            t.checked.size ? el("button", { type: "button", class: "r20be-sec", onclick: () => { t.checked.clear(); renderTree(); renderPane(); } }, "선택 해제") : null);
+        if (!list.length) {
+            const hidden = [...t.flags.keys()];
+            return el("div", { class: "r20be-pane-in" }, head, mapPreview(t, []),
+                el("p", { class: "r20be-note" }, `페이지 ${Math.round(t.W / 70)}×${Math.round(t.H / 70)}칸 · 그림 ${t.roots.reduce((c, g) => c + g.kids.length, 0)}개 · 안 보이는 것 ${hidden.length}개`),
+                el("div", { class: "r20be-btns" },
+                    el("button", { type: "button", class: "r20be-sec", disabled: !hidden.length, onclick: () => { t.checked = new Set(hidden); t.filter = "hidden"; render(); } },
+                        `안 보이는 것 ${hidden.length}개 모두 고르기`)),
+                el("p", { class: "r20be-note" }, "왼쪽에서 그림을 누르거나 체크(Shift: 범위)해서 고르세요"));
+        }
+        const sec = (title, ...btns) => el("div", { class: "r20be-msec" }, el("h4", {}, title), el("div", { class: "r20be-btns" }, ...btns));
+        const b = (label, fn, msg, extra = {}) => el("button", { type: "button", class: "r20be-sec", disabled: !live.length, ...extra,
+            onclick: () => mapAct(t, live, fn, msg) }, label);
+        const one = list.length === 1 && list[0];
+        return el("div", { class: "r20be-pane-in" }, head, mapPreview(t, list),
+            one ? el("p", { class: "r20be-note" }, `${layerName(one.cur.layer)} · ${Math.round(one.cur.width)}×${Math.round(one.cur.height)} · 가운데 (${Math.round(one.cur.left)}, ${Math.round(one.cur.top)})`
+                + (one.cur.rotation ? ` · ${Math.round(one.cur.rotation)}° 회전` : "") + [...(t.flags.get(one.id) || [])].map(f => " · " + MAP_FLAG[f]).join("")) : null,
+            one && !one.deleted ? field("그림 이름", nameInput(one)) : null,
+            sec("지우기", el("button", { type: "button", class: "r20be-sec" + (allDel ? "" : " danger"), onclick: () => {
+                list.forEach(n => { n.deleted = !allDel; }); t.checked.clear(); renderTree(); renderPane();
+                setStatus(allDel ? "지우기를 취소했습니다" : `${list.length}개를 지울 예정입니다 (저장해야 Roll20에 반영)`, "ok");
+            } }, allDel ? "지우기 취소" : `고른 ${list.length}개 지우기`)),
+            sec("겹침 순서", b("맨 앞으로", l => mapZ(t, l, true), "맨 앞으로 옮겼습니다"), b("맨 뒤로", l => mapZ(t, l, false), "맨 뒤로 옮겼습니다")),
+            sec("페이지 가운데로 (고른 것들은 한 덩어리로)", b("⇔ 가로 가운데", l => mapCenter(t, l, "x"), "가로 가운데로 옮겼습니다"),
+                b("⇕ 세로 가운데", l => mapCenter(t, l, "y"), "세로 가운데로 옮겼습니다"), b("✛ 한가운데", l => mapCenter(t, l, ""), "한가운데로 옮겼습니다")),
+            sec("페이지 크기에 맞추기 (하나씩 페이지 한가운데에)", b("비율 그대로 맞추기", l => mapFit(t, l, "fit"), "페이지 크기에 맞췄습니다", { title: "그림 비율은 그대로, 페이지 안에 꽉 차게" }),
+                b("페이지 크기 그대로", l => mapFit(t, l, "fill"), "페이지 크기로 늘렸습니다", { title: "페이지 가로 · 세로에 딱 맞게 (비율이 바뀔 수 있음)" })),
+            sec("층 옮기기", ...MAP_LAYERS.slice(0, 3).map(([L, label]) => b(label, l => l.forEach(n => { if (n.cur.layer !== L) setField(n, "layer", L); }), `${label}으로 옮겼습니다`,
+                { "aria-pressed": String(live.length > 0 && live.every(n => n.cur.layer === L)) }))));
+    };
     const renderPane = () => {
         const t = cur();
         noteOff();
         ui.pane.textContent = "";
         if (t.which === "images") { ui.pane.append(imagePane(t)); return; }
+        if (t.which === "map") { ui.pane.append(mapPane(t)); return; }
         const checked = allNodes(t).filter(n => t.checked.has(n.id));
         const n = t.sel && find(t, t.sel);
         ui.pane.append(checked.length >= 2 ? bulkPane(checked)
@@ -8377,6 +8542,24 @@ const bulkEditor = (() => {
 
     // 매크로: 편집칸 키 → Roll20 속성
     const MACRO_ATTR = { name: "name", action: "action", share: "visibleto", token: "istokenaction" };
+    // 맵 탭 저장: 지우기 → 바뀐 칸 → 겹침 순서. 순서는 이 탭 그림들이 있던 자리에만 새 차례로 채우고
+    // 선 · 글자 · 그사이 새로 생긴 것은 자리 그대로 (zorder 에 없던 그림은 맨 위에 붙인다)
+    const saveMapTab = async (t, attempt) => {
+        const gfx = t.roots.flatMap(g => g.kids), label = n => n.cur.name || "(이름 없는 그림)";
+        for (const n of gfx) if (n.deleted) await attempt(label(n), async () => { n.model.destroy(); });
+        for (const n of gfx) if (!n.deleted && n.changed.size) await attempt(label(n), async () => {
+            const a = {};
+            n.changed.forEach(k => { a[k] = n.cur[k]; });
+            n.model.save(a);
+        });
+        if (gfx.some(n => n.moved && !n.deleted)) await attempt("겹침 순서", async () => {
+            const gone = new Set(gfx.filter(n => n.deleted).map(n => n.id)), want = t.z.filter(id => !gone.has(id)), mine = new Set(want);
+            const now = String(t.page.get("zorder") || "").split(",").filter(id => id && !gone.has(id));
+            let i = 0;
+            const z = [...now.map(id => mine.has(id) ? want[i++] : id), ...want.slice(i)];
+            if (z.join(",") !== now.join(",")) t.page.save({ zorder: z.join(",") });
+        });
+    };
     const saveMacros = async (t, attempt) => {
         const coll = macrosColl();
         for (const n of [...t.roots]) {
@@ -8474,7 +8657,7 @@ const bulkEditor = (() => {
         if (saving || !dirtyCount()) return;
         if (!isGM()) { setStatus("GM 만 저장할 수 있어요", "err"); return; }
         const dels = builtTabs().flatMap(t => allNodes(t).flatMap(n => [
-            ...(n.deleted && !n.isNew ? [n.cur.name] : []),
+            ...(n.deleted && !n.isNew ? [n.cur.name || (n.kind === "gfx" ? "(이름 없는 그림)" : "")] : []),
             ...(n.items || []).filter(it => it.deleted && !it.isNew).map(it => `${n.cur.name} · ${it.cur.name || "항목"}`)]));
         if (dels.length && !confirm(`${dels.length}개 항목을 Roll20에서 삭제합니다. 되돌릴 수 없습니다.\n\n`
             + dels.slice(0, 10).map(name => "· " + name).join("\n") + (dels.length > 10 ? "\n…" : "") + "\n\n계속할까요?")) return;
@@ -8487,6 +8670,7 @@ const bulkEditor = (() => {
             if (t.which === "tables") { await saveTables(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "decks") { await saveDecks(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "macros") { await saveMacros(t, attempt); continue; }
+            if (t.which === "map") { await saveMapTab(t, attempt); continue; }
             const nodes = allNodes(t);
             for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
             // 고친 내용을 먼저 저장해야 복제본이 고친 내용으로 만들어진다
@@ -8539,20 +8723,24 @@ const bulkEditor = (() => {
         ui.segM.classList.toggle("on", S.tab === "macros");
         ui.segD.classList.toggle("on", S.tab === "decks");
         ui.segI.classList.toggle("on", S.tab === "images");
+        ui.segP.classList.toggle("on", S.tab === "map");
+        if (t.which === "map") t.flags = mapFlags(t);
         ui.search.value = t.q;
-        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색" }[t.which] || "이름 검색";
-        ui.newBtn.hidden = t.which === "images";
+        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색", map: "그림 이름 검색" }[t.which] || "이름 검색";
+        ui.newBtn.hidden = t.which === "images" || t.which === "map";
         drawPagesBtn();
         ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱" }[t.which] || "새로 만들기";
         const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
             : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]]
-            : t.which === "images" ? [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]] : [];
+            : t.which === "images" ? [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]]
+            : t.which === "map" ? [["all", `전체 ${t.roots.reduce((c, g) => c + g.kids.length, 0)}`], ["hidden", `안 보이는 것만 ${t.flags.size}`],
+                ...Object.entries(MAP_FLAG).map(([k, l]) => [k, `${l} ${[...t.flags.values()].filter(f => f.has(k)).length}`])] : [];
         ui.chips.textContent = "";
         defs.forEach(([k, label]) => ui.chips.append(el("button", { type: "button", class: "r20be-chip" + (t.filter === k ? " on" : ""),
             "aria-pressed": String(t.filter === k), onclick: () => { t.filter = k; render(); } }, label)));
         ui.view.hidden = !isFlat(t);
         ui.zoom.hidden = !iconMode(t) && t.which !== "images";
-        ui.fold.hidden = !(t.which === "journal" || t.which === "bgm") || isFlat(t);
+        ui.fold.hidden = !(t.which === "journal" || t.which === "bgm" || t.which === "map") || isFlat(t);
         ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
         if (t.which !== "bgm") ui.bk.hidden = true;
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
@@ -8564,6 +8752,9 @@ const bulkEditor = (() => {
         if (tab === "tables" && !tablesColl()) { setStatus("굴림표를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "macros" && !macrosColl()) { setStatus("매크로를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "decks" && !decksColl()) { setStatus("덱을 아직 불러오지 못했습니다", "err"); return; }
+        if (tab === "map" && !pageNow()?.thegraphics) { setStatus("지금 페이지를 아직 불러오지 못했습니다", "err"); return; }
+        // 다른 페이지로 옮겼고 맵 탭에 저장 안 한 변경이 없으면 새로 읽는다
+        if (tab === "map" && S.map && S.map.page !== pageNow() && !allNodes(S.map).some(nodeDirty)) S.map = null;
         S.tab = tab;
         if (!S[tab]) S[tab] = buildTab(tab);
         ui.menu.hidden = true;
@@ -8644,10 +8835,16 @@ const bulkEditor = (() => {
                 renderTree(); renderPane();
             } else select(n.id);
         });
+        tr.addEventListener("mouseover", e => {
+            if (cur().which !== "map") return;
+            const id = e.target.closest?.(".r20be-row")?.dataset.id;
+            ui.pane.querySelectorAll(".r20be-gprev .o.hov").forEach(o => o.classList.remove("hov"));
+            if (id) ui.pane.querySelector(`.r20be-gprev .o[data-id="${CSS.escape(id)}"]`)?.classList.add("hov");
+        });
         tr.addEventListener("dblclick", e => {
             const row = e.target.closest(".r20be-row");
             const n = row && e.target.closest(".r20be-nm") && find(cur(), row.dataset.id);
-            if (n && !n.deleted) startRename(row, n);
+            if (n && !n.deleted && n.kind !== "mlayer") startRename(row, n);
         });
         // 끌어서 옮기기
         const clearDrop = () => tr.querySelectorAll(".drop-in,.drop-before").forEach(r => r.classList.remove("drop-in", "drop-before"));
@@ -8802,11 +8999,12 @@ const bulkEditor = (() => {
         ui.segT = el("button", { type: "button", onclick: () => switchTab("tables") }, "굴림표");
         ui.segM = el("button", { type: "button", onclick: () => switchTab("macros") }, "매크로");
         ui.segD = el("button", { type: "button", onclick: () => switchTab("decks") }, "덱");
-        ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");     // 그림 묶음이 없으면 탭도 없다
+        ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");
+        ui.segP = el("button", { type: "button", title: "지금 페이지에 올라간 그림 정리", onclick: () => switchTab("map") }, "맵");     // 그림 묶음이 없으면 탭도 없다
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP),
             el("span", { class: "r20be-flex" }),
             aioZoom.control("r20be-zm r20be-tz"),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
@@ -9004,6 +9202,22 @@ addCss(`
         #r20be .r20be-ctab.on { border-bottom-color:var(--aio-accent); color:var(--aio-accent); }
         #r20be .r20be-ta { flex:1 0 auto; width:100%; min-height:200px; overflow:hidden; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
         #r20be .r20be-ta.mono { font-family:Consolas, monospace; font-size:12px; }
+        /* 맵 탭 */
+        #r20be .r20be-gth { flex:none; width:22px; height:22px; border-radius:3px; object-fit:contain; background:var(--aio-bg-3); }
+        #r20be .r20be-gfl { flex:none; padding:0 6px; border-radius:9px; font-size:10px; font-weight:700; line-height:16px; }
+        #r20be .r20be-gfl.cov { background:#fdecec; color:#c62828; }
+        #r20be .r20be-gfl.out { background:#fff3e0; color:#b45309; }
+        #r20be .r20be-gfl.tiny { background:#eef2ff; color:#4338ca; }
+        #r20be .r20be-gprev { position:relative; max-width:100%; margin:0 auto; border-radius:var(--aio-r-sm); background:#3a3a40; overflow:hidden; }
+        #r20be .r20be-gprev i { position:absolute; box-sizing:border-box; }
+        #r20be .r20be-gprev .pg { border:1px dashed rgba(255,255,255,0.45); }
+        #r20be .r20be-gprev .o { border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.04); }
+        #r20be .r20be-gprev .o.gm { border-style:dotted; }
+        #r20be .r20be-gprev .o.sel { z-index:1; border:2px solid #ffe14d; background:rgba(255,225,77,0.22); }
+        #r20be .r20be-gprev .o.hov { z-index:2; border:2px solid #ff4fae; background:rgba(255,79,174,0.25); }
+        #r20be .r20be-msec { padding:10px 12px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r); }
+        #r20be .r20be-msec h4 { margin:0 0 8px; font-size:11.5px; color:var(--aio-ink-3); }
+        #r20be .r20be-msec .r20be-sec[aria-pressed="true"] { border-color:var(--aio-accent); color:var(--aio-accent); }
         /* 폴더 안 보기 · 곡 목록 */
         #r20be .r20be-fv { display:flex; flex-direction:column; gap:8px; }
         #r20be .r20be-fsec { border:1px solid var(--aio-line-3); border-radius:var(--aio-r); }
