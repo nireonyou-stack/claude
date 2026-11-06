@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.54.1
+// @version      1.55.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.54.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.55.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -64,7 +64,9 @@ const btnVisible = {
     mapshot:   localStorage.getItem("r20_show_mapshot") !== "false",
     emoji:     localStorage.getItem("r20_show_emoji") !== "false",
     logbak:    localStorage.getItem("r20_show_logbak") !== "false",
-    tokset:    localStorage.getItem("r20_show_tokset") !== "false"
+    tokset:    localStorage.getItem("r20_show_tokset") !== "false",
+    qfind:     localStorage.getItem("r20_show_qfind") !== "false",
+    winmem:    localStorage.getItem("r20_show_winmem") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -913,7 +915,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji";
+const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -1538,7 +1540,9 @@ const jukeboxRow = (() => {
         }
     };
     setEnabled(btnVisible.jbrow);
-    return { inject, setEnabled };
+    // 빠른 찾기가 쓴다: 곡 하나 재생 ↔ 정지 (줄이 없으면 false) · 지금 재생 중인지
+    const toggle = id => { const li = rowOf(id); if (!li) return false; playOf(li); return true; };
+    return { inject, setEnabled, toggle, playing: id => isPlaying(rowOf(id)) };
 })();
 
 addCss(`
@@ -6710,6 +6714,491 @@ addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰�
 
 // ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
 
+// ───────── 빠른 찾기 (Ctrl+K): 핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 한 칸에서 찾아 바로 열기 · 재생 · 실행 ─────────
+// 이름 일부 · 한글 초성(ㅁㄴ → 마녀의 편지) · 띄어쓰기 없이 · #태그. Enter = 종류에 맞게, Shift+Enter = 일괄 편집기에서(GM)
+// 플레이어는 자기에게 보이는 핸드아웃 · 캐릭터와 자기 매크로만 (주크박스는 GM 만)
+const quickFind = (() => {
+    const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+    const JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+    const CHIPS = [["all", "전체"], ["journal", "저널"], ["bgm", "BGM"], ["macro", "매크로"]];
+    const GROUP = { handout: "journal", char: "journal", track: "bgm", macro: "macro" };
+    const GLABEL = { recent: "최근", journal: "핸드아웃 · 캐릭터", bgm: "BGM", macro: "매크로" };
+    const ICON = { handout: "📜", char: "👤", track: "♪", macro: "⚙" };
+    const RKEY = "r20_qf_recent", PER_GROUP = 6, MAX = 60;
+    let root = null, inp = null, list = null, chips = null, chip = "all", items = [], shown = [], sel = 0, back = null;
+
+    // ── 맞추기: 한 글자씩 앞에서부터. 자음만 친 글자는 그 초성으로 시작하는 음절과 맞는다 ──
+    const choOf = c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : null; };
+    const same = (n, q) => n === q || (CHO.includes(q) && choOf(n) === q);
+    // 치는 중인 마지막 음절의 받침은 다음 글자의 초성일 수 있다 ('만' → '마' + 'ㄴ')
+    const splitLast = q => {
+        const c = q[q.length - 1], k = c ? c.charCodeAt(0) - 0xAC00 : -1, j = k >= 0 && k <= 11171 ? k % 28 : 0;
+        return j && CHO.includes(JONG[j]) ? q.slice(0, -1) + String.fromCharCode(c.charCodeAt(0) - j) + JONG[j] : null;
+    };
+    // 이름에서 공백을 뺀 글자들과 맞춘다 → { score, hits: 원래 이름의 글자 자리 }
+    const matchOne = (name, q) => {
+        const chars = [], at = [];
+        [...name].forEach((c, i) => { if (!/\s/.test(c)) { chars.push(c.toLowerCase()); at.push(i); } });
+        const words = new Set([0]);
+        [...name].forEach((c, i) => { if (/\s/.test(c)) words.add(i + 1); });
+        // 1) 붙어 있는 자리 (맨 앞 > 낱말 첫 글자 > 낱말 중간)
+        let best = null;
+        for (let s = 0; s + q.length <= chars.length; s++) {
+            let ok = true;
+            for (let k = 0; k < q.length && ok; k++) ok = same(chars[s + k], q[k]);
+            const score = ok && 1000 - s * 2 + (words.has(at[s]) ? 200 : 0) + (s === 0 ? 300 : 0);
+            if (ok && (!best || score > best.score)) best = { score, hits: q.split("").map((_, k) => at[s + k]) };
+        }
+        // 2) 낱말 첫 글자끼리 (ㅁㄴ → 마지막 노래) — 낱말 중간에 붙어 있는 것(막노)보다 앞
+        const heads = chars.map((_, i) => i).filter(i => words.has(at[i]));
+        if (q.length > 1 && heads.length >= q.length) {
+            const hh = [];
+            let w = 0;
+            for (const qc of q) {
+                while (w < heads.length && !same(chars[heads[w]], qc)) w++;
+                if (w >= heads.length) break;
+                hh.push(at[heads[w++]]);
+            }
+            const score = 1100 - (w - hh.length) * 10;
+            if (hh.length === q.length && (!best || score > best.score)) best = { score, hits: hh };
+        }
+        if (best) return best;
+        // 3) 띄엄띄엄 (ㅁㄴ → 마을 노인)
+        const hits = [];
+        let p = 0, gaps = 0;
+        for (const qc of q) {
+            while (p < chars.length && !same(chars[p], qc)) { p++; gaps++; }
+            if (p >= chars.length) return null;
+            hits.push(at[p++]);
+        }
+        const starts = hits.filter(h => words.has(h)).length;
+        return { score: 500 - gaps * 5 + starts * 40, hits };
+    };
+    const match = (name, q) => {
+        const a = matchOne(name, q), alt = splitLast(q), b = alt ? matchOne(name, alt) : null;
+        if (b) b.hits = b.hits.slice(0, q.length);      // 나눠 맞춘 받침은 칠하지 않는다
+        return !a ? b : !b ? a : a.score >= b.score ? a : b;
+    };
+    const mark = (name, hits) => {
+        const on = new Set(hits);
+        let out = "", open = false;
+        [...name].forEach((c, i) => {
+            if (on.has(i) && !open) { out += "<mark>"; open = true; }
+            if (!on.has(i) && open) { out += "</mark>"; open = false; }
+            out += escAttr(c);
+        });
+        return out + (open ? "</mark>" : "");
+    };
+
+    // ── 모으기: 열 때마다 새로 (폴더 경로 · 태그 같이) ──
+    const folderPaths = raw => {
+        const out = new Map();
+        let tree;
+        try { tree = typeof raw === "string" ? JSON.parse(raw || "[]") : raw; } catch (e) { return out; }
+        const walk = (arr, path) => (Array.isArray(arr) ? arr : []).forEach(x => {
+            if (typeof x === "string") out.set(x, path.join(" › "));
+            else if (x && typeof x === "object") walk(x.i, [...path, x.n || ""]);
+        });
+        walk(tree, []);
+        return out;
+    };
+    // 태그: 핸드아웃 · 캐릭터는 '["a","b"]' 글자, 곡은 띄어쓰기 · 쉼표로 나눈 글자
+    const tagsOf = v => {
+        const s = String(v || "").trim();
+        if (s.startsWith("[")) try { const a = JSON.parse(s); if (Array.isArray(a)) return a.map(String).filter(Boolean); } catch (e) { /* 그냥 글자 */ }
+        return tagList(s);
+    };
+    const canSee = m => {
+        if (isGM()) return true;
+        const v = String(m.get("inplayerjournals") || "");
+        return v.split(",").some(x => x === "all" || x === window.currentPlayer?.id);
+    };
+    const gather = () => {
+        const C = window.Campaign, out = [];
+        if (!C) return out;
+        const jp = folderPaths(C.get?.("journalfolder"));
+        [["handout", C.handouts], ["char", C.characters]].forEach(([k, coll]) => (coll?.models || []).forEach(m => {
+            if (!canSee(m)) return;
+            out.push({ k, id: m.id, m, name: m.get("name") || "(이름 없음)", tags: tagsOf(m.get("tags")), path: jp.get(m.id) || "", archived: !!m.get("archived") });
+        }));
+        if (isGM()) {
+            const bp = folderPaths(C.get?.("jukeboxfolder"));
+            (window.Jukebox?.playlist?.models || []).forEach(m => out.push({ k: "track", id: m.id, m, name: m.get("title") || "(제목 없음)", tags: tagsOf(m.get("tags")), path: bp.get(m.id) || "" }));
+        }
+        (window.currentPlayer?.macros?.models || []).forEach(m => out.push({ k: "macro", id: m.id, m, name: m.get("name") || "", tags: [], path: "매크로" }));
+        return out;
+    };
+
+    // ── 최근에 쓴 것 ──
+    const recent = () => { try { const a = JSON.parse(localStorage.getItem(RKEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+    const remember = it => {
+        const a = [{ k: it.k, id: it.id }, ...recent().filter(r => !(r.k === it.k && r.id === it.id))].slice(0, 8);
+        try { localStorage.setItem(RKEY, JSON.stringify(a)); } catch (e) { /* 저장 못 함 */ }
+    };
+
+    // ── 찾기 ──
+    const search = () => {
+        const raw = inp.value.trim().toLowerCase();
+        const tagQ = raw.split(/\s+/).filter(t => t.startsWith("#") && t.length > 1).map(t => t.slice(1));
+        const q = raw.split(/\s+/).filter(t => !t.startsWith("#")).join("");
+        const pool = items.filter(it => chip === "all" || GROUP[it.k] === chip);
+        if (!q && !tagQ.length) {
+            if (chip === "all") {
+                const byKey = new Map(items.map(it => [it.k + ":" + it.id, it]));
+                return recent().map(r => byKey.get(r.k + ":" + r.id)).filter(Boolean).map(it => ({ it, g: "recent", html: escAttr(it.name) }));
+            }
+            return pool.slice().sort((a, b) => a.name.localeCompare(b.name, "ko")).slice(0, MAX).map(it => ({ it, g: GROUP[it.k], html: escAttr(it.name) }));
+        }
+        const hit = [];
+        pool.forEach(it => {
+            if (tagQ.length && !tagQ.every(t => it.tags.some(x => x.toLowerCase().includes(t)))) return;
+            const m = q ? match(it.name, q) : { score: 0, hits: [] };
+            if (!m) return;
+            hit.push({ it, g: GROUP[it.k], html: mark(it.name, m.hits), score: m.score - (it.archived ? 300 : 0) });
+        });
+        hit.sort((a, b) => b.score - a.score || a.it.name.localeCompare(b.it.name, "ko"));
+        if (chip !== "all") return hit.slice(0, MAX);
+        const cnt = {};
+        return hit.filter(h => (cnt[h.g] = (cnt[h.g] || 0) + 1) <= PER_GROUP)
+            .sort((a, b) => ["journal", "bgm", "macro"].indexOf(a.g) - ["journal", "bgm", "macro"].indexOf(b.g));
+    };
+    const verb = it => it.k === "track" ? (FEAT.jukeboxRow?.playing?.(it.id) ? "정지" : "재생") : it.k === "macro" ? "실행" : "열기";
+    const sub = it => [it.k === "char" ? "캐릭터" : "", it.path, it.archived ? "보관함" : "", it.tags.map(t => "#" + t).join(" ")].filter(Boolean).join(" · ");
+    const draw = () => {
+        shown = search();
+        sel = Math.min(sel, Math.max(0, shown.length - 1));
+        let g = null, html = "";
+        shown.forEach((r, i) => {
+            if (r.g !== g) { g = r.g; html += `<div class="qf-grp" role="presentation">${GLABEL[g]}</div>`; }
+            html += `<div class="qf-it" role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}">`
+                + `<span class="qf-ic" aria-hidden="true">${ICON[r.it.k]}</span><span class="qf-tx"><span class="qf-nm">${r.html}</span>`
+                + `<span class="qf-pt">${escAttr(sub(r.it))}</span></span><span class="qf-act">${i === sel ? "Enter " : ""}${verb(r.it)}</span></div>`;
+        });
+        if (!shown.length) html = `<div class="qf-empty">${inp.value.trim() ? "찾는 것이 없어요" : "이름 일부 · 초성(ㅁㄴ) · #태그로 찾아요"}</div>`;
+        list.innerHTML = html;
+        inp.setAttribute("aria-activedescendant", shown.length ? "r20-qf-o" + sel : "");
+        chips.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.c === chip)));
+    };
+    const move = d => {
+        if (!shown.length) return;
+        sel = (sel + d + shown.length) % shown.length;
+        list.querySelectorAll(".qf-it").forEach(r => {
+            const on = Number(r.dataset.i) === sel;
+            r.setAttribute("aria-selected", String(on));
+            r.querySelector(".qf-act").textContent = (on ? "Enter " : "") + verb(shown[Number(r.dataset.i)].it);
+            if (on) r.scrollIntoView({ block: "nearest" });
+        });
+        inp.setAttribute("aria-activedescendant", "r20-qf-o" + sel);
+    };
+
+    // ── 실행 ──
+    const runMacro = name => {
+        const ta = document.querySelector("#textchat-input textarea"), send = document.getElementById("chatSendBtn");
+        if (!ta || !send || !name) return;
+        const keep = ta.value;
+        ta.value = "#" + name;
+        send.click();       // 단추 click 은 desc · 사담 머리말을 붙이지 않는다 (머리말은 Enter · mousedown 때만)
+        setTimeout(() => { if (keep && !ta.value) { ta.value = keep; ta.dispatchEvent(new Event("input", { bubbles: true })); } }, 0);
+    };
+    const run = (it, toEditor) => {
+        if (!it) return;
+        remember(it);
+        close();
+        if (toEditor && isGM() && btnVisible.bulk && FEAT.bulkEditor?.open) return FEAT.bulkEditor.open(it.k === "track" ? "bgm" : it.k === "macro" ? "macros" : "journal", it.id);
+        if (it.k === "macro") return runMacro(it.name);
+        if (it.k === "track") {
+            if (FEAT.jukeboxRow?.toggle?.(it.id)) return;
+            const on = !it.m.get("playing");
+            return it.m.save({ playing: on, softstop: false });
+        }
+        if (typeof it.m?.view?.showDialog === "function") return it.m.view.showDialog();
+        const li = document.querySelector(`#journal li.journalitem[data-itemid="${CSS.escape(it.id)}"]`);
+        if (li) (window.jQuery ? window.jQuery(li).trigger("click") : li.click());
+    };
+
+    // ── 창 ──
+    const build = () => {
+        root = document.createElement("div");
+        root.id = "r20-qf";
+        root.innerHTML = '<div class="qf-dim"></div><div class="qf-box" role="dialog" aria-modal="true" aria-label="빠른 찾기">'
+            + '<div class="qf-in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+            + '<input type="text" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="찾을 이름 · 초성 · #태그" placeholder="이름 · 초성 · #태그" autocomplete="off" spellcheck="false">'
+            + '<kbd>Esc</kbd></div><div class="qf-chips" role="tablist" aria-label="종류">'
+            + CHIPS.map(([c, l]) => `<button type="button" role="tab" data-c="${c}">${l}</button>`).join("")
+            + '</div><div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
+            + '<div class="qf-foot"><span><kbd>↑</kbd><kbd>↓</kbd> 고르기</span><span><kbd>Enter</kbd> 실행</span><span class="qf-gm"><kbd>Shift</kbd>+<kbd>Enter</kbd> 일괄 편집기에서</span><span><kbd>Tab</kbd> 종류</span></div></div>';
+        inp = root.querySelector("input");
+        list = root.querySelector(".qf-list");
+        chips = root.querySelector(".qf-chips");
+        root.querySelector(".qf-dim").addEventListener("click", close);
+        inp.addEventListener("input", () => { sel = 0; draw(); list.scrollTop = 0; });
+        inp.addEventListener("keydown", e => {
+            e.stopPropagation();        // Roll20 단축키로 새지 않게
+            if (e.isComposing || e.keyCode === 229) return;     // 한글 조합 중 Enter · 방향키는 조합 끝내기용
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); move(e.key === "ArrowDown" ? 1 : -1); }
+            else if (e.key === "Enter") { e.preventDefault(); run(shown[sel]?.it, e.shiftKey); }
+            else if (e.key === "Escape") { e.preventDefault(); close(); }
+            else if (e.key === "Tab") {
+                e.preventDefault();
+                const i = CHIPS.findIndex(([c]) => c === chip);
+                chip = CHIPS[(i + (e.shiftKey ? -1 : 1) + CHIPS.length) % CHIPS.length][0];
+                sel = 0; draw();
+            }
+        });
+        chips.addEventListener("click", e => {
+            const b = e.target.closest("button[data-c]");
+            if (!b) return;
+            chip = b.dataset.c; sel = 0; draw(); inp.focus();
+        });
+        list.addEventListener("mousedown", e => e.preventDefault());       // 입력칸에서 포커스가 빠지지 않게
+        list.addEventListener("click", e => {
+            const r = e.target.closest(".qf-it");
+            if (r) run(shown[Number(r.dataset.i)]?.it, e.shiftKey);
+        });
+        document.body.appendChild(root);
+    };
+    const isOpen = () => !!root?.classList.contains("show");
+    const open = () => {
+        if (!btnVisible.qfind || !window.Campaign) return;
+        if (!root?.isConnected) build();
+        back = document.activeElement;
+        items = gather();
+        chip = "all"; sel = 0; inp.value = "";
+        root.querySelector(".qf-gm").hidden = !(isGM() && btnVisible.bulk);
+        root.classList.add("show");
+        draw();
+        inp.focus();
+    };
+    function close() {
+        if (!isOpen()) return;
+        root.classList.remove("show");
+        items = []; shown = [];
+        if (back?.isConnected) try { back.focus({ preventScroll: true }); } catch (e) { /* 포커스 못 돌림 */ }
+        back = null;
+    }
+    // Ctrl+K (맥은 ⌘K) — 한글 자판이어도 같은 자리(KeyK). 서식 편집기 안에선 그 편집기의 링크 넣기로 둔다
+    document.addEventListener("keydown", e => {
+        if (!btnVisible.qfind || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyK") return;
+        if (e.target.closest?.(".note-editor")) return;
+        e.preventDefault(); e.stopPropagation();
+        if (isOpen()) close(); else open();
+    }, true);
+    const setEnabled = on => { if (!on) close(); };
+    return { setEnabled, open, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
+})();
+
+// ───────── 창 자리 · 크기 기억: 캐릭터 시트 · 핸드아웃 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
+// 기억 방식: 항목마다(그 캐릭터 · 핸드아웃만) / 종류별 하나(시트끼리 · 핸드아웃끼리 같은 자리). 화면 밖이면 안으로 당겨 연다
+// 📌 길게(0.6초) 누르면 기억한 자리만 지운다 → 다음에 열 때 Roll20 기본 자리. 다른 창(토큰 설정 등)은 건드리지 않는다
+const winMemory = (() => {
+    const KEY = "r20_win_mem", MODE = "r20_win_mode";
+    let mem = (() => { try { const o = JSON.parse(localStorage.getItem(KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
+    let mode = localStorage.getItem(MODE) === "kind" ? "kind" : "item";
+    const keep = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { /* 저장 못 함 */ } };
+    const content = dlg => dlg.querySelector(":scope > .ui-dialog-content");
+    const titleOf = dlg => (dlg.querySelector(":scope > .ui-dialog-titlebar .ui-dialog-title")?.textContent || "").trim();
+    // 어떤 창인지: 캐릭터 시트는 .characterdialog, 핸드아웃은 handout 표시 또는 제목이 핸드아웃 이름
+    const info = dlg => {
+        const c = content(dlg);
+        if (!c) return null;
+        const C = window.Campaign, t = titleOf(dlg);
+        const cd = c.classList.contains("characterdialog") ? c : dlg.querySelector(".characterdialog");
+        if (cd) {
+            const id = cd.dataset.characterid || c.dataset.characterid || (C?.characters?.models || []).find(m => m.get("name") === t)?.id || t;
+            return id ? { kind: "char", id } : null;
+        }
+        const hid = c.dataset.handoutid || c.querySelector("[data-handoutid]")?.dataset.handoutid;
+        const byName = !hid && t && (C?.handouts?.models || []).find(m => m.get("name") === t);
+        if (hid || byName || (/\bhandout/i.test(c.className) && t)) return { kind: "handout", id: hid || byName?.id || t };
+        return null;
+    };
+    const keyOf = f => mode === "kind" ? f.kind : f.kind + ":" + f.id;
+    const geom = dlg => ({ l: Math.round(dlg.offsetLeft), t: Math.round(dlg.offsetTop), w: Math.round(dlg.offsetWidth), h: Math.round(dlg.offsetHeight) });
+    const save = dlg => {
+        const f = info(dlg);
+        if (!f || !mem[keyOf(f)] || !dlg.getClientRects().length) return;
+        mem[keyOf(f)] = { g: geom(dlg) };
+        keep();
+    };
+    // 기억한 자리 · 크기로: jQuery UI 창이면 그 옵션으로(안쪽 높이까지 같이 맞춰진다), 아니면 직접
+    const apply = dlg => {
+        const f = info(dlg), g = f && mem[keyOf(f)]?.g;
+        if (!g) return;
+        const W = innerWidth, H = innerHeight;
+        const w = Math.min(g.w, W - 8), h = Math.min(g.h, H - 8);
+        const l = Math.max(0, Math.min(g.l, W - w)), t = Math.max(0, Math.min(g.t, H - h));
+        const c = content(dlg), $ = window.jQuery;
+        let done = false;
+        // jQuery UI 의 width 는 안쪽 너비(테두리 · 여백 빼고), height 는 바깥 높이다
+        try { if ($ && c && ($(c).data("ui-dialog") || $(c).data("uiDialog"))) { $(c).dialog("option", { width: w - (dlg.offsetWidth - $(dlg).width()), height: h }); done = true; } } catch (e) { /* jQuery UI 창이 아님 */ }
+        if (!done) {
+            const inner = c ? dlg.offsetHeight - c.offsetHeight : 0;
+            dlg.style.width = w + "px";
+            dlg.style.height = h + "px";
+            if (c) c.style.height = Math.max(40, h - inner) + "px";
+        }
+        dlg.style.left = l + "px";
+        dlg.style.top = t + "px";
+    };
+    const paint = (b, dlg) => {
+        const f = info(dlg), on = !!(f && mem[keyOf(f)]);
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+        b.title = on ? `자리 · 크기 기억 중 (${mode === "kind" ? "이 종류 창 모두" : "이 창만"}) · 누르면 끄기 · 길게 누르면 기본 자리로`
+            : "📌 자리 · 크기 기억 — 켜면 옮기거나 크기를 바꾼 그대로 다음에 열려요";
+    };
+    const paintAll = () => document.querySelectorAll(".ui-dialog .r20wm-pin").forEach(b => paint(b, b.closest(".ui-dialog")));
+    // 창이 (다시) 열릴 때: 바로 한 번, Roll20 이 자리를 늦게 잡는 경우를 위해 조금 뒤 한 번 더 (그사이 손대면 그만)
+    const opened = dlg => {
+        if (!btnVisible.winmem) return;
+        dlg.r20wmTouched = false;
+        apply(dlg);
+        setTimeout(() => { if (!dlg.r20wmTouched) apply(dlg); }, 300);
+    };
+    const toast = (dlg, msg) => {
+        const b = dlg.querySelector(".r20wm-pin");
+        if (!b) return;
+        const old = b.title;
+        b.title = msg;
+        b.classList.add("flash");
+        setTimeout(() => { b.classList.remove("flash"); b.title = old; }, 1200);
+    };
+    const inject = () => {
+        if (!btnVisible.winmem) return;
+        document.querySelectorAll(".ui-dialog").forEach(dlg => {
+            const bar = dlg.querySelector(":scope > .ui-dialog-titlebar");
+            const shownNow = dlg.getClientRects().length > 0;
+            if (!shownNow) { dlg.r20wmSeen = false; return; }
+            if (!bar || !info(dlg)) return;
+            if (!bar.querySelector(".r20wm-pin")) {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = "r20wm-pin";
+                b.textContent = "📌";
+                b.setAttribute("aria-label", "창 자리 · 크기 기억");
+                let lp = null, long = false;
+                b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
+                b.addEventListener("pointerdown", () => {
+                    long = false;
+                    lp = setTimeout(() => {
+                        long = true;
+                        const f = info(dlg);
+                        if (f && mem[keyOf(f)]) { mem[keyOf(f)] = {}; keep(); toast(dlg, "기억한 자리를 지웠어요 — 다음에 열 때 기본 자리로"); }
+                    }, 600);
+                });
+                ["pointerup", "pointerleave", "pointercancel"].forEach(t => b.addEventListener(t, () => clearTimeout(lp)));
+                b.addEventListener("click", e => {
+                    e.preventDefault(); e.stopPropagation();
+                    if (long) { long = false; return; }
+                    const f = info(dlg);
+                    if (!f) return;
+                    const k = keyOf(f);
+                    if (mem[k]) delete mem[k]; else mem[k] = { g: geom(dlg) };
+                    keep();
+                    paintAll();
+                });
+                const after = bar.querySelector(".r20shot") || bar.querySelector(".ui-dialog-title");
+                after ? after.after(b) : bar.prepend(b);
+                paint(b, dlg);
+            }
+            if (!dlg.r20wmSeen) { dlg.r20wmSeen = true; opened(dlg); }
+        });
+    };
+    // 옮기기 · 크기 바꾸기가 끝나면 저장 (jQuery UI 이벤트가 오면 그걸로, 아니면 손 뗄 때)
+    let moving = null;
+    document.addEventListener("pointerdown", e => {
+        const dlg = btnVisible.winmem && e.target.closest?.(".ui-dialog");
+        if (!dlg || !dlg.querySelector(".r20wm-pin")) return;
+        dlg.r20wmTouched = true;
+        if (e.target.closest(".ui-dialog-titlebar, .ui-resizable-handle") && !e.target.closest(".r20wm-pin")) moving = dlg;
+    }, true);
+    document.addEventListener("pointerup", () => { const d = moving; moving = null; if (d) setTimeout(() => save(d), 60); }, true);
+    let bound = false;
+    const bindJq = () => {
+        const $ = window.jQuery;
+        if (bound || !$) return;
+        bound = true;
+        $(document).on("dialogdragstop.r20wm dialogresizestop.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d?.querySelector(".r20wm-pin")) setTimeout(() => save(d), 0); });
+        // 닫았던 창을 Roll20 이 다시 여는 경우(새로 만들지 않고)
+        $(document).on("dialogopen.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d) setTimeout(() => { d.r20wmSeen = false; inject(); }, 0); });
+    };
+    bindJq();
+    const setMode = m => { mode = m === "kind" ? "kind" : "item"; localStorage.setItem(MODE, mode); paintAll(); };
+    // 설정 창 줄: 기억 방식 (항목마다 · 종류별 하나)
+    const modeRow = () => {
+        const row = document.createElement("div");
+        row.className = "cs-row";
+        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
+        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "기억 방식" }));
+        name.dataset.tip = "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리";
+        const seg = document.createElement("div");
+        seg.className = "cs-seg";
+        seg.setAttribute("role", "radiogroup");
+        seg.setAttribute("aria-label", "기억 방식");
+        const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode)));
+        [["item", "항목마다"], ["kind", "종류별 하나"]].forEach(([v, l]) => {
+            const b = Object.assign(document.createElement("button"), { type: "button", textContent: l });
+            b.dataset.v = v;
+            b.setAttribute("role", "radio");
+            b.onclick = () => { setMode(v); sync(); };
+            seg.appendChild(b);
+        });
+        sync();
+        row.append(name, seg);
+        return row;
+    };
+    const setEnabled = on => { if (on) { bindJq(); inject(); } else document.querySelectorAll(".r20wm-pin").forEach(b => b.remove()); };
+    return { inject, setEnabled, modeRow, watch: ".ui-dialog" };
+})();
+
+addCss(`
+        /* 빠른 찾기 (Ctrl+K) */
+        #r20-qf { position:fixed; inset:0; z-index:10010; display:none; font-family:sans-serif; }
+        #r20-qf.show { display:block; }
+        #r20-qf .qf-dim { position:absolute; inset:0; background:rgba(0,0,0,0.35); }
+        #r20-qf .qf-box { position:absolute; left:50%; top:8%; transform:translateX(-50%); display:flex; flex-direction:column; width:min(560px, calc((100vw - 32px) / var(--aio-z, 1))); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,0.45); overflow:hidden; color:var(--aio-ink-2); font-size:13px; line-height:1.45; }
+        #r20-qf .qf-in { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--aio-line-3); color:var(--aio-ink-4); }
+        #r20-qf .qf-in input { flex:1; min-width:0; height:28px; margin:0; padding:0; border:0; outline:0; box-shadow:none; background:none; color:var(--aio-ink); font:inherit; font-size:16px; }
+        #r20-qf kbd { display:inline-block; margin:0 1px; padding:0 5px; border:1px solid var(--aio-line-2); border-bottom-width:2px; border-radius:var(--aio-r-sm); background:var(--aio-bg-2); color:var(--aio-ink-3); font:10.5px/1.5 sans-serif; }
+        #r20-qf .qf-chips { display:flex; flex-wrap:wrap; gap:4px; padding:7px 14px; border-bottom:1px solid var(--aio-line-3); }
+        #r20-qf .qf-chips button { height:auto; margin:0; padding:2px 10px; border:1px solid var(--aio-line-2); border-radius:12px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:1.5; cursor:pointer; box-shadow:none; }
+        #r20-qf .qf-chips button[aria-selected="true"] { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent); font-weight:700; }
+        #r20-qf .qf-chips button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        #r20-qf .qf-list { flex:1; min-height:0; overflow-y:auto; padding:2px 0 6px; overscroll-behavior:contain; }
+        #r20-qf .qf-grp { padding:8px 14px 3px; color:var(--aio-ink-4); font-size:10.5px; font-weight:700; }
+        #r20-qf .qf-it { display:flex; align-items:center; gap:10px; padding:6px 14px; cursor:pointer; }
+        #r20-qf .qf-it:hover { background:var(--aio-bg-3); }
+        #r20-qf .qf-it[aria-selected="true"] { background:var(--aio-accent-bg); }
+        #r20-qf .qf-ic { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:5px; background:var(--aio-bg-3); font-size:14px; }
+        #r20-qf .qf-tx { flex:1; min-width:0; display:flex; flex-direction:column; }
+        #r20-qf .qf-nm { overflow:hidden; color:var(--aio-ink); font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-qf .qf-nm mark { background:none; color:var(--aio-accent); }
+        #r20-qf .qf-pt { overflow:hidden; color:var(--aio-ink-4); font-size:11px; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-qf .qf-pt:empty { display:none; }
+        #r20-qf .qf-act { flex:none; color:var(--aio-ink-4); font-size:11px; white-space:nowrap; }
+        #r20-qf .qf-it[aria-selected="true"] .qf-act { color:var(--aio-accent); font-weight:700; }
+        #r20-qf .qf-empty { padding:18px 14px; color:var(--aio-ink-4); text-align:center; }
+        #r20-qf .qf-foot { display:flex; flex-wrap:wrap; gap:4px 12px; padding:7px 14px; border-top:1px solid var(--aio-line-3); background:var(--aio-bg-2); color:var(--aio-ink-4); font-size:11px; }
+        .r20qf-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
+        .r20qf-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
+        /* 창 자리 · 크기 기억 📌 (캐릭터 시트 · 핸드아웃 제목줄) */
+        .ui-dialog-titlebar .r20wm-pin { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:1px solid transparent; border-radius:var(--aio-r-sm); background:none; font-size:12px; line-height:22px; cursor:pointer; box-shadow:none; filter:grayscale(1); opacity:0.45; }
+        .ui-dialog-titlebar .r20wm-pin:hover { opacity:0.8; }
+        .ui-dialog-titlebar .r20wm-pin.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); filter:none; opacity:1; }
+        .ui-dialog-titlebar .r20wm-pin.flash { animation:r20wm-flash 0.4s ease-in-out 3 alternate; }
+        .ui-dialog-titlebar .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        @keyframes r20wm-flash { to { transform:scale(1.25); } }
+`);
+
+addFeature("quickFind", quickFind);
+addFeature("winMemory", winMemory);
+addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+K)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서)",
+    members: [["qfind", "quickFind"]],
+    extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
+addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억", sub: "캐릭터 시트 · 핸드아웃 창 제목줄의 📌 를 켠 창만 · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로",
+    members: [["winmem", "winMemory"]],
+    extra: () => [winMemory.modeRow()] });
+
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
 const bulkEditor = (() => {
@@ -8963,7 +9452,8 @@ const bulkEditor = (() => {
         document.body.appendChild(ui.root);
     };
 
-    const open = tab => {
+    // id 를 주면 그 항목을 골라 둔다 (빠른 찾기 Shift+Enter) — 접힌 폴더는 펼친다
+    const open = (tab, id) => {
         if (!isGM()) { alert("일괄 편집기는 이 방의 GM 만 쓸 수 있어요."); return; }
         if (!window.Campaign?.handouts) { alert("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요."); return; }
         ensureUi();
@@ -8972,6 +9462,12 @@ const bulkEditor = (() => {
         aioZoom.fit(ui.root);
         setStatus();
         switchTab(tab || S.tab);
+        const t = cur(), n = id && t && allNodes(t).find(x => x.id === id);
+        if (!n) return;
+        for (let p = n.parent; p; p = p.parent) t.collapsed.delete(p.id);
+        render();
+        select(id);
+        rowEl(id)?.scrollIntoView({ block: "center" });
     };
     function close() { ui.root.classList.remove("r20be-show"); ui.menu.hidden = true; }
 
@@ -8995,7 +9491,6 @@ const bulkEditor = (() => {
         if (on) inject(); else if (ui) close();
     };
     setEnabled(btnVisible.bulk);
-    window.addEventListener("beforeunload", e => { if (dirtyCount()) { e.preventDefault(); e.returnValue = ""; } });
 
     return { inject, setEnabled, open, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
 })();
