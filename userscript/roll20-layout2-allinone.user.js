@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.58.0
+// @version      1.58.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.58.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.58.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1576,7 +1576,6 @@ addCss(`
         @container r20jn (max-width: 340px) {
             #journal .searchbox .r20jn-tools { gap:2px !important; }
             #journal .searchbox .r20jn-tools :is(.btn, .grimoire__button) { padding:0 5px !important; }
-            #journal .searchbox button.r20be-open { gap:0 !important; padding:0 6px !important; font-size:0 !important; }
         }
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):hover { background:var(--aio-bg-3) !important; }
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button):focus-visible { outline:2px solid var(--aio-accent) !important; outline-offset:1px; }
@@ -9739,7 +9738,7 @@ const bulkEditor = (() => {
     };
     function close() { ui.root.classList.remove("r20be-show"); ui.menu.hidden = true; }
 
-    // 저널 · 주크박스 탭 위쪽에 여는 버튼
+    // 여는 단추는 햄버거 밑 단추줄(맵 단추 아래) 하나 (예전 저널 · 주크박스 탭 위 단추는 v1.58.1 에서 뺌)
     const inject = () => {
         if (!btnVisible.bulk || !gmKnown()) return;
         // 핸드아웃 · 캐릭터 · GM 메모 · 주크박스를 읽고 고치므로 GM 만
@@ -9750,15 +9749,8 @@ const bulkEditor = (() => {
                 onclick: e => { e.preventDefault(); e.stopPropagation(); open(); } }, el("span", { html: ICON.pen, style: "display:flex" })));
             FEAT.screenUI?.place();
         }
-        [["journal", "journal"], ["jukebox", "bgm"]].forEach(([id, tab]) => {
-            const host = document.getElementById(id);
-            if (!host) return;
-            // 예전 버전 사본이 단 버튼이면 지우고 이 버전 것으로 단다
-            host.querySelectorAll(".r20be-open:not([data-aio])").forEach(b => { b.remove(); warnDuplicate(); });
-            if (host.querySelector(".r20be-open")) return;
-            (host.querySelector(".content") || host).prepend(el("button", { type: "button", class: "r20be-open", "data-aio": "1", title: "일괄 편집", "aria-label": "일괄 편집",
-                onclick: e => { e.preventDefault(); e.stopPropagation(); open(tab); } }, el("span", { html: ICON.pen }), "일괄 편집"));
-        });
+        // 예전 버전 사본이 단 탭 위 단추가 보이면 지우고 알린다
+        document.querySelectorAll("#journal .r20be-open:not([data-aio]), #jukebox .r20be-open:not([data-aio])").forEach(b => { b.remove(); warnDuplicate(); });
     };
     const setEnabled = on => {
         document.body.classList.toggle("r20be-off", !on);
@@ -10042,11 +10034,6 @@ addCss(`
             #r20be .r20be-split { display:none; }
             #r20be .r20be-grid { grid-template-columns:minmax(0, 1fr); }
         }
-        body button.r20be-open { display:inline-flex; align-items:center; gap:4px; height:24px; margin:6px 0; padding:0 10px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font-size:11px; font-weight:700; cursor:pointer; box-sizing:border-box; }
-        body button.r20be-open:hover { background:var(--aio-bg-3); }
-        #jukebox button.r20be-open { margin-top:2px; margin-left:3px; }     /* 옆 '오디오 관리'와 높이 맞춤 */
-        #journal button.r20be-open { margin-top:5px; margin-left:3px; }     /* 옆 태그 단추와 높이 맞춤 */
-        body.r20be-off button.r20be-open { display:none; }
         .r20be-mini { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
         .r20be-mini:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
 `);
