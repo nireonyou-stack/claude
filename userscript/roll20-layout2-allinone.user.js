@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.57.0
+// @version      1.58.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.57.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.58.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -973,6 +973,11 @@ const CORE_CSS = `
         :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; }
         /* 글자 크기 (aioZoom): 올인원 창 · (켜면) 채팅 기록과 입력칸 */
         :is(${AIO_ZOOMED}) { zoom:var(--aio-z, 1); }
+        /* 햄버거 밑 단추줄(맵 단추 아래)에 붙는 올인원 단추 — 자리는 화면 배치(screenUI.place)가 잡는다 */
+        .r20-dockbtn { position:fixed; z-index:2999; display:flex; align-items:center; justify-content:center; width:28px; height:28px; margin:0; padding:0; border:0; border-radius:var(--aio-r) 0 0 var(--aio-r); background:rgba(245,245,247,0.94); color:var(--aio-ink-3); box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
+        .r20-dockbtn:hover { color:var(--aio-accent); }
+        .r20-dockbtn:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        .r20-dockbtn svg { width:15px; height:15px; }
         html.r20-zchat #textchat .content { zoom:var(--aio-z, 1); }
         html.r20-zchat #textchat-input textarea { font-size:calc(13px * var(--aio-z, 1)) !important; line-height:1.4 !important; }
         .aio-zm .aio-zv { min-width:44px; font-variant-numeric:tabular-nums; }
@@ -5252,7 +5257,7 @@ const screenUI = (() => {
         const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
-        els.push(document.getElementById("r20-mapshot"));
+        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
             if (!el) return;
             const set = (k, v) => el.style.setProperty(k, v, "important");
@@ -7025,8 +7030,27 @@ const quickFind = (() => {
         e.preventDefault(); e.stopPropagation();
         if (isOpen()) close(); else open();
     }, true);
-    const setEnabled = on => { if (!on) close(); };
-    return { setEnabled, open, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
+    // 햄버거 밑 단추줄(맵 단추 아래) 단추 — 플레이어도
+    const inject = () => {
+        if (!btnVisible.qfind || document.getElementById("r20-qfbtn") || !document.getElementById("sidebarcontrol")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "r20-qfbtn";
+        b.className = "r20-dockbtn";
+        b.title = "빠른 찾기 (Ctrl+F)";
+        b.setAttribute("aria-label", "빠른 찾기");
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (isOpen()) close(); else open(); });
+        document.body.appendChild(b);
+        FEAT.screenUI?.place();
+    };
+    const setEnabled = on => {
+        if (on) return inject();
+        close();
+        document.getElementById("r20-qfbtn")?.remove();
+        FEAT.screenUI?.place();
+    };
+    return { inject, setEnabled, open, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
 })();
 
 // ───────── 창 자리 · 크기 기억: Roll20 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
@@ -9720,6 +9744,12 @@ const bulkEditor = (() => {
         if (!btnVisible.bulk || !gmKnown()) return;
         // 핸드아웃 · 캐릭터 · GM 메모 · 주크박스를 읽고 고치므로 GM 만
         if (!isGM()) { document.querySelectorAll("button.r20be-open").forEach(b => b.remove()); return; }
+        // 햄버거 밑 단추줄(맵 단추 아래)에도 — 마지막에 본 탭으로 연다
+        if (!document.getElementById("r20-bebtn") && document.getElementById("sidebarcontrol")) {
+            document.body.appendChild(el("button", { type: "button", id: "r20-bebtn", class: "r20-dockbtn", title: "일괄 편집기", "aria-label": "일괄 편집기 열기",
+                onclick: e => { e.preventDefault(); e.stopPropagation(); open(); } }, el("span", { html: ICON.pen, style: "display:flex" })));
+            FEAT.screenUI?.place();
+        }
         [["journal", "journal"], ["jukebox", "bgm"]].forEach(([id, tab]) => {
             const host = document.getElementById(id);
             if (!host) return;
@@ -9732,6 +9762,7 @@ const bulkEditor = (() => {
     };
     const setEnabled = on => {
         document.body.classList.toggle("r20be-off", !on);
+        if (!on) { document.getElementById("r20-bebtn")?.remove(); FEAT.screenUI?.place(); }
         if (on) inject(); else if (ui) close();
     };
     setEnabled(btnVisible.bulk);
