@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.62.0
+// @version      1.62.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.62.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.62.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5292,43 +5292,35 @@ const screenUI = (() => {
         });
         FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
     };
-    // ── 맵 전체보기: 지금 페이지가 채팅 판 왼쪽 화면에 다 들어오는 배율까지 Roll20 의 − / + 를 대신 누르고, Roll20 가운데(⌖) 단추로 가운데에 ──
-    // Roll20 배율은 엔진을 못 만지므로 확대 · 축소 단추와 그 사이 숫자(.level)만 쓴다
+    // ── 맵 전체보기: 배율 숫자를 누르면 뜨는 Roll20 메뉴의 'Zoom to Fit' 을 대신 누른다 (Roll20 이 맞추고 가운데로 옮긴다) ──
     const zoomBox = () => document.getElementById("vm_zoom_buttons");
-    const levelNow = () => parseInt(zoomBox()?.querySelector(".level")?.textContent, 10);
+    const FIT_RE = /^(zoom to fit|fit to screen|화면에 맞추기|화면 맞춤|화면에 맞게)$/i;
     const sleep = ms => new Promise(res => setTimeout(res, ms));
-    // 누른 뒤 숫자가 바뀔 때까지 (Roll20 이 다시 그리는 데 걸리는 만큼, 최대 0.4초)
-    const press = async btn => {
-        const before = levelNow();
-        btn.click();
-        for (let i = 0; i < 8 && levelNow() === before; i++) await sleep(50);
-        return levelNow();
-    };
+    // 메뉴 항목: 글자가 딱 맞는 것 중 가장 안쪽 요소 (눌림은 바깥 항목으로 올라간다)
+    const fitItem = () => [...document.querySelectorAll("li, button, a, [role=menuitem], [role=option], div, span")]
+        .filter(e => e.getClientRects().length && FIT_RE.test(e.textContent.trim()))
+        .sort((x, y) => x.getElementsByTagName("*").length - y.getElementsByTagName("*").length)[0];
+    const waitItem = async ms => { for (let t = 0; t < ms; t += 50) { const it = fitItem(); if (it) return it; await sleep(50); } return null; };
+    const fire = (el, type) => el.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : MouseEvent)(type, { bubbles: true, cancelable: true, composed: true, view: window, button: 0, buttons: type.endsWith("down") ? 1 : 0, pointerId: 1, isPrimary: true }));
     let fitting = false;
     const fitMap = async fb => {
-        const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null, zb = zoomBox();
-        const plus = zb?.querySelector(".plus"), minus = zb?.querySelector(".minus");
-        if (fitting || !pg || !plus || !minus || !Number.isFinite(levelNow())) return;
-        const W = (parseFloat(pg.get("width")) || 25) * 70, H = (parseFloat(pg.get("height")) || 25) * 70;
-        const side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const vw = (side?.width > 0 && side.left < innerWidth - 1 ? side.left : innerWidth) - 48, vh = innerHeight - 48;      // 가장자리 여유
-        const target = Math.max(10, Math.min(250, Math.floor(Math.min(vw / W, vh / H) * 100)));
+        const lv = zoomBox()?.querySelector(".level");
+        if (fitting || !lv) return;
         fitting = true;
         fb.disabled = true;
         try {
-            // 줄여서 target 이하로 → 넘지 않을 만큼 키우기
-            for (let i = 0; i < 40 && levelNow() > target; i++) { const before = levelNow(); if (await press(minus) === before) break; }      // 더 못 줄임
-            for (let i = 0; i < 40 && levelNow() < target; i++) {
-                const before = levelNow(), after = await press(plus);
-                if (after === before) break;                          // 더 못 키움
-                if (after > target) { await press(minus); break; }      // 지나쳤으면 한 칸 물리기
+            let it = fitItem();          // 메뉴가 이미 열려 있으면 바로
+            if (!it) {
+                const opener = lv.closest("button, [role=button]") || lv;
+                opener.click();
+                it = await waitItem(400);
+                if (!it) { ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach(t => fire(opener, t)); it = await waitItem(600); }
             }
-            // Roll20 가운데(⌖) 단추: 이름으로 찾고, 없으면 확대 단추 묶음 위쪽 두 번째 단추
-            const center = [...zb.querySelectorAll("button, [role=button]")].find(b => /center|가운데|중앙/i.test(`${b.title} ${b.getAttribute("aria-label") || ""}`))
-                || zb.querySelector(".parentContainer > :last-child:not(.zoomButtonsInner)");
-            (center?.matches("button, [role=button]") ? center : center?.querySelector("button, [role=button]") || center)?.click();
+            if (it) it.click();
+            else { fb.title = "Roll20 배율 메뉴에서 'Zoom to Fit' 을 못 찾았어요"; setTimeout(() => { fb.title = FIT_TITLE; }, 3000); }
         } finally { fitting = false; fb.disabled = false; }
     };
+    const FIT_TITLE = "맵 전체보기 — Roll20 'Zoom to Fit' (배율 숫자 메뉴의 화면 맞추기)";
     let watched = null, watchedSide = null;
     const inject = () => {
         if (!btnVisible.screenui && !btnVisible.mapshot) return;
@@ -5337,7 +5329,7 @@ const screenUI = (() => {
             fb.type = "button";
             fb.id = "r20-fitbtn";
             fb.className = "r20-dockbtn";
-            fb.title = "맵 전체보기 — 페이지가 화면에 다 들어오게 확대 · 축소하고 가운데로";
+            fb.title = FIT_TITLE;
             fb.setAttribute("aria-label", "맵 전체보기");
             fb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
             fb.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fitMap(fb); });
