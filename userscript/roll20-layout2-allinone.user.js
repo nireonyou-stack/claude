@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.64.0
+// @version      1.64.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.64.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.64.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7050,7 +7050,10 @@ const quickFind = (() => {
     // 채팅 한 줄 → 글자: 굴림은 식 = 합, 인라인 굴림은 그 합, 굴림 틀은 '항목: 값', [글](주소) 는 글만
     const msgText = m => {
         let v = String(m.content ?? "");
-        if (/rollresult/.test(m.type || "")) try { const r = JSON.parse(v); return (m.origRoll ? m.origRoll + " = " : "") + (r.total ?? ""); } catch (e) { /* 그대로 */ }
+        if (/rollresult/.test(m.type || "") || /^\s*\{\s*"type"\s*:/.test(v)) try {
+            const r = JSON.parse(v), items = (r.rolls || []).flatMap(x => (x.results || []).map(y => y.tableItem?.name).filter(Boolean));
+            if (r && typeof r === "object") return (m.origRoll ? m.origRoll + " = " : "") + (items.length ? items.join(", ") : r.total ?? "");
+        } catch (e) { /* 그대로 */ }
         v = v.replace(/\$\[\[(\d+)\]\]/g, (_, i) => String(m.inlinerolls?.[i]?.results?.total ?? ""));
         if (m.rolltemplate) v = v.replace(/\{\{([\s\S]*?)\}\}/g, (_, kv) => {
             const i = kv.indexOf("="), k = i < 0 ? "" : kv.slice(0, i).trim(), x = (i < 0 ? kv : kv.slice(i + 1)).trim();
@@ -7073,11 +7076,12 @@ const quickFind = (() => {
                 .find(x => /onepage/i.test(x.getAttribute("href")) || /one\s*page|한\s*(쪽|페이지)/i.test(x.textContent));
             const msgs = unpack(await get(new URL(a ? a.getAttribute("href") : "?p=1&onePage=true", location.origin + base).href));
             if (!msgs) throw new Error("채팅 데이터를 못 찾았어요");
-            msgs.sort((x, y) => (Number(x.priority) || 0) - (Number(y.priority) || 0));
+            const at = m => Number(m[".priority"] ?? m.priority) || 0;           // 보낸 시각 (Firebase 꼴 '.priority')
+            msgs.sort((x, y) => at(x) - at(y));
             chat = msgs.map(m => {
                 const t = msgText(m);
                 const who = m.type === "desc" ? "" : m.type === "whisper" && m.target_name ? `${m.who || ""} → ${m.target_name}` : String(m.who || "");
-                return { id: m.id, who, t, l: lower(t), at: Number(m.priority) || 0 };
+                return { id: m.id, who, t, l: lower(t), at: at(m) };
             }).filter(c => c.t);
             chatIds = new Set(chat.map(c => c.id));
             seenIds = new Set([...document.querySelectorAll(CHAT_MSG)].map(n => n.dataset.messageid));
@@ -7648,10 +7652,10 @@ const quickFind = (() => {
         let g = null;
         if (scwPinned()) try { g = JSON.parse(localStorage.getItem(SCW_GEO) || "null"); } catch (e) { /* 없음 */ }
         const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const w = Math.min(Math.max(300, g?.w || 400), W - 16), h = Math.min(Math.max(200, g?.h || Math.round(H * 0.7)), H - 16);
-        const edge = side?.width ? side.left / z : W;
-        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, edge - 8 - 348 - 8 - w);
-        const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : 40;
+        const w = Math.min(Math.max(280, g?.w || 360), W - 16), h = Math.min(Math.max(200, g?.h || Math.min(560, Math.round(H * 0.6))), H - 16);
+        const qb = isOpen() ? box.getBoundingClientRect() : null, edge = qb?.width ? qb.left / z : (side?.width ? side.left / z - 348 : W);
+        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, edge - 8 - w);
+        const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : Math.max(8, Math.min(qb ? qb.top / z : 40, H - h - 8));
         Object.assign(scw.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
     };
     const buildScw = () => {
@@ -7660,6 +7664,7 @@ const quickFind = (() => {
         scw.setAttribute("role", "dialog");
         scw.setAttribute("aria-label", "장면 로그");
         scw.tabIndex = -1;                  // 제목줄을 눌러도 창 안에 포커스 (Esc 닫기)
+        scw.hidden = true;
         scw.innerHTML = '<div class="hd"><b class="nm"></b><span class="mt"></span><button type="button" data-a="prev" title="이전 구간">◀ 이전</button><button type="button" data-a="next" title="다음 구간">다음 ▶</button>'
             + '<button type="button" data-a="pin" class="pin" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기">✕</button></div>'
             + '<div class="tb"><button type="button" data-a="copy">전체 복사</button><input type="search" class="q" placeholder="이 장면에서 찾기" aria-label="이 장면에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
@@ -7745,9 +7750,9 @@ const quickFind = (() => {
         bd.innerHTML = scwRows.map((c, j) => {
             const edge = j === 0 ? "a" : j === scwRows.length - 1 && !v?.live ? "b" : "", hit = re && hasAll(c.l, ws);
             if (hit) n++;
-            const head = edge || c.who !== who ? `<div class="w"><b>${escAttr(c.who || "—")}</b><span>${escAttr(when(c))}</span></div>` : "";
+            const head = edge || c.who !== who ? `<div class="w">${edge === "a" ? '<i class="tag">▶ 시작</i>' : edge === "b" ? '<i class="tag">■ 끝</i>' : ""}<b>${escAttr(c.who || "—")}</b><span>${escAttr(when(c))}</span></div>` : "";
             who = edge === "b" ? null : c.who;
-            return `<div class="m${edge ? " " + edge : ""}${hit ? " hit" : ""}">${edge === "a" ? '<i class="tag">▶ 시작</i>' : edge === "b" ? '<i class="tag">■ 끝</i>' : ""}${head}<div class="t">${re ? hl(c.t, re) : escAttr(c.t)}</div></div>`;
+            return `<div class="m${edge ? " " + edge : ""}${hit ? " hit" : ""}">${head}<div class="t">${re ? hl(c.t, re) : escAttr(c.t)}</div></div>`;
         }).join("") || '<div class="msg">채팅이 없어요</div>';
         scw.querySelector(".qn").textContent = re ? (n ? `${n}곳` : "없어요") : `${scwRows.length.toLocaleString()}개`;
         hitAt = -1;
@@ -8303,10 +8308,10 @@ addCss(`
         #r20-scw .m { position:relative; padding:2px 0; content-visibility:auto; contain-intrinsic-size:auto 24px; }
         #r20-scw .w { display:flex; align-items:baseline; gap:6px; margin-top:6px; } #r20-scw .w b { color:var(--aio-ink-2); } #r20-scw .w span { color:var(--aio-ink-5); font-size:10.5px; }
         #r20-scw .t { white-space:pre-line; overflow-wrap:anywhere; color:var(--aio-ink-2); }
-        #r20-scw .m.a, #r20-scw .m.b { margin:4px 0; padding:4px 8px 6px; border:1px solid var(--aio-line-3); border-left:3px solid var(--aio-accent); border-radius:var(--aio-r); background:var(--aio-accent-bg); }
-        #r20-scw .m.b { border-left-color:var(--aio-ink-4); background:var(--aio-bg-3); }
-        #r20-scw .m .tag { display:block; color:var(--aio-accent-dark); font-size:10.5px; font-style:normal; font-weight:700; }
-        #r20-scw .m.b .tag { color:var(--aio-ink-3); }
+        #r20-scw .m.a, #r20-scw .m.b { margin:2px 0; padding:0 0 4px 8px; border-left:2px solid var(--aio-accent); }
+        #r20-scw .m.b { border-left-color:var(--aio-ink-5); }
+        #r20-scw .m .tag { color:var(--aio-accent-dark); font-size:10px; font-style:normal; font-weight:700; }
+        #r20-scw .m.b .tag { color:var(--aio-ink-4); }
         #r20-scw .m.hit { background:var(--aio-accent-bg); } #r20-scw .m.cur { box-shadow:inset 3px 0 0 var(--aio-accent); }
         #r20-scw mark { padding:0; background:none; color:var(--aio-accent); font-weight:700; }
         #r20-scw .msg { margin:24px 0; color:var(--aio-ink-4); text-align:center; }
