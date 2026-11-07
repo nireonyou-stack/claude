@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.63.0
+// @version      1.63.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.63.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.63.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6873,12 +6873,13 @@ const quickFind = (() => {
     const GROUP = { handout: "journal", char: "journal", track: "bgm", macro: "macro" };
     const GLABEL = { recent: "최근", journal: "핸드아웃 · 캐릭터", body: "본문", bgm: "BGM", macro: "매크로", chat: "채팅" };
     const ICON = { handout: "📜", char: "👤", track: "♪", macro: "⚙" };
-    const RKEY = "r20_qf_recent", CAT_KEY = "r20_qf_cats", CTX_KEY = "r20_qf_ctx", PER_GROUP = 6, MAX = 60, MAX_BLK = 40;
+    const RKEY = "r20_qf_recent", CAT_KEY = "r20_qf_cats", CTX_KEY = "r20_qf_ctx", ORD_KEY = "r20_qf_order", PER_GROUP = 6, MAX = 60, MAX_BLK = 40;
     const CHAT_MSG = "#textchat .content > .message[data-messageid]";
     let root = null, inp = null, list = null, catBox = null, ctxRow = null, items = [], shown = [], sel = 0, back = null;
     let cats = (() => { try { const a = JSON.parse(localStorage.getItem(CAT_KEY) || "null"); if (Array.isArray(a)) return new Set(a); } catch (e) { /* 처음 */ } return new Set(["journal", "body", "bgm", "macro"]); })();
     const catsOn = () => CATS.map(c => c[0]).filter(c => cats.has(c) && (c !== "bgm" || isGM()));
     const ctxN = () => Math.max(0, Math.min(100, parseInt(localStorage.getItem(CTX_KEY) ?? "2", 10) || 0));
+    const ordOld = () => localStorage.getItem(ORD_KEY) === "old";       // 채팅 묶음: 최신순(기본) / 오래된순
 
     // ── 맞추기: 한 글자씩 앞에서부터. 자음만 친 글자는 그 초성으로 시작하는 음절과 맞는다 ──
     const choOf = c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : null; };
@@ -7179,18 +7180,20 @@ const quickFind = (() => {
         on.forEach(c => { counts[c] = res[c].length; });
         if (solo === "chat") {
             if (!res.chat.length) return [];
-            // 찾은 채팅마다 앞뒤 n개 (겹치거나 붙으면 한 묶음) · 새 묶음부터
-            const n = ctxN(), out = [];
-            let cur = null, more = 0;
+            // 찾은 채팅마다 앞뒤 n개 (겹치거나 붙으면 한 묶음) · 최신순 / 오래된순으로 40묶음까지
+            const n = ctxN();
+            let out = [], cur = null;
             for (const h of res.chat) {
                 const a = Math.max(0, h - n), b = Math.min(all.length - 1, h + n);
                 if (cur && b >= cur.a - 1) { cur.a = a; cur.hits.add(h); continue; }
-                if (out.length >= MAX_BLK) { more++; continue; }
                 cur = { t: "blk", g: "chat", a, b, hits: new Set([h]) };
                 out.push(cur);
             }
+            if (ordOld()) out.reverse();
+            const more = out.length - MAX_BLK;
+            out = out.slice(0, MAX_BLK);
             out.forEach(r => { r.rows = all.slice(r.a, r.b + 1); r.re = re; });
-            if (more) out.push({ t: "note", g: "chat", html: `더 오래된 것이 더 있어요 — 낱말을 더 넣어 좁혀 보세요` });
+            if (more > 0) out.push({ t: "note", g: "chat", html: `묶음 ${more.toLocaleString()}개가 더 있어요 — 낱말을 더 넣어 좁혀 보세요` });
             return out;
         }
         const chatRow = i => { const c = all[i], tm = when(c); return { t: "chat", g: "chat", c, html: escAttr(c.who || "—"), sn: hl(cut(c.t, ws), re) + (tm ? " · " + escAttr(tm) : "") }; };
@@ -7257,7 +7260,10 @@ const quickFind = (() => {
             : "이름 일부 · 초성(ㅁㄴ) · #태그로 찾아요"}</div>`;
         list.innerHTML = html;
         inp.setAttribute("aria-activedescendant", shown.length ? "r20-qf-o" + sel : "");
-        catBox.querySelectorAll("input").forEach(x => {
+        const allC = catBox.querySelector(".qf-allc"), vis = CATS.map(c => c[0]).filter(c => c !== "bgm" || isGM());
+        allC.checked = on.length === vis.length;
+        allC.indeterminate = on.length > 0 && on.length < vis.length;
+        catBox.querySelectorAll("input[data-c]").forEach(x => {
             const c = x.dataset.c, n = counts?.[c];
             x.checked = cats.has(c);
             x.parentNode.querySelector("i").textContent = !cats.has(c) ? "" : c === "chat" && chatRun ? "…" : n == null ? "" : n.toLocaleString();
@@ -7411,8 +7417,9 @@ const quickFind = (() => {
             + '<button type="button" class="qf-ib qf-dock">▶</button>'
             + '<button type="button" class="qf-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
             + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
-            + '<div class="qf-cats" role="group" aria-label="찾을 곳">' + CATS.map(([c, l]) => `<label${c === "bgm" ? ' class="qf-gmc"' : ""}><input type="checkbox" data-c="${c}">${l}<i></i></label>`).join("") + '</div>'
-            + '<div class="qf-ctx" hidden>앞뒤<input type="number" class="qf-n" min="0" max="100" step="1" aria-label="앞뒤 몇 개">개 채팅도 함께<span class="qf-src"></span></div>'
+            + '<div class="qf-cats" role="group" aria-label="찾을 곳"><label class="qf-all"><input type="checkbox" class="qf-allc">전체</label>' + CATS.map(([c, l]) => `<label${c === "bgm" ? ' class="qf-gmc"' : ""}><input type="checkbox" data-c="${c}">${l}<i></i></label>`).join("") + '</div>'
+            + '<div class="qf-ctx" hidden>앞뒤<input type="number" class="qf-n" min="0" max="100" step="1" aria-label="앞뒤 몇 개">개'
+            + '<span class="qf-ord" role="radiogroup" aria-label="묶음 순서"><label><input type="radio" name="r20qf-ord" value="new">최신순</label><label><input type="radio" name="r20qf-ord" value="old">오래된순</label></span><span class="qf-src"></span></div>'
             + '<div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
             + '<div class="qf-foot"><span class="qf-f1">↑↓ 고르기 · Enter 실행<span class="qf-gm"> · Shift+Enter 편집기</span> · Tab 찾을 곳</span>'
             + '<span class="qf-f2" hidden>↑↓ 묶음 고르기 · Enter 가기(화면에 있으면) · Ctrl+C 묶음 복사</span></div></div>';
@@ -7479,6 +7486,7 @@ const quickFind = (() => {
         root.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape" && !e.defaultPrevented) { e.preventDefault(); close(); } });
         // 찾을 곳 체크 (Space 켜고 끄기 · Enter 는 입력칸으로)
         catBox.addEventListener("change", e => {
+            if (e.target.classList.contains("qf-allc")) { setCats(new Set(e.target.checked ? CATS.map(c => c[0]) : [])); sel = 0; return draw(); }
             const c = e.target.dataset.c;
             if (!c) return;
             const v = new Set(cats);
@@ -7493,7 +7501,13 @@ const quickFind = (() => {
             try { localStorage.setItem(CTX_KEY, String(Math.max(0, Math.min(100, parseInt(nIn.value, 10) || 0)))); } catch (e) { /* 저장 못 함 */ }
             sel = 0; draw();
         });
-        nIn.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inp.focus(); } });
+        ctxRow.querySelector(`input[value="${ordOld() ? "old" : "new"}"]`).checked = true;
+        ctxRow.addEventListener("change", e => {
+            if (e.target.name !== "r20qf-ord") return;
+            try { localStorage.setItem(ORD_KEY, e.target.value); } catch (err) { /* 저장 못 함 */ }
+            sel = 0; draw(); list.scrollTop = 0;
+        });
+        ctxRow.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inp.focus(); } });
         ctxRow.addEventListener("click", e => { if (e.target.closest(".qf-re")) { loadChat(true); draw(); inp.focus(); } });
         // 입력칸에서 포커스가 빠지지 않게 (채팅 묶음 글은 끌어서 고를 수 있게 둔다)
         list.addEventListener("mousedown", e => { if (!e.target.closest(".qf-bl")) e.preventDefault(); });
@@ -7782,8 +7796,12 @@ addCss(`
         #r20-qf .qf-cats label { display:inline-flex; align-items:center; gap:3px; margin:0; font:inherit; color:inherit; white-space:nowrap; cursor:pointer; }
         #r20-qf .qf-cats input { width:13px !important; height:13px !important; margin:0 !important; accent-color:var(--aio-accent); cursor:pointer; }
         #r20-qf .qf-cats i { font-style:normal; color:var(--aio-ink-5); }
+        #r20-qf .qf-cats .qf-all { padding-right:9px; border-right:1px solid var(--aio-line-3); }
         #r20-qf .qf-ctx { display:flex; align-items:center; flex-shrink:0; gap:4px; padding:4px 8px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-bg-2); color:var(--aio-ink-3); font-size:11px; white-space:nowrap; }
         #r20-qf .qf-n { width:40px !important; height:20px !important; margin:0 !important; padding:0 2px 0 6px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:11px !important; text-align:center; }
+        #r20-qf .qf-ord { display:inline-flex; gap:7px; margin-left:8px; }
+        #r20-qf .qf-ord label { display:inline-flex; align-items:center; gap:2px; margin:0; font:inherit; color:inherit; cursor:pointer; }
+        #r20-qf .qf-ord input { width:12px !important; height:12px !important; margin:0 !important; accent-color:var(--aio-accent); cursor:pointer; }
         #r20-qf .qf-src { margin-left:auto; color:var(--aio-ink-5); }
         #r20-qf .qf-re { padding:0; border:0; background:none; color:var(--aio-ink-4); font-size:11px; text-decoration:underline; }
         #r20-qf .qf-re:hover { color:var(--aio-accent); }
