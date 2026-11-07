@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.63.1
+// @version      1.64.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.63.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.64.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6864,20 +6864,22 @@ addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰�
 // 이름 일부 · 한글 초성(ㅁㄴ → 마녀의 편지) · 띄어쓰기 없이 · #태그. Enter = 종류에 맞게, Shift+Enter = 일괄 편집기에서(GM)
 // 찾을 곳은 체크칸: 이름 · 본문(핸드아웃 본문 · 캐릭터 소개 · GM 메모) · BGM · 매크로 · 채팅(이 방 채팅 로그 전체)
 // 채팅만 켜면 찾은 채팅마다 앞뒤 n개를 묶어 보여 준다 (복사 · 화면에 있으면 가기)
+// 장면(GM): 채팅에서 '여기부터 → 여기까지'로 구간을 찍어 이름을 붙인 목차 · 누르면 그 구간 채팅만 장면 로그 창에
 // 플레이어는 자기에게 보이는 핸드아웃 · 캐릭터와 자기 매크로만 (주크박스 · GM 메모는 GM 만)
 const quickFind = (() => {
     const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
     const JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
     // 찾을 곳 (켠 것만 · 이 브라우저에 기억). journal = 핸드아웃 · 캐릭터 이름
-    const CATS = [["journal", "이름"], ["body", "본문"], ["bgm", "BGM"], ["macro", "매크로"], ["chat", "채팅"]];
+    const CATS = [["journal", "이름"], ["body", "본문"], ["bgm", "BGM"], ["macro", "매크로"], ["chat", "채팅"], ["scene", "장면"]];
     const GROUP = { handout: "journal", char: "journal", track: "bgm", macro: "macro" };
-    const GLABEL = { recent: "최근", journal: "핸드아웃 · 캐릭터", body: "본문", bgm: "BGM", macro: "매크로", chat: "채팅" };
+    const GLABEL = { recent: "최근", journal: "핸드아웃 · 캐릭터", body: "본문", bgm: "BGM", macro: "매크로", chat: "채팅", scene: "이 방 구간" };
     const ICON = { handout: "📜", char: "👤", track: "♪", macro: "⚙" };
     const RKEY = "r20_qf_recent", CAT_KEY = "r20_qf_cats", CTX_KEY = "r20_qf_ctx", ORD_KEY = "r20_qf_order", PER_GROUP = 6, MAX = 60, MAX_BLK = 40;
     const CHAT_MSG = "#textchat .content > .message[data-messageid]";
     let root = null, inp = null, list = null, catBox = null, ctxRow = null, items = [], shown = [], sel = 0, back = null;
     let cats = (() => { try { const a = JSON.parse(localStorage.getItem(CAT_KEY) || "null"); if (Array.isArray(a)) return new Set(a); } catch (e) { /* 처음 */ } return new Set(["journal", "body", "bgm", "macro"]); })();
-    const catsOn = () => CATS.map(c => c[0]).filter(c => cats.has(c) && (c !== "bgm" || isGM()));
+    const gmOnly = c => c === "bgm" || c === "scene";        // 주크박스 · 장면 목차는 GM 만
+    const catsOn = () => CATS.map(c => c[0]).filter(c => cats.has(c) && (!gmOnly(c) || isGM()));
     const ctxN = () => Math.max(0, Math.min(100, parseInt(localStorage.getItem(CTX_KEY) ?? "2", 10) || 0));
     const ordOld = () => localStorage.getItem(ORD_KEY) === "old";       // 채팅 묶음: 최신순(기본) / 오래된순
 
@@ -7035,7 +7037,7 @@ const quickFind = (() => {
 
     // ── 채팅 로그 전체: 이 방 채팅 아카이브의 '한 쪽에 모두' 쪽에 든 msgdata 를 읽는다 (처음 켤 때 한 번 · [다시 읽기]) ──
     // 읽은 뒤에 온 채팅은 화면 채팅에서 더한다
-    let chat = null, chatRun = null, chatErr = "", chatIds = new Set(), seenIds = new Set(), tail = [], tailSig = "";
+    let allMemo = null, chat = null, chatRun = null, chatErr = "", chatIds = new Set(), seenIds = new Set(), tail = [], tailSig = "";
     const unpack = html => {
         const m = /var\s+msgdata\s*=\s*"([^"]*)"/.exec(html);
         if (!m) return null;
@@ -7080,27 +7082,30 @@ const quickFind = (() => {
             chatIds = new Set(chat.map(c => c.id));
             seenIds = new Set([...document.querySelectorAll(CHAT_MSG)].map(n => n.dataset.messageid));
             tailSig = "";
-        })().catch(e => { chatErr = String(e?.message || e); }).finally(() => { chatRun = null; soon(); });
+        })().catch(e => { chatErr = String(e?.message || e); }).finally(() => { chatRun = null; soon(); scwSoon(); });
     };
     // 읽은 로그 + 그 뒤 화면에 새로 온 채팅 (화면 채팅 개수가 바뀔 때만 다시 센다)
     const chatAll = () => {
         if (!chat) return [];
         const ns = document.querySelectorAll(CHAT_MSG), sig = ns.length + ":" + (ns[ns.length - 1]?.dataset.messageid || "");
         if (sig !== tailSig) {
-            tailSig = sig; tail = [];
+            tailSig = sig; tail = []; allMemo = null;
             let who = "";
             ns.forEach(n => {
                 const by = n.querySelector(".by")?.textContent.replace(/:\s*$/, "").trim();
                 if (by) who = by;
                 const id = n.dataset.messageid;
                 if (seenIds.has(id) || chatIds.has(id)) return;
-                const c = n.cloneNode(true);
-                c.querySelectorAll(".by, .tstamp, .avatar, .spacer, .flyout").forEach(x => x.remove());
-                const t = c.textContent.replace(/\s+/g, " ").trim();
+                const t = domText(n);
                 if (t) tail.push({ id, who: n.classList.contains("desc") ? "" : who, t, l: lower(t), tm: n.querySelector(".tstamp")?.textContent.trim() || "" });
             });
         }
-        return tail.length ? chat.concat(tail) : chat;
+        return (allMemo ||= tail.length ? chat.concat(tail) : chat);
+    };
+    const domText = n => {
+        const c = n.cloneNode(true);
+        c.querySelectorAll(".by, .tstamp, .avatar, .spacer, .flyout").forEach(x => x.remove());
+        return c.textContent.replace(/\s+/g, " ").trim();
     };
     const p2 = n => String(n).padStart(2, "0");
     const when = c => {
@@ -7146,6 +7151,7 @@ const quickFind = (() => {
         const on = catsOn(), solo = on.length === 1 ? on[0] : null, ws = wordsOf(raw);
         counts = null;
         if (!q && !tagQ.length) {
+            if (solo === "scene") { const v = scRows(""); return v.length ? v : [{ t: "note", g: "scene", html: scNote() }]; }
             if (!solo) {
                 const byKey = new Map(items.map(it => [it.k + ":" + it.id, it]));
                 return recent().map(r => byKey.get(r.k + ":" + r.id)).filter(it => it && on.includes(GROUP[it.k])).map(it => ({ t: "item", it, g: "recent", html: escAttr(it.name) }));
@@ -7176,6 +7182,7 @@ const quickFind = (() => {
             all = chatAll();
             for (let i = all.length - 1; i >= 0; i--) if (hasAll(all[i].l, ws)) res.chat.push(i);     // 새것부터
         }
+        if (res.scene && !tagQ.length) res.scene = scRows(q);
         counts = {};
         on.forEach(c => { counts[c] = res[c].length; });
         if (solo === "chat") {
@@ -7226,13 +7233,19 @@ const quickFind = (() => {
     const rowHtml = (r, i) => {
         const a = `role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}"`;
         if (r.t === "more") return `<div class="qf-it qf-more" ${a}><span class="qf-th" aria-hidden="true">⋯</span><span class="qf-pt">${GLABEL[r.g]} ${r.n}개 더 — ${r.g === "chat" ? "채팅만 켜면 앞뒤까지 보여요" : "이것만 켜서 보기"}</span></div>`;
+        if (r.t === "scn") {
+            const v = r.s;
+            return `<div class="qf-it qf-sc" ${a} style="padding-left:${2 + v.d * 14}px"><span class="qf-nm">${r.html}</span><span class="qf-pt">${escAttr(v.span)}${v.live ? ' <b class="qf-live">진행 중</b>' : ""}</span>`
+                + (v.live ? '<button type="button" class="qf-bb" data-a="end" title="채팅에서 끝 선언을 눌러 끝내기">끝 찍기</button>' : "")
+                + '<button type="button" class="qf-ib qf-ed" data-a="edit" title="이름 고치기 · 시작/끝 다시 찍기 · 지우기" aria-label="고치기">✎</button><span class="qf-act">보기</span></div>';
+        }
         if (r.t === "chat") return `<div class="qf-it qf-wide" ${a}><span class="qf-th" aria-hidden="true">💬</span><span class="qf-nm">${r.html}</span><span class="qf-pt">${r.sn}</span><span class="qf-act">보기</span></div>`;
         if (r.t === "blk") {
             const c0 = r.rows[Math.min(...r.hits) - r.a];
             r.go = document.querySelector(`${CHAT_MSG}[data-messageid="${CSS.escape(c0.id)}"]`) ? c0.id : null;
             return `<div class="qf-blk" ${a}><div class="qf-bh"><b>${escAttr(when(c0))}</b>${r.hits.size > 1 ? `<span>${r.hits.size}곳</span>` : ""}`
                 + `<button type="button" class="qf-bb" data-a="copy">복사</button>${r.go ? '<button type="button" class="qf-bb" data-a="go" title="채팅에서 그 자리로">가기</button>' : ""}</div><div class="qf-bl">`
-                + r.rows.map((c, k) => { const h = r.hits.has(r.a + k); return `<div class="qf-row${h ? " hit" : ""}"><span class="qf-who" title="${escAttr(c.who)}">${escAttr(c.who)}</span><span class="qf-tx">${h ? hl(c.t, r.re) : escAttr(c.t)}</span></div>`; }).join("")
+                + r.rows.map((c, k) => { const h = r.hits.has(r.a + k); return `<div class="qf-row${h ? " hit" : ""}${pick?.a === c.id ? " pa" : ""}${pick?.b === c.id ? " pb" : ""}" data-id="${escAttr(c.id)}"><span class="qf-who" title="${escAttr(c.who)}">${escAttr(c.who)}</span><span class="qf-tx">${h ? hl(c.t, r.re) : escAttr(c.t)}</span></div>`; }).join("")
                 + "</div></div>";
         }
         if (r.t === "body") return `<div class="qf-it qf-wide" ${a} title="${escAttr([KIND[r.it.k], r.it.path].filter(Boolean).join(" · "))}">${thumb(r.it)}<span class="qf-nm">${r.html}</span>`
@@ -7248,7 +7261,7 @@ const quickFind = (() => {
         rows.forEach(r => {
             if (r.g !== g && r.t !== "blk" && !(solo === "chat" && r.t === "note")) {
                 g = r.g;
-                html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : `<span class="qf-gs">${r.t === "note" ? "" : escAttr(status(g))}</span>`}</div>`;
+                html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : g === "scene" ? '<button type="button" class="qf-bb qf-add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>' : `<span class="qf-gs">${r.t === "note" ? "" : escAttr(status(g))}</span>`}</div>`;
             }
             html += r.t === "note" ? `<div class="qf-note">${r.html}</div>` : rowHtml(r, i++);
         });
@@ -7260,7 +7273,7 @@ const quickFind = (() => {
             : "이름 일부 · 초성(ㅁㄴ) · #태그로 찾아요"}</div>`;
         list.innerHTML = html;
         inp.setAttribute("aria-activedescendant", shown.length ? "r20-qf-o" + sel : "");
-        const allC = catBox.querySelector(".qf-allc"), vis = CATS.map(c => c[0]).filter(c => c !== "bgm" || isGM());
+        const allC = catBox.querySelector(".qf-allc"), vis = CATS.map(c => c[0]).filter(c => !gmOnly(c) || isGM());
         allC.checked = on.length === vis.length;
         allC.indeterminate = on.length > 0 && on.length < vis.length;
         catBox.querySelectorAll("input[data-c]").forEach(x => {
@@ -7274,6 +7287,9 @@ const quickFind = (() => {
             : (chatErr ? '<span class="qf-bad">못 읽었어요</span>' : chat ? `${(chat.length + tail.length).toLocaleString()}개` : "") + ' · <button type="button" class="qf-re">다시 읽기</button>';
         root.querySelector(".qf-f1").hidden = solo === "chat";
         root.querySelector(".qf-f2").hidden = solo !== "chat";
+        root.querySelector(".qf-f1").hidden ||= solo === "scene";
+        root.querySelector(".qf-f3").hidden = solo !== "scene";
+        root.classList.toggle("picking", !!pick);
     };
     const move = d => {
         if (!shown.length) return;
@@ -7324,7 +7340,8 @@ const quickFind = (() => {
         cats = v;
         try { localStorage.setItem(CAT_KEY, JSON.stringify([...cats])); } catch (e) { /* 저장 못 함 */ }
         if (cats.has("body")) loadBody();
-        if (cats.has("chat")) loadChat();
+        if (cats.has("chat") || (cats.has("scene") && isGM())) loadChat();       // 구간 시각 · 개수도 로그에서
+        if (cats.has("scene")) loadScenes();
     };
     // 그 곳만 켠다 (채팅 줄이면 그 채팅이 든 묶음으로)
     const only = (g, c) => {
@@ -7358,6 +7375,391 @@ const quickFind = (() => {
         if (r.t === "more") return only(r.g);
         if (r.t === "chat") return only("chat", r.c);
         if (r.t === "blk") return (how || (r.go ? "go" : "copy")) === "go" ? goTo(r.go) : copyBlk(r, i);
+        if (r.t === "scn") return how === "end" ? pickStart({ edit: r.s.r.id, only: "b" }) : how === "edit" ? nameDlg(r.s.r, false) : openScene(r.s.r.id);
+    };
+
+
+    // ══ 장면 구간 (GM): 채팅에서 '여기부터 → 여기까지'를 찍고 이름을 붙인다 · 겹치면 저절로 들여쓰기 (페이즈 › 사이클 › 장면) ══
+    // 이 방의 GM 전용 핸드아웃 '장면 목차'에 저장 (GM 메모 = 데이터, 본문 = 읽기용 목차) → 세션 방마다 따로 쌓인다
+    // 끝을 안 찍으면 '진행 중' — 나중에 목차 [끝 찍기] 또는 채팅 메시지에 마우스를 올려 ■
+    const SC_NAME = "장면 목차";
+    let scn = null, scnRun = null, scnVer = "", scSaveT = 0, pick = null;
+    const scHandout = () => (window.Campaign?.handouts?.models || []).find(m => m.get("name") === SC_NAME);
+    const loadScenes = () => {
+        if (!isGM() || scnRun || scSaveT) return;
+        const m = scHandout();
+        if (!m) { scn = scn || []; return; }
+        const ver = String(m.get("gmnotes") ?? "");
+        if (scn && ver === scnVer) return;
+        scnRun = getBlob(m, "gmnotes").then(raw => {
+            let list = [];
+            try { const o = JSON.parse(unesc(raw) || "{}"); if (Array.isArray(o.list)) list = o.list.filter(r => r && r.id && r.a); } catch (e) { /* 데이터가 아니면 빈 목차 */ }
+            const mine = (scn || []).filter(r => !list.some(x => x.id === r.id));       // 읽는 사이 만든 것
+            scn = list.concat(mine); scnVer = ver;
+            if (mine.length) saveScenes();
+        }).finally(() => { scnRun = null; soon(); scwSoon(); });
+    };
+    const saveScenes = () => {
+        clearTimeout(scSaveT);
+        scSaveT = setTimeout(() => {
+            scSaveT = 0;
+            let m = scHandout();
+            try {
+                if (!m) m = window.Campaign.handouts.create({ name: SC_NAME, inplayerjournals: "", archived: false });
+                m.updateBlobs({ gmnotes: escape(JSON.stringify({ v: 1, list: scn })), notes: escape(tocHtml()) });
+                m.save({});
+                scnVer = String(m.get("gmnotes") ?? "");
+            } catch (e) { toast("목차를 저장하지 못했어요"); }
+        }, 300);
+        soon(); scwSoon();
+    };
+    // 로그 안 자리 (로그가 바뀔 때만 다시)
+    let idxOf = new Map(), idxSig = "";
+    const logIndex = all => {
+        const sig = all.length + ":" + (all[all.length - 1]?.id || "");
+        if (sig !== idxSig) { idxSig = sig; idxOf = new Map(); all.forEach((c, i) => idxOf.set(c.id, i)); }
+        return idxOf;
+    };
+    // 목차: 시작 순 (같으면 큰 구간 먼저) · 다른 구간 안에 든 만큼 들여쓰기 · 로그에서 못 찾은 것은 뒤에
+    const resolved = () => {
+        const all = chatAll(), ix = logIndex(all), END = 1e15;
+        const L = (scn || []).map(r => {
+            const ia = ix.get(r.a), ib = r.b ? ix.get(r.b) : undefined, live = !r.b;
+            const span = ia == null ? (chatRun ? "…" : chat ? "시작 메시지를 로그에서 못 찾았어요" : "")
+                : `${when(all[ia])} ~${live ? "" : " " + (ib == null ? "?" : when(all[ib]) + " · " + (ib - ia + 1).toLocaleString() + "개")}`;
+            return { r, ia, ib, live, span, e: ia == null ? null : live ? END : ib ?? END, d: 0 };
+        });
+        const ok = L.filter(v => v.ia != null).sort((x, y) => x.ia - y.ia || y.e - x.e || x.r.at - y.r.at);
+        ok.forEach((v, k) => { v.d = ok.filter((o, j) => j < k && o.ia <= v.ia && o.e >= v.e).length; });
+        return ok.concat(L.filter(v => v.ia == null).sort((x, y) => x.r.at - y.r.at));
+    };
+    const scRows = q => (scn || []).length ? resolved().flatMap(v => { const m = q ? match(v.r.n, q) : { hits: [] }; return m ? [{ t: "scn", g: "scene", s: v, html: mark(v.r.n, m.hits) }] : []; }) : [];
+    const scNote = () => scnRun ? "목차 읽는 중…" : "아직 구간이 없어요 — [+ 구간]을 누르거나, 채팅 메시지에 마우스를 올려 ▶";
+    const tocHtml = () => '<p><b>장면 목차</b> — 올인원 빠른 찾기 \'장면\'이 쓰는 핸드아웃이에요. GM 메모 칸(데이터)은 지우지 마세요.</p>'
+        + resolved().map(v => `<p>${"&nbsp;".repeat(v.d * 4)}${escAttr(v.r.n)}${v.span ? " — " + escAttr(v.span) + (v.live ? " 진행 중" : "") : ""}</p>`).join("");
+    const msgEl = id => id && document.querySelector(`${CHAT_MSG}[data-messageid="${CSS.escape(id)}"]`);
+    const textOf = id => { const all = chatAll(), i = logIndex(all).get(id); return i != null ? all[i].t : msgEl(id) ? domText(msgEl(id)) : ""; };
+    // 앞뒤 (로그 자리, 없으면 화면 순서)
+    const order = (x, y, ix = logIndex(chatAll())) => {
+        const i = ix.get(x), j = ix.get(y);
+        if (i != null && j != null) return i - j;
+        const ex = msgEl(x), ey = msgEl(y);
+        return ex && ey && ex !== ey ? (ex.compareDocumentPosition(ey) & Node.DOCUMENT_POSITION_PRECEDING ? 1 : -1) : 0;
+    };
+    // 시작 선언 글에서 이름: 첫 줄, 앞 기호 떼고 '시작' 앞까지 ("🎬 1사이클 1번째 장면 시작 — 꽃집" → "1사이클 1번째 장면")
+    const nameFrom = t => {
+        let v = String(t || "").split("\n").map(x => x.trim()).find(Boolean) || "";
+        v = v.replace(/^[^\p{L}\p{N}]+/u, "");
+        const k = v.search(/\s*시작/);
+        if (k > 0) v = v.slice(0, k);
+        return v.replace(/[\s:·\-—–|~)\]）】」』>]+$/, "").slice(0, 40);
+    };
+    const newId = () => "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    // 끝낼 진행 중 구간: 이 메시지보다 먼저 시작한 것 중 가장 늦게 시작한 것 (안쪽부터 닫힌다)
+    const innerLive = id => { const ix = logIndex(chatAll()); return (scn || []).filter(r => !r.b && order(r.a, id, ix) <= 0).sort((x, y) => order(y.a, x.a, ix) || y.at - x.at)[0] || null; };
+
+    // ── 알림 띠 (화면 위 가운데): 찍는 중 안내 · 잠깐 알림 ──
+    let bar = null, barT = 0;
+    const barEl = () => {
+        if (bar?.isConnected) return bar;
+        bar = document.createElement("div");
+        bar.id = "r20-scb";
+        bar.setAttribute("role", "status");
+        bar.addEventListener("click", e => { if (e.target.closest("button")) pickEnd(true); });
+        document.body.appendChild(bar);
+        return bar;
+    };
+    const toast = msg => { const b = barEl(); clearTimeout(barT); b.className = "toast"; b.textContent = msg; b.hidden = false; barT = setTimeout(() => { if (!pick) b.hidden = true; }, 2200); };
+
+    // ── 구간 찍기: 채팅 메시지(또는 빠른 찾기의 찾은 채팅 줄)를 누른다 · Esc: 시작 전 = 그만, 끝 찍을 때 = 진행 중으로 ──
+    const paintPick = () => {
+        document.querySelectorAll("#textchat .r20sc-a, #textchat .r20sc-b").forEach(m => m.classList.remove("r20sc-a", "r20sc-b"));
+        document.body.classList.toggle("r20sc-pick", !!pick);
+        if (pick) {
+            msgEl(pick.a)?.classList.add("r20sc-a");
+            const b = barEl(), edit = pick.edit && (scn || []).find(r => r.id === pick.edit);
+            clearTimeout(barT);
+            b.className = "pick";
+            b.hidden = false;
+            b.innerHTML = (pick.stage === "a" ? (edit ? `‘${escAttr(edit.n)}’ 시작 선언을 눌러 주세요` : "구간 정하기 — 시작 선언을 눌러 주세요")
+                : edit ? `‘${escAttr(edit.n)}’ 끝 선언을 눌러 주세요` : "끝 선언을 눌러 주세요")
+                + `<small>${pick.stage === "b" && !pick.edit ? "Esc = 끝은 나중에(진행 중)" : "Esc 그만"}</small><button type="button" aria-label="그만">✕</button>`;
+        } else if (bar && bar.className === "pick") bar.hidden = true;
+        if (isOpen()) draw();
+    };
+    const pickStart = o => {
+        if (!isGM()) return;
+        if (!scn) loadScenes();
+        const edit = o.edit && (scn || []).find(r => r.id === o.edit);
+        pick = { stage: o.only === "b" ? "b" : "a", a: o.only === "b" ? edit?.a : null, b: null, edit: edit ? edit.id : null, only: o.only || null };
+        closeDlg();
+        if (hov) hov.hidden = true;
+        paintPick();
+    };
+    const pickMsg = id => {
+        if (!pick || !id) return;
+        if (pick.stage === "a") {
+            pick.a = id;
+            if (pick.only === "a") return pickEnd(false);
+            pick.stage = "b";
+            return paintPick();
+        }
+        pick.b = id;
+        pickEnd(false);
+    };
+    // 끝내기: cancel = ✕ · Esc
+    const pickEnd = cancel => {
+        const p = pick;
+        if (!p) return;
+        pick = null;
+        paintPick();
+        if (cancel && (p.stage === "a" || p.edit)) return;           // 그만 (시작 전 · 고치는 중)
+        const r = p.edit && (scn || []).find(x => x.id === p.edit);
+        if (r) {
+            if (p.only === "a") r.a = p.a; else r.b = p.b;
+            if (r.b && order(r.a, r.b) > 0) [r.a, r.b] = [r.b, r.a];
+            saveScenes();
+            return p.only === "b" ? toast(`‘${r.n}’ 끝`) : nameDlg(r, false);
+        }
+        let a = p.a, b = p.b;                                       // 새 구간 (끝 없이 Esc = 진행 중)
+        if (a && b && order(a, b) > 0) [a, b] = [b, a];
+        nameDlg({ id: newId(), n: nameFrom(textOf(a)), a, b: b || null, at: Date.now() }, true);
+    };
+    document.addEventListener("click", e => {
+        if (!pick) return;
+        const m = e.target.closest?.(CHAT_MSG);
+        if (!m) return;
+        e.preventDefault(); e.stopPropagation();
+        pickMsg(m.dataset.messageid);
+    }, true);
+    document.addEventListener("keydown", e => {
+        if (e.key !== "Escape") return;
+        if (pick) { e.preventDefault(); e.stopPropagation(); pickEnd(true); }
+    }, true);
+
+    // ── 구간 이름 창 (새 구간 · ✎ 고치기) ──
+    let dlg = null, dlgR = null, dlgNew = false;
+    const closeDlg = () => { if (dlg) dlg.hidden = true; dlgR = null; };
+    const nameDlg = (r, isNew) => {
+        if (!dlg?.isConnected) {
+            dlg = document.createElement("div");
+            dlg.id = "r20-scd";
+            dlg.setAttribute("role", "dialog");
+            dlg.setAttribute("aria-label", "구간 이름");
+            dlg.innerHTML = '<div class="lb">구간 이름 <small>시작 선언에서 가져옴 · 고쳐도 돼요</small></div><input type="text" class="nm" maxlength="80" aria-label="구간 이름" spellcheck="false" autocomplete="off">'
+                + '<div class="ed"><button type="button" data-a="ra">시작 다시 찍기</button><button type="button" data-a="rb">끝 다시 찍기</button><button type="button" data-a="live">진행 중으로</button><button type="button" data-a="del" class="del">지우기</button></div>'
+                + '<div class="ft"><span class="info"></span><button type="button" data-a="x">취소</button><button type="button" data-a="ok" class="pri">Enter 저장</button></div>';
+            dlg.addEventListener("keydown", e => {
+                e.stopPropagation();
+                if (e.isComposing || e.keyCode === 229) return;
+                if (e.key === "Enter" && e.target.matches(".nm")) { e.preventDefault(); dlgOk(); }
+                else if (e.key === "Escape") { e.preventDefault(); closeDlg(); }
+            });
+            dlg.addEventListener("click", e => {
+                const a = e.target.closest("button")?.dataset.a, r0 = dlgR;
+                if (!a) return;
+                if (a === "x") return closeDlg();
+                if (a === "ok") return dlgOk();
+                if (a === "ra" || a === "rb") { dlgOk(true); return pickStart({ edit: r0.id, only: a === "ra" ? "a" : "b" }); }
+                if (a === "live") { r0.b = null; saveScenes(); return nameDlg(r0, false); }
+                if (a === "del") {
+                    const b = e.target.closest("button");
+                    if (!b.classList.contains("sure")) { b.classList.add("sure"); b.textContent = "한 번 더 누르면 지워요"; return; }
+                    scn = (scn || []).filter(x => x.id !== r0.id); saveScenes(); closeDlg(); toast(`‘${r0.n}’ 지움`);
+                }
+            });
+            document.body.appendChild(dlg);
+        }
+        dlgR = r; dlgNew = isNew;
+        const v = resolvedOne(r), del = dlg.querySelector(".del");
+        del.classList.remove("sure"); del.textContent = "지우기";
+        dlg.querySelector(".ed").hidden = isNew;
+        dlg.querySelector('[data-a="live"]').hidden = !r.b;
+        dlg.querySelector(".info").textContent = !r.b ? `${v?.span || ""} 진행 중 — 끝은 나중에 ■` : v?.span || "";
+        const nm = dlg.querySelector(".nm");
+        nm.value = r.n;
+        nm.placeholder = "구간 이름";
+        dlg.hidden = false;
+        nm.focus(); nm.select();
+    };
+    // 저장 (keep = 다시 찍으러 가는 길: 창만 닫음)
+    const dlgOk = keep => {
+        const r = dlgR;
+        if (!r) return;
+        r.n = dlg.querySelector(".nm").value.trim() || r.n || "이름 없는 구간";
+        if (dlgNew) { scn = [...(scn || []), r]; dlgNew = false; }
+        saveScenes();
+        closeDlg();
+        if (!keep) toast(`‘${r.n}’ ${r.b ? "저장" : "시작 — 진행 중"}`);
+    };
+    const resolvedOne = r => { const keep = scn; scn = [r]; const v = resolved()[0]; scn = keep; return v; };
+
+    // ── 채팅 메시지에 마우스: ▶ 여기서 구간 시작(진행 중) · ■ 여기서 끝 (진행 중 구간이 있을 때) ──
+    let hov = null, hovMsg = null;
+    const hovEl = () => {
+        if (hov?.isConnected) return hov;
+        hov = document.createElement("div");
+        hov.id = "r20-scq";
+        hov.innerHTML = '<button type="button" data-a="a" title="여기서 구간 시작 (끝은 나중에)" aria-label="여기서 구간 시작">▶</button><button type="button" data-a="b" aria-label="여기서 구간 끝">■</button>';
+        hov.addEventListener("mousedown", e => e.preventDefault());
+        hov.addEventListener("click", e => {
+            const a = e.target.closest("button")?.dataset.a, id = hovMsg?.dataset.messageid;
+            hov.hidden = true;
+            if (!a || !id) return;
+            if (a === "a") return nameDlg({ id: newId(), n: nameFrom(textOf(id)), a: id, b: null, at: Date.now() }, true);
+            const r = innerLive(id);
+            if (!r) return;
+            r.b = id;
+            saveScenes();
+            toast(`‘${r.n}’ 끝`);
+        });
+        document.body.appendChild(hov);
+        return hov;
+    };
+    document.addEventListener("mouseover", e => {
+        if (pick || !isGM() || !btnVisible.qfind) return;
+        if (hov?.contains(e.target)) return;
+        const m = e.target.closest?.(CHAT_MSG) || null;
+        if (m === hovMsg) return;
+        hovMsg = m;
+        if (!m) { if (hov) hov.hidden = true; return; }
+        if (!scn) loadScenes();
+        const h = hovEl(), live = innerLive(m.dataset.messageid), end = h.querySelector('[data-a="b"]'), r = m.getBoundingClientRect();
+        end.hidden = !live;
+        end.title = live ? `여기서 끝 — ${live.n}` : "";
+        h.hidden = false;
+        h.style.top = Math.max(0, r.top + 2) + "px";
+        h.style.left = Math.max(0, r.right - h.offsetWidth - 6) + "px";
+    }, { passive: true });
+    document.addEventListener("scroll", () => { if (hov && !hov.hidden) { hov.hidden = true; hovMsg = null; } }, { capture: true, passive: true });
+
+    // ── 장면 로그 창: 고른 구간의 채팅만 (◀ 이전 · 다음 ▶ · 전체 복사 · 이 장면에서 찾기) ──
+    const SCW_PIN = "r20_scw_pin", SCW_GEO = "r20_scw_geo";
+    let scw = null, scwId = null, scwT = 0, scwRows = [];
+    const scwOpen = () => !!scw && !scw.hidden;
+    const scwSoon = () => { if (scwOpen()) { clearTimeout(scwT); scwT = setTimeout(renderScw, 120); } };
+    const scwPinned = () => localStorage.getItem(SCW_PIN) === "true";
+    const scwKeep = () => {
+        if (!scwOpen() || !scwPinned() || scw.classList.contains("aio-min")) return;
+        try { localStorage.setItem(SCW_GEO, JSON.stringify({ l: scw.offsetLeft, t: scw.offsetTop, w: scw.offsetWidth, h: scw.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
+    };
+    // 기본 자리: 오른쪽 판 왼쪽, 빠른 찾기 창 자리만큼 더 왼쪽 · 📌 면 기억한 자리 · 크기
+    const placeScw = () => {
+        let g = null;
+        if (scwPinned()) try { g = JSON.parse(localStorage.getItem(SCW_GEO) || "null"); } catch (e) { /* 없음 */ }
+        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const w = Math.min(Math.max(300, g?.w || 400), W - 16), h = Math.min(Math.max(200, g?.h || Math.round(H * 0.7)), H - 16);
+        const edge = side?.width ? side.left / z : W;
+        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, edge - 8 - 348 - 8 - w);
+        const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : 40;
+        Object.assign(scw.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
+    };
+    const buildScw = () => {
+        scw = document.createElement("div");
+        scw.id = "r20-scw";
+        scw.setAttribute("role", "dialog");
+        scw.setAttribute("aria-label", "장면 로그");
+        scw.tabIndex = -1;                  // 제목줄을 눌러도 창 안에 포커스 (Esc 닫기)
+        scw.innerHTML = '<div class="hd"><b class="nm"></b><span class="mt"></span><button type="button" data-a="prev" title="이전 구간">◀ 이전</button><button type="button" data-a="next" title="다음 구간">다음 ▶</button>'
+            + '<button type="button" data-a="pin" class="pin" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기">✕</button></div>'
+            + '<div class="tb"><button type="button" data-a="copy">전체 복사</button><input type="search" class="q" placeholder="이 장면에서 찾기" aria-label="이 장면에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
+            + '<div class="bd" tabindex="-1"></div>';
+        scw.addEventListener("keydown", e => {
+            e.stopPropagation();
+            if (e.key === "Escape") { e.preventDefault(); scw.hidden = true; }
+            else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
+        });
+        scw.addEventListener("click", async e => {
+            const b = e.target.closest("button"), a = b?.dataset.a;
+            if (!a) return;
+            if (a === "x") { scwKeep(); scw.hidden = true; return; }
+            if (a === "prev" || a === "next") {
+                const L = resolved(), k = L.findIndex(v => v.r.id === scwId), v = L[k + (a === "prev" ? -1 : 1)];
+                if (v) { scwId = v.r.id; scw.querySelector(".q").value = ""; renderScw(); scw.querySelector(".bd").scrollTop = 0; }
+                return;
+            }
+            if (a === "pin") {
+                const on = !scwPinned();
+                try { localStorage.setItem(SCW_PIN, String(on)); } catch (err) { /* 저장 못 함 */ }
+                b.setAttribute("aria-pressed", String(on));
+                return on ? scwKeep() : placeScw();
+            }
+            if (a === "copy") {
+                const ok = await copyText(scwRows.map(c => (c.who ? c.who + ": " : "") + c.t).join("\n"));
+                b.textContent = ok ? "✓ 복사했어요" : "못 했어요";
+                setTimeout(() => { b.textContent = "전체 복사"; }, 1500);
+            }
+        });
+        scw.querySelector(".q").addEventListener("input", () => paintHits());
+        // 제목줄 끌어 옮기기 · 모서리로 크기
+        const hd = scw.querySelector(".hd");
+        hd.addEventListener("pointerdown", e => {
+            if (e.button !== 0 || e.target.closest("button")) return;
+            const z = aioZoom.get(), sx = e.clientX, sy = e.clientY, l0 = scw.offsetLeft, t0 = scw.offsetTop;
+            hd.setPointerCapture(e.pointerId);
+            const mv = ev => {
+                scw.style.left = Math.max(0, Math.min(l0 + (ev.clientX - sx) / z, innerWidth / z - 60)) + "px";
+                scw.style.top = Math.max(0, Math.min(t0 + (ev.clientY - sy) / z, innerHeight / z - 36)) + "px";
+            };
+            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => hd.removeEventListener(t, k ? up : mv)); scwKeep(); };
+            hd.addEventListener("pointermove", mv);
+            hd.addEventListener("pointerup", up);
+            hd.addEventListener("pointercancel", up);
+        });
+        let rt = 0;
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(scwKeep, 300); }).observe(scw);
+        document.body.appendChild(scw);
+    };
+    const openScene = id => {
+        if (!isGM()) return;
+        if (!scw?.isConnected) buildScw();
+        const was = scwOpen();
+        scwId = id;
+        scw.hidden = false;
+        scw.classList.remove("aio-min");
+        if (!was) placeScw();
+        scw.querySelector(".pin").setAttribute("aria-pressed", String(scwPinned()));
+        scw.querySelector(".q").value = "";
+        loadChat();
+        renderScw();
+        scw.querySelector(".bd").scrollTop = 0;
+    };
+    const renderScw = () => {
+        if (!scwOpen()) return;
+        const L = resolved(), k = L.findIndex(v => v.r.id === scwId), v = L[k], bd = scw.querySelector(".bd");
+        scw.querySelector('[data-a="prev"]').disabled = k <= 0;
+        scw.querySelector('[data-a="next"]').disabled = k < 0 || k >= L.length - 1;
+        scwRows = [];
+        if (!v) { scw.querySelector(".nm").textContent = "장면 로그"; scw.querySelector(".mt").textContent = ""; bd.innerHTML = '<div class="msg">지워진 구간이에요</div>'; return; }
+        scw.querySelector(".nm").textContent = v.r.n;
+        scw.querySelector(".mt").textContent = v.span + (v.live ? " 진행 중" : "");
+        if (v.ia == null) { bd.innerHTML = `<div class="msg">${escAttr(chatRun ? "채팅 로그를 읽는 중…" : chatErr ? `채팅 로그를 못 읽었어요 (${chatErr})` : v.span || "…")}</div>`; return; }
+        const all = chatAll();
+        scwRows = all.slice(v.ia, (v.live ? all.length - 1 : v.ib ?? v.ia) + 1);
+        paintHits();
+    };
+    // 같은 사람이 이어 말하면 이름 · 시각은 한 번 · 처음(▶) 과 끝(■) 은 표시
+    const paintHits = () => {
+        const bd = scw.querySelector(".bd"), q = scw.querySelector(".q").value.trim().toLowerCase(), ws = wordsOf(q), re = ws.length ? reOf(ws) : null, v = resolved().find(x => x.r.id === scwId);
+        let who = null, n = 0;
+        bd.innerHTML = scwRows.map((c, j) => {
+            const edge = j === 0 ? "a" : j === scwRows.length - 1 && !v?.live ? "b" : "", hit = re && hasAll(c.l, ws);
+            if (hit) n++;
+            const head = edge || c.who !== who ? `<div class="w"><b>${escAttr(c.who || "—")}</b><span>${escAttr(when(c))}</span></div>` : "";
+            who = edge === "b" ? null : c.who;
+            return `<div class="m${edge ? " " + edge : ""}${hit ? " hit" : ""}">${edge === "a" ? '<i class="tag">▶ 시작</i>' : edge === "b" ? '<i class="tag">■ 끝</i>' : ""}${head}<div class="t">${re ? hl(c.t, re) : escAttr(c.t)}</div></div>`;
+        }).join("") || '<div class="msg">채팅이 없어요</div>';
+        scw.querySelector(".qn").textContent = re ? (n ? `${n}곳` : "없어요") : `${scwRows.length.toLocaleString()}개`;
+        hitAt = -1;
+    };
+    let hitAt = -1;
+    const nextHit = d => {
+        const hs = [...scw.querySelectorAll(".bd .m.hit")];
+        if (!hs.length) return;
+        hitAt = (hitAt + d + hs.length) % hs.length;
+        hs.forEach((h, k) => h.classList.toggle("cur", k === hitAt));
+        hs[hitAt].scrollIntoView({ block: "center" });
+        scw.querySelector(".qn").textContent = `${hitAt + 1}/${hs.length}`;
     };
 
     // ── 📌 이 자리에 고정: 실행해도 안 닫힘 · 위쪽 줄로 옮기고 모서리로 크기 → 자리 · 크기 기억 (다른 창 📌 처럼) ──
@@ -7417,12 +7819,13 @@ const quickFind = (() => {
             + '<button type="button" class="qf-ib qf-dock">▶</button>'
             + '<button type="button" class="qf-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
             + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
-            + '<div class="qf-cats" role="group" aria-label="찾을 곳"><label class="qf-all"><input type="checkbox" class="qf-allc">전체</label>' + CATS.map(([c, l]) => `<label${c === "bgm" ? ' class="qf-gmc"' : ""}><input type="checkbox" data-c="${c}">${l}<i></i></label>`).join("") + '</div>'
+            + '<div class="qf-cats" role="group" aria-label="찾을 곳"><label class="qf-all"><input type="checkbox" class="qf-allc">전체</label>' + CATS.map(([c, l]) => `<label${gmOnly(c) ? ' class="qf-gmc"' : ""}><input type="checkbox" data-c="${c}">${l}<i></i></label>`).join("") + '</div>'
             + '<div class="qf-ctx" hidden>앞뒤<input type="number" class="qf-n" min="0" max="100" step="1" aria-label="앞뒤 몇 개">개'
             + '<span class="qf-ord" role="radiogroup" aria-label="묶음 순서"><label><input type="radio" name="r20qf-ord" value="new">최신순</label><label><input type="radio" name="r20qf-ord" value="old">오래된순</label></span><span class="qf-src"></span></div>'
             + '<div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
             + '<div class="qf-foot"><span class="qf-f1">↑↓ 고르기 · Enter 실행<span class="qf-gm"> · Shift+Enter 편집기</span> · Tab 찾을 곳</span>'
-            + '<span class="qf-f2" hidden>↑↓ 묶음 고르기 · Enter 가기(화면에 있으면) · Ctrl+C 묶음 복사</span></div></div>';
+            + '<span class="qf-f2" hidden>↑↓ 묶음 고르기 · Enter 가기(화면에 있으면) · Ctrl+C 묶음 복사</span>'
+            + '<span class="qf-f3" hidden>Enter 장면 로그 · ✎ 이름 · 시작/끝 다시 찍기</span></div></div>';
         box = root.querySelector(".qf-box");
         inp = root.querySelector(".qf-in");
         list = root.querySelector(".qf-list");
@@ -7513,7 +7916,10 @@ const quickFind = (() => {
         list.addEventListener("mousedown", e => { if (!e.target.closest(".qf-bl")) e.preventDefault(); });
         list.addEventListener("click", e => {
             if (e.target.closest(".qf-clr")) { try { localStorage.removeItem(RKEY); } catch (err) { /* 못 지움 */ } return draw(); }
-            const r = e.target.closest("[data-i]"), b = e.target.closest(".qf-bb");
+            if (e.target.closest(".qf-add")) return pickStart({});
+            const pr = pick && e.target.closest(".qf-row[data-id]");          // 구간 찍는 중: 찾은 채팅 줄도 고를 수 있다 (화면에 없는 옛 채팅)
+            if (pr) return pickMsg(pr.dataset.id);
+            const r = e.target.closest("[data-i]"), b = e.target.closest("[data-a]");
             if (!r) return;
             const i = Number(r.dataset.i);
             if (b) return act(shown[i], false, i, b.dataset.a);
@@ -7535,9 +7941,10 @@ const quickFind = (() => {
         items = gather(); gotAt = Date.now();
         sel = 0; inp.value = "";
         root.querySelector(".qf-gm").hidden = !(isGM() && btnVisible.bulk);
-        root.querySelector(".qf-gmc").hidden = !isGM();
+        root.querySelectorAll(".qf-gmc").forEach(x => { x.hidden = !isGM(); });
         if (cats.has("body")) loadBody();
-        if (cats.has("chat")) loadChat();
+        if (cats.has("chat") || (cats.has("scene") && isGM())) loadChat();
+        if (cats.has("scene")) loadScenes();
         root.classList.add("show");
         applyPin();
         draw();
@@ -7554,7 +7961,7 @@ const quickFind = (() => {
     }
     // 📌 가 아니면 창 밖을 누를 때 닫는다 (누른 곳으로 포커스가 가게 되돌리지 않음)
     document.addEventListener("pointerdown", e => {
-        if (!isOpen() || keepOpen() || box.contains(e.target) || e.target.closest?.("#r20-qfbtn")) return;
+        if (!isOpen() || keepOpen() || pick || box.contains(e.target) || e.target.closest?.("#r20-qfbtn, #r20-scd, #r20-scb, #r20-scw, #r20-scq")) return;
         close(false);
     }, true);
     // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
@@ -7729,7 +8136,7 @@ const winMemory = (() => {
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
     // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
-    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-scw > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
     document.addEventListener("dblclick", e => {
         if (!btnVisible.winmem) return;
         const head = e.target.closest?.(HEADS);
@@ -7792,11 +8199,11 @@ addCss(`
         #r20-qf .qf-pin { font-size:10px; filter:grayscale(1); opacity:0.5; }
         #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
         #r20-qf .qf-in { flex:1 1 120px; min-width:0; width:auto !important; height:22px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:11px !important; outline:none; }
-        #r20-qf .qf-cats { display:flex; flex-wrap:wrap; flex-shrink:0; gap:2px 9px; padding:5px 8px; border-bottom:1px solid var(--aio-line-4); color:var(--aio-ink-3); font-size:11px; user-select:none; }
-        #r20-qf .qf-cats label { display:inline-flex; align-items:center; gap:3px; margin:0; font:inherit; color:inherit; white-space:nowrap; cursor:pointer; }
-        #r20-qf .qf-cats input { width:13px !important; height:13px !important; margin:0 !important; accent-color:var(--aio-accent); cursor:pointer; }
-        #r20-qf .qf-cats i { font-style:normal; color:var(--aio-ink-5); }
-        #r20-qf .qf-cats .qf-all { padding-right:9px; border-right:1px solid var(--aio-line-3); }
+        #r20-qf .qf-cats { display:flex; flex-wrap:wrap; flex-shrink:0; gap:2px 6px; padding:5px 6px; border-bottom:1px solid var(--aio-line-4); color:var(--aio-ink-3); font-size:11px; user-select:none; }
+        #r20-qf .qf-cats label { display:inline-flex; align-items:center; gap:1px; margin:0; font:inherit; color:inherit; white-space:nowrap; cursor:pointer; }
+        #r20-qf .qf-cats input { width:12px !important; height:12px !important; margin:0 !important; accent-color:var(--aio-accent); cursor:pointer; }
+        #r20-qf .qf-cats i { margin-left:1px; font-size:10px; font-style:normal; color:var(--aio-ink-5); }
+        #r20-qf .qf-cats .qf-all { padding-right:6px; border-right:1px solid var(--aio-line-3); }
         #r20-qf .qf-ctx { display:flex; align-items:center; flex-shrink:0; gap:4px; padding:4px 8px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-bg-2); color:var(--aio-ink-3); font-size:11px; white-space:nowrap; }
         #r20-qf .qf-n { width:40px !important; height:20px !important; margin:0 !important; padding:0 2px 0 6px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:11px !important; text-align:center; }
         #r20-qf .qf-ord { display:inline-flex; gap:7px; margin-left:8px; }
@@ -7845,6 +8252,64 @@ addCss(`
         #r20-qf .qf-row.hit .qf-who { color:var(--aio-accent); font-weight:700; }
         #r20-qf .qf-tx { flex:1; min-width:0; white-space:pre-line; overflow-wrap:anywhere; }
         #textchat .content > .message.r20qf-flash { animation:r20qf-flash 2s ease-out; }
+        /* 장면 구간: 목차 줄 · 찍기 · 알림 띠 · 이름 창 · 채팅 ▶ ■ · 장면 로그 창 */
+        #r20-qf .qf-grp .qf-add { margin-left:0; font-weight:400; }
+        #r20-qf .qf-sc .qf-nm { max-width:55%; }
+        #r20-qf .qf-live { color:var(--aio-accent); font-weight:700; }
+        #r20-qf .qf-ed { flex-shrink:0; opacity:0; }
+        #r20-qf .qf-it:hover .qf-ed, #r20-qf .qf-it[aria-selected="true"] .qf-ed, #r20-qf .qf-ed:focus-visible { opacity:1; }
+        #r20-qf.picking .qf-row[data-id] { cursor:pointer; }
+        #r20-qf.picking .qf-row[data-id]:hover, #r20-qf .qf-row.pa, #r20-qf .qf-row.pb { box-shadow:inset 3px 0 0 var(--aio-accent); }
+        body.r20sc-pick #textchat .content > .message[data-messageid] { cursor:pointer; }
+        body.r20sc-pick #textchat .content > .message[data-messageid]:hover { box-shadow:inset 3px 0 0 var(--aio-accent); background-color:rgba(225,0,133,0.06); }
+        #textchat .content > .message.r20sc-a { position:relative; box-shadow:inset 3px 0 0 var(--aio-accent); background-color:rgba(225,0,133,0.08); }
+        #textchat .content > .message.r20sc-a::before { content:"▶ 여기부터"; position:absolute; top:-2px; right:4px; z-index:1; padding:0 6px; border-radius:8px; background:var(--aio-accent); color:#fff; font:700 9.5px/15px sans-serif; pointer-events:none; }
+        #r20-scb { position:fixed; top:10px; left:50%; z-index:10012; display:flex; align-items:center; gap:8px; max-width:calc(100vw - 32px); padding:6px 8px 6px 14px; border-radius:16px; background:var(--aio-accent); box-shadow:0 4px 14px rgba(0,0,0,0.25); color:#fff; font:700 12px/1.4 sans-serif; transform:translateX(-50%); }
+        #r20-scb[hidden] { display:none; }
+        #r20-scb.toast { padding-right:14px; background:var(--aio-tip); }
+        #r20-scb small { font-weight:400; opacity:0.85; }
+        #r20-scb button { width:20px; height:20px; margin:0; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,0.2); color:#fff; font-size:10px; line-height:20px; cursor:pointer; }
+        #r20-scd { position:fixed; top:30%; left:50%; z-index:10011; display:flex; flex-direction:column; gap:6px; width:340px; max-width:calc(100vw - 32px); padding:10px 12px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.25); color:var(--aio-ink-2); font:12px/1.4 sans-serif; transform:translateX(-50%); }
+        #r20-scd[hidden], #r20-scd [hidden] { display:none !important; }
+        #r20-scd .lb { color:var(--aio-ink-3); font-size:11px; } #r20-scd .lb small { color:var(--aio-ink-5); }
+        #r20-scd .nm { width:100% !important; height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid var(--aio-accent) !important; border-radius:var(--aio-r) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:13px !important; box-sizing:border-box; }
+        #r20-scd .nm:focus { outline:none; box-shadow:0 0 0 2px var(--aio-accent-soft) !important; }
+        #r20-scd .ed, #r20-scd .ft { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+        #r20-scd .info { flex:1; min-width:0; color:var(--aio-ink-4); font-size:11px; }
+        #r20-scd button { height:24px; margin:0; padding:0 9px; border:1px solid var(--aio-line-2); border-radius:12px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
+        #r20-scd button:hover { border-color:var(--aio-accent); color:var(--aio-accent); }
+        #r20-scd .pri { border-color:var(--aio-accent); color:var(--aio-accent); font-weight:700; }
+        #r20-scd .del { margin-left:auto; } #r20-scd .del.sure { border-color:var(--aio-bad); background:var(--aio-bad-bg); color:var(--aio-bad); }
+        #r20-scq { position:fixed; z-index:10005; display:flex; gap:2px; }
+        #r20-scq[hidden], #r20-scq [hidden] { display:none !important; }
+        #r20-scq button { width:20px; height:18px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-4); font-size:9px; line-height:16px; opacity:0.75; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.15); }
+        #r20-scq button:hover { border-color:var(--aio-accent); color:var(--aio-accent); opacity:1; }
+        #r20-scw { position:fixed; z-index:10004; display:flex; flex-direction:column; min-width:280px; min-height:160px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.5 sans-serif; overflow:hidden; resize:both; box-sizing:border-box; }
+        #r20-scw[hidden] { display:none; }
+        #r20-scw:focus { outline:none; }
+        #r20-scw .hd { display:flex; align-items:center; gap:4px; flex-shrink:0; height:36px; padding:0 6px 0 10px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
+        #r20-scw .nm { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; }
+        #r20-scw .mt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-4); font-size:11px; }
+        #r20-scw button { flex-shrink:0; height:22px; margin:0; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:20px; cursor:pointer; box-shadow:none; }
+        #r20-scw button:hover:not(:disabled) { border-color:var(--aio-accent); color:var(--aio-accent); }
+        #r20-scw button:disabled { opacity:0.4; cursor:default; }
+        #r20-scw .pin { padding:0 4px; border-color:transparent; filter:grayscale(1); opacity:0.5; }
+        #r20-scw .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
+        #r20-scw .hd [data-a="x"] { padding:0 6px; border-color:transparent; }
+        #r20-scw .tb { display:flex; align-items:center; gap:6px; flex-shrink:0; padding:5px 10px; border-bottom:1px solid var(--aio-line-4); }
+        #r20-scw .q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 !important; padding:0 8px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
+        #r20-scw .qn { color:var(--aio-ink-5); font-size:11px; white-space:nowrap; }
+        #r20-scw .bd { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:6px 12px 10px; user-select:text; outline:none; }
+        #r20-scw .m { position:relative; padding:2px 0; content-visibility:auto; contain-intrinsic-size:auto 24px; }
+        #r20-scw .w { display:flex; align-items:baseline; gap:6px; margin-top:6px; } #r20-scw .w b { color:var(--aio-ink-2); } #r20-scw .w span { color:var(--aio-ink-5); font-size:10.5px; }
+        #r20-scw .t { white-space:pre-line; overflow-wrap:anywhere; color:var(--aio-ink-2); }
+        #r20-scw .m.a, #r20-scw .m.b { margin:4px 0; padding:4px 8px 6px; border:1px solid var(--aio-line-3); border-left:3px solid var(--aio-accent); border-radius:var(--aio-r); background:var(--aio-accent-bg); }
+        #r20-scw .m.b { border-left-color:var(--aio-ink-4); background:var(--aio-bg-3); }
+        #r20-scw .m .tag { display:block; color:var(--aio-accent-dark); font-size:10.5px; font-style:normal; font-weight:700; }
+        #r20-scw .m.b .tag { color:var(--aio-ink-3); }
+        #r20-scw .m.hit { background:var(--aio-accent-bg); } #r20-scw .m.cur { box-shadow:inset 3px 0 0 var(--aio-accent); }
+        #r20-scw mark { padding:0; background:none; color:var(--aio-accent); font-weight:700; }
+        #r20-scw .msg { margin:24px 0; color:var(--aio-ink-4); text-align:center; }
         @keyframes r20qf-flash { 0%, 40% { background-color:rgba(225,0,133,0.14); box-shadow:inset 3px 0 0 var(--aio-accent); } }
         .r20qf-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
         .r20qf-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
@@ -7858,13 +8323,13 @@ addCss(`
         .ui-dialog-titlebar .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
         /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
 `);
 
 addFeature("quickFind", quickFind);
 addFeature("winMemory", winMemory);
-addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께)",
+addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
 addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
