@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.62.1
+// @version      1.62.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.62.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.62.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5279,7 +5279,7 @@ const screenUI = (() => {
         const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
         const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
-        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons"), document.getElementById("r20-fitbtn")] : [];
+        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
         els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
             if (!el) return;
@@ -5293,47 +5293,73 @@ const screenUI = (() => {
         FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
     };
     // ── 맵 전체보기: 배율 숫자를 누르면 뜨는 Roll20 메뉴의 'Zoom to Fit' 을 대신 누른다 (Roll20 이 맞추고 가운데로 옮긴다) ──
+    // 단추는 Roll20 확대 · 축소 묶음 안, − 바로 밑에 같은 모양(.btnStyle)으로. 메뉴는 보이지 않게 숨겼다가 닫는다
     const zoomBox = () => document.getElementById("vm_zoom_buttons");
     const FIT_RE = /^(zoom to fit|fit to screen|화면에 맞추기|화면 맞춤|화면에 맞게)$/i;
-    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    const FIT_TITLE = "맵 전체보기 — Roll20 'Zoom to Fit' (화면에 맞추기)";
+    const frame = () => new Promise(res => requestAnimationFrame(() => res()));
     // 메뉴 항목: 글자가 딱 맞는 것 중 가장 안쪽 요소 (눌림은 바깥 항목으로 올라간다)
     const fitItem = () => [...document.querySelectorAll("li, button, a, [role=menuitem], [role=option], div, span")]
         .filter(e => e.getClientRects().length && FIT_RE.test(e.textContent.trim()))
         .sort((x, y) => x.getElementsByTagName("*").length - y.getElementsByTagName("*").length)[0];
-    const waitItem = async ms => { for (let t = 0; t < ms; t += 50) { const it = fitItem(); if (it) return it; await sleep(50); } return null; };
-    const fire = (el, type) => el.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : MouseEvent)(type, { bubbles: true, cancelable: true, composed: true, view: window, button: 0, buttons: type.endsWith("down") ? 1 : 0, pointerId: 1, isPrimary: true }));
+    const waitItem = async ms => { const end = performance.now() + ms; while (performance.now() < end) { const it = fitItem(); if (it) return it; await frame(); } return null; };
+    // 메뉴 틀: 항목에서 올라가며 배율 입력칸을 품은 가장 가까운 것
+    const popOf = it => { for (let e = it.parentElement; e && e !== document.body; e = e.parentElement) if (e.querySelector("input")) return e; return null; };
+    const shown = e => !!e?.isConnected && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none";
+    const fire = (el, type, init) => el.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : type.startsWith("key") ? KeyboardEvent : MouseEvent)(type,
+        { bubbles: true, cancelable: true, composed: true, view: window, button: 0, buttons: type.endsWith("down") ? 1 : 0, pointerId: 1, isPrimary: true, ...init }));
     let fitting = false;
     const fitMap = async fb => {
         const lv = zoomBox()?.querySelector(".level");
         if (fitting || !lv) return;
         fitting = true;
         fb.disabled = true;
+        let pop = null;
+        // 메뉴가 생기는 순간(화면에 그리기 전) 숨긴다
+        const hideNew = new MutationObserver(() => { const it = fitItem(), pp = it && popOf(it); if (pp) { pp.style.visibility = "hidden"; pop = pp; } });
         try {
+            const opener = lv.closest("button, [role=button]") || lv;
+            hideNew.observe(document.body, { childList: true, subtree: true });
             let it = fitItem();          // 메뉴가 이미 열려 있으면 바로
             if (!it) {
-                const opener = lv.closest("button, [role=button]") || lv;
                 opener.click();
                 it = await waitItem(400);
                 if (!it) { ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach(t => fire(opener, t)); it = await waitItem(600); }
             }
-            if (it) it.click();
-            else { fb.title = "Roll20 배율 메뉴에서 'Zoom to Fit' 을 못 찾았어요"; setTimeout(() => { fb.title = FIT_TITLE; }, 3000); }
-        } finally { fitting = false; fb.disabled = false; }
+            hideNew.disconnect();
+            if (!it) { fb.title = "Roll20 배율 메뉴에서 'Zoom to Fit' 을 못 찾았어요"; setTimeout(() => { fb.title = FIT_TITLE; }, 3000); return; }
+            pop = popOf(it) || pop;
+            if (pop) pop.style.visibility = "hidden";
+            it.click();
+            // 메뉴가 남아 있으면 닫는다: Esc → 숫자 다시 누르기 → 바깥 누르기
+            const closers = [() => { fire(pop, "keydown", { key: "Escape", code: "Escape", keyCode: 27 }); fire(document, "keydown", { key: "Escape", code: "Escape", keyCode: 27 }); },
+                () => opener.click(), () => ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach(t => fire(document.body, t))];
+            for (const c of closers) {
+                for (let i = 0; i < 4; i++) await frame();
+                if (!pop || !shown(pop)) break;
+                c();
+            }
+        } finally {
+            hideNew.disconnect();
+            // 숨긴 메뉴는 닫힌 뒤(또는 1.5초 뒤) 원래대로 — 다음에 숫자를 직접 누를 땐 보여야 한다
+            if (pop) { const end = performance.now() + 1500; while (shown(pop) && performance.now() < end) await frame(); pop.style.visibility = ""; }
+            fitting = false; fb.disabled = false;
+        }
     };
-    const FIT_TITLE = "맵 전체보기 — Roll20 'Zoom to Fit' (배율 숫자 메뉴의 화면 맞추기)";
     let watched = null, watchedSide = null;
     const inject = () => {
         if (!btnVisible.screenui && !btnVisible.mapshot) return;
-        if (btnVisible.screenui && zoomBox() && !document.getElementById("r20-fitbtn")) {
+        // Roll20 이 확대 · 축소 묶음을 다시 그리면 다시 단다 (− 단추의 모양 클래스를 그대로 빌린다)
+        const minus = btnVisible.screenui && zoomBox()?.querySelector(".zoomButtonsInner > .minus");
+        if (minus && !minus.parentElement.querySelector(":scope > .r20-fitz")) {
             const fb = document.createElement("button");
             fb.type = "button";
-            fb.id = "r20-fitbtn";
-            fb.className = "r20-dockbtn";
+            fb.className = (minus.className.replace(/\bminus\b/, "") + " r20-fitz").trim();
             fb.title = FIT_TITLE;
             fb.setAttribute("aria-label", "맵 전체보기");
-            fb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+            fb.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
             fb.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fitMap(fb); });
-            document.body.appendChild(fb);
+            minus.after(fb);
         }
         place();
         const side = document.getElementById("rightsidebar");
@@ -5353,7 +5379,7 @@ const screenUI = (() => {
         document.body.classList.toggle("r20sc-on", on);
         if (on) return inject();
         ["vm_zoom_buttons", "page-button"].forEach(id => { const el = document.getElementById(id); if (el) Z_KEYS.forEach(k => el.style.removeProperty(k)); });
-        document.getElementById("r20-fitbtn")?.remove();
+        document.querySelectorAll(".r20-fitz").forEach(b => b.remove());
         place();
     };
     window.addEventListener("resize", () => place());
@@ -5587,6 +5613,8 @@ addCss(`
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .level { order:2; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .sliderSection { order:3; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:4; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .r20-fitz { order:5; display:flex; align-items:center; justify-content:center; color:inherit; }
+        #vm_zoom_buttons .r20-fitz:disabled { cursor:progress; opacity:0.6; }
         /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
         .r20ta-pop { position:fixed; z-index:100002; min-width:150px; max-width:280px; padding:4px; border-radius:var(--aio-r-lg); background:var(--aio-bg-3); box-shadow:0 6px 18px rgba(0,0,0,0.35); font-family:inherit; }
