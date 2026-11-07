@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.60.0
+// @version      1.61.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.60.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.61.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1378,7 +1378,30 @@ const jukeboxRow = (() => {
         b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); foldAll(sel); });
         return b;
     };
+    // Roll20 '빈 재생목록 추가' 단추를 위쪽 '오디오 관리' 옆으로 옮긴다 (같은 float 로 붙이면 화면에선 옆에 선다)
+    // 아래 줄에 남은 볼륨 · 페이드 칸이 한 줄에 든다. 끄면 제자리로
+    const ADD_RE = /재생목록\s*추가|add.*playlist|new playlist/i, AUD_RE = /^(오디오 관리|Audio Library|Manage Audio)$/i;
+    let addPl = null;      // { b, home }
+    const moveAddPl = on => {
+        if (!on) {
+            if (addPl?.b.isConnected && addPl.home.isConnected) { addPl.b.classList.remove("r20jb-addpl"); addPl.b.style.float = ""; addPl.home.prepend(addPl.b); }
+            addPl = null;
+            return;
+        }
+        const host = document.querySelector("#jukebox .secondarycontrols");
+        const b = host && [...host.querySelectorAll("button, .btn")].find(x => !x.matches(".r20-fold") && ADD_RE.test(x.textContent.trim()));
+        if (!b) return;                         // 이미 옮겼거나 없음 (이때는 주크박스 전체를 훑지 않는다)
+        const aud = [...document.querySelectorAll("#jukebox button, #jukebox .btn")].find(x => !x.closest(".dd-list, .secondarycontrols") && AUD_RE.test(x.textContent.trim()));
+        if (!aud) return;
+        if (addPl?.b !== b && addPl?.b.isConnected) addPl.b.remove();      // Roll20 이 새로 그렸으면 예전에 옮긴 것은 치운다
+        addPl = { b, home: host };
+        b.classList.add("r20jb-addpl");
+        const fl = getComputedStyle(aud).float;
+        b.style.float = fl;
+        if (fl === "right") aud.after(b); else aud.before(b);      // 오른쪽 float 면 뒤에 둬야 '오디오 관리' 왼쪽에 선다
+    };
     const addStepControl = () => {
+        moveAddPl(true);
         const host = document.querySelector("#jukebox .secondarycontrols");
         if (host && !host.querySelector(".r20-fold")) host.appendChild(foldBtn("#jukeboxfolderroot"));
         if (!host || host.querySelector(".r20jb-step")) return;
@@ -1539,6 +1562,7 @@ const jukeboxRow = (() => {
         if (on) { inject(); jbWatch.all().forEach(decorate); markSeps(); measured = false; if (rootShown) measureSoon(); }
         else {
             document.querySelectorAll("#jukebox .r20-fold").forEach(b => b.remove());
+            moveAddPl(false);
             journalTools(false);
             document.querySelectorAll(TITLE + "[tabindex]").forEach(ti => { ti.removeAttribute("tabindex"); ti.removeAttribute("role"); });
         }
@@ -1560,6 +1584,7 @@ addCss(`
         .r20jb-step { display:none; }
         /* 폴더 닫기 단추 (저널 · 주크박스) */
         body.r20jb-on :is(#jukebox, #journal) .r20-fold { height:22px; margin:0 !important; padding:0 6px !important; font-size:9px; line-height:20px; white-space:nowrap; }
+        #jukebox .r20jb-addpl { margin-right:4px !important; }
         body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:var(--aio-ink-3); }
         body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
         /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
@@ -5264,6 +5289,7 @@ const screenUI = (() => {
             set("right", Math.round(innerWidth - edge) + "px");
             y += el.getBoundingClientRect().height + 4;
         });
+        FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
     };
     let watched = null, watchedSide = null;
     const inject = () => {
@@ -6972,9 +6998,9 @@ const quickFind = (() => {
         if (!it) return;
         remember(it);
         const v = verb(it);
-        if (!pinned) close();
+        if (!keepOpen()) close();
         if (toEditor && isGM() && btnVisible.bulk && FEAT.bulkEditor?.open) return FEAT.bulkEditor.open(it.k === "track" ? "bgm" : it.k === "macro" ? "macros" : "journal", it.id);
-        if (pinned) flash(i, it, v);
+        if (keepOpen()) flash(i, it, v);
         if (it.k === "macro") return runMacro(it.name);
         if (it.k === "track") {
             if (FEAT.jukeboxRow?.toggle?.(it.id)) return;
@@ -6986,11 +7012,13 @@ const quickFind = (() => {
         if (li) (window.jQuery ? window.jQuery(li).trigger("click") : li.click());
     };
 
-    // ── 📌 열어 두기: 어둡게 덮지 않고(뒤 화면 그대로) · 실행해도 안 닫힘 · 위쪽 줄로 옮기고 모서리로 크기 → 자리 · 크기 기억 ──
-    const PIN_KEY = "r20_qf_pin", GEO_KEY = "r20_qf_geo";
-    let pinned = localStorage.getItem(PIN_KEY) === "true", box = null, pinBtn = null;
+    // ── 📌 이 자리에 고정: 실행해도 안 닫힘 · 위쪽 줄로 옮기고 모서리로 크기 → 자리 · 크기 기억 (다른 창 📌 처럼) ──
+    // ── ▶ 붙이기: 채팅 판 왼쪽, 맵 · 일괄 편집기 · 빠른 찾기 단추 바로 밑에 붙어 열려 있다 (판을 넓히면 따라감) · ◀ 떼면 따로 뜬다 ──
+    const PIN_KEY = "r20_qf_pin", GEO_KEY = "r20_qf_geo", DOCK_KEY = "r20_qf_dock";
+    let pinned = localStorage.getItem(PIN_KEY) === "true", docked = localStorage.getItem(DOCK_KEY) === "true", box = null, pinBtn = null, dockBtn = null;
+    const keepOpen = () => pinned || docked;
     const keepGeo = () => {
-        if (!pinned || !isOpen() || box.closest(".aio-min") || box.classList.contains("aio-min")) return;
+        if (!pinned || docked || !isOpen() || box.closest(".aio-min") || box.classList.contains("aio-min")) return;
         try { localStorage.setItem(GEO_KEY, JSON.stringify({ l: box.offsetLeft, t: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
     };
     // 창 안 길이는 확대(zoom) 전 단위 — 화면 크기도 그 단위로 나눠 잰다
@@ -7005,12 +7033,29 @@ const quickFind = (() => {
         box.removeAttribute("style");
         Object.assign(box.style, { left: l + "px", top: t + "px", width: w + "px" }, pinned ? { height: Math.min(Math.max(160, g?.h || 420), H - t - 8) + "px" } : {});
     };
+    // 붙인 자리: 화면 배치(screenUI.place)가 단추줄을 쌓고 다음 y 와 채팅 판 왼쪽 x(화면 좌표)를 넘겨 준다
+    let dockY = null, dockEdge = null;
+    const dockPlace = () => {
+        const z = aioZoom.get();
+        if (dockY == null) {           // 화면 배치가 아직 안 불렀으면 🔍 단추 밑
+            const b = document.getElementById("r20-qfbtn")?.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+            dockY = b ? b.bottom + 4 : 60; dockEdge = side?.width ? side.left : innerWidth;
+        }
+        const w = Math.min(340, (dockEdge - 8) / z);
+        box.removeAttribute("style");
+        Object.assign(box.style, { left: dockEdge / z - w + "px", top: dockY / z + "px", width: w + "px", maxHeight: Math.max(120, (innerHeight - dockY - 8) / z) + "px" });
+    };
+    const dockAt = (y, edge) => { dockY = y; dockEdge = edge; if (docked && isOpen()) dockPlace(); };
     const applyPin = () => {
-        root.classList.toggle("pin", pinned);
-        if (!pinned) box.classList.remove("aio-min");
+        root.classList.toggle("pin", pinned && !docked);
+        root.classList.toggle("dock", docked);
+        if (!keepOpen()) box.classList.remove("aio-min");
         pinBtn.setAttribute("aria-pressed", String(pinned));
-        pinBtn.title = pinned ? "열어 두는 중 — 누르면 풀기" : "열어 두기 — 실행해도 안 닫혀요 (자리 · 크기 기억)";
-        placeBox();
+        pinBtn.title = pinned ? "이 자리에 고정 중 — 누르면 풀기" : "이 자리에 고정 — 실행해도 안 닫히고, 옮긴 자리 · 크기를 기억해요";
+        dockBtn.textContent = docked ? "◀" : "▶";
+        dockBtn.title = docked ? "떼어 내기 — 따로 띄워요" : "붙이기 — 채팅 왼쪽, 맵 · 편집기 · 찾기 단추 밑에 붙여 열어 둬요";
+        dockBtn.setAttribute("aria-label", docked ? "떼어 내기" : "붙이기");
+        if (docked) { FEAT.screenUI?.place(); dockPlace(); } else placeBox();
     };
 
     // ── 창 (예전 모은 트랙 창과 같은 모양 · 340px · 화면을 덮지 않음) ──
@@ -7022,7 +7067,8 @@ const quickFind = (() => {
             + '<div class="qf-head"><span class="qf-grip" title="끌어서 옮기기 · 두 번 눌러 접기" aria-hidden="true">⋮⋮</span>'
             + '<input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="빠른 찾기 — 이름 · 초성 · #태그" placeholder="빠른 찾기 — 이름 · 초성 · #태그" autocomplete="off" spellcheck="false">'
             + '<select class="qf-kind" aria-label="종류">' + CHIPS.map(([c, l]) => `<option value="${c}">${c === "all" ? "전체" : l}</option>`).join("") + '</select>'
-            + '<button type="button" class="qf-ib qf-pin" aria-label="열어 두기" aria-pressed="false">📌</button>'
+            + '<button type="button" class="qf-ib qf-dock">▶</button>'
+            + '<button type="button" class="qf-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
             + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
             + '<div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
             + '<div class="qf-foot">↑↓ 고르기 · Enter 실행<span class="qf-gm"> · Shift+Enter 편집기</span> · Tab 종류</div></div>';
@@ -7031,7 +7077,15 @@ const quickFind = (() => {
         list = root.querySelector(".qf-list");
         chips = root.querySelector(".qf-kind");
         pinBtn = root.querySelector(".qf-pin");
+        dockBtn = root.querySelector(".qf-dock");
         root.querySelector(".qf-x").addEventListener("click", close);
+        dockBtn.addEventListener("click", () => {
+            docked = !docked;
+            try { localStorage.setItem(DOCK_KEY, String(docked)); } catch (e) { /* 저장 못 함 */ }
+            box.classList.remove("aio-min");
+            applyPin();
+            inp.focus();
+        });
         pinBtn.addEventListener("click", () => {
             pinned = !pinned;
             try { localStorage.setItem(PIN_KEY, String(pinned)); } catch (e) { /* 저장 못 함 */ }
@@ -7041,7 +7095,7 @@ const quickFind = (() => {
         // 📌 동안 위쪽 줄을 끌어 옮기기
         const head = root.querySelector(".qf-head");
         head.addEventListener("pointerdown", e => {
-            if (!pinned || e.button !== 0 || e.target.closest("button, input, select")) return;
+            if (!pinned || docked || e.button !== 0 || e.target.closest("button, input, select")) return;
             const z = aioZoom.get(), sx = e.clientX, sy = e.clientY, l0 = box.offsetLeft, t0 = box.offsetTop;
             head.setPointerCapture(e.pointerId);
             const mv = ev => {
@@ -7113,7 +7167,7 @@ const quickFind = (() => {
     }
     // 📌 가 아니면 창 밖을 누를 때 닫는다 (누른 곳으로 포커스가 가게 되돌리지 않음)
     document.addEventListener("pointerdown", e => {
-        if (!isOpen() || pinned || box.contains(e.target) || e.target.closest?.("#r20-qfbtn")) return;
+        if (!isOpen() || keepOpen() || box.contains(e.target) || e.target.closest?.("#r20-qfbtn")) return;
         close(false);
     }, true);
     // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
@@ -7122,7 +7176,7 @@ const quickFind = (() => {
         if (!btnVisible.qfind || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyF") return;
         e.preventDefault(); e.stopPropagation();
         if (!isOpen()) return open();
-        if (pinned && document.activeElement !== inp) { box.classList.remove("aio-min"); inp.focus(); inp.select(); }
+        if (keepOpen() && document.activeElement !== inp) { box.classList.remove("aio-min"); inp.focus(); inp.select(); }
         else close();
     }, true);
     // 햄버거 밑 단추줄(맵 단추 아래) 단추 — 플레이어도
@@ -7145,7 +7199,7 @@ const quickFind = (() => {
         document.getElementById("r20-qfbtn")?.remove();
         FEAT.screenUI?.place();
     };
-    return { inject, setEnabled, open, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
+    return { inject, setEnabled, open, dockAt, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
 })();
 
 // ───────── 창 자리 · 크기 기억: Roll20 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
@@ -7288,7 +7342,7 @@ const winMemory = (() => {
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
     // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
-    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-qf.pin .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
     document.addEventListener("dblclick", e => {
         if (!btnVisible.winmem) return;
         const head = e.target.closest?.(HEADS);
@@ -7339,8 +7393,13 @@ addCss(`
         #r20-qf button:focus-visible, #r20-qf input:focus-visible, #r20-qf select:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         #r20-qf .qf-head { display:flex; align-items:center; gap:4px; flex-shrink:0; height:42px; padding:0 6px 0 10px; border-bottom:1px solid var(--aio-line-4); user-select:none; }
         #r20-qf.pin .qf-head { padding-left:2px; cursor:move; touch-action:none; }
+        #r20-qf.dock .qf-head { padding-left:2px; }
+        #r20-qf.dock .qf-box { border-top-right-radius:0; border-bottom-right-radius:0; }
+        #r20-qf.dock .qf-pin { display:none; }
+        #r20-qf .qf-dock { font-size:10px; }
         #r20-qf .qf-grip { display:none; flex-shrink:0; width:14px; color:var(--aio-ink-5); font-size:12px; letter-spacing:-3px; text-align:center; }
-        #r20-qf.pin .qf-grip { display:block; }
+        #r20-qf:is(.pin, .dock) .qf-grip { display:block; }
+        #r20-qf.dock .qf-grip { cursor:default; }
         #r20-qf .qf-ib { width:26px; height:26px; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:13px; }
         #r20-qf .qf-ib:hover { background:var(--aio-bg-3); }
         #r20-qf .qf-pin { font-size:12px; filter:grayscale(1); opacity:0.5; }
