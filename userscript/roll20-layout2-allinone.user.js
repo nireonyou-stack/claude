@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.65.0
+// @version      1.65.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.65.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.65.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5280,7 +5280,7 @@ const screenUI = (() => {
         const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
-        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-qfbtn"));
+        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-scnbtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
             if (!el) return;
             const set = (k, v) => el.style.setProperty(k, v, "important");
@@ -8060,7 +8060,7 @@ const quickFind = (() => {
     }
     // 📌 가 아니면 창 밖을 누를 때 닫는다 (누른 곳으로 포커스가 가게 되돌리지 않음)
     document.addEventListener("pointerdown", e => {
-        if (!isOpen() || keepOpen() || pick || box.contains(e.target) || e.target.closest?.("#r20-qfbtn, #r20-scd, #r20-scb, #r20-scw, #r20-scq")) return;
+        if (!isOpen() || keepOpen() || pick || box.contains(e.target) || e.target.closest?.("#r20-qfbtn, #r20-scnbtn, #r20-scd, #r20-scb, #r20-scw, #r20-scq")) return;
         close(false);
     }, true);
     // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
@@ -8072,8 +8072,23 @@ const quickFind = (() => {
         if (keepOpen() && document.activeElement !== inp) { box.classList.remove("aio-min"); inp.focus(); inp.select(); }
         else close();
     }, true);
+    // 장면 목차 단추 (GM): 🔍 바로 위 · 누르면 장면 창 열기 · 닫기
+    const injectScn = () => {
+        if (!isGM() || document.getElementById("r20-scnbtn")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "r20-scnbtn";
+        b.className = "r20-dockbtn";
+        b.title = "장면 목차";
+        b.setAttribute("aria-label", "장면 목차");
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M8 12h12M12 18h8"/></svg>';
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (scwOpen()) { scwKeep(); scw.hidden = true; } else openScene(null); });
+        document.body.appendChild(b);
+        FEAT.screenUI?.place();
+    };
     // 햄버거 밑 단추줄(맵 단추 아래) 단추 — 플레이어도
     const inject = () => {
+        if (btnVisible.qfind && document.getElementById("sidebarcontrol")) injectScn();
         if (!btnVisible.qfind || document.getElementById("r20-qfbtn") || !document.getElementById("sidebarcontrol")) return;
         const b = document.createElement("button");
         b.type = "button";
@@ -8089,7 +8104,9 @@ const quickFind = (() => {
     const setEnabled = on => {
         if (on) return inject();
         close();
+        if (scwOpen()) scw.hidden = true;
         document.getElementById("r20-qfbtn")?.remove();
+        document.getElementById("r20-scnbtn")?.remove();
         FEAT.screenUI?.place();
     };
     return { inject, setEnabled, open, dockAt, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
