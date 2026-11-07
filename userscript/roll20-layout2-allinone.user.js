@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.64.1
+// @version      1.65.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.64.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.65.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7265,7 +7265,7 @@ const quickFind = (() => {
         rows.forEach(r => {
             if (r.g !== g && r.t !== "blk" && !(solo === "chat" && r.t === "note")) {
                 g = r.g;
-                html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : g === "scene" ? '<button type="button" class="qf-bb qf-add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>' : `<span class="qf-gs">${r.t === "note" ? "" : escAttr(status(g))}</span>`}</div>`;
+                html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : g === "scene" ? '<button type="button" class="qf-bb qf-tocb" title="장면 창 — 목차 | 그 장면 로그">목차</button><button type="button" class="qf-bb qf-add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>' : `<span class="qf-gs">${r.t === "note" ? "" : escAttr(status(g))}</span>`}</div>`;
             }
             html += r.t === "note" ? `<div class="qf-note">${r.html}</div>` : rowHtml(r, i++);
         });
@@ -7495,7 +7495,7 @@ const quickFind = (() => {
         if (!isGM()) return;
         if (!scn) loadScenes();
         const edit = o.edit && (scn || []).find(r => r.id === o.edit);
-        pick = { stage: o.only === "b" ? "b" : "a", a: o.only === "b" ? edit?.a : null, b: null, edit: edit ? edit.id : null, only: o.only || null };
+        pick = { stage: o.only === "b" ? "b" : "a", a: o.only === "b" ? edit?.a : null, b: null, edit: edit ? edit.id : null, only: o.only || null, quiet: !!o.quiet };
         closeDlg();
         if (hov) hov.hidden = true;
         paintPick();
@@ -7523,7 +7523,7 @@ const quickFind = (() => {
             if (p.only === "a") r.a = p.a; else r.b = p.b;
             if (r.b && order(r.a, r.b) > 0) [r.a, r.b] = [r.b, r.a];
             saveScenes();
-            return p.only === "b" ? toast(`‘${r.n}’ 끝`) : nameDlg(r, false);
+            return p.only === "b" || p.quiet ? toast(`‘${r.n}’ ${p.only === "a" ? "시작을 바꿨어요" : "끝"}`) : nameDlg(r, false);
         }
         let a = p.a, b = p.b;                                       // 새 구간 (끝 없이 Esc = 진행 중)
         if (a && b && order(a, b) > 0) [a, b] = [b, a];
@@ -7591,7 +7591,7 @@ const quickFind = (() => {
         const r = dlgR;
         if (!r) return;
         r.n = dlg.querySelector(".nm").value.trim() || r.n || "이름 없는 구간";
-        if (dlgNew) { scn = [...(scn || []), r]; dlgNew = false; }
+        if (dlgNew) { scn = [...(scn || []), r]; dlgNew = false; if (scwOpen()) scwId = r.id; }
         saveScenes();
         closeDlg();
         if (!keep) toast(`‘${r.n}’ ${r.b ? "저장" : "시작 — 진행 중"}`);
@@ -7637,50 +7637,118 @@ const quickFind = (() => {
     }, { passive: true });
     document.addEventListener("scroll", () => { if (hov && !hov.hidden) { hov.hidden = true; hovMsg = null; } }, { capture: true, passive: true });
 
-    // ── 장면 로그 창: 고른 구간의 채팅만 (◀ 이전 · 다음 ▶ · 전체 복사 · 이 장면에서 찾기) ──
-    const SCW_PIN = "r20_scw_pin", SCW_GEO = "r20_scw_geo";
+    // ── 장면 창: 왼쪽 좁은 목차 | 오른쪽 그 장면 로그 (☰ 로 목차 접기 · 접으면 ◀ ▶) ──
+    // 목차: 누르면 그 장면 · 이름 두 번 눌러 고치기 · 마우스를 올리면 ▶ 시작 다시 · ■ 끝 (다시) 찍기 · ✕ 지우기(두 번) · ↑↓ 로 옮기기
+    const SCW_PIN = "r20_scw_pin", SCW_GEO = "r20_scw_geo", SCW_TOC = "r20_scw_toc", TOC_W = 128, LOG_W = 290;
     let scw = null, scwId = null, scwT = 0, scwRows = [];
     const scwOpen = () => !!scw && !scw.hidden;
     const scwSoon = () => { if (scwOpen()) { clearTimeout(scwT); scwT = setTimeout(renderScw, 120); } };
     const scwPinned = () => localStorage.getItem(SCW_PIN) === "true";
+    const tocOn = () => localStorage.getItem(SCW_TOC) !== "off";
     const scwKeep = () => {
         if (!scwOpen() || !scwPinned() || scw.classList.contains("aio-min")) return;
         try { localStorage.setItem(SCW_GEO, JSON.stringify({ l: scw.offsetLeft, t: scw.offsetTop, w: scw.offsetWidth, h: scw.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
     };
-    // 기본 자리: 오른쪽 판 왼쪽, 빠른 찾기 창 자리만큼 더 왼쪽 · 📌 면 기억한 자리 · 크기
+    // 기본 자리: 빠른 찾기 창 왼쪽에 위를 맞춰 (없으면 오른쪽 판 왼쪽) · 📌 면 기억한 자리 · 크기
     const placeScw = () => {
         let g = null;
         if (scwPinned()) try { g = JSON.parse(localStorage.getItem(SCW_GEO) || "null"); } catch (e) { /* 없음 */ }
         const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const w = Math.min(Math.max(280, g?.w || 360), W - 16), h = Math.min(Math.max(200, g?.h || Math.min(560, Math.round(H * 0.6))), H - 16);
+        const w = Math.min(Math.max(220, g?.w || LOG_W + (tocOn() ? TOC_W : 0)), W - 16), h = Math.min(Math.max(200, g?.h || Math.min(560, Math.round(H * 0.6))), H - 16);
         const qb = isOpen() ? box.getBoundingClientRect() : null, edge = qb?.width ? qb.left / z : (side?.width ? side.left / z - 348 : W);
         const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, edge - 8 - w);
         const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : Math.max(8, Math.min(qb ? qb.top / z : 40, H - h - 8));
         Object.assign(scw.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
     };
+    const pickScene = id => {
+        if (!id || id === scwId) return;
+        scwId = id;
+        scw.querySelectorAll(".toc .tr").forEach(t => { const on = t.dataset.id === id; t.classList.toggle("on", on); t.setAttribute("aria-selected", String(on)); if (on) t.scrollIntoView({ block: "nearest" }); });
+        scw.querySelector(".q").value = "";
+        renderLog();
+        scw.querySelector(".bd").scrollTop = 0;
+    };
+    // 목차에서 이름 고치기 (Enter · 밖 누르기 = 저장, Esc = 그만)
+    const renameRow = row => {
+        const r = (scn || []).find(x => x.id === row.dataset.id), tn = row.querySelector(".tn");
+        if (!r || !tn) return;
+        const inp2 = Object.assign(document.createElement("input"), { type: "text", value: r.n, maxLength: 80, spellcheck: false });
+        inp2.setAttribute("aria-label", "구간 이름");
+        let done = false;
+        const end = ok => {
+            if (done) return;
+            done = true;
+            row.classList.remove("ed");
+            const v = inp2.value.trim();
+            if (ok && v && v !== r.n) { r.n = v; saveScenes(); }
+            renderScw();
+        };
+        inp2.addEventListener("keydown", e => {
+            e.stopPropagation();
+            if (e.isComposing || e.keyCode === 229) return;
+            if (e.key === "Enter") { e.preventDefault(); end(true); }
+            else if (e.key === "Escape") { e.preventDefault(); end(false); }
+        });
+        inp2.addEventListener("blur", () => end(true));
+        row.classList.add("ed");
+        tn.replaceWith(inp2);
+        inp2.focus(); inp2.select();
+    };
     const buildScw = () => {
         scw = document.createElement("div");
         scw.id = "r20-scw";
         scw.setAttribute("role", "dialog");
-        scw.setAttribute("aria-label", "장면 로그");
-        scw.tabIndex = -1;                  // 제목줄을 눌러도 창 안에 포커스 (Esc 닫기)
+        scw.setAttribute("aria-label", "장면");
+        scw.tabIndex = -1;                  // 제목줄을 눌러도 창 안에 포커스 (Esc 닫기 · ↑↓)
         scw.hidden = true;
-        scw.innerHTML = '<div class="hd"><b class="nm"></b><span class="mt"></span><button type="button" data-a="prev" title="이전 구간">◀ 이전</button><button type="button" data-a="next" title="다음 구간">다음 ▶</button>'
-            + '<button type="button" data-a="pin" class="pin" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기">✕</button></div>'
-            + '<div class="tb"><button type="button" data-a="copy">전체 복사</button><input type="search" class="q" placeholder="이 장면에서 찾기" aria-label="이 장면에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
-            + '<div class="bd" tabindex="-1"></div>';
+        scw.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm"></b><span class="mt"></span>'
+            + '<button type="button" data-a="prev" class="nav" title="이전 구간" aria-label="이전 구간">◀</button><button type="button" data-a="next" class="nav" title="다음 구간" aria-label="다음 구간">▶</button>'
+            + '<button type="button" data-a="add" class="add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>'
+            + '<button type="button" data-a="pin" class="pin" aria-pressed="false" title="이 자리 · 크기 기억">📌</button><button type="button" data-a="x" aria-label="닫기">✕</button></div>'
+            + '<div class="sp"><div class="toc" role="listbox" aria-label="장면 목차"></div><div class="pane">'
+            + '<div class="tb"><button type="button" data-a="copy" title="이 장면 채팅 전체 복사">복사</button><input type="search" class="q" placeholder="이 장면에서 찾기" aria-label="이 장면에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
+            + '<div class="bd" tabindex="-1"></div></div></div>';
         scw.addEventListener("keydown", e => {
             e.stopPropagation();
+            if (e.target.matches("input") && e.key !== "Escape" && !(e.key === "Enter" && e.target.matches(".q"))) return;
             if (e.key === "Escape") { e.preventDefault(); scw.hidden = true; }
             else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
+            else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !e.target.closest(".bd")) {      // 로그 칸에선 그대로 굴리기
+                const L = resolved(), k = L.findIndex(v => v.r.id === scwId);
+                e.preventDefault();
+                pickScene(L[Math.max(0, Math.min(L.length - 1, k + (e.key === "ArrowDown" ? 1 : -1)))]?.r.id);
+            }
         });
         scw.addEventListener("click", async e => {
-            const b = e.target.closest("button"), a = b?.dataset.a;
+            const b = e.target.closest("button"), a = b?.dataset.a, row = e.target.closest(".tr");
+            if (row && !a) return row.classList.contains("ed") ? null : pickScene(row.dataset.id);
             if (!a) return;
+            if (row) {          // 목차 줄의 ▶ ■ ✕
+                const id = row.dataset.id, r = (scn || []).find(x => x.id === id);
+                if (!r) return;
+                if (a === "del") {
+                    if (!row.classList.contains("sure")) { row.classList.add("sure"); b.title = "한 번 더 누르면 지워요"; return; }
+                    scn = scn.filter(x => x.id !== id);
+                    if (scwId === id) scwId = null;
+                    saveScenes(); toast(`‘${r.n}’ 지움`);
+                    return;
+                }
+                return pickStart({ edit: id, only: a === "ra" ? "a" : "b", quiet: true });
+            }
             if (a === "x") { scwKeep(); scw.hidden = true; return; }
+            if (a === "add") return pickStart({});
             if (a === "prev" || a === "next") {
-                const L = resolved(), k = L.findIndex(v => v.r.id === scwId), v = L[k + (a === "prev" ? -1 : 1)];
-                if (v) { scwId = v.r.id; scw.querySelector(".q").value = ""; renderScw(); scw.querySelector(".bd").scrollTop = 0; }
+                const L = resolved(), k = L.findIndex(v => v.r.id === scwId);
+                return pickScene(L[k + (a === "prev" ? -1 : 1)]?.r.id);
+            }
+            if (a === "toc") {          // 접으면 오른쪽 끝은 그대로 두고 좁힌다
+                const on = !tocOn(), z = aioZoom.get();
+                try { localStorage.setItem(SCW_TOC, on ? "on" : "off"); } catch (err) { /* 저장 못 함 */ }
+                const w = scw.offsetWidth + (on ? TOC_W : -TOC_W), l = Math.max(0, scw.offsetLeft - (on ? TOC_W : -TOC_W));
+                Object.assign(scw.style, { width: Math.max(220, Math.min(w, innerWidth / z - 16)) + "px", left: l + "px" });
+                scw.classList.toggle("notoc", !on);
+                b.setAttribute("aria-pressed", String(on));
+                scwKeep(); renderScw();
                 return;
             }
             if (a === "pin") {
@@ -7691,10 +7759,13 @@ const quickFind = (() => {
             }
             if (a === "copy") {
                 const ok = await copyText(scwRows.map(c => (c.who ? c.who + ": " : "") + c.t).join("\n"));
-                b.textContent = ok ? "✓ 복사했어요" : "못 했어요";
-                setTimeout(() => { b.textContent = "전체 복사"; }, 1500);
+                b.textContent = ok ? "✓" : "못 함";
+                setTimeout(() => { b.textContent = "복사"; }, 1500);
             }
         });
+        const toc = scw.querySelector(".toc");
+        toc.addEventListener("dblclick", e => { const row = e.target.closest(".tr"); if (row && !e.target.closest("button")) { e.preventDefault(); renameRow(row); } });
+        toc.addEventListener("mouseout", e => { const row = e.target.closest(".tr.sure"); if (row && !row.contains(e.relatedTarget)) row.classList.remove("sure"); });
         scw.querySelector(".q").addEventListener("input", () => paintHits());
         // 제목줄 끌어 옮기기 · 모서리로 크기
         const hd = scw.querySelector(".hd");
@@ -7715,11 +7786,16 @@ const quickFind = (() => {
         new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(scwKeep, 300); }).observe(scw);
         document.body.appendChild(scw);
     };
+    // id 가 없으면 진행 중인 가장 안쪽 구간, 없으면 마지막 구간
     const openScene = id => {
         if (!isGM()) return;
         if (!scw?.isConnected) buildScw();
+        if (!scn) loadScenes();
         const was = scwOpen();
+        if (!id) { const L = resolved(); id = (L.filter(v => v.live).pop() || L[L.length - 1])?.r.id || null; }
         scwId = id;
+        scw.classList.toggle("notoc", !tocOn());
+        scw.querySelector(".tg").setAttribute("aria-pressed", String(tocOn()));
         scw.hidden = false;
         scw.classList.remove("aio-min");
         if (!was) placeScw();
@@ -7729,13 +7805,30 @@ const quickFind = (() => {
         renderScw();
         scw.querySelector(".bd").scrollTop = 0;
     };
-    const renderScw = () => {
-        if (!scwOpen()) return;
+    const renderScw = () => { if (scwOpen()) { renderToc(); renderLog(); } };
+    // 목차 (고치는 중이면 그대로)
+    const renderToc = () => {
+        const L = resolved(), toc = scw.querySelector(".toc");
+        if (!toc.querySelector(".tr.ed")) {
+            toc.innerHTML = L.map(x => `<div class="tr${x.r.id === scwId ? " on" : ""}" role="option" aria-selected="${x.r.id === scwId}" data-id="${escAttr(x.r.id)}" style="padding-left:${5 + x.d * 7}px" title="${escAttr(x.r.n + "\n" + x.span + (x.live ? " 진행 중" : ""))}">`
+                + `<span class="tn">${escAttr(x.r.n)}</span>${x.live ? '<i class="dot" aria-label="진행 중"></i>' : ""}`
+                + `<span class="ta"><button type="button" data-a="ra" title="시작 다시 찍기">▶</button><button type="button" data-a="rb" title="${x.live ? "끝 찍기" : "끝 다시 찍기"}">■</button><button type="button" data-a="del" title="지우기 (두 번)">✕</button></span></div>`).join("")
+                || `<div class="te">${scnRun ? "읽는 중…" : "아직 구간이 없어요"}</div>`;
+            toc.querySelector(".tr.on")?.scrollIntoView({ block: "nearest" });
+        }
+    };
+    const renderLog = () => {
         const L = resolved(), k = L.findIndex(v => v.r.id === scwId), v = L[k], bd = scw.querySelector(".bd");
         scw.querySelector('[data-a="prev"]').disabled = k <= 0;
         scw.querySelector('[data-a="next"]').disabled = k < 0 || k >= L.length - 1;
         scwRows = [];
-        if (!v) { scw.querySelector(".nm").textContent = "장면 로그"; scw.querySelector(".mt").textContent = ""; bd.innerHTML = '<div class="msg">지워진 구간이에요</div>'; return; }
+        if (!v) {
+            scw.querySelector(".nm").textContent = "장면";
+            scw.querySelector(".mt").textContent = L.length ? `구간 ${L.length}개` : "";
+            scw.querySelector(".qn").textContent = "";
+            bd.innerHTML = `<div class="msg">${L.length ? (tocOn() ? "왼쪽 목차에서 구간을 고르세요" : "◀ ▶ 로 구간을 고르세요") : "[+ 구간]을 누르거나, 채팅 메시지에 마우스를 올려 ▶"}</div>`;
+            return;
+        }
         scw.querySelector(".nm").textContent = v.r.n;
         scw.querySelector(".mt").textContent = v.span + (v.live ? " 진행 중" : "");
         if (v.ia == null) { bd.innerHTML = `<div class="msg">${escAttr(chatRun ? "채팅 로그를 읽는 중…" : chatErr ? `채팅 로그를 못 읽었어요 (${chatErr})` : v.span || "…")}</div>`; return; }
@@ -7922,6 +8015,7 @@ const quickFind = (() => {
         list.addEventListener("click", e => {
             if (e.target.closest(".qf-clr")) { try { localStorage.removeItem(RKEY); } catch (err) { /* 못 지움 */ } return draw(); }
             if (e.target.closest(".qf-add")) return pickStart({});
+            if (e.target.closest(".qf-tocb")) return openScene(null);
             const pr = pick && e.target.closest(".qf-row[data-id]");          // 구간 찍는 중: 찾은 채팅 줄도 고를 수 있다 (화면에 없는 옛 채팅)
             if (pr) return pickMsg(pr.dataset.id);
             const r = e.target.closest("[data-i]"), b = e.target.closest("[data-a]");
@@ -8258,7 +8352,7 @@ addCss(`
         #r20-qf .qf-tx { flex:1; min-width:0; white-space:pre-line; overflow-wrap:anywhere; }
         #textchat .content > .message.r20qf-flash { animation:r20qf-flash 2s ease-out; }
         /* 장면 구간: 목차 줄 · 찍기 · 알림 띠 · 이름 창 · 채팅 ▶ ■ · 장면 로그 창 */
-        #r20-qf .qf-grp .qf-add { margin-left:0; font-weight:400; }
+        #r20-qf .qf-grp :is(.qf-add, .qf-tocb) { margin-left:0; font-weight:400; }
         #r20-qf .qf-sc .qf-nm { max-width:55%; }
         #r20-qf .qf-live { color:var(--aio-accent); font-weight:700; }
         #r20-qf .qf-ed { flex-shrink:0; opacity:0; }
@@ -8292,19 +8386,41 @@ addCss(`
         #r20-scw { position:fixed; z-index:10004; display:flex; flex-direction:column; min-width:280px; min-height:160px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.5 sans-serif; overflow:hidden; resize:both; box-sizing:border-box; }
         #r20-scw[hidden] { display:none; }
         #r20-scw:focus { outline:none; }
-        #r20-scw .hd { display:flex; align-items:center; gap:4px; flex-shrink:0; height:36px; padding:0 6px 0 10px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
-        #r20-scw .nm { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; }
+        #r20-scw *, #r20-scw *::before, #r20-scw *::after { box-sizing:border-box; }
+        #r20-scw .hd { display:flex; align-items:center; gap:4px; flex-shrink:0; height:34px; padding:0 5px 0 4px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
+        #r20-scw .nm { flex:0 1 auto; min-width:0; max-width:45%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12.5px; }
         #r20-scw .mt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-4); font-size:11px; }
         #r20-scw button { flex-shrink:0; height:22px; margin:0; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:20px; cursor:pointer; box-shadow:none; }
         #r20-scw button:hover:not(:disabled) { border-color:var(--aio-accent); color:var(--aio-accent); }
         #r20-scw button:disabled { opacity:0.4; cursor:default; }
         #r20-scw .pin { padding:0 4px; border-color:transparent; filter:grayscale(1); opacity:0.5; }
+        #r20-scw .tg, #r20-scw .nav { width:22px; padding:0; border-color:transparent; color:var(--aio-ink-4); font-size:10px; }
+        #r20-scw .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
+        #r20-scw:not(.notoc) .nav { display:none; }
+        #r20-scw .add { border-color:var(--aio-accent); color:var(--aio-accent); }
+        #r20-scw .sp { display:flex; flex:1; min-height:0; }
+        #r20-scw .toc { flex:0 0 128px; overflow-y:auto; overscroll-behavior:contain; padding:4px 3px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
+        #r20-scw.notoc .toc { display:none; }
+        #r20-scw .pane { display:flex; flex-direction:column; flex:1; min-width:0; }
+        #r20-scw .tr { --tr-bg:var(--aio-bg-3); position:relative; display:flex; align-items:center; gap:3px; height:24px; padding-right:4px; border-radius:var(--aio-r-sm); color:var(--aio-ink-2); font-size:11.5px; cursor:pointer; user-select:none; }
+        #r20-scw .tr:hover { background:var(--tr-bg); }
+        #r20-scw .tr.on { --tr-bg:var(--aio-accent-bg); background:var(--tr-bg); color:var(--aio-accent-dark); font-weight:700; }
+        #r20-scw .tr.sure { --tr-bg:var(--aio-bad-bg); background:var(--tr-bg); color:var(--aio-bad); }
+        #r20-scw .tn { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-scw .dot { flex:none; width:5px; height:5px; border-radius:50%; background:var(--aio-accent); }
+        #r20-scw .ta { position:absolute; right:2px; top:3px; display:none; gap:1px; padding-left:10px; background:linear-gradient(90deg, transparent, var(--tr-bg) 10px); }
+        #r20-scw .tr:hover .ta { display:flex; }
+        #r20-scw .tr.ed .ta { display:none; }
+        #r20-scw .ta button { width:17px; height:18px; padding:0; border-radius:4px; color:var(--aio-ink-4); font-size:8px; line-height:16px; }
+        #r20-scw .ta button[data-a="del"]:hover, #r20-scw .tr.sure .ta button[data-a="del"] { border-color:var(--aio-bad); background:var(--aio-bad); color:#fff; }
+        #r20-scw .tr input { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-accent) !important; border-radius:4px !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:11.5px !important; }
+        #r20-scw .te { padding:10px 4px; color:var(--aio-ink-5); font-size:11px; text-align:center; }
         #r20-scw .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
         #r20-scw .hd [data-a="x"] { padding:0 6px; border-color:transparent; }
-        #r20-scw .tb { display:flex; align-items:center; gap:6px; flex-shrink:0; padding:5px 10px; border-bottom:1px solid var(--aio-line-4); }
+        #r20-scw .tb { display:flex; align-items:center; gap:5px; flex-shrink:0; padding:4px 8px; border-bottom:1px solid var(--aio-line-4); }
         #r20-scw .q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 !important; padding:0 8px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
         #r20-scw .qn { color:var(--aio-ink-5); font-size:11px; white-space:nowrap; }
-        #r20-scw .bd { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:6px 12px 10px; user-select:text; outline:none; }
+        #r20-scw .bd { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 10px 10px; user-select:text; outline:none; }
         #r20-scw .m { position:relative; padding:2px 0; content-visibility:auto; contain-intrinsic-size:auto 24px; }
         #r20-scw .w { display:flex; align-items:baseline; gap:6px; margin-top:6px; } #r20-scw .w b { color:var(--aio-ink-2); } #r20-scw .w span { color:var(--aio-ink-5); font-size:10.5px; }
         #r20-scw .t { white-space:pre-line; overflow-wrap:anywhere; color:var(--aio-ink-2); }
