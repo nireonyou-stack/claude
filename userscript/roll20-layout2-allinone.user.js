@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.66.0
+// @version      1.67.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.66.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.67.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -481,7 +481,7 @@ function applyCocofoliaLayout() {
                 b.members.forEach(([k, name]) => {
                     btnVisible[k] = on;
                     localStorage.setItem("r20_show_" + k, String(on));
-                    try { FEAT[name]?.setEnabled?.(on); } catch (e) { console.warn(`[올인원] ${name} 켜고 끄기 오류`, e); }
+                    try { FEAT[name]?.setEnabled?.(on); } catch (e) { aioErr(name + " 켜고 끄기", e); }
                 });
                 DIRTY.all = true;
             });
@@ -907,6 +907,26 @@ const CSS_PARTS = [];
 const addFeature = (name, mod) => (FEAT[name] = mod);
 const addBundle = def => BUNDLES.push(def);
 const addCss = css => CSS_PARTS.push(css);
+// 올인원 오류 기록: 기능마다 따로 잡은 오류 + 이 스크립트에서 난 잡히지 않은 오류 → 진단 복사 · ⚙ ⚠ 표시
+const AIO_ERRS = [];
+let aioErrHook = null;
+const aioErr = (where, e, quiet) => {
+    const m = String(e?.message || e || "").replace(/\s+/g, " ").slice(0, 160), same = AIO_ERRS.find(x => x.w === where && x.m === m);
+    if (same) { same.n++; same.t = Date.now(); }           // 같은 오류는 한 줄로 (몇 번인지만)
+    else { AIO_ERRS.push({ t: Date.now(), w: where, m, n: 1 }); if (AIO_ERRS.length > 20) AIO_ERRS.shift(); }
+    if (!quiet) console.warn(`[올인원] ${where} 오류`, e);
+    aioErrHook?.();
+};
+// 이 스크립트 파일 주소 (오류 스택에 이 주소가 있으면 올인원 오류) — 오류가 났을 때 처음 한 번만 알아낸다
+// (불러올 때 스택을 만들면 스크립트 전체를 다시 읽어 40ms 가 든다 · 이벤트 처리 안에서는 작은 함수만)
+let aioSrc = null;
+const aioSrcOf = () => {
+    if (aioSrc != null) return aioSrc;
+    const m = (new Error().stack || "").split("\n").map(l => l.match(/((?:https?|chrome-extension|moz-extension|safari-web-extension|blob|file):[^()\s]*?):\d+:\d+\)?\s*$/)).find(Boolean);
+    return (aioSrc = m && !m[1].startsWith(location.origin) ? m[1] : "");       // 페이지 안에 글로 들어간 경우엔 Roll20 오류와 못 가르므로 끔
+};
+window.addEventListener("error", e => { const st = e.error?.stack || "", src = (st || e.filename) && aioSrcOf(); if (src && (st.includes(src) || e.filename === src)) aioErr("잡히지 않은", e.error || e.message, true); });
+window.addEventListener("unhandledrejection", e => { const st = e.reason?.stack || "", src = st && aioSrcOf(); if (src && st.includes(src)) aioErr("잡히지 않은(약속)", e.reason, true); });
 // 기능이 watch(선택자)를 주면 그 요소가 새로 생기거나 그 안이 바뀐 때만 inject 를 부른다 (매번 문서 전체를 훑지 않게).
 // instant 도 주면 그 요소가 새로 생긴 순간 바로 부른다(기다리지 않고). 문서 전체 감시자는 시작 쪽 하나만 둔다
 // all: 다음 번엔 전부 (처음 · 설정을 바꾼 뒤)
@@ -1051,7 +1071,7 @@ const jbWatch = (() => {
     const OWN = ".r20jb-vol, .r20jb-loop, .r20-bgm-pv, .r20jb-step";       // 우리가 붙인 것은 무시
     let watched = null;
     const all = () => [...document.querySelectorAll("#jukebox li.jukeboxitem")];
-    const run = (lis, folders) => subs.forEach(fn => { try { fn(lis, folders); } catch (e) { console.warn("[올인원] 주크박스 처리 오류", e); } });
+    const run = (lis, folders) => subs.forEach(fn => { try { fn(lis, folders); } catch (e) { aioErr("주크박스 처리", e); } });
     const ensure = () => {
         const jb = document.getElementById("jukebox");
         if (!jb || jb === watched) return;
@@ -8225,7 +8245,13 @@ const quickFind = (() => {
         document.getElementById("r20-scnbtn")?.remove();
         FEAT.screenUI?.place();
     };
-    return { inject, setEnabled, open, dockAt, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
+    // 진단: 채팅 로그를 읽어 봤으면 그 결과 (방 내용은 빼고 개수 · 문제만)
+    const health = () => ({
+        fail: chatErr ? [["채팅 로그 전체 (빠른 찾기 채팅 · 장면)", `채팅 아카이브를 못 읽음 (${chatErr})`]]
+            : chat && chat.length > 20 && !chat.some(c => c.at) ? [["채팅 시각 (목차 · 장면 창)", "채팅 아카이브에 시각 칸이 없음"]] : [],
+        info: [chat ? `채팅 로그 ${chat.length.toLocaleString()}줄` : "", bodyOf.size ? `본문 읽음 ${bodyOf.size.toLocaleString()}` : "", scn ? `장면 구간 ${scn.length}` : "", macLinked() ? "장면 매크로 연결" : ""].filter(Boolean)
+    });
+    return { inject, setEnabled, open, dockAt, health, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
 })();
 
 // ───────── 창 자리 · 크기 기억: Roll20 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
@@ -11938,6 +11964,114 @@ addBundle({ place: "chat", order: 1, label: "이모지 팔레트", sub: "", memb
 
 // ══════════ 시작 ══════════
 
+// ───────── 자가 점검 · 진단 복사: Roll20 이 바뀌어 올인원이 기대는 화면 · 데이터가 없어졌는지 ─────────
+// Roll20 이 다 뜬 뒤(채팅 칸 · 방 데이터가 생기고 4초 뒤) 한 번 점검 → 못 찾은 것이 있거나 오류가 나면 ⚙ 에 ! ·
+// 설정 창 맨 위에 무엇이 왜 안 될 수 있는지 + [다시 점검] [진단 복사]. 진단에는 방 내용(이름 · 채팅 글)은 넣지 않는다
+const selfCheck = (() => {
+    const $ = q => document.querySelector(q);
+    // [기능, 못 찾으면 무엇, 점검, 이 점검이 필요한 때]
+    const CHECKS = [
+        ["채팅 (빠른 찾기 · 장면 · 사담 · 대화 캡처)", "채팅 칸", () => !!$("#textchat .content"), () => true],
+        ["채팅 입력 (말머리 · 매크로 실행)", "채팅 입력칸 · 보내기 단추", () => !!$("#textchat-input textarea") && !!$("#chatSendBtn"), () => true],
+        ["단추줄 (맵 · 편집기 · 목차 · 🔍)", "오른쪽 판 · ☰ 단추", () => !!$("#rightsidebar") && !!$("#sidebarcontrol"), () => true],
+        ["저널 목록 · 빠른 저널", "저널 목록", () => !!$("#journal"), () => btnVisible.journal || btnVisible.qfind],
+        ["주크박스 (미리듣기 · 페이드 · 태그)", "주크박스 목록", () => !!$("#jukebox") && !!$("#jukeboxfolderroot"), () => isGM() && (btnVisible.bgm || btnVisible.jbrow)],
+        ["맵 전체보기 (⛶)", "확대 · 축소 묶음의 배율 숫자", () => !!$("#vm_zoom_buttons .zoomButtonsInner .level"), () => btnVisible.screenui],
+        ["방 데이터 (거의 모든 기능)", "핸드아웃 · 캐릭터 데이터", () => !!window.Campaign?.handouts?.models && !!window.Campaign?.characters?.models, () => true],
+        ["본문 (빠른 찾기 본문 · 일괄 편집기 · 장면 목차)", "본문 읽기 함수", () => { const m = window.Campaign?.handouts?.models?.[0]; return !m || typeof m._getLatestBlob === "function"; }, () => true],
+        ["매크로 (빠른 찾기 · 장면 매크로)", "매크로 목록", () => !!window.currentPlayer?.macros?.models, () => btnVisible.qfind],
+        ["BGM 곡 (빠른 찾기 · 일괄 편집기)", "주크박스 데이터", () => !!window.Jukebox?.playlist?.models, () => isGM()],
+        ["채팅 로그 전체 (빠른 찾기 채팅 · 장면)", "방 번호", () => !!window.campaign_id, () => btnVisible.qfind]
+    ];
+    let res = null;         // { at, total, fail: [[기능, 무엇]] }
+    const run = () => {
+        const fail = [];
+        let total = 0;
+        CHECKS.forEach(([feat, what, test, when]) => {
+            let need = false;
+            try { need = when(); } catch (e) { need = true; }
+            if (!need) return;
+            total++;
+            let ok = false;
+            try { ok = test(); } catch (e) { ok = false; }
+            if (!ok) fail.push([feat, what + " 없음"]);
+        });
+        const h = FEAT.quickFind?.health?.();
+        (h?.fail || []).forEach(f => { total++; fail.push(f); });
+        res = { at: Date.now(), total, fail };
+        paint();
+    };
+    const bad = () => (res?.fail.length || 0) + AIO_ERRS.length;
+    // ⚙ 에 ! · 설정 창이 열려 있으면 맨 위 줄도
+    const paint = () => {
+        document.getElementById("custom-settings-btn")?.classList.toggle("aio-warn", !!bad());
+        const pop = document.getElementById("custom-settings-popup");
+        if (pop?.classList.contains("show")) strip(pop);
+    };
+    let paintT = 0;
+    aioErrHook = () => { clearTimeout(paintT); paintT = setTimeout(paint, 300); };
+    const strip = pop => {
+        let el = pop.querySelector(":scope > .cs-check");
+        if (!el) { el = document.createElement("div"); el.className = "cs-check"; pop.prepend(el); }
+        const f = res?.fail || [], n = AIO_ERRS.length;
+        el.classList.toggle("bad", !!(f.length || n));
+        el.innerHTML = (!res ? '<span>점검 전 (Roll20 이 다 뜨면 저절로)</span>'
+            : f.length || n ? `<b>⚠ ${f.length ? `Roll20 이 바뀌었을 수 있어요 — ${f.length}개 안 될 수 있음` : `최근 오류 ${n}개`}</b>`
+                + (f.length ? "<ul>" + f.map(([a, b]) => `<li>${escAttr(a)} — ${escAttr(b)}</li>`).join("") + "</ul>" : "")
+                + (f.length && n ? `<div class="sub">최근 오류 ${n}개</div>` : "")
+                : `<span>✓ 점검 ${res.total}개 모두 정상</span>`)
+            + '<span class="btns"><button type="button" data-a="re">다시 점검</button><button type="button" data-a="copy" class="pri">진단 복사</button></span>';
+    };
+    // 진단 글: 버전 · 브라우저 · 화면 · 방 크기(개수만) · 켠 기능 · 점검 · 최근 오류
+    const report = () => {
+        const C = window.Campaign, ua = navigator.userAgent, br = (ua.match(/(Edg|OPR|Firefox|Chrome|Safari)\/(\d+)/) || []).slice(1).join(" ") || "?";
+        const os = /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /Linux/.test(ua) ? "Linux" : "?";
+        const n = c => (c?.models || []).length.toLocaleString(), z = Math.round((aioZoom.get?.() || 1) * 100);
+        const on = BUNDLES.filter(b => b.members.every(([k]) => btnVisible[k])).map(b => b.label.replace(/\s*\(.*$/, "").split(" · ")[0]), all = BUNDLES.length;
+        const p2 = v => String(v).padStart(2, "0"), hm = t => { const d = new Date(t); return p2(d.getHours()) + ":" + p2(d.getMinutes()); };
+        const h = FEAT.quickFind?.health?.();
+        return [
+            `[올인원 진단] v${SCRIPT_VER} · ${br} · ${os} · 화면 ${innerWidth}×${innerHeight} · 배율 ${Math.round(devicePixelRatio * 100)}% · 올인원 글자 ${z}%`,
+            `방: ${isGM() ? "GM" : "플레이어"} · 핸드아웃 ${n(C?.handouts)} · 캐릭터 ${n(C?.characters)} · 곡 ${n(window.Jukebox?.playlist)} · 매크로 ${n(window.currentPlayer?.macros)} · 페이지 ${n(C?.pages)}${h?.info?.length ? " · " + h.info.join(" · ") : ""}`,
+            `켠 기능 ${on.length}/${all}: ${on.join(", ")}`,
+            res ? `점검 ${res.total} 중 ${res.total - res.fail.length} 정상${res.fail.map(([a, b]) => `\n  ✗ ${a} — ${b}`).join("")}` : "점검 전",
+            `최근 오류 (${AIO_ERRS.length})${AIO_ERRS.map(e => `\n  ${hm(e.t)} ${e.w}: ${e.m}${e.n > 1 ? ` (×${e.n})` : ""}`).join("") || ": 없음"}`
+        ].join("\n");
+    };
+    // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추
+    document.addEventListener("click", e => {
+        if (e.target.closest?.("#custom-settings-btn")) return setTimeout(() => { const pop = document.getElementById("custom-settings-popup"); if (pop?.classList.contains("show")) strip(pop); }, 0);
+        const b = e.target.closest?.("#custom-settings-popup .cs-check button");
+        if (!b) return;
+        e.stopPropagation();
+        if (b.dataset.a === "re") { run(); return; }
+        copyText(report()).then(ok => { b.textContent = ok ? "✓ 복사했어요" : "못 했어요"; setTimeout(() => { if (b.isConnected) b.textContent = "진단 복사"; }, 1500); });
+    }, true);
+    // Roll20 이 다 뜨기를 기다렸다가 (채팅 칸 · 방 데이터 + 4초, 길어도 60초 뒤엔)
+    if (!IS_ARCHIVE) {
+        const t0 = Date.now();
+        const wait = () => {
+            if ((document.querySelector("#textchat .content") && window.Campaign?.handouts) || Date.now() - t0 > 20000) setTimeout(run, 4000);
+            else setTimeout(wait, 2000);
+        };
+        setTimeout(wait, 2000);
+    }
+    return { run, report };
+})();
+addCss(`
+        /* 자가 점검: ⚙ 의 ! · 설정 창 맨 위 줄 */
+        #custom-settings-btn.aio-warn { position:relative; color:var(--aio-warn) !important; }
+        #custom-settings-btn.aio-warn::after { content:"!"; position:absolute; top:1px; right:1px; width:11px; height:11px; border-radius:50%; background:#f59e0b; color:#fff; font:700 8px/11px sans-serif; text-align:center; }
+        #custom-settings-popup .cs-check { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; flex-shrink:0; padding:6px 8px; border-bottom:1px solid var(--aio-line-2); background:var(--aio-ok-bg); color:var(--aio-ok); font-size:11px; line-height:1.45; }
+        #custom-settings-popup .cs-check.bad { background:var(--aio-warn-bg); color:var(--aio-warn-ink); }
+        #custom-settings-popup .cs-check b { flex-basis:100%; }
+        #custom-settings-popup .cs-check ul { flex-basis:100%; margin:0 0 2px 14px; padding:0; }
+        #custom-settings-popup .cs-check .sub { flex-basis:100%; }
+        #custom-settings-popup .cs-check .btns { display:flex; gap:4px; margin-left:auto; }
+        #custom-settings-popup .cs-check button { height:20px; margin:0; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:10px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:10.5px; line-height:18px; cursor:pointer; box-shadow:none; }
+        #custom-settings-popup .cs-check button.pri { border-color:var(--aio-accent); color:var(--aio-accent); }
+`);
+
 // 스타일은 바탕 CSS + 묶음마다 등록한 CSS 를 한 번에 넣는다
 // (예전 버전 사본이 먼저 넣은 스타일이 있으면 알리고 이 버전 것으로 바꾼다)
 // 채팅 아카이브 페이지: 로그 백업 단추만 (묶음을 뺀 판이면 아무것도 안 한다)
@@ -11953,12 +12087,12 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
 }
 // 한 기능이 오류를 내도 나머지는 계속 붙도록 하나씩 따로 돌린다
 const injectAll = () => {
-    try { applyCocofoliaLayout(); } catch (e) { console.warn("[올인원] 채팅 입력칸 오류", e); }
+    try { applyCocofoliaLayout(); } catch (e) { aioErr("채팅 입력칸", e); }
     const all = DIRTY.all;
     DIRTY.all = false;
     for (const [name, mod] of Object.entries(FEAT)) {
         if (mod.watch && !all && !DIRTY.set.delete(name)) continue;
-        try { mod.inject?.(); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
+        try { mod.inject?.(); } catch (e) { aioErr(name, e); }
     }
 };
 const markDirty = recs => {
@@ -11976,7 +12110,7 @@ const injectNow = recs => {
     for (const [name, mod] of Object.entries(FEAT)) {
         const sel = mod.instant && mod.watch;
         if (!sel || !recs.some(r => [...r.addedNodes].some(n => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))))) continue;
-        try { mod.inject(); } catch (e) { console.warn(`[올인원] ${name} 오류 — 이 기능만 건너뜀`, e); }
+        try { mod.inject(); } catch (e) { aioErr(name, e); }
     }
 };
 let _layoutTimer = null;
