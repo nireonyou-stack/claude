@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.62.2
+// @version      1.62.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.62.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.62.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5357,7 +5357,9 @@ const screenUI = (() => {
             fb.className = (minus.className.replace(/\bminus\b/, "") + " r20-fitz").trim();
             fb.title = FIT_TITLE;
             fb.setAttribute("aria-label", "맵 전체보기");
-            fb.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+            // Roll20(Vue) 단추 모양은 data-v-* 표시가 붙은 요소에만 걸리므로 − 단추의 표시를 그대로 옮겨 단다
+            [...minus.attributes].forEach(a => { if (a.name.startsWith("data-v-")) fb.setAttribute(a.name, a.value); });
+            fb.innerHTML = '<i class="el-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></i>';
             fb.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fitMap(fb); });
             minus.after(fb);
         }
@@ -5606,14 +5608,17 @@ addCss(`
         body.r20sc-on #vm_zoom_buttons .parentContainer { gap:0 !important; padding:2px 0 !important; }
         body.r20sc-on #vm_zoom_buttons .wrapper { width:auto !important; height:auto !important; }
         body.r20sc-on #vm_zoom_buttons .parentContainer, body.r20sc-on #vm_zoom_buttons .zoomButtonsInner { display:flex !important; flex-direction:column !important; align-items:center !important; width:auto !important; height:auto !important; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > :first-child { order:1; }
-        body.r20sc-on #vm_zoom_buttons .parentContainer > :last-child { order:2; }
+        /* 순서는 단추 이름으로 고정: 보기(👁) · 가운데(⌖) · 확대 묶음. Roll20 이 조건부로 끝에 붙이는 것(v-if)은 맨 뒤로
+           (예전 :first-child · :last-child 는 끝에 무언가 붙으면 ⌖ 가 맨 위로 튀어 올라 단추 자리가 바뀌었다) */
+        body.r20sc-on #vm_zoom_buttons .parentContainer > * { order:9; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > #view-controls-button { order:1; }
+        body.r20sc-on #vm_zoom_buttons .parentContainer > .centerCameraButton { order:2; }
         body.r20sc-on #vm_zoom_buttons .parentContainer > .zoomButtonsInner { order:3; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .plus { order:1; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .level { order:2; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .sliderSection { order:3; }
         body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .minus { order:4; }
-        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .r20-fitz { order:5; display:flex; align-items:center; justify-content:center; color:inherit; }
+        body.r20sc-on #vm_zoom_buttons .zoomButtonsInner > .r20-fitz { order:5; }
         #vm_zoom_buttons .r20-fitz:disabled { cursor:progress; opacity:0.6; }
         /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
