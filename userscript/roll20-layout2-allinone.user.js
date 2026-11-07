@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.65.1
+// @version      1.66.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.65.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.66.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7390,11 +7390,11 @@ const quickFind = (() => {
     let scn = null, scnRun = null, scnVer = "", scSaveT = 0, pick = null;
     const scHandout = () => (window.Campaign?.handouts?.models || []).find(m => m.get("name") === SC_NAME);
     const loadScenes = () => {
-        if (!isGM() || scnRun || scSaveT) return;
+        if (!isGM() || scnRun || scSaveT) return scnRun;
         const m = scHandout();
-        if (!m) { scn = scn || []; return; }
+        if (!m) { scn = scn || []; return null; }
         const ver = String(m.get("gmnotes") ?? "");
-        if (scn && ver === scnVer) return;
+        if (scn && ver === scnVer) return null;
         scnRun = getBlob(m, "gmnotes").then(raw => {
             let list = [];
             try { const o = JSON.parse(unesc(raw) || "{}"); if (Array.isArray(o.list)) list = o.list.filter(r => r && r.id && r.a); } catch (e) { /* 데이터가 아니면 빈 목차 */ }
@@ -7402,6 +7402,7 @@ const quickFind = (() => {
             scn = list.concat(mine); scnVer = ver;
             if (mine.length) saveScenes();
         }).finally(() => { scnRun = null; soon(); scwSoon(); });
+        return scnRun;
     };
     const saveScenes = () => {
         clearTimeout(scSaveT);
@@ -7469,11 +7470,103 @@ const quickFind = (() => {
         bar = document.createElement("div");
         bar.id = "r20-scb";
         bar.setAttribute("role", "status");
-        bar.addEventListener("click", e => { if (e.target.closest("button")) pickEnd(true); });
+        bar.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.dataset.a === "undo") { const f = barUndo; barUndo = null; bar.hidden = true; return f?.(); }
+            pickEnd(true);
+        });
         document.body.appendChild(bar);
         return bar;
     };
-    const toast = msg => { const b = barEl(); clearTimeout(barT); b.className = "toast"; b.textContent = msg; b.hidden = false; barT = setTimeout(() => { if (!pick) b.hidden = true; }, 2200); };
+    let barUndo = null;
+    const toast = (msg, undo) => {
+        const b = barEl();
+        clearTimeout(barT);
+        b.className = "toast";
+        b.textContent = msg;
+        barUndo = undo || null;
+        if (undo) b.insertAdjacentHTML("beforeend", '<button type="button" data-a="undo" class="undo">되돌리기</button>');
+        b.hidden = false;
+        barT = setTimeout(() => { if (!pick) { b.hidden = true; barUndo = null; } }, undo ? 6000 : 2200);
+    };
+
+    // ── 장면 매크로 연결: 고른 '열기' · '닫기' 매크로가 채팅에 나오면 ▶ · ■ 를 저절로 ──
+    // 매크로는 이름으로 기억 (이 브라우저 · 방을 복사해도 같은 이름이면 그대로)
+    // 알아보기: 매크로 글에 든 그림 주소가 채팅에 나오면 (없으면 매크로 글 앞부분이 채팅 글에 들어 있으면)
+    // 닫기: 열기 매크로로 연 진행 중 장면 중 가장 안쪽 → 없으면 방금 닫은 장면의 끝을 여기로 (다음 열기 전까지 마지막 닫기가 끝)
+    // 페이즈 · 사이클처럼 손으로 찍은 구간(▶ ■)은 건드리지 않는다
+    const MAC_KEY = "r20_sc_mac";
+    const macCfg = () => { try { const o = JSON.parse(localStorage.getItem(MAC_KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } };
+    const macLinked = () => { const c = macCfg(); return !!(c.a || c.b); };
+    const imgKey = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "/");
+    const macSig = name => {
+        const m = name && (window.currentPlayer?.macros?.models || []).find(x => x.get("name") === name);
+        if (!m) return null;
+        const act = String(m.get("action") || ""), imgs = new Set((act.match(/https?:\/\/[^\s)\]"'<>]+/g) || []).map(imgKey));
+        // 그림이 없으면 글 앞부분: 명령(/desc 등) · [글](주소) · 굴림 칸을 빼고
+        const txt = act.replace(/^\s*\/(?:desc|em|emas|as\s+"[^"]*"|w\s+\S+|direct|ooc)\s*/i, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\[\[[^\]]*\]\]|\{\{[^}]*\}\}|&\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim().slice(0, 30);
+        return { imgs, txt };
+    };
+    const macOf = n => {
+        const c = macCfg(), imgs = [...n.querySelectorAll("img")].map(i => imgKey(i.getAttribute("src") || "")), text = domText(n);
+        for (const k of ["a", "b"]) {
+            const g = macSig(c[k]);
+            if (!g) continue;
+            if (g.imgs.size ? imgs.some(u => g.imgs.has(u)) : g.txt.length >= 4 && text.includes(g.txt)) return k;
+        }
+        return null;
+    };
+    const macFire = (k, id) => {
+        const list = scn || [];
+        if (list.some(r => r.a === id || r.b === id)) return;      // 이미 찍은 메시지 (새로 고침 뒤 다시 그려진 것 등)
+        if (k === "a") {
+            const r = { id: newId(), n: nameFrom(textOf(id)) || `장면 ${list.length + 1}`, a: id, b: null, at: Date.now(), mo: true };
+            scn = [...list, r];
+            saveScenes();
+            return nameDlg(r, false);       // 이미 저장됨 — 이름만 고치기 (Esc 면 그 이름 그대로)
+        }
+        const ix = logIndex(chatAll());
+        const live = list.filter(r => r.mo && !r.b && order(r.a, id, ix) <= 0).sort((x, y) => order(y.a, x.a, ix))[0];
+        if (live) {
+            live.b = id; live.mc = true;
+            saveScenes();
+            return toast(`‘${live.n}’ 끝`, () => { live.b = null; live.mc = false; saveScenes(); });
+        }
+        // 진행 중이 없으면: 매크로로 닫은 장면 중 가장 늦게 닫힌 것 — 그 뒤에 시작한 구간이 없을 때만 끝을 옮긴다
+        const last = list.filter(r => r.mc && r.b && order(r.b, id, ix) < 0).sort((x, y) => order(y.b, x.b, ix))[0];
+        if (!last || list.some(r => r !== last && order(r.a, last.b, ix) > 0 && order(r.a, id, ix) < 0)) return;
+        const prev = last.b;
+        last.b = id;
+        saveScenes();
+        toast(`‘${last.n}’ 끝을 여기로 옮겼어요`, () => { last.b = prev; saveScenes(); });
+    };
+    // 새로 온 채팅만 본다 (붙인 뒤에 처음 보는 메시지 · 한꺼번에 많이 오면 예전 기록을 불러온 것이라 건너뜀)
+    let macObs = null, macBox = null, macSeen = new Set(), macFrom = 0;
+    const macWatch = () => {
+        const box = document.querySelector("#textchat .content");
+        const want = isGM() && btnVisible.qfind && macLinked() && box;
+        if (!want) { macObs?.disconnect(); macObs = null; macBox = null; return; }
+        if (macObs && macBox === box) return;
+        macObs?.disconnect();
+        macBox = box;
+        box.querySelectorAll(":scope > .message[data-messageid]").forEach(n => macSeen.add(n.dataset.messageid));
+        macFrom = Date.now() + 3000;            // 붙인 뒤 3초는 Roll20 이 예전 채팅을 채우는 중일 수 있다
+        macObs = new MutationObserver(recs => {
+            const fresh = [];
+            recs.forEach(r => r.addedNodes.forEach(n => {
+                if (n.nodeType !== 1 || !n.matches?.(".message[data-messageid]") || macSeen.has(n.dataset.messageid)) return;
+                macSeen.add(n.dataset.messageid);
+                fresh.push(n);
+            }));
+            if (!fresh.length || fresh.length > 8 || Date.now() < macFrom) return;
+            fresh.forEach(n => {
+                const k = macOf(n);
+                if (k) Promise.resolve(loadScenes()).then(() => macFire(k, n.dataset.messageid));
+            });
+        });
+        macObs.observe(box, { childList: true });
+    };
 
     // ── 구간 찍기: 채팅 메시지(또는 빠른 찾기의 찾은 채팅 줄)를 누른다 · Esc: 시작 전 = 그만, 끝 찍을 때 = 진행 중으로 ──
     const paintPick = () => {
@@ -7704,13 +7797,16 @@ const quickFind = (() => {
         scw.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm"></b><span class="mt"></span>'
             + '<button type="button" data-a="prev" class="nav" title="이전 구간" aria-label="이전 구간">◀</button><button type="button" data-a="next" class="nav" title="다음 구간" aria-label="다음 구간">▶</button>'
             + '<button type="button" data-a="add" class="add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>'
+            + '<button type="button" data-a="cfg" class="cfgb" aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
             + '<button type="button" data-a="pin" class="pin" aria-pressed="false" title="이 자리 · 크기 기억">📌</button><button type="button" data-a="x" aria-label="닫기">✕</button></div>'
+            + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
+            + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
             + '<div class="sp"><div class="toc" role="listbox" aria-label="장면 목차"></div><div class="pane">'
             + '<div class="tb"><button type="button" data-a="copy" title="이 장면 채팅 전체 복사">복사</button><input type="search" class="q" placeholder="이 장면에서 찾기" aria-label="이 장면에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
             + '<div class="bd" tabindex="-1"></div></div></div>';
         scw.addEventListener("keydown", e => {
             e.stopPropagation();
-            if (e.target.matches("input") && e.key !== "Escape" && !(e.key === "Enter" && e.target.matches(".q"))) return;
+            if (e.target.matches("input, select") && e.key !== "Escape" && !(e.key === "Enter" && e.target.matches(".q"))) return;
             if (e.key === "Escape") { e.preventDefault(); scw.hidden = true; }
             else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
             else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !e.target.closest(".bd")) {      // 로그 칸에선 그대로 굴리기
@@ -7737,6 +7833,16 @@ const quickFind = (() => {
             }
             if (a === "x") { scwKeep(); scw.hidden = true; return; }
             if (a === "add") return pickStart({});
+            if (a === "cfg") {          // 매크로 목록은 열 때마다 새로
+                const cfg = scw.querySelector(".cfg"), on = cfg.hidden, c = macCfg(), names = (window.currentPlayer?.macros?.models || []).map(m => m.get("name")).filter(Boolean).sort((x, y) => x.localeCompare(y, "ko"));
+                cfg.querySelectorAll("select").forEach(sel => {
+                    const v = c[sel.dataset.k] || "";
+                    sel.innerHTML = '<option value="">(없음)</option>' + [...new Set([...names, ...(v ? [v] : [])])].map(n => `<option value="${escAttr(n)}"${n === v ? " selected" : ""}>${escAttr(n)}${names.includes(n) ? "" : " (없음)"}</option>`).join("");
+                });
+                cfg.hidden = !on;
+                b.setAttribute("aria-pressed", String(on));
+                return;
+            }
             if (a === "prev" || a === "next") {
                 const L = resolved(), k = L.findIndex(v => v.r.id === scwId);
                 return pickScene(L[k + (a === "prev" ? -1 : 1)]?.r.id);
@@ -7767,6 +7873,14 @@ const quickFind = (() => {
         toc.addEventListener("dblclick", e => { const row = e.target.closest(".tr"); if (row && !e.target.closest("button")) { e.preventDefault(); renameRow(row); } });
         toc.addEventListener("mouseout", e => { const row = e.target.closest(".tr.sure"); if (row && !row.contains(e.relatedTarget)) row.classList.remove("sure"); });
         scw.querySelector(".q").addEventListener("input", () => paintHits());
+        scw.querySelector(".cfg").addEventListener("change", e => {
+            const k = e.target.dataset.k;
+            if (!k) return;
+            const c = macCfg();
+            if (e.target.value) c[k] = e.target.value; else delete c[k];
+            try { localStorage.setItem(MAC_KEY, JSON.stringify(c)); } catch (err) { /* 저장 못 함 */ }
+            macWatch();
+        });
         // 제목줄 끌어 옮기기 · 모서리로 크기
         const hd = scw.querySelector(".hd");
         hd.addEventListener("pointerdown", e => {
@@ -8089,6 +8203,7 @@ const quickFind = (() => {
     // 햄버거 밑 단추줄(맵 단추 아래) 단추 — 플레이어도
     const inject = () => {
         if (btnVisible.qfind && document.getElementById("sidebarcontrol")) injectScn();
+        if (macLinked() || macObs) macWatch();
         if (!btnVisible.qfind || document.getElementById("r20-qfbtn") || !document.getElementById("sidebarcontrol")) return;
         const b = document.createElement("button");
         b.type = "button";
@@ -8105,6 +8220,7 @@ const quickFind = (() => {
         if (on) return inject();
         close();
         if (scwOpen()) scw.hidden = true;
+        macObs?.disconnect(); macObs = null; macBox = null;
         document.getElementById("r20-qfbtn")?.remove();
         document.getElementById("r20-scnbtn")?.remove();
         FEAT.screenUI?.place();
@@ -8385,6 +8501,8 @@ addCss(`
         #r20-scb.toast { padding-right:14px; background:var(--aio-tip); }
         #r20-scb small { font-weight:400; opacity:0.85; }
         #r20-scb button { width:20px; height:20px; margin:0; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,0.2); color:#fff; font-size:10px; line-height:20px; cursor:pointer; }
+        #r20-scb button.undo { width:auto; padding:0 9px; border:1px solid rgba(255,255,255,0.35); border-radius:10px; background:transparent; font-size:11px; }
+        #r20-scb.toast:has(.undo) { padding-right:8px; }
         #r20-scd { position:fixed; top:30%; left:50%; z-index:10011; display:flex; flex-direction:column; gap:6px; width:340px; max-width:calc(100vw - 32px); padding:10px 12px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.25); color:var(--aio-ink-2); font:12px/1.4 sans-serif; transform:translateX(-50%); }
         #r20-scd[hidden], #r20-scd [hidden] { display:none !important; }
         #r20-scd .lb { color:var(--aio-ink-3); font-size:11px; } #r20-scd .lb small { color:var(--aio-ink-5); }
@@ -8415,6 +8533,13 @@ addCss(`
         #r20-scw .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
         #r20-scw:not(.notoc) .nav { display:none; }
         #r20-scw .add { border-color:var(--aio-accent); color:var(--aio-accent); }
+        #r20-scw .cfgb { width:22px; padding:0; border-color:transparent; color:var(--aio-ink-4); font-size:12px; }
+        #r20-scw .cfgb[aria-pressed="true"] { background:var(--aio-bg-3); }
+        #r20-scw .cfg { display:flex; flex-wrap:wrap; gap:4px 10px; flex-shrink:0; padding:6px 10px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-bg-2); font-size:11px; color:var(--aio-ink-3); }
+        #r20-scw .cfg[hidden] { display:none; }
+        #r20-scw .cfg label { display:inline-flex; align-items:center; gap:4px; margin:0; font:inherit; color:inherit; }
+        #r20-scw .cfg select { width:auto !important; max-width:130px; height:22px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; font-size:11px !important; }
+        #r20-scw .cfg p { flex-basis:100%; margin:0; color:var(--aio-ink-4); font-size:10.5px; line-height:1.4; }
         #r20-scw .sp { display:flex; flex:1; min-height:0; }
         #r20-scw .toc { flex:0 0 128px; overflow-y:auto; overscroll-behavior:contain; padding:4px 3px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
         #r20-scw.notoc .toc { display:none; }
