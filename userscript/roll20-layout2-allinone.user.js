@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.59.0
+// @version      1.59.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.59.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.59.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -9873,15 +9873,13 @@ const bulkEditor = (() => {
     const inject = () => {
         if (!btnVisible.bulk || !gmKnown()) return;
         // 핸드아웃 · 캐릭터 · GM 메모 · 주크박스를 읽고 고치므로 GM 만
-        if (!isGM()) { document.querySelectorAll("button.r20be-open").forEach(b => b.remove()); return; }
+        if (!isGM()) return;
         // 햄버거 밑 단추줄(맵 단추 아래)에도 — 마지막에 본 탭으로 연다
         if (!document.getElementById("r20-bebtn") && document.getElementById("sidebarcontrol")) {
             document.body.appendChild(el("button", { type: "button", id: "r20-bebtn", class: "r20-dockbtn", title: "일괄 편집기", "aria-label": "일괄 편집기 열기",
                 onclick: e => { e.preventDefault(); e.stopPropagation(); open(); } }, el("span", { html: ICON.pen, style: "display:flex" })));
             FEAT.screenUI?.place();
         }
-        // 예전 버전 사본이 단 탭 위 단추가 보이면 지우고 알린다
-        document.querySelectorAll("#journal .r20be-open:not([data-aio]), #jukebox .r20be-open:not([data-aio])").forEach(b => { b.remove(); warnDuplicate(); });
     };
     const setEnabled = on => {
         document.body.classList.toggle("r20be-off", !on);
