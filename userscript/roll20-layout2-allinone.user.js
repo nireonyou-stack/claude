@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.61.0
+// @version      1.62.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.61.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.62.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -976,6 +976,7 @@ const CORE_CSS = `
         /* 햄버거 밑 단추줄(맵 단추 아래)에 붙는 올인원 단추 — 자리는 화면 배치(screenUI.place)가 잡는다 */
         .r20-dockbtn { position:fixed; z-index:2999; display:flex; align-items:center; justify-content:center; width:28px; height:28px; margin:0; padding:0; border:0; border-radius:var(--aio-r) 0 0 var(--aio-r); background:var(--aio-float); color:var(--aio-ink-3); box-shadow:0 1px 3px rgba(0,0,0,0.3); cursor:pointer; }
         .r20-dockbtn:hover { color:var(--aio-accent); }
+        .r20-dockbtn:disabled { cursor:progress; opacity:0.6; }
         .r20-dockbtn:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         .r20-dockbtn svg { width:15px; height:15px; }
         html.r20-zchat #textchat .content { zoom:var(--aio-z, 1); }
@@ -5278,7 +5279,7 @@ const screenUI = (() => {
         const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
         const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
-        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
+        const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons"), document.getElementById("r20-fitbtn")] : [];
         els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
             if (!el) return;
@@ -5291,9 +5292,57 @@ const screenUI = (() => {
         });
         FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
     };
+    // ── 맵 전체보기: 지금 페이지가 채팅 판 왼쪽 화면에 다 들어오는 배율까지 Roll20 의 − / + 를 대신 누르고, Roll20 가운데(⌖) 단추로 가운데에 ──
+    // Roll20 배율은 엔진을 못 만지므로 확대 · 축소 단추와 그 사이 숫자(.level)만 쓴다
+    const zoomBox = () => document.getElementById("vm_zoom_buttons");
+    const levelNow = () => parseInt(zoomBox()?.querySelector(".level")?.textContent, 10);
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    // 누른 뒤 숫자가 바뀔 때까지 (Roll20 이 다시 그리는 데 걸리는 만큼, 최대 0.4초)
+    const press = async btn => {
+        const before = levelNow();
+        btn.click();
+        for (let i = 0; i < 8 && levelNow() === before; i++) await sleep(50);
+        return levelNow();
+    };
+    let fitting = false;
+    const fitMap = async fb => {
+        const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage() : null, zb = zoomBox();
+        const plus = zb?.querySelector(".plus"), minus = zb?.querySelector(".minus");
+        if (fitting || !pg || !plus || !minus || !Number.isFinite(levelNow())) return;
+        const W = (parseFloat(pg.get("width")) || 25) * 70, H = (parseFloat(pg.get("height")) || 25) * 70;
+        const side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const vw = (side?.width > 0 && side.left < innerWidth - 1 ? side.left : innerWidth) - 48, vh = innerHeight - 48;      // 가장자리 여유
+        const target = Math.max(10, Math.min(250, Math.floor(Math.min(vw / W, vh / H) * 100)));
+        fitting = true;
+        fb.disabled = true;
+        try {
+            // 줄여서 target 이하로 → 넘지 않을 만큼 키우기
+            for (let i = 0; i < 40 && levelNow() > target; i++) { const before = levelNow(); if (await press(minus) === before) break; }      // 더 못 줄임
+            for (let i = 0; i < 40 && levelNow() < target; i++) {
+                const before = levelNow(), after = await press(plus);
+                if (after === before) break;                          // 더 못 키움
+                if (after > target) { await press(minus); break; }      // 지나쳤으면 한 칸 물리기
+            }
+            // Roll20 가운데(⌖) 단추: 이름으로 찾고, 없으면 확대 단추 묶음 위쪽 두 번째 단추
+            const center = [...zb.querySelectorAll("button, [role=button]")].find(b => /center|가운데|중앙/i.test(`${b.title} ${b.getAttribute("aria-label") || ""}`))
+                || zb.querySelector(".parentContainer > :last-child:not(.zoomButtonsInner)");
+            (center?.matches("button, [role=button]") ? center : center?.querySelector("button, [role=button]") || center)?.click();
+        } finally { fitting = false; fb.disabled = false; }
+    };
     let watched = null, watchedSide = null;
     const inject = () => {
         if (!btnVisible.screenui && !btnVisible.mapshot) return;
+        if (btnVisible.screenui && zoomBox() && !document.getElementById("r20-fitbtn")) {
+            const fb = document.createElement("button");
+            fb.type = "button";
+            fb.id = "r20-fitbtn";
+            fb.className = "r20-dockbtn";
+            fb.title = "맵 전체보기 — 페이지가 화면에 다 들어오게 확대 · 축소하고 가운데로";
+            fb.setAttribute("aria-label", "맵 전체보기");
+            fb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+            fb.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); fitMap(fb); });
+            document.body.appendChild(fb);
+        }
         place();
         const side = document.getElementById("rightsidebar");
         if (side && watchedSide !== side) {
@@ -5312,6 +5361,7 @@ const screenUI = (() => {
         document.body.classList.toggle("r20sc-on", on);
         if (on) return inject();
         ["vm_zoom_buttons", "page-button"].forEach(id => { const el = document.getElementById(id); if (el) Z_KEYS.forEach(k => el.style.removeProperty(k)); });
+        document.getElementById("r20-fitbtn")?.remove();
         place();
     };
     window.addEventListener("resize", () => place());
@@ -7391,21 +7441,21 @@ addCss(`
         #r20-qf.pin .qf-box { max-height:calc((100vh - 8px) / var(--aio-z, 1)); min-width:260px; min-height:160px; resize:both; }
         #r20-qf button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
         #r20-qf button:focus-visible, #r20-qf input:focus-visible, #r20-qf select:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
-        #r20-qf .qf-head { display:flex; align-items:center; gap:4px; flex-shrink:0; height:42px; padding:0 6px 0 10px; border-bottom:1px solid var(--aio-line-4); user-select:none; }
+        #r20-qf .qf-head { display:flex; align-items:center; gap:3px; flex-shrink:0; height:34px; padding:0 5px 0 8px; border-bottom:1px solid var(--aio-line-4); user-select:none; }
         #r20-qf.pin .qf-head { padding-left:2px; cursor:move; touch-action:none; }
         #r20-qf.dock .qf-head { padding-left:2px; }
         #r20-qf.dock .qf-box { border-top-right-radius:0; border-bottom-right-radius:0; }
         #r20-qf.dock .qf-pin { display:none; }
-        #r20-qf .qf-dock { font-size:10px; }
-        #r20-qf .qf-grip { display:none; flex-shrink:0; width:14px; color:var(--aio-ink-5); font-size:12px; letter-spacing:-3px; text-align:center; }
+        #r20-qf .qf-dock { font-size:8px; }
+        #r20-qf .qf-grip { display:none; flex-shrink:0; width:11px; color:var(--aio-ink-5); font-size:10px; letter-spacing:-3px; text-align:center; }
         #r20-qf:is(.pin, .dock) .qf-grip { display:block; }
         #r20-qf.dock .qf-grip { cursor:default; }
-        #r20-qf .qf-ib { width:26px; height:26px; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:13px; }
+        #r20-qf .qf-ib { width:21px; height:21px; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; }
         #r20-qf .qf-ib:hover { background:var(--aio-bg-3); }
-        #r20-qf .qf-pin { font-size:12px; filter:grayscale(1); opacity:0.5; }
+        #r20-qf .qf-pin { font-size:10px; filter:grayscale(1); opacity:0.5; }
         #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
-        #r20-qf .qf-in { flex:1 1 120px; min-width:0; width:auto !important; height:28px !important; margin:0 !important; padding:0 8px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:12px !important; outline:none; }
-        #r20-qf .qf-kind { width:auto !important; max-width:96px; height:28px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-3) !important; font-size:11px !important; }
+        #r20-qf .qf-in { flex:1 1 120px; min-width:0; width:auto !important; height:22px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:11px !important; outline:none; }
+        #r20-qf .qf-kind { width:auto !important; max-width:80px; height:22px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-3) !important; font-size:10px !important; }
         #r20-qf .qf-list { flex:1; min-height:60px; overflow-y:auto; overscroll-behavior:contain; padding:2px 10px 6px; }
         #r20-qf .qf-grp { display:flex; align-items:center; gap:6px; margin-top:6px; padding:6px 0 4px; color:var(--aio-accent-dark); font-size:11px; font-weight:700; }
         #r20-qf .qf-ln { flex:1; height:1px; background:#f0d6e2; }
