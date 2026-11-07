@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.59.1
+// @version      1.59.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.59.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.59.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6932,20 +6932,15 @@ const quickFind = (() => {
         sel = Math.min(sel, Math.max(0, shown.length - 1));
         let g = null, html = "";
         shown.forEach((r, i) => {
-            if (r.g !== g) { g = r.g; html += `<div class="qf-grp" role="presentation">${GLABEL[g]}${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : ""}</div>`; }
-            html += `<div class="qf-it" role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}">${thumb(r.it)}`
-                + `<span class="qf-tx"><span class="qf-nm">${r.html}</span><span class="qf-pt" title="${escAttr(r.it.path)}"><span class="qf-kind">${KIND[r.it.k]}</span>${escAttr(sub(r.it))}</span></span>`
-                + `<span class="qf-act">${verb(r.it)}</span></div>`;
+            if (r.g !== g) { g = r.g; html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : ""}</div>`; }
+            html += `<div class="qf-it" role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}" title="${escAttr([KIND[r.it.k], r.it.path].filter(Boolean).join(" · "))}">${thumb(r.it)}`
+                + `<span class="qf-nm">${r.html}</span><span class="qf-pt">${escAttr(sub(r.it))}</span><span class="qf-act">${verb(r.it)}</span></div>`;
         });
         if (!shown.length) html = `<div class="qf-empty">${inp.value.trim() ? "찾는 것이 없어요" : "이름 일부 · 초성(ㅁㄴ) · #태그로 찾아요"}</div>`;
         list.innerHTML = html;
         inp.setAttribute("aria-activedescendant", shown.length ? "r20-qf-o" + sel : "");
-        chips.querySelectorAll("button").forEach(b => {
-            const c = b.dataset.c, n = counts?.[c];
-            b.setAttribute("aria-selected", String(c === chip));
-            b.classList.toggle("zero", n === 0);
-            b.innerHTML = escAttr(CHIPS.find(x => x[0] === c)[1]) + (n == null ? "" : `<i>${n}</i>`);
-        });
+        [...chips.options].forEach(o => { const n = counts?.[o.value]; o.textContent = (o.value === "all" ? "종류: 전체" : CHIPS.find(x => x[0] === o.value)[1]) + (n == null ? "" : ` (${n})`); });
+        chips.value = chip;
     };
     const move = d => {
         if (!shown.length) return;
@@ -7001,40 +6996,41 @@ const quickFind = (() => {
         try { localStorage.setItem(GEO_KEY, JSON.stringify({ l: box.offsetLeft, t: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
     };
     // 창 안 길이는 확대(zoom) 전 단위 — 화면 크기도 그 단위로 나눠 잰다
+    // 기본 자리: 오른쪽 판(채팅 · 저널) 바로 왼쪽, 위에서 조금 아래 (예전 모은 트랙 창 자리 · 창이 좁으면 오른쪽 끝). 📌 면 기억한 자리 · 크기
     const placeBox = () => {
         let g = null;
-        try { g = JSON.parse(localStorage.getItem(GEO_KEY) || "null"); } catch (e) { /* 없음 */ }
-        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z;
-        const w = Math.min(Math.max(260, g?.w || 340), W - 8), h = Math.min(Math.max(200, g?.h || 420), H - 8);
-        const l = g?.l == null ? (W - w) / 2 : Math.max(0, Math.min(g.l, W - w)), t = g?.t == null ? H * 0.08 : Math.max(0, Math.min(g.t, H - 40));
-        Object.assign(box.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
+        if (pinned) try { g = JSON.parse(localStorage.getItem(GEO_KEY) || "null"); } catch (e) { /* 없음 */ }
+        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const w = Math.min(Math.max(260, g?.w || 340), W - 16), edge = side?.width ? side.left / z - 8 : W - 8;
+        const l = g?.l == null ? (edge - w < 8 ? W - w - 8 : edge - w) : Math.max(0, Math.min(g.l, W - w));
+        const t = g?.t == null ? Math.max(8, ((side?.top ?? 0) + 40) / z) : Math.max(0, Math.min(g.t, H - 40));
+        box.removeAttribute("style");
+        Object.assign(box.style, { left: l + "px", top: t + "px", width: w + "px" }, pinned ? { height: Math.min(Math.max(160, g?.h || 420), H - t - 8) + "px" } : {});
     };
     const applyPin = () => {
         root.classList.toggle("pin", pinned);
         if (!pinned) box.classList.remove("aio-min");
-        box.setAttribute("aria-modal", String(!pinned));
         pinBtn.setAttribute("aria-pressed", String(pinned));
-        pinBtn.title = pinned ? "열어 두는 중 — 누르면 풀기" : "열어 두기 — 실행해도 안 닫히고 뒤 화면을 그대로 써요 (자리 · 크기 기억)";
-        if (pinned) placeBox(); else box.removeAttribute("style");
+        pinBtn.title = pinned ? "열어 두는 중 — 누르면 풀기" : "열어 두기 — 실행해도 안 닫혀요 (자리 · 크기 기억)";
+        placeBox();
     };
 
-    // ── 창 (일괄 편집기와 같은 모양 · 340px) ──
+    // ── 창 (예전 모은 트랙 창과 같은 모양 · 340px · 화면을 덮지 않음) ──
     const build = () => {
         root = document.createElement("div");
         root.id = "r20-qf";
-        root.innerHTML = '<div class="qf-dim"></div><div class="qf-box" role="dialog" aria-modal="true" aria-label="빠른 찾기">'
+        root.innerHTML = '<div class="qf-box" role="dialog" aria-label="빠른 찾기">'
             + '<div class="qf-head"><strong>빠른 찾기</strong><button type="button" class="qf-ib qf-pin" aria-label="열어 두기" aria-pressed="false">📌</button>'
-            + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'
-            + '<div class="qf-tools"><input type="text" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="찾을 이름 · 초성 · #태그" placeholder="이름 · 초성 · #태그" autocomplete="off" spellcheck="false">'
-            + '<div class="qf-seg" role="tablist" aria-label="종류">' + CHIPS.map(([c, l]) => `<button type="button" role="tab" data-c="${c}">${l}</button>`).join("") + '</div></div>'
+            + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
+            + '<div class="qf-bar"><input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="찾을 이름 · 초성 · #태그" placeholder="이름 · 초성 · #태그 검색" autocomplete="off" spellcheck="false">'
+            + '<select class="qf-kind" aria-label="종류">' + CHIPS.map(([c, l]) => `<option value="${c}">${c === "all" ? "종류: 전체" : l}</option>`).join("") + '</select></div>'
             + '<div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
             + '<div class="qf-foot">↑↓ 고르기 · Enter 실행<span class="qf-gm"> · Shift+Enter 편집기</span> · Tab 종류</div></div>';
         box = root.querySelector(".qf-box");
         inp = root.querySelector(".qf-in");
         list = root.querySelector(".qf-list");
-        chips = root.querySelector(".qf-seg");
+        chips = root.querySelector(".qf-kind");
         pinBtn = root.querySelector(".qf-pin");
-        root.querySelector(".qf-dim").addEventListener("click", () => { if (!pinned) close(); });
         root.querySelector(".qf-x").addEventListener("click", close);
         pinBtn.addEventListener("click", () => {
             pinned = !pinned;
@@ -7077,11 +7073,8 @@ const quickFind = (() => {
             }
         });
         root.addEventListener("keydown", e => { if (e.key === "Escape" && !e.defaultPrevented) { e.preventDefault(); close(); } });
-        chips.addEventListener("click", e => {
-            const b = e.target.closest("button[data-c]");
-            if (!b) return;
-            chip = b.dataset.c; sel = 0; draw(); inp.focus();
-        });
+        chips.addEventListener("change", () => { chip = chips.value; sel = 0; draw(); inp.focus(); });
+        chips.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키로 새지 않게
         list.addEventListener("mousedown", e => e.preventDefault());       // 입력칸에서 포커스가 빠지지 않게
         list.addEventListener("click", e => {
             if (e.target.closest(".qf-clr")) { try { localStorage.removeItem(RKEY); } catch (err) { /* 못 지움 */ } return draw(); }
@@ -7108,15 +7101,20 @@ const quickFind = (() => {
         draw();
         inp.focus();
     };
-    function close() {
+    function close(refocus = true) {
         if (!isOpen()) return;
         keepGeo();
         root.classList.remove("show");
         box.classList.remove("aio-min");
         items = []; shown = [];
-        if (back?.isConnected) try { back.focus({ preventScroll: true }); } catch (e) { /* 포커스 못 돌림 */ }
+        if (refocus && back?.isConnected) try { back.focus({ preventScroll: true }); } catch (e) { /* 포커스 못 돌림 */ }
         back = null;
     }
+    // 📌 가 아니면 창 밖을 누를 때 닫는다 (누른 곳으로 포커스가 가게 되돌리지 않음)
+    document.addEventListener("pointerdown", e => {
+        if (!isOpen() || pinned || box.contains(e.target) || e.target.closest?.("#r20-qfbtn")) return;
+        close(false);
+    }, true);
     // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
     // 📌 로 열어 둔 동안엔 닫지 않고 입력칸으로 (이미 입력칸이면 닫기)
     document.addEventListener("keydown", e => {
@@ -7329,51 +7327,43 @@ const winMemory = (() => {
 })();
 
 addCss(`
-        /* 빠른 찾기 (Ctrl+F) — 일괄 편집기와 같은 모양, 340px */
-        #r20-qf { position:fixed; inset:0; z-index:10010; display:none; font-family:sans-serif; font-size:12px; }
+        /* 빠른 찾기 (Ctrl+F) — 예전 모은 트랙 창과 같은 모양 · 340px · 화면을 덮지 않음 (창만 누를 수 있게) */
+        #r20-qf { position:fixed; inset:0; z-index:10010; display:none; pointer-events:none; }
         #r20-qf.show { display:block; }
-        #r20-qf.pin { pointer-events:none; }      /* 📌: 뒤 화면을 그대로 누를 수 있게 (창만 받는다) */
         #r20-qf *, #r20-qf *::before, #r20-qf *::after { box-sizing:border-box; }
         #r20-qf [hidden] { display:none !important; }
-        #r20-qf .qf-dim { position:absolute; inset:0; background:rgba(0,0,0,0.35); }
-        #r20-qf.pin .qf-dim { display:none; }
-        #r20-qf .qf-box { position:absolute; left:50%; top:8%; transform:translateX(-50%); display:flex; flex-direction:column; width:min(340px, calc((100vw - 16px) / var(--aio-z, 1))); max-height:calc(70vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 8px 24px rgba(0,0,0,0.22); color:var(--aio-ink-2); line-height:1.4; overflow:hidden; pointer-events:auto; }
-        #r20-qf.pin .qf-box { transform:none; max-width:calc((100vw - 8px) / var(--aio-z, 1)); max-height:calc((100vh - 8px) / var(--aio-z, 1)); min-width:260px; min-height:200px; resize:both; }
-        #r20-qf button:focus-visible, #r20-qf input:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
-        #r20-qf .qf-head { display:flex; align-items:center; gap:4px; height:36px; padding:0 6px 0 10px; background:var(--aio-bg-3); border-bottom:1px solid var(--aio-line-2); user-select:none; flex-shrink:0; }
+        #r20-qf .qf-box { position:absolute; display:flex; flex-direction:column; width:340px; max-width:calc((100vw - 16px) / var(--aio-z, 1)); max-height:calc((100vh - 80px) / var(--aio-z, 1)); border:1px solid #e6e6ea; border-radius:8px; background:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.2); color:#333; font:12px/1.4 sans-serif; overflow:hidden; pointer-events:auto; }
+        #r20-qf.pin .qf-box { max-height:calc((100vh - 8px) / var(--aio-z, 1)); min-width:260px; min-height:160px; resize:both; }
+        #r20-qf button { margin:0; font:inherit; line-height:1; text-shadow:none; background-image:none; box-shadow:none; cursor:pointer; }
+        #r20-qf button:focus-visible, #r20-qf input:focus-visible, #r20-qf select:focus-visible { outline:2px solid #b8215f; outline-offset:1px; }
+        #r20-qf .qf-head { display:flex; align-items:center; gap:2px; flex-shrink:0; height:34px; padding:0 6px 0 12px; border-bottom:1px solid #efeff2; user-select:none; }
         #r20-qf.pin .qf-head { cursor:move; touch-action:none; }
-        #r20-qf .qf-head strong { flex:1; font-size:12px; color:var(--aio-ink-3); }
-        #r20-qf .qf-ib { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-3); font-size:12px; line-height:1; box-shadow:none; cursor:pointer; flex-shrink:0; }
-        #r20-qf .qf-ib:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
-        #r20-qf .qf-pin { filter:grayscale(1); opacity:0.5; }
-        #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); box-shadow:inset 0 0 0 1px var(--aio-accent); }
-        #r20-qf .qf-tools { display:flex; flex-direction:column; gap:6px; padding:6px 8px; border-bottom:1px solid var(--aio-line-3); flex-shrink:0; }
-        #r20-qf .qf-in { width:100%; height:28px; margin:0; padding:0 8px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font:inherit; font-size:12px; box-shadow:none; }
-        #r20-qf .qf-in:focus { border-color:var(--aio-accent); outline:none; }
-        #r20-qf .qf-seg { display:flex; gap:2px; padding:2px; background:var(--aio-bg-4); border-radius:var(--aio-r-sm); }
-        #r20-qf .qf-seg button { flex:1; height:24px; margin:0; padding:0 4px; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-3); font-size:12px; font-weight:700; line-height:1; box-shadow:none; white-space:nowrap; cursor:pointer; }
-        #r20-qf .qf-seg button i { margin-left:3px; font-style:normal; font-weight:400; opacity:0.85; }
-        #r20-qf .qf-seg button.zero { color:var(--aio-ink-5); }
-        #r20-qf .qf-seg button[aria-selected="true"] { background:var(--aio-accent); color:#fff; }
-        #r20-qf .qf-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
-        #r20-qf .qf-grp { display:flex; align-items:center; gap:6px; padding:7px 10px 3px; color:var(--aio-ink-4); font-size:11px; font-weight:700; }
-        #r20-qf .qf-clr { margin:0 0 0 auto; padding:0; border:0; background:none; color:var(--aio-ink-4); font-size:11px; font-weight:400; text-decoration:underline; box-shadow:none; cursor:pointer; }
-        #r20-qf .qf-clr:hover { color:var(--aio-accent); }
-        #r20-qf .qf-it { display:flex; align-items:center; gap:8px; min-height:38px; padding:3px 8px 3px 10px; border-bottom:1px solid var(--aio-line-4); cursor:pointer; }
-        #r20-qf .qf-it:hover { background:var(--aio-accent-bg); }
-        #r20-qf .qf-it[aria-selected="true"] { background:var(--aio-accent-soft); }
-        #r20-qf .qf-th { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:13px; object-fit:cover; }
+        #r20-qf .qf-head strong { flex:1; font-size:13px; }
+        #r20-qf .qf-ib { width:26px; height:26px; padding:0; border:0; border-radius:5px; background:transparent; color:#777; font-size:13px; }
+        #r20-qf .qf-ib:hover { background:#f4f4f6; }
+        #r20-qf .qf-pin { font-size:12px; filter:grayscale(1); opacity:0.5; }
+        #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:#fce6f3; }
+        #r20-qf .qf-bar { display:flex; align-items:center; gap:6px; flex-shrink:0; padding:8px 10px 6px; }
+        #r20-qf .qf-in { flex:1 1 120px; min-width:0; width:auto !important; height:28px !important; margin:0 !important; padding:0 8px !important; border:0 !important; border-radius:6px !important; background:#f4f4f6 !important; box-shadow:none !important; color:#333; font-size:12px !important; outline:none; }
+        #r20-qf .qf-kind { width:auto !important; max-width:130px; height:28px !important; margin:0 !important; padding:0 4px !important; border:1px solid #e1e1e5 !important; border-radius:6px !important; background:#fff !important; box-shadow:none !important; color:#555 !important; font-size:11px !important; }
+        #r20-qf .qf-list { flex:1; min-height:60px; overflow-y:auto; overscroll-behavior:contain; padding:0 10px 6px; }
+        #r20-qf .qf-grp { display:flex; align-items:center; gap:6px; margin-top:6px; padding:6px 0 4px; color:#7a1a42; font-size:11px; font-weight:700; }
+        #r20-qf .qf-ln { flex:1; height:1px; background:#f0d6e2; }
+        #r20-qf .qf-clr { padding:0; border:0; background:none; color:#a07088; font-size:11px; font-weight:400; }
+        #r20-qf .qf-clr:hover { color:#b8215f; text-decoration:underline; }
+        #r20-qf .qf-it { display:flex; align-items:center; gap:6px; height:30px; padding:0 2px; border-bottom:1px solid #f6f6f8; cursor:pointer; }
+        #r20-qf .qf-it:hover { background:#fafafa; }
+        #r20-qf .qf-it[aria-selected="true"] { background:#fce6f3; }
+        #r20-qf .qf-th { flex:none; display:flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:4px; background:#f4f4f6; color:#777; font-size:11px; object-fit:cover; }
         #r20-qf .qf-th.char { border-radius:50%; }
-        #r20-qf .qf-tx { flex:1; min-width:0; display:flex; flex-direction:column; }
-        #r20-qf .qf-nm { overflow:hidden; color:var(--aio-ink); font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
-        #r20-qf .qf-nm mark { background:none; color:var(--aio-accent); }
-        #r20-qf .qf-pt { overflow:hidden; color:var(--aio-ink-4); font-size:10.5px; white-space:nowrap; text-overflow:ellipsis; }
-        #r20-qf .qf-kind { display:inline-block; margin-right:4px; padding:0 4px; border-radius:3px; background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:10px; }
-        #r20-qf .qf-act { flex:none; height:22px; padding:0 9px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:20px; white-space:nowrap; }
-        #r20-qf .qf-it[aria-selected="true"] .qf-act { border-color:var(--aio-accent); color:var(--aio-accent); font-weight:700; }
-        #r20-qf .qf-act.done { border-color:#2e8b57; color:#2e8b57; font-weight:700; }
-        #r20-qf .qf-empty { padding:18px 10px; color:var(--aio-ink-4); text-align:center; }
-        #r20-qf .qf-foot { flex-shrink:0; padding:5px 10px; border-top:1px solid var(--aio-line-3); background:var(--aio-bg-2); color:var(--aio-ink-4); font-size:11px; }
+        #r20-qf .qf-nm { flex:0 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#333; }
+        #r20-qf .qf-nm mark { background:none; color:#b8215f; font-weight:700; }
+        #r20-qf .qf-pt { flex:1 1 0; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#8a8a90; font-size:11px; }
+        #r20-qf .qf-act { flex-shrink:0; height:24px; padding:0 9px; border:1px solid #e1e1e5; border-radius:12px; background:#fff; color:#555; font-size:11px; line-height:22px; white-space:nowrap; }
+        #r20-qf .qf-it:hover .qf-act, #r20-qf .qf-it[aria-selected="true"] .qf-act { border-color:#b8215f; color:#b8215f; }
+        #r20-qf .qf-act.done { border-color:#2a8a4a; color:#2a8a4a; }
+        #r20-qf .qf-empty { margin:20px 0; color:#8a8a90; text-align:center; line-height:1.6; }
+        #r20-qf .qf-foot { flex-shrink:0; padding:8px 10px; border-top:1px solid #efeff2; color:#6b6b70; font-size:11px; }
         .r20qf-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
         .r20qf-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
         /* 창 자리 · 크기 기억 📌 (캐릭터 시트 · 핸드아웃 제목줄) */
