@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.58.1
+// @version      1.59.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.58.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.59.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6883,48 +6883,69 @@ const quickFind = (() => {
         try { localStorage.setItem(RKEY, JSON.stringify(a)); } catch (e) { /* 저장 못 함 */ }
     };
 
-    // ── 찾기 ──
+    // ── 찾기: 찾는 말이 있으면 종류 칸마다 찾은 개수도 센다 ──
+    let counts = null;
     const search = () => {
         const raw = inp.value.trim().toLowerCase();
         const tagQ = raw.split(/\s+/).filter(t => t.startsWith("#") && t.length > 1).map(t => t.slice(1));
         const q = raw.split(/\s+/).filter(t => !t.startsWith("#")).join("");
-        const pool = items.filter(it => chip === "all" || GROUP[it.k] === chip);
+        counts = null;
         if (!q && !tagQ.length) {
             if (chip === "all") {
                 const byKey = new Map(items.map(it => [it.k + ":" + it.id, it]));
                 return recent().map(r => byKey.get(r.k + ":" + r.id)).filter(Boolean).map(it => ({ it, g: "recent", html: escAttr(it.name) }));
             }
-            return pool.slice().sort((a, b) => a.name.localeCompare(b.name, "ko")).slice(0, MAX).map(it => ({ it, g: GROUP[it.k], html: escAttr(it.name) }));
+            return items.filter(it => GROUP[it.k] === chip).sort((a, b) => a.name.localeCompare(b.name, "ko")).slice(0, MAX).map(it => ({ it, g: GROUP[it.k], html: escAttr(it.name) }));
         }
         const hit = [];
-        pool.forEach(it => {
+        items.forEach(it => {
             if (tagQ.length && !tagQ.every(t => it.tags.some(x => x.toLowerCase().includes(t)))) return;
             const m = q ? match(it.name, q) : { score: 0, hits: [] };
             if (!m) return;
             hit.push({ it, g: GROUP[it.k], html: mark(it.name, m.hits), score: m.score - (it.archived ? 300 : 0) });
         });
-        hit.sort((a, b) => b.score - a.score || a.it.name.localeCompare(b.it.name, "ko"));
-        if (chip !== "all") return hit.slice(0, MAX);
+        counts = { all: hit.length, journal: 0, bgm: 0, macro: 0 };
+        hit.forEach(h => counts[h.g]++);
+        const pool = hit.filter(h => chip === "all" || h.g === chip);
+        pool.sort((a, b) => b.score - a.score || a.it.name.localeCompare(b.it.name, "ko"));
+        if (chip !== "all") return pool.slice(0, MAX);
         const cnt = {};
-        return hit.filter(h => (cnt[h.g] = (cnt[h.g] || 0) + 1) <= PER_GROUP)
+        return pool.filter(h => (cnt[h.g] = (cnt[h.g] || 0) + 1) <= PER_GROUP)
             .sort((a, b) => ["journal", "bgm", "macro"].indexOf(a.g) - ["journal", "bgm", "macro"].indexOf(b.g));
     };
+    const KIND = { handout: "핸드아웃", char: "캐릭터", track: "곡", macro: "매크로" };
     const verb = it => it.k === "track" ? (FEAT.jukeboxRow?.playing?.(it.id) ? "정지" : "재생") : it.k === "macro" ? "실행" : "열기";
-    const sub = it => [it.k === "char" ? "캐릭터" : "", it.path, it.archived ? "보관함" : "", it.tags.map(t => "#" + t).join(" ")].filter(Boolean).join(" · ");
+    const DONE = { 열기: "열었어요", 재생: "재생했어요", 정지: "멈췄어요", 실행: "실행했어요" };
+    // 긴 폴더 경로는 처음 › … › 마지막 (전체는 마우스를 올리면)
+    const shortPath = p => { const a = String(p || "").split(" › ").filter(Boolean); return a.length > 2 ? `${a[0]} › … › ${a[a.length - 1]}` : a.join(" › "); };
+    const sub = it => [it.k === "macro" ? "" : shortPath(it.path), it.archived ? "보관함" : "", it.tags.map(t => "#" + t).join(" ")].filter(Boolean).join(" · ");
+    // 캐릭터 · 핸드아웃은 그 사진(작은 크기), 없거나 안 열리면 아이콘
+    const thumb = it => {
+        const cls = "qf-th" + (it.k === "char" ? " char" : "");
+        const u = (it.k === "char" || it.k === "handout") ? String(it.m?.get?.("avatar") || "") : "";
+        return u && /^(?:https?:)?\/\//i.test(u) && !isAnimVideo(u)
+            ? `<img class="${cls}" src="${escAttr(r20img(sizedUrl(u, "thumb")))}" data-ic="${ICON[it.k]}" alt="" loading="lazy">`
+            : `<span class="${cls}" aria-hidden="true">${ICON[it.k]}</span>`;
+    };
     const draw = () => {
         shown = search();
         sel = Math.min(sel, Math.max(0, shown.length - 1));
         let g = null, html = "";
         shown.forEach((r, i) => {
-            if (r.g !== g) { g = r.g; html += `<div class="qf-grp" role="presentation">${GLABEL[g]}</div>`; }
-            html += `<div class="qf-it" role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}">`
-                + `<span class="qf-ic" aria-hidden="true">${ICON[r.it.k]}</span><span class="qf-tx"><span class="qf-nm">${r.html}</span>`
-                + `<span class="qf-pt">${escAttr(sub(r.it))}</span></span><span class="qf-act">${i === sel ? "Enter " : ""}${verb(r.it)}</span></div>`;
+            if (r.g !== g) { g = r.g; html += `<div class="qf-grp" role="presentation">${GLABEL[g]}${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : ""}</div>`; }
+            html += `<div class="qf-it" role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}">${thumb(r.it)}`
+                + `<span class="qf-tx"><span class="qf-nm">${r.html}</span><span class="qf-pt" title="${escAttr(r.it.path)}"><span class="qf-kind">${KIND[r.it.k]}</span>${escAttr(sub(r.it))}</span></span>`
+                + `<span class="qf-act">${verb(r.it)}</span></div>`;
         });
         if (!shown.length) html = `<div class="qf-empty">${inp.value.trim() ? "찾는 것이 없어요" : "이름 일부 · 초성(ㅁㄴ) · #태그로 찾아요"}</div>`;
         list.innerHTML = html;
         inp.setAttribute("aria-activedescendant", shown.length ? "r20-qf-o" + sel : "");
-        chips.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.c === chip)));
+        chips.querySelectorAll("button").forEach(b => {
+            const c = b.dataset.c, n = counts?.[c];
+            b.setAttribute("aria-selected", String(c === chip));
+            b.classList.toggle("zero", n === 0);
+            b.innerHTML = escAttr(CHIPS.find(x => x[0] === c)[1]) + (n == null ? "" : `<i>${n}</i>`);
+        });
     };
     const move = d => {
         if (!shown.length) return;
@@ -6932,7 +6953,6 @@ const quickFind = (() => {
         list.querySelectorAll(".qf-it").forEach(r => {
             const on = Number(r.dataset.i) === sel;
             r.setAttribute("aria-selected", String(on));
-            r.querySelector(".qf-act").textContent = (on ? "Enter " : "") + verb(shown[Number(r.dataset.i)].it);
             if (on) r.scrollIntoView({ block: "nearest" });
         });
         inp.setAttribute("aria-activedescendant", "r20-qf-o" + sel);
@@ -6947,11 +6967,21 @@ const quickFind = (() => {
         send.click();       // 단추 click 은 desc · 사담 머리말을 붙이지 않는다 (머리말은 Enter · mousedown 때만)
         setTimeout(() => { if (keep && !ta.value) { ta.value = keep; ta.dispatchEvent(new Event("input", { bubbles: true })); } }, 0);
     };
-    const run = (it, toEditor) => {
+    // 📌 열어 둔 동안엔 닫지 않고 그 줄에 ✓ 를 잠깐 띄운다
+    const flash = (i, it, v) => {
+        const pill = list.querySelector(`#r20-qf-o${i} .qf-act`);
+        if (!pill) return;
+        pill.textContent = "✓ " + (DONE[v] || "했어요");
+        pill.classList.add("done");
+        setTimeout(() => { if (pill.isConnected) { pill.classList.remove("done"); pill.textContent = verb(it); } }, 1500);
+    };
+    const run = (it, toEditor, i = sel) => {
         if (!it) return;
         remember(it);
-        close();
+        const v = verb(it);
+        if (!pinned) close();
         if (toEditor && isGM() && btnVisible.bulk && FEAT.bulkEditor?.open) return FEAT.bulkEditor.open(it.k === "track" ? "bgm" : it.k === "macro" ? "macros" : "journal", it.id);
+        if (pinned) flash(i, it, v);
         if (it.k === "macro") return runMacro(it.name);
         if (it.k === "track") {
             if (FEAT.jukeboxRow?.toggle?.(it.id)) return;
@@ -6963,22 +6993,76 @@ const quickFind = (() => {
         if (li) (window.jQuery ? window.jQuery(li).trigger("click") : li.click());
     };
 
-    // ── 창 ──
+    // ── 📌 열어 두기: 어둡게 덮지 않고(뒤 화면 그대로) · 실행해도 안 닫힘 · 위쪽 줄로 옮기고 모서리로 크기 → 자리 · 크기 기억 ──
+    const PIN_KEY = "r20_qf_pin", GEO_KEY = "r20_qf_geo";
+    let pinned = localStorage.getItem(PIN_KEY) === "true", box = null, pinBtn = null;
+    const keepGeo = () => {
+        if (!pinned || !isOpen() || box.closest(".aio-min") || box.classList.contains("aio-min")) return;
+        try { localStorage.setItem(GEO_KEY, JSON.stringify({ l: box.offsetLeft, t: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
+    };
+    // 창 안 길이는 확대(zoom) 전 단위 — 화면 크기도 그 단위로 나눠 잰다
+    const placeBox = () => {
+        let g = null;
+        try { g = JSON.parse(localStorage.getItem(GEO_KEY) || "null"); } catch (e) { /* 없음 */ }
+        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z;
+        const w = Math.min(Math.max(260, g?.w || 340), W - 8), h = Math.min(Math.max(200, g?.h || 420), H - 8);
+        const l = g?.l == null ? (W - w) / 2 : Math.max(0, Math.min(g.l, W - w)), t = g?.t == null ? H * 0.08 : Math.max(0, Math.min(g.t, H - 40));
+        Object.assign(box.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
+    };
+    const applyPin = () => {
+        root.classList.toggle("pin", pinned);
+        if (!pinned) box.classList.remove("aio-min");
+        box.setAttribute("aria-modal", String(!pinned));
+        pinBtn.setAttribute("aria-pressed", String(pinned));
+        pinBtn.title = pinned ? "열어 두는 중 — 누르면 풀기" : "열어 두기 — 실행해도 안 닫히고 뒤 화면을 그대로 써요 (자리 · 크기 기억)";
+        if (pinned) placeBox(); else box.removeAttribute("style");
+    };
+
+    // ── 창 (일괄 편집기와 같은 모양 · 340px) ──
     const build = () => {
         root = document.createElement("div");
         root.id = "r20-qf";
         root.innerHTML = '<div class="qf-dim"></div><div class="qf-box" role="dialog" aria-modal="true" aria-label="빠른 찾기">'
-            + '<div class="qf-in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
-            + '<input type="text" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="찾을 이름 · 초성 · #태그" placeholder="이름 · 초성 · #태그" autocomplete="off" spellcheck="false">'
-            + '<kbd>Esc</kbd></div><div class="qf-chips" role="tablist" aria-label="종류">'
-            + CHIPS.map(([c, l]) => `<button type="button" role="tab" data-c="${c}">${l}</button>`).join("")
-            + '</div><div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
-            + '<div class="qf-foot"><span><kbd>↑</kbd><kbd>↓</kbd> 고르기</span><span><kbd>Enter</kbd> 실행</span><span class="qf-gm"><kbd>Shift</kbd>+<kbd>Enter</kbd> 일괄 편집기에서</span><span><kbd>Tab</kbd> 종류</span></div></div>';
-        inp = root.querySelector("input");
+            + '<div class="qf-head"><strong>빠른 찾기</strong><button type="button" class="qf-ib qf-pin" aria-label="열어 두기" aria-pressed="false">📌</button>'
+            + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'
+            + '<div class="qf-tools"><input type="text" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="찾을 이름 · 초성 · #태그" placeholder="이름 · 초성 · #태그" autocomplete="off" spellcheck="false">'
+            + '<div class="qf-seg" role="tablist" aria-label="종류">' + CHIPS.map(([c, l]) => `<button type="button" role="tab" data-c="${c}">${l}</button>`).join("") + '</div></div>'
+            + '<div class="qf-list" id="r20-qf-list" role="listbox" aria-label="찾은 것"></div>'
+            + '<div class="qf-foot">↑↓ 고르기 · Enter 실행<span class="qf-gm"> · Shift+Enter 편집기</span> · Tab 종류</div></div>';
+        box = root.querySelector(".qf-box");
+        inp = root.querySelector(".qf-in");
         list = root.querySelector(".qf-list");
-        chips = root.querySelector(".qf-chips");
-        root.querySelector(".qf-dim").addEventListener("click", close);
+        chips = root.querySelector(".qf-seg");
+        pinBtn = root.querySelector(".qf-pin");
+        root.querySelector(".qf-dim").addEventListener("click", () => { if (!pinned) close(); });
+        root.querySelector(".qf-x").addEventListener("click", close);
+        pinBtn.addEventListener("click", () => {
+            pinned = !pinned;
+            try { localStorage.setItem(PIN_KEY, String(pinned)); } catch (e) { /* 저장 못 함 */ }
+            applyPin();
+            inp.focus();
+        });
+        // 📌 동안 위쪽 줄을 끌어 옮기기
+        const head = root.querySelector(".qf-head");
+        head.addEventListener("pointerdown", e => {
+            if (!pinned || e.button !== 0 || e.target.closest("button")) return;
+            const z = aioZoom.get(), sx = e.clientX, sy = e.clientY, l0 = box.offsetLeft, t0 = box.offsetTop;
+            head.setPointerCapture(e.pointerId);
+            const mv = ev => {
+                box.style.left = Math.max(0, Math.min(l0 + (ev.clientX - sx) / z, innerWidth / z - box.offsetWidth)) + "px";
+                box.style.top = Math.max(0, Math.min(t0 + (ev.clientY - sy) / z, innerHeight / z - 36)) + "px";
+            };
+            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => head.removeEventListener(t, k ? up : mv)); keepGeo(); };
+            head.addEventListener("pointermove", mv);
+            head.addEventListener("pointerup", up);
+            head.addEventListener("pointercancel", up);
+        });
+        // 모서리로 크기를 바꾸면 기억 (손 뗀 뒤)
+        let rt = 0;
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keepGeo, 300); }).observe(box);
         inp.addEventListener("input", () => { sel = 0; draw(); list.scrollTop = 0; });
+        // 열어 둔 채 오래 있었으면 다시 모은다 (그사이 만든 핸드아웃 · 곡)
+        inp.addEventListener("focus", () => { if (Date.now() - gotAt > 3000) { items = gather(); gotAt = Date.now(); draw(); } });
         inp.addEventListener("keydown", e => {
             e.stopPropagation();        // Roll20 단축키로 새지 않게
             if (e.isComposing || e.keyCode === 229) return;     // 한글 조합 중 Enter · 방향키는 조합 끝내기용
@@ -6992,6 +7076,7 @@ const quickFind = (() => {
                 sel = 0; draw();
             }
         });
+        root.addEventListener("keydown", e => { if (e.key === "Escape" && !e.defaultPrevented) { e.preventDefault(); close(); } });
         chips.addEventListener("click", e => {
             const b = e.target.closest("button[data-c]");
             if (!b) return;
@@ -6999,35 +7084,47 @@ const quickFind = (() => {
         });
         list.addEventListener("mousedown", e => e.preventDefault());       // 입력칸에서 포커스가 빠지지 않게
         list.addEventListener("click", e => {
+            if (e.target.closest(".qf-clr")) { try { localStorage.removeItem(RKEY); } catch (err) { /* 못 지움 */ } return draw(); }
             const r = e.target.closest(".qf-it");
-            if (r) run(shown[Number(r.dataset.i)]?.it, e.shiftKey);
+            if (r) run(shown[Number(r.dataset.i)]?.it, e.shiftKey, Number(r.dataset.i));
         });
+        list.addEventListener("error", e => {
+            const m = e.target;
+            if (m.tagName === "IMG" && m.dataset.ic) m.replaceWith(Object.assign(document.createElement("span"), { className: m.className, textContent: m.dataset.ic }));
+        }, true);
         document.body.appendChild(root);
     };
+    let gotAt = 0;
     const isOpen = () => !!root?.classList.contains("show");
     const open = () => {
         if (!btnVisible.qfind || !window.Campaign) return;
         if (!root?.isConnected) build();
         back = document.activeElement;
-        items = gather();
+        items = gather(); gotAt = Date.now();
         chip = "all"; sel = 0; inp.value = "";
         root.querySelector(".qf-gm").hidden = !(isGM() && btnVisible.bulk);
         root.classList.add("show");
+        applyPin();
         draw();
         inp.focus();
     };
     function close() {
         if (!isOpen()) return;
+        keepGeo();
         root.classList.remove("show");
+        box.classList.remove("aio-min");
         items = []; shown = [];
         if (back?.isConnected) try { back.focus({ preventScroll: true }); } catch (e) { /* 포커스 못 돌림 */ }
         back = null;
     }
     // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
+    // 📌 로 열어 둔 동안엔 닫지 않고 입력칸으로 (이미 입력칸이면 닫기)
     document.addEventListener("keydown", e => {
         if (!btnVisible.qfind || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyF") return;
         e.preventDefault(); e.stopPropagation();
-        if (isOpen()) close(); else open();
+        if (!isOpen()) return open();
+        if (pinned && document.activeElement !== inp) { box.classList.remove("aio-min"); inp.focus(); inp.select(); }
+        else close();
     }, true);
     // 햄버거 밑 단추줄(맵 단추 아래) 단추 — 플레이어도
     const inject = () => {
@@ -7082,7 +7179,7 @@ const winMemory = (() => {
     const geom = dlg => ({ l: Math.round(dlg.offsetLeft), t: Math.round(dlg.offsetTop), w: Math.round(dlg.offsetWidth), h: Math.round(dlg.offsetHeight) });
     const save = dlg => {
         const f = info(dlg);
-        if (!f || !mem[keyOf(f)] || !dlg.getClientRects().length) return;
+        if (!f || !mem[keyOf(f)] || !dlg.getClientRects().length || dlg.classList.contains("aio-min")) return;
         mem[keyOf(f)] = { g: geom(dlg) };
         keep();
     };
@@ -7190,6 +7287,19 @@ const winMemory = (() => {
         $(document).on("dialogopen.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d) setTimeout(() => { d.r20wmSeen = false; inject(); }, 0); });
     };
     bindJq();
+    // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
+    // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
+    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-qf.pin .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    document.addEventListener("dblclick", e => {
+        if (!btnVisible.winmem) return;
+        const head = e.target.closest?.(HEADS);
+        if (!head || e.target.closest("button, input, select, textarea, a, label")) return;
+        const win = head.parentElement;
+        if (win.classList.contains("ui-dialog") && ["char", "handout"].includes(info(win)?.kind)) return;
+        e.preventDefault();
+        getSelection()?.removeAllRanges();
+        win.classList.toggle("aio-min");
+    }, true);
     const setMode = m => { mode = m === "kind" ? "kind" : "item"; localStorage.setItem(MODE, mode); paintAll(); };
     // 설정 창 줄: 기억 방식 (항목마다 · 종류별 하나)
     const modeRow = () => {
@@ -7219,33 +7329,51 @@ const winMemory = (() => {
 })();
 
 addCss(`
-        /* 빠른 찾기 (Ctrl+F) */
-        #r20-qf { position:fixed; inset:0; z-index:10010; display:none; font-family:sans-serif; }
+        /* 빠른 찾기 (Ctrl+F) — 일괄 편집기와 같은 모양, 340px */
+        #r20-qf { position:fixed; inset:0; z-index:10010; display:none; font-family:sans-serif; font-size:12px; }
         #r20-qf.show { display:block; }
+        #r20-qf.pin { pointer-events:none; }      /* 📌: 뒤 화면을 그대로 누를 수 있게 (창만 받는다) */
+        #r20-qf *, #r20-qf *::before, #r20-qf *::after { box-sizing:border-box; }
+        #r20-qf [hidden] { display:none !important; }
         #r20-qf .qf-dim { position:absolute; inset:0; background:rgba(0,0,0,0.35); }
-        #r20-qf .qf-box { position:absolute; left:50%; top:8%; transform:translateX(-50%); display:flex; flex-direction:column; width:min(560px, calc((100vw - 32px) / var(--aio-z, 1))); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,0.45); overflow:hidden; color:var(--aio-ink-2); font-size:13px; line-height:1.45; }
-        #r20-qf .qf-in { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--aio-line-3); color:var(--aio-ink-4); }
-        #r20-qf .qf-in input { flex:1; min-width:0; height:28px; margin:0; padding:0; border:0; outline:0; box-shadow:none; background:none; color:var(--aio-ink); font:inherit; font-size:16px; }
-        #r20-qf kbd { display:inline-block; margin:0 1px; padding:0 5px; border:1px solid var(--aio-line-2); border-bottom-width:2px; border-radius:var(--aio-r-sm); background:var(--aio-bg-2); color:var(--aio-ink-3); font:10.5px/1.5 sans-serif; }
-        #r20-qf .qf-chips { display:flex; flex-wrap:wrap; gap:4px; padding:7px 14px; border-bottom:1px solid var(--aio-line-3); }
-        #r20-qf .qf-chips button { height:auto; margin:0; padding:2px 10px; border:1px solid var(--aio-line-2); border-radius:12px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:1.5; cursor:pointer; box-shadow:none; }
-        #r20-qf .qf-chips button[aria-selected="true"] { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent); font-weight:700; }
-        #r20-qf .qf-chips button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
-        #r20-qf .qf-list { flex:1; min-height:0; overflow-y:auto; padding:2px 0 6px; overscroll-behavior:contain; }
-        #r20-qf .qf-grp { padding:8px 14px 3px; color:var(--aio-ink-4); font-size:10.5px; font-weight:700; }
-        #r20-qf .qf-it { display:flex; align-items:center; gap:10px; padding:6px 14px; cursor:pointer; }
-        #r20-qf .qf-it:hover { background:var(--aio-bg-3); }
-        #r20-qf .qf-it[aria-selected="true"] { background:var(--aio-accent-bg); }
-        #r20-qf .qf-ic { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:5px; background:var(--aio-bg-3); font-size:14px; }
+        #r20-qf.pin .qf-dim { display:none; }
+        #r20-qf .qf-box { position:absolute; left:50%; top:8%; transform:translateX(-50%); display:flex; flex-direction:column; width:min(340px, calc((100vw - 16px) / var(--aio-z, 1))); max-height:calc(70vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 8px 24px rgba(0,0,0,0.22); color:var(--aio-ink-2); line-height:1.4; overflow:hidden; pointer-events:auto; }
+        #r20-qf.pin .qf-box { transform:none; max-width:calc((100vw - 8px) / var(--aio-z, 1)); max-height:calc((100vh - 8px) / var(--aio-z, 1)); min-width:260px; min-height:200px; resize:both; }
+        #r20-qf button:focus-visible, #r20-qf input:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        #r20-qf .qf-head { display:flex; align-items:center; gap:4px; height:36px; padding:0 6px 0 10px; background:var(--aio-bg-3); border-bottom:1px solid var(--aio-line-2); user-select:none; flex-shrink:0; }
+        #r20-qf.pin .qf-head { cursor:move; touch-action:none; }
+        #r20-qf .qf-head strong { flex:1; font-size:12px; color:var(--aio-ink-3); }
+        #r20-qf .qf-ib { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-3); font-size:12px; line-height:1; box-shadow:none; cursor:pointer; flex-shrink:0; }
+        #r20-qf .qf-ib:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
+        #r20-qf .qf-pin { filter:grayscale(1); opacity:0.5; }
+        #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); box-shadow:inset 0 0 0 1px var(--aio-accent); }
+        #r20-qf .qf-tools { display:flex; flex-direction:column; gap:6px; padding:6px 8px; border-bottom:1px solid var(--aio-line-3); flex-shrink:0; }
+        #r20-qf .qf-in { width:100%; height:28px; margin:0; padding:0 8px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font:inherit; font-size:12px; box-shadow:none; }
+        #r20-qf .qf-in:focus { border-color:var(--aio-accent); outline:none; }
+        #r20-qf .qf-seg { display:flex; gap:2px; padding:2px; background:var(--aio-bg-4); border-radius:var(--aio-r-sm); }
+        #r20-qf .qf-seg button { flex:1; height:24px; margin:0; padding:0 4px; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-3); font-size:12px; font-weight:700; line-height:1; box-shadow:none; white-space:nowrap; cursor:pointer; }
+        #r20-qf .qf-seg button i { margin-left:3px; font-style:normal; font-weight:400; opacity:0.85; }
+        #r20-qf .qf-seg button.zero { color:var(--aio-ink-5); }
+        #r20-qf .qf-seg button[aria-selected="true"] { background:var(--aio-accent); color:#fff; }
+        #r20-qf .qf-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+        #r20-qf .qf-grp { display:flex; align-items:center; gap:6px; padding:7px 10px 3px; color:var(--aio-ink-4); font-size:11px; font-weight:700; }
+        #r20-qf .qf-clr { margin:0 0 0 auto; padding:0; border:0; background:none; color:var(--aio-ink-4); font-size:11px; font-weight:400; text-decoration:underline; box-shadow:none; cursor:pointer; }
+        #r20-qf .qf-clr:hover { color:var(--aio-accent); }
+        #r20-qf .qf-it { display:flex; align-items:center; gap:8px; min-height:38px; padding:3px 8px 3px 10px; border-bottom:1px solid var(--aio-line-4); cursor:pointer; }
+        #r20-qf .qf-it:hover { background:var(--aio-accent-bg); }
+        #r20-qf .qf-it[aria-selected="true"] { background:var(--aio-accent-soft); }
+        #r20-qf .qf-th { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:13px; object-fit:cover; }
+        #r20-qf .qf-th.char { border-radius:50%; }
         #r20-qf .qf-tx { flex:1; min-width:0; display:flex; flex-direction:column; }
         #r20-qf .qf-nm { overflow:hidden; color:var(--aio-ink); font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
         #r20-qf .qf-nm mark { background:none; color:var(--aio-accent); }
-        #r20-qf .qf-pt { overflow:hidden; color:var(--aio-ink-4); font-size:11px; white-space:nowrap; text-overflow:ellipsis; }
-        #r20-qf .qf-pt:empty { display:none; }
-        #r20-qf .qf-act { flex:none; color:var(--aio-ink-4); font-size:11px; white-space:nowrap; }
-        #r20-qf .qf-it[aria-selected="true"] .qf-act { color:var(--aio-accent); font-weight:700; }
-        #r20-qf .qf-empty { padding:18px 14px; color:var(--aio-ink-4); text-align:center; }
-        #r20-qf .qf-foot { display:flex; flex-wrap:wrap; gap:4px 12px; padding:7px 14px; border-top:1px solid var(--aio-line-3); background:var(--aio-bg-2); color:var(--aio-ink-4); font-size:11px; }
+        #r20-qf .qf-pt { overflow:hidden; color:var(--aio-ink-4); font-size:10.5px; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-qf .qf-kind { display:inline-block; margin-right:4px; padding:0 4px; border-radius:3px; background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:10px; }
+        #r20-qf .qf-act { flex:none; height:22px; padding:0 9px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:20px; white-space:nowrap; }
+        #r20-qf .qf-it[aria-selected="true"] .qf-act { border-color:var(--aio-accent); color:var(--aio-accent); font-weight:700; }
+        #r20-qf .qf-act.done { border-color:#2e8b57; color:#2e8b57; font-weight:700; }
+        #r20-qf .qf-empty { padding:18px 10px; color:var(--aio-ink-4); text-align:center; }
+        #r20-qf .qf-foot { flex-shrink:0; padding:5px 10px; border-top:1px solid var(--aio-line-3); background:var(--aio-bg-2); color:var(--aio-ink-4); font-size:11px; }
         .r20qf-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
         .r20qf-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
         /* 창 자리 · 크기 기억 📌 (캐릭터 시트 · 핸드아웃 제목줄) */
@@ -7257,6 +7385,9 @@ addCss(`
         .ui-dialog-titlebar .r20wm-pin.flash { animation:r20wm-flash 0.4s ease-in-out 3 alternate; }
         .ui-dialog-titlebar .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
+        /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
 `);
 
 addFeature("quickFind", quickFind);
@@ -7264,7 +7395,7 @@ addFeature("winMemory", winMemory);
 addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서)",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
-addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로",
+addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
 
