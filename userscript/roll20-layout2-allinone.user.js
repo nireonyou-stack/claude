@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.72.0
+// @version      1.73.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.72.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.73.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1924,7 +1924,7 @@ const jbDrawer = (() => {
     const half = () => localStorage.getItem(MODE_KEY) === "half";
     const sideRect = () => { const r = document.getElementById("rightsidebar")?.getBoundingClientRect(); return r && r.width > 0 && r.left < innerWidth - 1 ? r : null; };
     // 단추줄 맨 아래 — 반쪽 서랍은 그 밑에서만 (단추줄을 가리지 않게)
-    const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-scnbtn", "r20-snbtn", "r20-qfbtn"]
+    const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-snbtn", "r20-qfbtn"]
         .map(id => document.getElementById(id)?.getBoundingClientRect()).filter(r => r && r.height).map(r => r.bottom));
     // 서랍 위 끝 (화면 좌표): 전체 = 채팅 판 위 · 반쪽 = 화면 아래에서 기억한 높이만큼
     const topOf = r => half() ? Math.round(Math.max(r.top, dockBottom() + 6, innerHeight - Math.max(160, parseInt(localStorage.getItem(H_KEY) || "340", 10) || 340))) : Math.round(r.top);
@@ -5635,7 +5635,7 @@ const screenUI = (() => {
         const edge = FEAT.jbDrawer?.leftEdge?.() ?? (side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right);       // 대화 판(· 주크박스 서랍) 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
-        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-scnbtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-qfbtn"));
+        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
             if (!el) return;
             const set = (k, v) => el.style.setProperty(k, v, "important");
@@ -7620,7 +7620,7 @@ const quickFind = (() => {
         rows.forEach(r => {
             if (r.g !== g && r.t !== "blk" && !(solo === "chat" && r.t === "note")) {
                 g = r.g;
-                html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : g === "scene" ? '<button type="button" class="qf-bb qf-tocb" title="장면 창 — 목차 | 그 장면 로그">목차</button><button type="button" class="qf-bb qf-add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>' : `<span class="qf-gs">${r.t === "note" ? "" : escAttr(status(g))}</span>`}</div>`;
+                html += `<div class="qf-grp" role="presentation"><span>${GLABEL[g]}</span><i class="qf-ln"></i>${g === "recent" ? '<button type="button" class="qf-clr">지우기</button>' : g === "scene" ? '<button type="button" class="qf-bb qf-tocb" title="시나리오 내비게이터(📖)의 🎬 장면 — 목차 | 그 장면 로그">목차</button><button type="button" class="qf-bb qf-add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>' : `<span class="qf-gs">${r.t === "note" ? "" : escAttr(status(g))}</span>`}</div>`;
             }
             html += r.t === "note" ? `<div class="qf-note">${r.html}</div>` : rowHtml(r, i++);
         });
@@ -8039,7 +8039,7 @@ const quickFind = (() => {
         const r = dlgR;
         if (!r) return;
         r.n = dlg.querySelector(".nm").value.trim() || r.n || "이름 없는 구간";
-        if (dlgNew) { scn = [...(scn || []), r]; dlgNew = false; if (scwOpen()) scwId = r.id; }
+        if (dlgNew) { scn = [...(scn || []), r]; dlgNew = false; FEAT.scenNav?.sceneMade?.(r.id); }
         saveScenes();
         closeDlg();
         if (!keep) toast(`‘${r.n}’ ${r.b ? "저장" : "시작 — 진행 중"}`);
@@ -8085,248 +8085,46 @@ const quickFind = (() => {
     }, { passive: true });
     document.addEventListener("scroll", () => { if (hov && !hov.hidden) { hov.hidden = true; hovMsg = null; } }, { capture: true, passive: true });
 
-    // ── 장면 창: 왼쪽 좁은 목차 | 오른쪽 그 장면 로그 (☰ 로 목차 접기 · 접으면 ◀ ▶) ──
-    // 목차: 누르면 그 장면 · 이름 두 번 눌러 고치기 · 마우스를 올리면 ▶ 시작 다시 · ■ 끝 (다시) 찍기 · ✕ 지우기(두 번) · ↑↓ 로 옮기기
-    const SCW_PIN = "r20_scw_pin", SCW_GEO = "r20_scw_geo", SCW_TOC = "r20_scw_toc", TOC_W = 128, LOG_W = 290;
-    let scw = null, scwId = null, scwT = 0, scwRows = [];
-    const scwOpen = () => !!scw && !scw.hidden;
-    const scwSoon = () => { if (scwOpen()) { clearTimeout(scwT); scwT = setTimeout(renderScw, 120); } };
-    const scwPinned = () => localStorage.getItem(SCW_PIN) === "true";
-    const tocOn = () => localStorage.getItem(SCW_TOC) !== "off";
-    const scwKeep = () => {
-        if (!scwOpen() || !scwPinned() || scw.classList.contains("aio-min")) return;
-        try { localStorage.setItem(SCW_GEO, JSON.stringify({ l: scw.offsetLeft, t: scw.offsetTop, w: scw.offsetWidth, h: scw.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
-    };
-    // 기본 자리: 빠른 찾기 창 왼쪽에 위를 맞춰 (없으면 오른쪽 판 왼쪽) · 📌 면 기억한 자리 · 크기
-    const placeScw = () => {
-        let g = null;
-        if (scwPinned()) try { g = JSON.parse(localStorage.getItem(SCW_GEO) || "null"); } catch (e) { /* 없음 */ }
-        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const w = Math.min(Math.max(220, g?.w || LOG_W + (tocOn() ? TOC_W : 0)), W - 16), h = Math.min(Math.max(200, g?.h || Math.min(560, Math.round(H * 0.6))), H - 16);
-        const qb = isOpen() ? box.getBoundingClientRect() : null, edge = qb?.width ? qb.left / z : (side?.width ? side.left / z - 348 : W);
-        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, edge - 8 - w);
-        const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : Math.max(8, Math.min(qb ? qb.top / z : 40, H - h - 8));
-        Object.assign(scw.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
-    };
-    const pickScene = id => {
-        if (!id || id === scwId) return;
-        scwId = id;
-        scw.querySelectorAll(".toc .tr").forEach(t => { const on = t.dataset.id === id; t.classList.toggle("on", on); t.setAttribute("aria-selected", String(on)); if (on) t.scrollIntoView({ block: "nearest" }); });
-        scw.querySelector(".q").value = "";
-        renderLog();
-        scw.querySelector(".bd").scrollTop = 0;
-    };
-    // 목차에서 이름 고치기 (Enter · 밖 누르기 = 저장, Esc = 그만)
-    const renameRow = row => {
-        const r = (scn || []).find(x => x.id === row.dataset.id), tn = row.querySelector(".tn");
-        if (!r || !tn) return;
-        const inp2 = Object.assign(document.createElement("input"), { type: "text", value: r.n, maxLength: 80, spellcheck: false });
-        inp2.setAttribute("aria-label", "구간 이름");
-        let done = false;
-        const end = ok => {
-            if (done) return;
-            done = true;
-            row.classList.remove("ed");
-            const v = inp2.value.trim();
-            if (ok && v && v !== r.n) { r.n = v; saveScenes(); }
-            renderScw();
-        };
-        inp2.addEventListener("keydown", e => {
-            e.stopPropagation();
-            if (e.isComposing || e.keyCode === 229) return;
-            if (e.key === "Enter") { e.preventDefault(); end(true); }
-            else if (e.key === "Escape") { e.preventDefault(); end(false); }
-        });
-        inp2.addEventListener("blur", () => end(true));
-        row.classList.add("ed");
-        tn.replaceWith(inp2);
-        inp2.focus(); inp2.select();
-    };
-    const buildScw = () => {
-        scw = document.createElement("div");
-        scw.id = "r20-scw";
-        scw.setAttribute("role", "dialog");
-        scw.setAttribute("aria-label", "장면");
-        scw.tabIndex = -1;                  // 제목줄을 눌러도 창 안에 포커스 (Esc 닫기 · ↑↓)
-        scw.hidden = true;
-        scw.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm"></b><span class="mt"></span>'
-            + '<button type="button" data-a="prev" class="nav" title="이전 구간" aria-label="이전 구간">◀</button><button type="button" data-a="next" class="nav" title="다음 구간" aria-label="다음 구간">▶</button>'
-            + '<button type="button" data-a="add" class="add" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">+ 구간</button>'
-            + '<button type="button" data-a="cfg" class="cfgb" aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
-            + '<button type="button" data-a="pin" class="pin" aria-pressed="false" title="이 자리 · 크기 기억">📌</button><button type="button" data-a="x" aria-label="닫기">✕</button></div>'
-            + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
-            + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
-            + '<div class="sp"><div class="toc" role="listbox" aria-label="장면 목차"></div><div class="pane">'
-            + '<div class="tb"><button type="button" data-a="copy" title="이 장면 채팅 전체 복사">복사</button><input type="search" class="q" placeholder="이 장면에서 찾기" aria-label="이 장면에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
-            + '<div class="bd" tabindex="-1"></div></div></div>';
-        scw.addEventListener("keydown", e => {
-            e.stopPropagation();
-            if (e.target.matches("input, select") && e.key !== "Escape" && !(e.key === "Enter" && e.target.matches(".q"))) return;
-            if (e.key === "Escape") { e.preventDefault(); scw.hidden = true; }
-            else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
-            else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !e.target.closest(".bd")) {      // 로그 칸에선 그대로 굴리기
-                const L = resolved(), k = L.findIndex(v => v.r.id === scwId);
-                e.preventDefault();
-                pickScene(L[Math.max(0, Math.min(L.length - 1, k + (e.key === "ArrowDown" ? 1 : -1)))]?.r.id);
-            }
-        });
-        scw.addEventListener("click", async e => {
-            const b = e.target.closest("button"), a = b?.dataset.a, row = e.target.closest(".tr");
-            if (row && !a) return row.classList.contains("ed") ? null : pickScene(row.dataset.id);
-            if (!a) return;
-            if (row) {          // 목차 줄의 ▶ ■ ✕
-                const id = row.dataset.id, r = (scn || []).find(x => x.id === id);
-                if (!r) return;
-                if (a === "del") {
-                    if (!row.classList.contains("sure")) { row.classList.add("sure"); b.title = "한 번 더 누르면 지워요"; return; }
-                    scn = scn.filter(x => x.id !== id);
-                    if (scwId === id) scwId = null;
-                    saveScenes(); toast(`‘${r.n}’ 지움`);
-                    return;
-                }
-                return pickStart({ edit: id, only: a === "ra" ? "a" : "b", quiet: true });
-            }
-            if (a === "x") { scwKeep(); scw.hidden = true; return; }
-            if (a === "add") return pickStart({});
-            if (a === "cfg") {          // 매크로 목록은 열 때마다 새로
-                const cfg = scw.querySelector(".cfg"), on = cfg.hidden, c = macCfg(), names = (window.currentPlayer?.macros?.models || []).map(m => m.get("name")).filter(Boolean).sort((x, y) => x.localeCompare(y, "ko"));
-                cfg.querySelectorAll("select").forEach(sel => {
-                    const v = c[sel.dataset.k] || "";
-                    sel.innerHTML = '<option value="">(없음)</option>' + [...new Set([...names, ...(v ? [v] : [])])].map(n => `<option value="${escAttr(n)}"${n === v ? " selected" : ""}>${escAttr(n)}${names.includes(n) ? "" : " (없음)"}</option>`).join("");
-                });
-                cfg.hidden = !on;
-                b.setAttribute("aria-pressed", String(on));
-                return;
-            }
-            if (a === "prev" || a === "next") {
-                const L = resolved(), k = L.findIndex(v => v.r.id === scwId);
-                return pickScene(L[k + (a === "prev" ? -1 : 1)]?.r.id);
-            }
-            if (a === "toc") {          // 접으면 오른쪽 끝은 그대로 두고 좁힌다
-                const on = !tocOn(), z = aioZoom.get();
-                try { localStorage.setItem(SCW_TOC, on ? "on" : "off"); } catch (err) { /* 저장 못 함 */ }
-                const w = scw.offsetWidth + (on ? TOC_W : -TOC_W), l = Math.max(0, scw.offsetLeft - (on ? TOC_W : -TOC_W));
-                Object.assign(scw.style, { width: Math.max(220, Math.min(w, innerWidth / z - 16)) + "px", left: l + "px" });
-                scw.classList.toggle("notoc", !on);
-                b.setAttribute("aria-pressed", String(on));
-                scwKeep(); renderScw();
-                return;
-            }
-            if (a === "pin") {
-                const on = !scwPinned();
-                try { localStorage.setItem(SCW_PIN, String(on)); } catch (err) { /* 저장 못 함 */ }
-                b.setAttribute("aria-pressed", String(on));
-                return on ? scwKeep() : placeScw();
-            }
-            if (a === "copy") {
-                const ok = await copyText(scwRows.map(c => (c.who ? c.who + ": " : "") + c.t).join("\n"));
-                b.textContent = ok ? "✓" : "못 함";
-                setTimeout(() => { b.textContent = "복사"; }, 1500);
-            }
-        });
-        const toc = scw.querySelector(".toc");
-        toc.addEventListener("dblclick", e => { const row = e.target.closest(".tr"); if (row && !e.target.closest("button")) { e.preventDefault(); renameRow(row); } });
-        toc.addEventListener("mouseout", e => { const row = e.target.closest(".tr.sure"); if (row && !row.contains(e.relatedTarget)) row.classList.remove("sure"); });
-        scw.querySelector(".q").addEventListener("input", () => paintHits());
-        scw.querySelector(".cfg").addEventListener("change", e => {
-            const k = e.target.dataset.k;
-            if (!k) return;
-            const c = macCfg();
-            if (e.target.value) c[k] = e.target.value; else delete c[k];
-            try { localStorage.setItem(MAC_KEY, JSON.stringify(c)); } catch (err) { /* 저장 못 함 */ }
-            macWatch();
-        });
-        // 제목줄 끌어 옮기기 · 모서리로 크기
-        const hd = scw.querySelector(".hd");
-        hd.addEventListener("pointerdown", e => {
-            if (e.button !== 0 || e.target.closest("button")) return;
-            const z = aioZoom.get(), sx = e.clientX, sy = e.clientY, l0 = scw.offsetLeft, t0 = scw.offsetTop;
-            hd.setPointerCapture(e.pointerId);
-            const mv = ev => {
-                scw.style.left = Math.max(0, Math.min(l0 + (ev.clientX - sx) / z, innerWidth / z - 60)) + "px";
-                scw.style.top = Math.max(0, Math.min(t0 + (ev.clientY - sy) / z, innerHeight / z - 36)) + "px";
-            };
-            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => hd.removeEventListener(t, k ? up : mv)); scwKeep(); };
-            hd.addEventListener("pointermove", mv);
-            hd.addEventListener("pointerup", up);
-            hd.addEventListener("pointercancel", up);
-        });
-        let rt = 0;
-        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(scwKeep, 300); }).observe(scw);
-        document.body.appendChild(scw);
-    };
-    // id 가 없으면 진행 중인 가장 안쪽 구간, 없으면 마지막 구간
-    const openScene = id => {
-        if (!isGM()) return;
-        if (!scw?.isConnected) buildScw();
-        if (!scn) loadScenes();
-        const was = scwOpen();
-        if (!id) { const L = resolved(); id = (L.filter(v => v.live).pop() || L[L.length - 1])?.r.id || null; }
-        scwId = id;
-        scw.classList.toggle("notoc", !tocOn());
-        scw.querySelector(".tg").setAttribute("aria-pressed", String(tocOn()));
-        scw.hidden = false;
-        scw.classList.remove("aio-min");
-        if (!was) placeScw();
-        scw.querySelector(".pin").setAttribute("aria-pressed", String(scwPinned()));
-        scw.querySelector(".q").value = "";
-        loadChat();
-        renderScw();
-        scw.querySelector(".bd").scrollTop = 0;
-    };
-    const renderScw = () => { if (scwOpen()) { renderToc(); renderLog(); } };
-    // 목차 (고치는 중이면 그대로)
-    const renderToc = () => {
-        const L = resolved(), toc = scw.querySelector(".toc");
-        if (!toc.querySelector(".tr.ed")) {
-            toc.innerHTML = L.map(x => `<div class="tr${x.r.id === scwId ? " on" : ""}" role="option" aria-selected="${x.r.id === scwId}" data-id="${escAttr(x.r.id)}" style="padding-left:${5 + x.d * 7}px" title="${escAttr(x.r.n + "\n" + x.span + (x.live ? " 진행 중" : ""))}">`
-                + `<span class="tn">${escAttr(x.r.n)}</span>${x.live ? '<i class="dot" aria-label="진행 중"></i>' : ""}`
-                + `<span class="ta"><button type="button" data-a="ra" title="시작 다시 찍기">▶</button><button type="button" data-a="rb" title="${x.live ? "끝 찍기" : "끝 다시 찍기"}">■</button><button type="button" data-a="del" title="지우기 (두 번)">✕</button></span></div>`).join("")
-                || `<div class="te">${scnRun ? "읽는 중…" : "아직 구간이 없어요"}</div>`;
-            toc.querySelector(".tr.on")?.scrollIntoView({ block: "nearest" });
-        }
-    };
-    const renderLog = () => {
-        const L = resolved(), k = L.findIndex(v => v.r.id === scwId), v = L[k], bd = scw.querySelector(".bd");
-        scw.querySelector('[data-a="prev"]').disabled = k <= 0;
-        scw.querySelector('[data-a="next"]').disabled = k < 0 || k >= L.length - 1;
-        scwRows = [];
-        if (!v) {
-            scw.querySelector(".nm").textContent = "장면";
-            scw.querySelector(".mt").textContent = L.length ? `구간 ${L.length}개` : "";
-            scw.querySelector(".qn").textContent = "";
-            bd.innerHTML = `<div class="msg">${L.length ? (tocOn() ? "왼쪽 목차에서 구간을 고르세요" : "◀ ▶ 로 구간을 고르세요") : "[+ 구간]을 누르거나, 채팅 메시지에 마우스를 올려 ▶"}</div>`;
-            return;
-        }
-        scw.querySelector(".nm").textContent = v.r.n;
-        scw.querySelector(".mt").textContent = v.span + (v.live ? " 진행 중" : "");
-        if (v.ia == null) { bd.innerHTML = `<div class="msg">${escAttr(chatRun ? "채팅 로그를 읽는 중…" : chatErr ? `채팅 로그를 못 읽었어요 (${chatErr})` : v.span || "…")}</div>`; return; }
-        const all = chatAll();
-        scwRows = all.slice(v.ia, (v.live ? all.length - 1 : v.ib ?? v.ia) + 1);
-        paintHits();
-    };
-    // 같은 사람이 이어 말하면 이름 · 시각은 한 번 · 처음(▶) 과 끝(■) 은 표시
-    const paintHits = () => {
-        const bd = scw.querySelector(".bd"), q = scw.querySelector(".q").value.trim().toLowerCase(), ws = wordsOf(q), re = ws.length ? reOf(ws) : null, v = resolved().find(x => x.r.id === scwId);
+    // ── 장면 목차 화면은 시나리오 내비게이터(📖)의 '🎬 장면' 갈래 — 여기는 장면 데이터 · 로그만 내준다 ──
+    const scSubs = new Set();
+    let scT = 0;
+    const scwSoon = () => { clearTimeout(scT); scT = setTimeout(() => scSubs.forEach(fn => { try { fn(); } catch (e) { aioErr("장면 목차", e); } }), 120); };
+    const openScene = id => FEAT.scenNav?.openScene?.(id);
+    // 같은 사람이 이어 말하면 이름 · 시각은 한 번 · 처음(▶) 과 끝(■) 은 표시 · 찾는 낱말이 든 줄은 .hit
+    const logHtml = (v, rows, q) => {
+        const ws = wordsOf(String(q || "").trim().toLowerCase()), re = ws.length ? reOf(ws) : null;
         let who = null, n = 0;
-        bd.innerHTML = scwRows.map((c, j) => {
-            const edge = j === 0 ? "a" : j === scwRows.length - 1 && !v?.live ? "b" : "", hit = re && hasAll(c.l, ws);
+        const html = rows.map((c, j) => {
+            const edge = j === 0 ? "a" : j === rows.length - 1 && !v?.live ? "b" : "", hit = re && hasAll(c.l, ws);
             if (hit) n++;
             const head = edge || c.who !== who ? `<div class="w">${edge === "a" ? '<i class="tag">▶ 시작</i>' : edge === "b" ? '<i class="tag">■ 끝</i>' : ""}<b>${escAttr(c.who || "—")}</b><span>${escAttr(when(c))}</span></div>` : "";
             who = edge === "b" ? null : c.who;
             return `<div class="m${edge ? " " + edge : ""}${hit ? " hit" : ""}">${head}<div class="t">${re ? hl(c.t, re) : escAttr(c.t)}</div></div>`;
         }).join("") || '<div class="msg">채팅이 없어요</div>';
-        scw.querySelector(".qn").textContent = re ? (n ? `${n}곳` : "없어요") : `${scwRows.length.toLocaleString()}개`;
-        hitAt = -1;
+        return { html, n: re ? n : -1 };
     };
-    let hitAt = -1;
-    const nextHit = d => {
-        const hs = [...scw.querySelectorAll(".bd .m.hit")];
-        if (!hs.length) return;
-        hitAt = (hitAt + d + hs.length) % hs.length;
-        hs.forEach((h, k) => h.classList.toggle("cur", k === hitAt));
-        hs[hitAt].scrollIntoView({ block: "center" });
-        scw.querySelector(".qn").textContent = `${hitAt + 1}/${hs.length}`;
+    const sceneApi = {
+        on: fn => scSubs.add(fn),
+        load: () => { if (!scn) loadScenes(); loadChat(); },
+        busy: () => !!scnRun,
+        list: () => resolved(),
+        // 진행 중인 가장 안쪽 구간, 없으면 마지막 구간
+        current: () => { const L = resolved(); return (L.filter(v => v.live).pop() || L[L.length - 1])?.r.id || null; },
+        rows: v => { if (!v || v.ia == null) return null; const all = chatAll(); return all.slice(v.ia, (v.live ? all.length - 1 : v.ib ?? v.ia) + 1); },
+        why: v => chatRun ? "채팅 로그를 읽는 중…" : chatErr ? `채팅 로그를 못 읽었어요 (${chatErr})` : v?.span || "…",
+        html: logHtml,
+        text: rows => rows.map(c => (c.who ? c.who + ": " : "") + c.t).join("\n"),
+        add: () => pickStart({}),
+        remark: (id, which) => pickStart({ edit: id, only: which, quiet: true }),
+        del: id => { const r = (scn || []).find(x => x.id === id); if (!r) return; scn = scn.filter(x => x.id !== id); saveScenes(); toast(`‘${r.n}’ 지움`); },
+        rename: (id, n) => { const r = (scn || []).find(x => x.id === id); if (r && n && n !== r.n) { r.n = n; saveScenes(); } },
+        macros: () => ({ cfg: macCfg(), names: (window.currentPlayer?.macros?.models || []).map(m => m.get("name")).filter(Boolean).sort((x, y) => x.localeCompare(y, "ko")) }),
+        setMacro: (k, v) => {
+            const c = macCfg();
+            if (v) c[k] = v; else delete c[k];
+            try { localStorage.setItem(MAC_KEY, JSON.stringify(c)); } catch (err) { /* 저장 못 함 */ }
+            macWatch();
+        }
     };
 
     // ── 📌 이 자리에 고정: 실행해도 안 닫힘 · 위쪽 줄로 옮기고 모서리로 크기 → 자리 · 크기 기억 (다른 창 📌 처럼) ──
@@ -8529,7 +8327,7 @@ const quickFind = (() => {
     }
     // 📌 가 아니면 창 밖을 누를 때 닫는다 (누른 곳으로 포커스가 가게 되돌리지 않음)
     document.addEventListener("pointerdown", e => {
-        if (!isOpen() || keepOpen() || pick || box.contains(e.target) || e.target.closest?.("#r20-qfbtn, #r20-scnbtn, #r20-scd, #r20-scb, #r20-scw, #r20-scq")) return;
+        if (!isOpen() || keepOpen() || pick || box.contains(e.target) || e.target.closest?.("#r20-qfbtn, #r20-snbtn, #r20-scd, #r20-scb, #r20-sn, #r20-scq")) return;
         close(false);
     }, true);
     // Ctrl+F (맥은 ⌘F) — 한글 자판이어도 같은 자리(KeyF). 브라우저 '페이지에서 찾기' 대신 뜬다 (시트 창 안은 시트 쪽 그대로)
@@ -8541,23 +8339,8 @@ const quickFind = (() => {
         if (keepOpen() && document.activeElement !== inp) { box.classList.remove("aio-min"); inp.focus(); inp.select(); }
         else close();
     }, true);
-    // 장면 목차 단추 (GM): 🔍 바로 위 · 누르면 장면 창 열기 · 닫기
-    const injectScn = () => {
-        if (!isGM() || document.getElementById("r20-scnbtn")) return;
-        const b = document.createElement("button");
-        b.type = "button";
-        b.id = "r20-scnbtn";
-        b.className = "r20-dockbtn";
-        b.title = "장면 목차";
-        b.setAttribute("aria-label", "장면 목차");
-        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M8 12h12M12 18h8"/></svg>';
-        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (scwOpen()) { scwKeep(); scw.hidden = true; } else openScene(null); });
-        document.body.appendChild(b);
-        FEAT.screenUI?.place();
-    };
     // 햄버거 밑 단추줄(맵 단추 아래) 단추 — 플레이어도
     const inject = () => {
-        if (btnVisible.qfind && document.getElementById("sidebarcontrol")) injectScn();
         if (macLinked() || macObs) macWatch();
         if (!btnVisible.qfind || document.getElementById("r20-qfbtn") || !document.getElementById("sidebarcontrol")) return;
         const b = document.createElement("button");
@@ -8574,10 +8357,8 @@ const quickFind = (() => {
     const setEnabled = on => {
         if (on) return inject();
         close();
-        if (scwOpen()) scw.hidden = true;
         macObs?.disconnect(); macObs = null; macBox = null;
         document.getElementById("r20-qfbtn")?.remove();
-        document.getElementById("r20-scnbtn")?.remove();
         FEAT.screenUI?.place();
     };
     // 진단: 채팅 로그를 읽어 봤으면 그 결과 (방 내용은 빼고 개수 · 문제만)
@@ -8600,7 +8381,7 @@ const quickFind = (() => {
         });
         return out.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ko")).slice(0, n);
     };
-    return { inject, setEnabled, open, dockAt, health, findTracks, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
+    return { inject, setEnabled, open, dockAt, health, findTracks, scene: sceneApi, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
 })();
 
 // ───────── 창 자리 · 크기 기억: Roll20 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
@@ -8743,7 +8524,7 @@ const winMemory = (() => {
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
     // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
-    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-scw > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
     document.addEventListener("dblclick", e => {
         if (!btnVisible.winmem) return;
         const head = e.target.closest?.(HEADS);
@@ -8893,61 +8674,6 @@ addCss(`
         #r20-scq[hidden], #r20-scq [hidden] { display:none !important; }
         #r20-scq button { width:20px; height:18px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-4); font-size:9px; line-height:16px; opacity:0.75; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.15); }
         #r20-scq button:hover { border-color:var(--aio-accent); color:var(--aio-accent); opacity:1; }
-        #r20-scw { position:fixed; z-index:10004; display:flex; flex-direction:column; min-width:280px; min-height:160px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.5 sans-serif; overflow:hidden; resize:both; box-sizing:border-box; }
-        #r20-scw[hidden] { display:none; }
-        #r20-scw:focus { outline:none; }
-        #r20-scw *, #r20-scw *::before, #r20-scw *::after { box-sizing:border-box; }
-        #r20-scw .hd { display:flex; align-items:center; gap:4px; flex-shrink:0; height:34px; padding:0 5px 0 4px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
-        #r20-scw .nm { flex:0 1 auto; min-width:0; max-width:45%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12.5px; }
-        #r20-scw .mt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-4); font-size:11px; }
-        #r20-scw button { flex-shrink:0; height:22px; margin:0; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:20px; cursor:pointer; box-shadow:none; }
-        #r20-scw button:hover:not(:disabled) { border-color:var(--aio-accent); color:var(--aio-accent); }
-        #r20-scw button:disabled { opacity:0.4; cursor:default; }
-        #r20-scw .pin { padding:0 4px; border-color:transparent; filter:grayscale(1); opacity:0.5; }
-        #r20-scw .tg, #r20-scw .nav { width:22px; padding:0; border-color:transparent; color:var(--aio-ink-4); font-size:10px; }
-        #r20-scw .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
-        #r20-scw:not(.notoc) .nav { display:none; }
-        #r20-scw .add { border-color:var(--aio-accent); color:var(--aio-accent); }
-        #r20-scw .cfgb { width:22px; padding:0; border-color:transparent; color:var(--aio-ink-4); font-size:12px; }
-        #r20-scw .cfgb[aria-pressed="true"] { background:var(--aio-bg-3); }
-        #r20-scw .cfg { display:flex; flex-wrap:wrap; gap:4px 10px; flex-shrink:0; padding:6px 10px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-bg-2); font-size:11px; color:var(--aio-ink-3); }
-        #r20-scw .cfg[hidden] { display:none; }
-        #r20-scw .cfg label { display:inline-flex; align-items:center; gap:4px; margin:0; font:inherit; color:inherit; }
-        #r20-scw .cfg select { width:auto !important; max-width:130px; height:22px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; font-size:11px !important; }
-        #r20-scw .cfg p { flex-basis:100%; margin:0; color:var(--aio-ink-4); font-size:10.5px; line-height:1.4; }
-        #r20-scw .sp { display:flex; flex:1; min-height:0; }
-        #r20-scw .toc { flex:0 0 128px; overflow-y:auto; overscroll-behavior:contain; padding:4px 3px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
-        #r20-scw.notoc .toc { display:none; }
-        #r20-scw .pane { display:flex; flex-direction:column; flex:1; min-width:0; }
-        #r20-scw .tr { --tr-bg:var(--aio-bg-3); position:relative; display:flex; align-items:center; gap:3px; height:24px; padding-right:4px; border-radius:var(--aio-r-sm); color:var(--aio-ink-2); font-size:11.5px; cursor:pointer; user-select:none; }
-        #r20-scw .tr:hover { background:var(--tr-bg); }
-        #r20-scw .tr.on { --tr-bg:var(--aio-accent-bg); background:var(--tr-bg); color:var(--aio-accent-dark); font-weight:700; }
-        #r20-scw .tr.sure { --tr-bg:var(--aio-bad-bg); background:var(--tr-bg); color:var(--aio-bad); }
-        #r20-scw .tn { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-        #r20-scw .dot { flex:none; width:5px; height:5px; border-radius:50%; background:var(--aio-accent); }
-        #r20-scw .ta { position:absolute; right:2px; top:3px; display:none; gap:1px; padding-left:10px; background:linear-gradient(90deg, transparent, var(--tr-bg) 10px); }
-        #r20-scw .tr:hover .ta { display:flex; }
-        #r20-scw .tr.ed .ta { display:none; }
-        #r20-scw .ta button { width:17px; height:18px; padding:0; border-radius:4px; color:var(--aio-ink-4); font-size:8px; line-height:16px; }
-        #r20-scw .ta button[data-a="del"]:hover, #r20-scw .tr.sure .ta button[data-a="del"] { border-color:var(--aio-bad); background:var(--aio-bad); color:#fff; }
-        #r20-scw .tr input { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-accent) !important; border-radius:4px !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:11.5px !important; }
-        #r20-scw .te { padding:10px 4px; color:var(--aio-ink-5); font-size:11px; text-align:center; }
-        #r20-scw .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
-        #r20-scw .hd [data-a="x"] { padding:0 6px; border-color:transparent; }
-        #r20-scw .tb { display:flex; align-items:center; gap:5px; flex-shrink:0; padding:4px 8px; border-bottom:1px solid var(--aio-line-4); }
-        #r20-scw .q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 !important; padding:0 8px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
-        #r20-scw .qn { color:var(--aio-ink-5); font-size:11px; white-space:nowrap; }
-        #r20-scw .bd { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 10px 10px; user-select:text; outline:none; }
-        #r20-scw .m { position:relative; padding:2px 0; content-visibility:auto; contain-intrinsic-size:auto 24px; }
-        #r20-scw .w { display:flex; align-items:baseline; gap:6px; margin-top:6px; } #r20-scw .w b { color:var(--aio-ink-2); } #r20-scw .w span { color:var(--aio-ink-5); font-size:10.5px; }
-        #r20-scw .t { white-space:pre-line; overflow-wrap:anywhere; color:var(--aio-ink-2); }
-        #r20-scw .m.a, #r20-scw .m.b { margin:2px 0; padding:0 0 4px 8px; border-left:2px solid var(--aio-accent); }
-        #r20-scw .m.b { border-left-color:var(--aio-ink-5); }
-        #r20-scw .m .tag { color:var(--aio-accent-dark); font-size:10px; font-style:normal; font-weight:700; }
-        #r20-scw .m.b .tag { color:var(--aio-ink-4); }
-        #r20-scw .m.hit { background:var(--aio-accent-bg); } #r20-scw .m.cur { box-shadow:inset 3px 0 0 var(--aio-accent); }
-        #r20-scw mark { padding:0; background:none; color:var(--aio-accent); font-weight:700; }
-        #r20-scw .msg { margin:24px 0; color:var(--aio-ink-4); text-align:center; }
         @keyframes r20qf-flash { 0%, 40% { background-color:rgba(225,0,133,0.14); box-shadow:inset 3px 0 0 var(--aio-accent); } }
         .r20qf-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
         .r20qf-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
@@ -8961,8 +8687,8 @@ addCss(`
         .ui-dialog-titlebar .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
         /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
 `);
 
 addFeature("quickFind", quickFind);
@@ -8979,10 +8705,18 @@ addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · �
 // 핸드아웃 서식은 그대로 (글자 크기 · 색 · 배경 · 테두리 · 표 · 그림) — 스크립트 · 이벤트 · 화면 위로 뜨는 위치만 뺀다
 // 왼쪽 좁은 목차(장 › 제목 줄) | 오른쪽 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기](보내지 않음)
 // 폴더는 경로 이름으로 기억 → 복사한 방에서도 그대로. 핸드아웃 내용은 읽기만 (방 데이터는 안 바꿈)
+// GM: 목차 아래 '🎬 장면' 갈래 = 채팅에서 찍은 장면 구간 (빠른 찾기의 장면 데이터) — 누르면 오른쪽이 그 장면 로그 · 갈래는 ▾ 로 접기 (기억, 장면은 처음엔 접힘)
 const scenNav = (() => {
     const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", MODE = "r20_sn_mode", TOC_W = 112, TXT_W = 268;
     const KEY_RE = /시나리오|장면표/;        // 먼저 보여 줄 핸드아웃
     let win = null, cur = null, heads = [], chs = [], selId = null, spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
+    // 장면 갈래 (GM): view = 오른쪽에 무엇을 (scen 시나리오 본문 · scn 장면 로그)
+    const FOLD = "r20_sn_fold";
+    let view = "scen", scnId = null, lgRows = [], lgAt = -1, bdPos = 0, subbed = false;
+    const SA = () => FEAT.quickFind?.scene;
+    const gmScn = () => isGM() && !!SA();
+    const folded = b => { try { const o = JSON.parse(ls(FOLD) || "{}"); return o[b] ?? b === "scn"; } catch (e) { return b === "scn"; } };
+    const setFold = (b, v) => { try { const o = JSON.parse(ls(FOLD) || "{}"); o[b] = v; ls(FOLD, JSON.stringify(o)); } catch (e) { ls(FOLD, JSON.stringify({ [b]: v })); } };
     const $ = q => win.querySelector(q);
     const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
     const sep = () => ls(MODE) !== "cont";        // 기본: 따로 (한 장씩)
@@ -9095,25 +8829,43 @@ const scenNav = (() => {
         win.hidden = true;
         win.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
             + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
+            + '<button type="button" data-a="cfg" class="ib cfgb" hidden aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
             + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
             + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
-            + '<div class="sp"><div class="toc" role="tree" aria-label="목차"></div><div class="pane">'
+            + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
+            + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
+            + '<div class="sp"><div class="toc" role="tree" aria-label="목차"><div class="br" data-b="scen" hidden role="button" aria-expanded="true">📖 시나리오<i></i></div><div class="ls"></div>'
+            + '<div class="br sc" data-b="scn" hidden role="button" aria-expanded="false">🎬 장면<i></i><span class="dot" hidden></span></div><div class="lc" hidden></div></div><div class="pane">'
             + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
+            + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
             + '<span class="md" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
-            + '<div class="bd" tabindex="-1"></div></div></div>'
+            + '<div class="bd" tabindex="-1"></div><div class="lg" tabindex="-1" hidden></div></div></div>'
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>';
         win.addEventListener("keydown", e => {
             e.stopPropagation();
-            if (e.key === "Escape") { e.preventDefault(); if (!$(".pk").hidden && cur) return showPick(false); close(); }
-            else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
+            if (e.target.matches(".lc input")) return;          // 장면 이름 고치는 중
+            if (e.key === "Escape") { e.preventDefault(); if (!$(".pk").hidden && (cur || gmScn())) return showPick(false); close(); }
+            else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); (view === "scn" ? nextLogHit : nextHit)(e.shiftKey ? -1 : 1); }
+            else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && view === "scn" && !e.target.closest("input, select, .lg, .bd")) {
+                const L = SA()?.list() || [], k = L.findIndex(v => v.r.id === scnId);
+                e.preventDefault();
+                const v = L[Math.max(0, Math.min(L.length - 1, k + (e.key === "ArrowDown" ? 1 : -1)))];
+                if (v) pickScene(v.r.id);
+            }
             else if (e.key === "Enter" && e.target.matches(".pq") && !e.isComposing) { e.preventDefault(); $(".pl [data-p]")?.click(); }
         });
         win.addEventListener("click", e => {
             const link = e.target.closest(".bd a[data-hid]");
             if (link) { e.preventDefault(); return goHandout(link.dataset.hid); }
+            const br = e.target.closest(".toc .br");
+            if (br) { setFold(br.dataset.b, !folded(br.dataset.b)); return drawBranches(); }
+            const srow = e.target.closest(".lc .tr");
+            if (srow) return scnRowClick(e, srow);
             const b = e.target.closest("button, [data-p], .tr"), a = b?.dataset.a;
             if (!b) { const img = e.target.closest(".bd img"); if (img && !img.closest("a")) zoomImg(img.src); return; }
+            if (a === "cfg") return showCfg(b);
+            if (a === "lcopy") { copyText(SA()?.text(lgRows) || "").then(ok => { b.textContent = ok ? "✓" : "못 함"; setTimeout(() => { b.textContent = "복사"; }, 1500); }); return; }
             if (b.dataset.p != null) return openPath(b.dataset.p);
             if (b.dataset.m) { ls(MODE, b.dataset.m); applyMode(); return; }
             if (b.classList.contains("tr")) return jump(b);
@@ -9154,7 +8906,11 @@ const scenNav = (() => {
         }, 0));
         $(".fl").addEventListener("mousedown", e => e.preventDefault());        // 고른 글이 풀리지 않게
         $(".bd").addEventListener("scroll", () => { $(".fl").hidden = true; clearTimeout(spyT); spyT = setTimeout(spy, 80); }, { passive: true });
-        $(".q").addEventListener("input", () => find());
+        $(".q").addEventListener("input", () => (view === "scn" ? paintLog : find)());
+        // 장면 이름: 두 번 눌러 고치기 · ✕ 는 두 번 (마우스가 나가면 취소)
+        $(".lc").addEventListener("dblclick", e => { const row = e.target.closest(".tr[data-s]"); if (row && !e.target.closest("button")) { e.preventDefault(); renameRow(row); } });
+        $(".lc").addEventListener("mouseout", e => { const row = e.target.closest(".tr.sure"); if (row && !row.contains(e.relatedTarget)) row.classList.remove("sure"); });
+        $(".cfg").addEventListener("change", e => { if (e.target.dataset.k) SA()?.setMacro(e.target.dataset.k, e.target.value); });
         $(".pq").addEventListener("input", () => drawPick());
         // 제목줄 끌어 옮기기 · 모서리로 크기
         const hd = $(".hd");
@@ -9209,7 +8965,7 @@ const scenNav = (() => {
         cur = f;
         showPick(false);
         $(".nm").textContent = f.name;
-        $(".mt").textContent = "읽는 중…";
+        if (view === "scen") $(".mt").textContent = "읽는 중…";
         $(".q").value = ""; hits = []; hitAt = -1; $(".qn").textContent = "";
         $(".warn").hidden = !(isGM() && f.items.some(it => it.m && shared(it.m)));
         const keyItems = f.items.filter(it => KEY_RE.test(it.m.get("name") || "")), order = keyItems.map(it => ({ ...it, key: true }));
@@ -9266,7 +9022,7 @@ const scenNav = (() => {
                 heads.push({ el, c, t: el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "") });
             });
         });
-        $(".toc").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h"}${h.key ? " key" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${h.ch && !h.key ? "📜 " : ""}${escAttr(h.t)}</div>`).join("")
+        $(".ls").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h"}${h.key ? " key" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${h.ch && !h.key ? "📜 " : ""}${escAttr(h.t)}</div>`).join("")
             || '<div class="msg">핸드아웃이 없어요</div>';
         const r = recent().find(x => x.path === path);
         selId = chs.some(c => c.id === r?.sel) ? r.sel : chs[0]?.id || null;
@@ -9292,6 +9048,7 @@ const scenNav = (() => {
     const jump = row => {
         const h = heads[+row.dataset.i];
         if (!h) return;
+        showView("scen");
         if (h.c && sep() && h.c !== selId) { selId = h.c; applyMode(); }
         else if (h.c) selId = h.c;
         if (h.ch && sep()) { $(".bd").scrollTop = 0; return spy(); }
@@ -9301,19 +9058,20 @@ const scenNav = (() => {
     // 다른 핸드아웃 고리: 이 시나리오 안이면 그 장으로, 아니면 Roll20 핸드아웃 창
     const goHandout = id => {
         const c = chs.find(x => x.id === id);
+        if (c) showView("scen");
         if (c) { selId = id; return applyMode(); }
         window.Campaign?.handouts?.get?.(id)?.view?.showDialog?.();
     };
     // 지금 보이는 제목 → 목차 표시 · 머리줄 '장 › 제목 · %' · 자리 기억
     const spy = () => {
-        if (!cur || !win || win.hidden) return;
+        if (!cur || !win || win.hidden || view !== "scen") return;
         const bd = $(".bd"), top = bd.getBoundingClientRect().top + 8 * aioZoom.get(), s = sep();
         let k = -1;
         heads.forEach((h, i) => { if ((!s || h.c === selId) && !h.grp && h.el.getClientRects().length && h.el.getBoundingClientRect().top <= top) k = i; });
         if (!s && k >= 0 && heads[k].c) selId = heads[k].c;
-        win.querySelectorAll(".toc .tr").forEach((t, i) => t.classList.toggle("on", i === k || (s && k < 0 && heads[i]?.ch && heads[i].c === selId)));
+        win.querySelectorAll(".ls .tr").forEach((t, i) => t.classList.toggle("on", i === k || (s && k < 0 && heads[i]?.ch && heads[i].c === selId)));
         win.querySelectorAll(".toc .tr[data-c]").forEach(t => t.classList.toggle("cur", t.dataset.c === selId));
-        win.querySelector(".toc .tr.on")?.scrollIntoView({ block: "nearest" });
+        win.querySelector(".ls .tr.on")?.scrollIntoView({ block: "nearest" });
         const ch = chs.find(c => c.id === selId)?.name || "", sub = k >= 0 && !heads[k].ch ? heads[k].t : "";
         const max = bd.scrollHeight - bd.clientHeight, pos = max > 0 ? bd.scrollTop / max : 0;
         $(".mt").textContent = [ch, sub].filter(Boolean).join(" › ") + (max > 0 ? ` · ${Math.round(pos * 100)}%` : "");
@@ -9345,8 +9103,153 @@ const scenNav = (() => {
         $(".qn").textContent = `${hitAt + 1}/${hits.length}`;
     };
 
+    // ── 🎬 장면 갈래 (GM) ──
+    // 오른쪽 칸 바꾸기: 시나리오 본문(.bd) ↔ 장면 로그(.lg) — 본문 읽던 자리는 그대로
+    const showView = v => {
+        if (v === view) return;
+        if (v === "scn") bdPos = $(".bd").scrollTop;
+        view = v;
+        const scn = v === "scn", q = $(".q");
+        $(".bd").hidden = scn; $(".lg").hidden = !scn; $(".md").hidden = scn; $(".cp").hidden = !scn;
+        q.value = ""; q.placeholder = scn ? "이 장면에서 찾기" : "이 시나리오에서 찾기";
+        $(".qn").textContent = "";
+        if (!cur) $(".nm").textContent = scn ? "장면" : "시나리오";
+        if (scn) { find(); win.querySelectorAll(".ls .tr.on").forEach(t => t.classList.remove("on")); }
+        else { $(".bd").scrollTop = bdPos; spy(); }
+        drawBranches();
+    };
+    const pickScene = id => {
+        scnId = id;
+        showView("scn");
+        win.querySelectorAll(".lc .tr[data-s]").forEach(t => { const on = t.dataset.s === id; t.classList.toggle("on", on); if (on) t.scrollIntoView({ block: "nearest" }); });
+        $(".q").value = "";
+        renderLog();
+        $(".lg").scrollTop = 0;
+    };
+    // 갈래 머리 (▾ 펴짐 · ▸ 접힘) 와 장면 줄 — 플레이어는 갈래 없이 시나리오만
+    const drawBranches = () => {
+        if (!win) return;
+        const gm = gmScn(), fs = folded("scen"), fc = folded("scn"), bs = $('.br[data-b="scen"]'), bc = $('.br[data-b="scn"]');
+        bs.hidden = bc.hidden = !gm;
+        $(".cfgb").hidden = !gm;
+        $(".ls").hidden = gm && fs;
+        $(".lc").hidden = !gm || fc;
+        bs.querySelector("i").textContent = fs ? "▸" : "▾"; bs.setAttribute("aria-expanded", String(!fs));
+        bc.querySelector("i").textContent = fc ? "▸" : "▾"; bc.setAttribute("aria-expanded", String(!fc));
+        if (gm) renderScenes();
+    };
+    const renderScenes = () => {
+        const A = SA(), lc = $(".lc");
+        if (!A || !isGM()) return;
+        const L = A.list();
+        $('.br[data-b="scn"] .dot').hidden = !L.some(v => v.live);
+        if (!lc.hidden && !lc.querySelector(".tr.ed"))         // 이름 고치는 중이면 그대로
+            lc.innerHTML = L.map(x => `<div class="tr sc${view === "scn" && x.r.id === scnId ? " on" : ""}" role="treeitem" data-s="${escAttr(x.r.id)}" style="padding-left:${4 + x.d * 7}px" title="${escAttr(x.r.n + "\n" + x.span + (x.live ? " 진행 중" : ""))}">`
+                + `<span class="tn">${escAttr(x.r.n)}</span>${x.live ? '<i class="dot" aria-label="진행 중"></i>' : ""}`
+                + `<span class="ta"><button type="button" data-a="ra" title="시작 다시 찍기">▶</button><button type="button" data-a="rb" title="${x.live ? "끝 찍기" : "끝 다시 찍기"}">■</button><button type="button" data-a="del" title="지우기 (두 번)">✕</button></span></div>`).join("")
+                + (A.busy() && !L.length ? '<div class="te">읽는 중…</div>' : "")
+                + '<div class="tr add" role="treeitem" title="채팅에서 시작 · 끝 선언을 차례로 눌러 구간 정하기">＋ 구간</div>';
+        if (view === "scn") renderLog();
+    };
+    const renderLog = () => {
+        const A = SA(), lg = $(".lg");
+        if (!A) return;
+        const L = A.list(), v = L.find(x => x.r.id === scnId);
+        lgRows = [];
+        if (!v) {
+            $(".mt").textContent = "🎬 장면" + (L.length ? ` · 구간 ${L.length}개` : "");
+            $(".qn").textContent = "";
+            lg.innerHTML = `<div class="msg">${L.length ? "왼쪽 🎬 장면에서 구간을 고르세요" : "[＋ 구간]을 누르거나, 채팅 메시지에 마우스를 올려 ▶"}</div>`;
+            return;
+        }
+        $(".mt").textContent = `🎬 ${v.r.n} · ${v.span}${v.live ? " 진행 중" : ""}`;
+        const rows = A.rows(v);
+        if (!rows) { $(".qn").textContent = ""; lg.innerHTML = `<div class="msg">${escAttr(A.why(v))}</div>`; return; }
+        lgRows = rows;
+        paintLog();
+    };
+    const paintLog = () => {
+        const A = SA(), v = A?.list().find(x => x.r.id === scnId);
+        if (!A || !v) return;
+        const { html, n } = A.html(v, lgRows, $(".q").value);
+        $(".lg").innerHTML = html;
+        $(".qn").textContent = n >= 0 ? (n ? `${n}곳` : "없어요") : `${lgRows.length.toLocaleString()}개`;
+        lgAt = -1;
+    };
+    const nextLogHit = d => {
+        const hs = [...win.querySelectorAll(".lg .m.hit")];
+        if (!hs.length) return;
+        lgAt = (lgAt + d + hs.length) % hs.length;
+        hs.forEach((h, k) => h.classList.toggle("cur", k === lgAt));
+        hs[lgAt].scrollIntoView({ block: "center" });
+        $(".qn").textContent = `${lgAt + 1}/${hs.length}`;
+    };
+    // 장면 줄: 누르면 그 장면 · ▶ ■ 다시 찍기 · ✕ 두 번 지우기 · ＋ 구간
+    const scnRowClick = (e, row) => {
+        const A = SA();
+        if (!A) return;
+        if (row.classList.contains("add")) return A.add();
+        const a = e.target.closest("button")?.dataset.a, id = row.dataset.s;
+        if (!a) return row.classList.contains("ed") ? null : pickScene(id);
+        if (a === "del") {
+            if (!row.classList.contains("sure")) { row.classList.add("sure"); e.target.closest("button").title = "한 번 더 누르면 지워요"; return; }
+            if (scnId === id) scnId = null;
+            return A.del(id);
+        }
+        A.remark(id, a === "ra" ? "a" : "b");
+    };
+    // 목차에서 이름 고치기 (Enter · 밖 누르기 = 저장, Esc = 그만)
+    const renameRow = row => {
+        const r = SA()?.list().find(x => x.r.id === row.dataset.s)?.r, tn = row.querySelector(".tn");
+        if (!r || !tn) return;
+        const inp = Object.assign(document.createElement("input"), { type: "text", value: r.n, maxLength: 80, spellcheck: false });
+        inp.setAttribute("aria-label", "구간 이름");
+        let done = false;
+        const end = ok => {
+            if (done) return;
+            done = true;
+            row.classList.remove("ed");
+            const v = inp.value.trim();
+            if (ok && v && v !== r.n) SA()?.rename(r.id, v);
+            renderScenes();
+        };
+        inp.addEventListener("keydown", e => {
+            e.stopPropagation();
+            if (e.isComposing || e.keyCode === 229) return;
+            if (e.key === "Enter") { e.preventDefault(); end(true); }
+            else if (e.key === "Escape") { e.preventDefault(); end(false); }
+        });
+        inp.addEventListener("blur", () => end(true));
+        row.classList.add("ed");
+        tn.replaceWith(inp);
+        inp.focus(); inp.select();
+    };
+    // ⚙ 장면 매크로 연결 — 매크로 목록은 열 때마다 새로
+    const showCfg = b => {
+        const cfg = $(".cfg"), on = cfg.hidden, m = SA()?.macros();
+        if (!m) return;
+        cfg.querySelectorAll("select").forEach(sel => {
+            const v = m.cfg[sel.dataset.k] || "";
+            sel.innerHTML = '<option value="">(없음)</option>' + [...new Set([...m.names, ...(v ? [v] : [])])].map(n => `<option value="${escAttr(n)}"${n === v ? " selected" : ""}>${escAttr(n)}${m.names.includes(n) ? "" : " (없음)"}</option>`).join("");
+        });
+        cfg.hidden = !on;
+        b.setAttribute("aria-pressed", String(on));
+    };
+    // 빠른 찾기 · 매크로 · 장면 목차 단추에서: 창을 열고 그 장면 (id 가 없으면 진행 중 · 마지막)
+    const openScene = id => {
+        if (!gmScn()) return;
+        open(true);
+        if (!win || win.hidden) return;
+        SA().load();
+        if (folded("scn")) setFold("scn", false);
+        pickScene(id || SA().current());
+        drawBranches();
+    };
+    // 새 구간을 만들면: 장면을 보고 있었으면 그 구간으로
+    const sceneMade = id => { if (isOpen() && view === "scn") scnId = id; };
+
     const isOpen = () => !!win && !win.hidden;
-    const open = () => {
+    const open = noPick => {
         if (!btnVisible.scen || !window.Campaign) return;
         if (!win?.isConnected) build();
         win.hidden = false;
@@ -9355,9 +9258,14 @@ const scenNav = (() => {
         $(".tg").setAttribute("aria-pressed", String(tocOn()));
         $(".pin").setAttribute("aria-pressed", String(pinned()));
         place();
+        if (!subbed && SA()) { subbed = true; SA().on(() => { if (isOpen() && gmScn()) renderScenes(); }); }
+        if (gmScn()) SA().load();
+        drawBranches();
         if (cur) return;
         const last = recent()[0];
-        if (last && folders().some(f => f.path === last.path)) openPath(last.path); else showPick(true);
+        if (last && folders().some(f => f.path === last.path)) openPath(last.path);
+        else if (noPick || (gmScn() && !folders().length)) { showPick(false); $(".ls").innerHTML = '<div class="msg">📁 로 시나리오(저널 폴더)를 고르세요</div>'; }       // 시나리오 폴더가 없으면 GM 은 장면 갈래를 바로
+        else showPick(true);
     };
     function close() { if (!win) return; keep(); win.hidden = true; $(".fl").hidden = true; }
     // 단추줄: 장면 목차와 🔍 사이 (플레이어도 — 자기에게 보이는 핸드아웃만)
@@ -9380,10 +9288,10 @@ const scenNav = (() => {
         document.getElementById("r20-snbtn")?.remove();
         FEAT.screenUI?.place();
     };
-    return { inject, setEnabled, open };
+    return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · 제목에 '시나리오' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 제목 줄) · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '시나리오' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 제목 줄) · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -9411,6 +9319,43 @@ addCss(`
         #r20-sn .tr.ch.cur { background:var(--aio-bg-3); }
         #r20-sn .tr.grp { margin-top:6px; color:var(--aio-ink-5); font-weight:700; font-size:10px; }
         #r20-sn .tr.on { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
+        /* 목차 두 갈래 (GM): 📖 시나리오 · 🎬 장면 */
+        #r20-sn .br { display:flex; align-items:center; gap:3px; height:22px; margin:2px 0 1px; padding:0 4px; border-radius:var(--aio-r-sm); color:var(--aio-ink-4); font-size:10.5px; font-weight:700; cursor:pointer; user-select:none; }
+        #r20-sn .br:hover { background:var(--aio-bg-3); }
+        #r20-sn .br.sc { margin-top:8px; color:#6b4592; }
+        #r20-sn .br i { font-style:normal; font-size:9px; }
+        #r20-sn :is(.br, .tr.sc) .dot { flex:none; width:5px; height:5px; margin-left:auto; border-radius:50%; background:var(--aio-accent); }
+        #r20-sn .tr.sc { --tr-bg:var(--aio-bg-3); position:relative; display:flex; align-items:center; gap:3px; color:#4f3270; }
+        #r20-sn .tr.sc:hover { background:var(--tr-bg); }
+        #r20-sn .tr.sc.on { --tr-bg:var(--aio-accent-bg); color:var(--aio-accent-dark); }
+        #r20-sn .tr.sc.sure { --tr-bg:var(--aio-bad-bg); background:var(--tr-bg); color:var(--aio-bad); }
+        #r20-sn .tr.add { color:var(--aio-ink-4); font-size:10.5px; }
+        #r20-sn .ls .msg { margin:4px 4px 6px; text-align:left; font-size:10.5px; line-height:1.4; }
+        #r20-sn .tn { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-sn .ta { position:absolute; right:2px; top:2px; display:none; gap:1px; padding-left:10px; background:linear-gradient(90deg, transparent, var(--tr-bg) 10px); }
+        #r20-sn .tr.sc:hover .ta { display:flex; }
+        #r20-sn .tr.ed .ta { display:none; }
+        #r20-sn .ta button { width:16px; height:18px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:4px; background:var(--aio-bg); color:var(--aio-ink-4); font-size:8px; line-height:16px; cursor:pointer; box-shadow:none; }
+        #r20-sn .ta button[data-a="del"]:hover, #r20-sn .tr.sure .ta button[data-a="del"] { border-color:var(--aio-bad); background:var(--aio-bad); color:#fff; }
+        #r20-sn .tr input { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-accent) !important; border-radius:4px !important; box-shadow:none !important; font-size:11px !important; }
+        #r20-sn .te { padding:6px 4px; color:var(--aio-ink-5); font-size:10.5px; }
+        #r20-sn .cfgb[aria-pressed="true"] { background:var(--aio-bg-3); }
+        #r20-sn .cfg { display:flex; flex-wrap:wrap; gap:4px 10px; flex-shrink:0; padding:6px 10px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-bg-2); font-size:11px; color:var(--aio-ink-3); }
+        #r20-sn .cfg label { display:inline-flex; align-items:center; gap:4px; margin:0; font:inherit; color:inherit; }
+        #r20-sn .cfg select { width:auto !important; max-width:120px; height:22px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; font-size:11px !important; }
+        #r20-sn .cfg p { flex-basis:100%; margin:0; color:var(--aio-ink-4); font-size:10.5px; line-height:1.4; }
+        #r20-sn .cp { flex-shrink:0; height:20px; margin:0; padding:0 7px; border:1px solid var(--aio-line-2); border-radius:10px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:10.5px; line-height:18px; cursor:pointer; box-shadow:none; }
+        /* 장면 로그 (같은 사람이 이어 말하면 이름 한 번 · ▶ 시작 · ■ 끝) */
+        #r20-sn .lg { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 10px 10px; user-select:text; outline:none; font-size:12px; line-height:1.5; }
+        #r20-sn .lg .m { position:relative; padding:2px 0; content-visibility:auto; contain-intrinsic-size:auto 24px; }
+        #r20-sn .lg .w { display:flex; align-items:baseline; gap:6px; margin-top:6px; } #r20-sn .lg .w b { color:var(--aio-ink-2); } #r20-sn .lg .w span { color:var(--aio-ink-5); font-size:10.5px; }
+        #r20-sn .lg .t { white-space:pre-line; overflow-wrap:anywhere; color:var(--aio-ink-2); }
+        #r20-sn .lg .m.a, #r20-sn .lg .m.b { margin:2px 0; padding:0 0 4px 8px; border-left:2px solid var(--aio-accent); }
+        #r20-sn .lg .m.b { border-left-color:var(--aio-ink-5); }
+        #r20-sn .lg .m .tag { color:var(--aio-accent-dark); font-size:10px; font-style:normal; font-weight:700; }
+        #r20-sn .lg .m.b .tag { color:var(--aio-ink-4); }
+        #r20-sn .lg .m.hit { background:var(--aio-accent-bg); } #r20-sn .lg .m.cur { box-shadow:inset 3px 0 0 var(--aio-accent); }
+        #r20-sn .lg mark { padding:0; background:none; color:var(--aio-accent); font-weight:700; }
         #r20-sn .pane { display:flex; flex-direction:column; flex:1; min-width:0; }
         #r20-sn .tb { display:flex; align-items:center; gap:4px; flex-shrink:0; padding:3px 6px; border-bottom:1px solid var(--aio-line-4); }
         #r20-sn :is(.q, .pq) { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
