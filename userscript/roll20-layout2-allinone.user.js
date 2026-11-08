@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.69.0
+// @version      1.70.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.69.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.70.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -8739,13 +8739,17 @@ addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · �
     extra: () => [winMemory.modeRow()] });
 
 // ───────── 시나리오 내비게이터 (📖): 저널 폴더 하나 = 시나리오, 그 안의 핸드아웃 = 장 — 옆에 띄워 보며 길 찾기 ─────────
-// 왼쪽 좁은 목차(장 › 제목 줄) | 오른쪽 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기](보내지 않음) · 👁 가리기
+// 제목에 '시나리오' · '장면표' 가 든 핸드아웃을 맨 앞에 (★) · [따로] 한 장씩 / [이어서] 모두 이어 보기 (기억)
+// 핸드아웃 서식은 그대로 (글자 크기 · 색 · 배경 · 테두리 · 표 · 그림) — 스크립트 · 이벤트 · 화면 위로 뜨는 위치만 뺀다
+// 왼쪽 좁은 목차(장 › 제목 줄) | 오른쪽 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기](보내지 않음)
 // 폴더는 경로 이름으로 기억 → 복사한 방에서도 그대로. 핸드아웃 내용은 읽기만 (방 데이터는 안 바꿈)
 const scenNav = (() => {
-    const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", VEIL = "r20_sn_veil", TOC_W = 112, TXT_W = 268;
-    let win = null, cur = null, heads = [], spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
+    const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", MODE = "r20_sn_mode", TOC_W = 112, TXT_W = 268;
+    const KEY_RE = /시나리오|장면표/;        // 먼저 보여 줄 핸드아웃
+    let win = null, cur = null, heads = [], chs = [], selId = null, spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
     const $ = q => win.querySelector(q);
     const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+    const sep = () => ls(MODE) !== "cont";        // 기본: 따로 (한 장씩)
     const recent = () => { try { const a = JSON.parse(ls(REC) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
     const remember = (path, extra) => {
         const old = recent().find(r => r.path === path) || {};
@@ -8753,7 +8757,7 @@ const scenNav = (() => {
     };
     const canSee = m => isGM() || String(m.get("inplayerjournals") || "").split(",").some(x => x === "all" || x === window.currentPlayer?.id);
     const shared = m => !!String(m.get("inplayerjournals") || "").trim();
-    // 저널 폴더 나무 → 핸드아웃이 든 폴더 목록 { path, name, items: [{ id, m } | { group }] (하위 폴더는 묶음 제목) }
+    // 저널 폴더 나무 → 핸드아웃이 든 폴더 목록 { path, name, items: [{ id, m, gp: 하위 폴더 경로 }] }
     const folders = () => {
         const C = window.Campaign, out = [];
         let tree;
@@ -8765,52 +8769,67 @@ const scenNav = (() => {
             (Array.isArray(node) ? node : []).forEach(x => {
                 if (typeof x === "string") { if (hs.has(x)) items.push({ id: x, m: hs.get(x) }); }
                 else if (x && typeof x === "object") {
-                    const sub = walk(x.i, [...path, x.n || ""]);
-                    if (sub.length) items.push({ group: x.n || "" }, ...sub);
+                    items.push(...walk(x.i, [...path, x.n || ""]).map(it => ({ ...it, gp: [x.n || "", ...(it.gp || [])] })));
                 }
             });
-            if (path.length && items.some(it => it.m)) out[at] = { path: path.join(" › "), name: path[path.length - 1], items };
+            if (path.length && items.length) out[at] = { path: path.join(" › "), name: path[path.length - 1], items };
             return items;
         };
         walk(tree, []);
         return out.filter(Boolean);
     };
-    // 글자 · 그림만 남기고 안전하게 (스크립트 · 이벤트 · 스타일은 뺌, 글자 색 · 가운데 정렬만)
-    const OK = new Set(["P", "DIV", "BR", "B", "STRONG", "I", "EM", "U", "S", "STRIKE", "SPAN", "H1", "H2", "H3", "H4", "H5", "H6", "UL", "OL", "LI", "BLOCKQUOTE", "PRE", "CODE", "HR", "TABLE", "THEAD", "TBODY", "TR", "TD", "TH", "IMG", "A", "SUB", "SUP", "FONT"]);
+    // 서식은 살리고 위험한 것만 뺀다: 스크립트 · 폼 · 이벤트(on…) · class · 위치(position · z-index) · url()/expression
+    const DROP = /^(SCRIPT|STYLE|IFRAME|FRAME|OBJECT|EMBED|SVG|MATH|TEMPLATE|NOSCRIPT|FORM|INPUT|BUTTON|SELECT|TEXTAREA|LINK|META|BASE|AUDIO|VIDEO|SOURCE|CANVAS|DIALOG)$/;
+    const OK = new Set(("P DIV BR B STRONG I EM U S STRIKE SPAN FONT CENTER SMALL BIG MARK ABBR Q CITE KBD SAMP VAR INS DEL SUB SUP H1 H2 H3 H4 H5 H6 UL OL LI DL DT DD "
+        + "BLOCKQUOTE PRE CODE HR TABLE CAPTION COLGROUP COL THEAD TBODY TFOOT TR TD TH IMG A SECTION ARTICLE HEADER FOOTER ASIDE NAV MAIN FIGURE FIGCAPTION DETAILS SUMMARY").split(" "));
+    const ATTR = new Set(["width", "height", "align", "valign", "colspan", "rowspan", "border", "cellpadding", "cellspacing", "bgcolor", "color", "size", "face", "title", "alt", "start", "type", "open"]);
+    const safeStyle = st => String(st || "").split(";").map(d => d.trim()).filter(d => {
+        const i = d.indexOf(":");
+        if (i < 1) return false;
+        const k = d.slice(0, i).trim().toLowerCase(), v = d.slice(i + 1).toLowerCase();
+        return !/^(position|z-index|behavior|-moz-binding|pointer-events)$/.test(k) && !/url\s*\(|expression|javascript:|@import/.test(v);
+    }).join(";");
     const unesc = v => { v = String(v || ""); if (/[<>]/.test(v) || !/%(?:[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4})/.test(v)) return v; try { return unescape(v); } catch (e) { return v; } };
     const clean = html => {
         const doc = new DOMParser().parseFromString(String(html || ""), "text/html"), frag = document.createDocumentFragment();
         const copy = (src, dst) => src.childNodes.forEach(n => {
             if (n.nodeType === 3) return dst.append(n.textContent);
-            if (n.nodeType !== 1) return;
-            if (!OK.has(n.tagName)) { if (!/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|SVG|MATH|TEMPLATE|NOSCRIPT)$/.test(n.tagName)) copy(n, dst); return; }
-            const e = document.createElement(n.tagName === "FONT" ? "span" : n.tagName.toLowerCase());
+            if (n.nodeType !== 1 || DROP.test(n.tagName)) return;
+            if (!OK.has(n.tagName)) return copy(n, dst);           // 모르는 겉 태그는 벗기고 속은 살림
+            const e = document.createElement(n.tagName.toLowerCase());
+            [...n.attributes].forEach(a => {
+                const k = a.name.toLowerCase();
+                if (k === "style") { const v = safeStyle(a.value); if (v) e.setAttribute("style", v); }
+                else if (ATTR.has(k)) e.setAttribute(k, a.value);
+            });
             if (n.tagName === "IMG") {
                 const u = r20img(n.getAttribute("src") || "");
                 if (!/^https?:\/\//i.test(u)) return;
-                e.src = u; e.loading = "lazy"; e.alt = n.getAttribute("alt") || "";
+                e.src = u; e.loading = "lazy";
             } else if (n.tagName === "A") {
-                const u = n.getAttribute("href") || "";
-                if (/^https?:\/\//i.test(u)) { e.href = u; e.target = "_blank"; e.rel = "noopener noreferrer"; }
+                const u = n.getAttribute("href") || "", j = u.match(/journal\.roll20\.net\/handout\/([^/?#]+)/i);
+                if (j) { e.href = "#"; e.dataset.hid = j[1]; }          // 다른 핸드아웃 고리 → 그 장으로 (없으면 Roll20 창)
+                else if (/^https?:\/\//i.test(u)) { e.href = u; e.target = "_blank"; e.rel = "noopener noreferrer"; }
             }
-            const col = n.style?.color || n.getAttribute("color"), al = n.style?.textAlign;
-            if (col && /^[#a-z0-9(),.\s%]+$/i.test(col)) e.style.color = col;
-            if (al === "center" || al === "right") e.style.textAlign = al;
             copy(n, e);
             dst.append(e);
         });
         copy(doc.body, frag);
         return frag;
     };
-    // 제목 줄: 제목 서식 · 기호로 시작하는 짧은 줄 · 굵은 글씨만 있는 짧은 줄
+    // 제목 줄: 제목 서식 · 기호로 시작하는 짧은 줄 · 굵은 글씨만 있는 짧은 줄 · 큰 글씨(16px 넘게)인 짧은 줄
     const HEAD_RE = /^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4}\s|【[^】]+】\s*$|「[^」]+」\s*$|\[[^\]]+\]\s*$|\d{1,2}[.)．]\s?\S|第.+[章節話幕]|제\s*\d+\s*[장절화막]|\d+\s*장\b|(장면|씬|シーン|scene|phase|페이즈)\s*\d*\b)/i;
+    const bigText = el => {
+        let px = parseFloat(el.style?.fontSize) || 0;
+        el.querySelectorAll("[style*='font-size'], font[size]").forEach(x => { px = Math.max(px, parseFloat(x.style.fontSize) || (+x.getAttribute("size") >= 5 ? 20 : 0)); });
+        return px >= 16;
+    };
     const isHead = el => {
-        if (/^H[1-4]$/.test(el.tagName)) return true;
         const t = el.textContent.trim();
-        if (!t || t.length > 40 || el.querySelector("img")) return false;
-        if (HEAD_RE.test(t)) return true;
+        if (t.length < 2 || t.length > 40 || /^[\d\s.,·:/-]+$/.test(t) || el.querySelector("img, table")) return false;      // 숫자뿐인 칸(표 번호)은 아님
+        if (/^H[1-4]$/.test(el.tagName) || HEAD_RE.test(t) || bigText(el)) return true;
         const b = [...el.querySelectorAll("b, strong")].map(x => x.textContent).join("").trim();
-        return b.length >= 2 && b === t;
+        return b.length >= 2 && b === t && !/^(LI|TD)$/.test(el.tagName);       // 목록 · 표 칸의 굵은 글씨는 강조일 뿐
     };
     const getBlob = (m, f) => new Promise(ok => {
         const t = setTimeout(() => ok(""), 8000);
@@ -8841,11 +8860,11 @@ const scenNav = (() => {
         win.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
             + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
             + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
-            + '<button type="button" data-a="veil" class="ib" title="가리기 — 마우스를 올릴 때만 보이게 (화면 공유 · 방송)" aria-label="가리기" aria-pressed="false">👁</button>'
             + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
             + '<div class="sp"><div class="toc" role="tree" aria-label="목차"></div><div class="pane">'
-            + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
+            + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
+            + '<span class="md" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
             + '<div class="bd" tabindex="-1"></div></div></div>'
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>';
         win.addEventListener("keydown", e => {
@@ -8854,11 +8873,14 @@ const scenNav = (() => {
             else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
             else if (e.key === "Enter" && e.target.matches(".pq") && !e.isComposing) { e.preventDefault(); $(".pl [data-p]")?.click(); }
         });
-        win.addEventListener("click", async e => {
+        win.addEventListener("click", e => {
+            const link = e.target.closest(".bd a[data-hid]");
+            if (link) { e.preventDefault(); return goHandout(link.dataset.hid); }
             const b = e.target.closest("button, [data-p], .tr"), a = b?.dataset.a;
-            if (!b) { const img = e.target.closest(".bd img"); if (img) zoomImg(img.src); return; }
+            if (!b) { const img = e.target.closest(".bd img"); if (img && !img.closest("a")) zoomImg(img.src); return; }
             if (b.dataset.p != null) return openPath(b.dataset.p);
-            if (b.classList.contains("tr")) { const el = $("#" + b.dataset.h); if (el) $(".bd").scrollTop = el.offsetTop - 4; return; }
+            if (b.dataset.m) { ls(MODE, b.dataset.m); applyMode(); return; }
+            if (b.classList.contains("tr")) return jump(b);
             if (a === "x") return close();
             if (a === "pick") return showPick($(".pk").hidden);
             if (a === "toc") {
@@ -8869,7 +8891,6 @@ const scenNav = (() => {
                 b.setAttribute("aria-pressed", String(on));
                 return keep();
             }
-            if (a === "veil") { const on = !win.classList.contains("veil"); win.classList.toggle("veil", on); ls(VEIL, String(on)); return b.setAttribute("aria-pressed", String(on)); }
             if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
             if (a === "warn") return alert("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"));
             if (a === "put" || a === "copy") {
@@ -8935,8 +8956,8 @@ const scenNav = (() => {
         const q = $(".pq").value.trim().toLowerCase().replace(/\s+/g, ""), all = fcache, byPath = new Map(all.map(f => [f.path, f]));
         const hit = f => !q || f.path.toLowerCase().replace(/\s+/g, "").includes(q) || cho(f.path.replace(/\s+/g, "")).includes(q);
         const row = (f, last) => {
-            const n = f.items.filter(it => it.m).length, sh = isGM() ? f.items.filter(it => it.m && shared(it.m)).length : 0;
-            return `<div class="pr" role="option" data-p="${escAttr(f.path)}"><span class="pn">${escAttr(f.name)}<small>${escAttr(f.path)} · 핸드아웃 ${n}${last ? " · 마지막: " + escAttr(last) : ""}${sh ? ` · <em>⚠ ${sh}개 공개됨</em>` : ""}</small></span></div>`;
+            const n = f.items.filter(it => it.m).length, key = f.items.filter(it => it.m && KEY_RE.test(it.m.get("name") || "")).length, sh = isGM() ? f.items.filter(it => it.m && shared(it.m)).length : 0;
+            return `<div class="pr" role="option" data-p="${escAttr(f.path)}"><span class="pn">${escAttr(f.name)}<small>${escAttr(f.path)} · 핸드아웃 ${n}${key ? ` · ★ ${key}` : ""}${last ? " · 마지막: " + escAttr(last) : ""}${sh ? ` · <em>⚠ ${sh}개 공개됨</em>` : ""}</small></span></div>`;
         };
         const rec = recent().map(r => byPath.get(r.path) && hit(byPath.get(r.path)) ? row(byPath.get(r.path), r.where) : "").join("");
         const nameHit = f => !q || f.name.toLowerCase().replace(/\s+/g, "").includes(q) || cho(f.name.replace(/\s+/g, "")).includes(q);
@@ -8945,7 +8966,7 @@ const scenNav = (() => {
             || `<div class="msg">${all.length ? "찾는 폴더가 없어요" : "핸드아웃이 든 저널 폴더가 없어요 — 저널에 폴더를 만들고 핸드아웃에 시나리오를 붙여 넣으세요"}</div>`;
     };
 
-    // ── 열기: 폴더의 핸드아웃을 차례로 읽어 장으로 (본문 + GM 메모) ──
+    // ── 열기: '시나리오' · '장면표' 핸드아웃을 맨 앞에, 나머지는 저널 순서 · 차례로 읽어 장으로 (본문 + GM 메모) ──
     const openPath = async path => {
         const f = folders().find(x => x.path === path);
         if (!f) return showPick(true);
@@ -8955,27 +8976,38 @@ const scenNav = (() => {
         $(".mt").textContent = "읽는 중…";
         $(".q").value = ""; hits = []; hitAt = -1; $(".qn").textContent = "";
         $(".warn").hidden = !(isGM() && f.items.some(it => it.m && shared(it.m)));
+        const keyItems = f.items.filter(it => KEY_RE.test(it.m.get("name") || "")), order = keyItems.map(it => ({ ...it, key: true }));
+        let gp = keyItems.length ? null : "";          // 하위 폴더가 바뀔 때마다 묶음 제목 (★ 뒤 첫 묶음은 '그 밖의 핸드아웃')
+        f.items.filter(it => !keyItems.includes(it)).forEach(it => {
+            const g = (it.gp || []).join(" › ");
+            if (g !== gp) { order.push({ group: g || (keyItems.length ? "그 밖의 핸드아웃" : f.name) }); gp = g; }
+            order.push(it);
+        });
         const bd = $(".bd");
         bd.textContent = "";
-        // 장 자리를 먼저 만들고, 읽는 대로 채운다
-        const secs = f.items.map(it => {
+        chs = [];
+        const secs = order.map(it => {
             const sec = document.createElement("section");
             if (it.group != null) { sec.className = "grp"; sec.textContent = it.group; return sec; }
-            sec.className = "ch";
+            sec.className = "ch" + (it.key ? " key" : "");
             sec.dataset.id = it.id;
             const h = document.createElement("h3");
             h.className = "cht";
-            h.textContent = it.m.get("name") || "(이름 없음)";
+            h.textContent = (it.key ? "★ " : "") + (it.m.get("name") || "(이름 없음)");
             sec.append(h);
+            chs.push({ id: it.id, sec, key: !!it.key, name: it.m.get("name") || "" });
             return sec;
         });
         bd.append(...secs);
         const fields = isGM() ? ["notes", "gmnotes"] : ["notes"];
-        await Promise.all(f.items.map(async (it, k) => {
+        await Promise.all(order.map(async (it, k) => {
             if (!it.m || typeof it.m._getLatestBlob !== "function") return;
             const [notes, gm] = await Promise.all(fields.map(x => getBlob(it.m, x)));
             if (cur !== f) return;
-            secs[k].append(clean(unesc(notes)));
+            const body = document.createElement("div");
+            body.className = "cb";
+            body.append(clean(unesc(notes)));
+            secs[k].append(body);
             if (gm && String(gm).trim()) {
                 const g = document.createElement("div");
                 g.className = "gm";
@@ -8984,45 +9016,75 @@ const scenNav = (() => {
             }
         }));
         if (cur !== f) return;
-        // 목차: 장 이름 + 그 안의 제목 줄
+        // 목차: 장 이름 + 그 안의 제목 줄 (따로 보기면 고른 장의 제목 줄만)
         heads = [];
         let n = 0;
         secs.forEach(sec => {
-            if (sec.className === "grp") { sec.id = "sn-h" + n++; heads.push({ el: sec, lv: 0, t: sec.textContent, grp: true }); return; }
-            const h = sec.querySelector(".cht");
+            if (sec.className === "grp") { sec.id = "sn-h" + n++; heads.push({ el: sec, grp: true, t: sec.textContent }); return; }
+            const h = sec.querySelector(".cht"), c = sec.dataset.id;
             h.id = "sn-h" + n++;
-            heads.push({ el: h, lv: 0, t: h.textContent, ch: true });
-            sec.querySelectorAll(":is(h1, h2, h3, h4, p, div):not(.gm):not(.gmt):not(.cht)").forEach(el => {
-                if (el.closest(".gm") || el.querySelector("p, div, h1, h2, h3, h4") || !isHead(el)) return;      // GM 메모 안 · 다른 줄을 품은 칸은 빼고
+            heads.push({ el: h, ch: true, c, key: sec.classList.contains("key"), t: h.textContent });
+            sec.querySelectorAll(".cb :is(h1, h2, h3, h4, h5, p, div, center, li, td)").forEach(el => {
+                if (el.querySelector("p, div, h1, h2, h3, h4, h5, li, table") || !isHead(el)) return;      // 다른 줄을 품은 칸은 빼고
                 el.id = "sn-h" + n++;
-                el.classList.add("hx");
-                heads.push({ el, lv: 1, t: el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "") });
+                heads.push({ el, c, t: el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "") });
             });
         });
-        $(".toc").innerHTML = heads.map(h => `<div class="tr${h.ch ? " ch" : ""}${h.grp ? " grp" : ""}" role="treeitem" data-h="${h.el.id}" style="padding-left:${4 + h.lv * 10}px" title="${escAttr(h.t)}">${h.ch ? "📜 " : ""}${escAttr(h.t)}</div>`).join("")
+        $(".toc").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h"}${h.key ? " key" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${h.ch && !h.key ? "📜 " : ""}${escAttr(h.t)}</div>`).join("")
             || '<div class="msg">핸드아웃이 없어요</div>';
-        // 읽던 자리
         const r = recent().find(x => x.path === path);
-        bd.scrollTop = r?.pos ? r.pos * (bd.scrollHeight - bd.clientHeight) : 0;
+        selId = chs.some(c => c.id === r?.sel) ? r.sel : chs[0]?.id || null;
+        applyMode(r?.pos);
         remember(path);
+    };
+    // [따로] 고른 장만 · [이어서] 모두 — 목차의 제목 줄도 같이
+    const applyMode = pos => {
+        const s = sep(), bd = $(".bd");
+        win.querySelectorAll(".md [data-m]").forEach(b => b.setAttribute("aria-checked", String((b.dataset.m === "sep") === s)));
+        bd.classList.toggle("sep", s);
+        $(".toc").classList.toggle("sep", s);
+        chs.forEach(c => c.sec.classList.toggle("on", c.id === selId));
+        win.querySelectorAll(".toc .tr[data-c]").forEach(t => t.classList.toggle("cur", t.dataset.c === selId));
+        if (pos != null) bd.scrollTop = pos * (bd.scrollHeight - bd.clientHeight);
+        else if (!s) { const sec = chs.find(c => c.id === selId)?.sec; bd.scrollTop = sec ? yOf(sec) : 0; }
+        else bd.scrollTop = 0;
         spy();
+    };
+    // 본문 안 위치 (표 칸 안이어도) — offsetTop 은 칸 기준이라 쓰지 않는다
+    const yOf = el => { const bd = $(".bd"); return (el.getBoundingClientRect().top - bd.getBoundingClientRect().top) / aioZoom.get() + bd.scrollTop; };
+    // 목차 줄 누르기: 장이면 그 장으로, 제목 줄이면 그 장을 고르고 그 자리로
+    const jump = row => {
+        const h = heads[+row.dataset.i];
+        if (!h) return;
+        if (h.c && sep() && h.c !== selId) { selId = h.c; applyMode(); }
+        else if (h.c) selId = h.c;
+        if (h.ch && sep()) { $(".bd").scrollTop = 0; return spy(); }
+        $(".bd").scrollTop = yOf(h.el) - 4;
+        spy();
+    };
+    // 다른 핸드아웃 고리: 이 시나리오 안이면 그 장으로, 아니면 Roll20 핸드아웃 창
+    const goHandout = id => {
+        const c = chs.find(x => x.id === id);
+        if (c) { selId = id; return applyMode(); }
+        window.Campaign?.handouts?.get?.(id)?.view?.showDialog?.();
     };
     // 지금 보이는 제목 → 목차 표시 · 머리줄 '장 › 제목 · %' · 자리 기억
     const spy = () => {
         if (!cur || !win || win.hidden) return;
-        const bd = $(".bd"), top = bd.scrollTop + 8;
+        const bd = $(".bd"), top = bd.getBoundingClientRect().top + 8 * aioZoom.get(), s = sep();
         let k = -1;
-        heads.forEach((h, i) => { if (h.el.offsetTop <= top) k = i; });
-        win.querySelectorAll(".toc .tr").forEach((t, i) => t.classList.toggle("on", i === k));
+        heads.forEach((h, i) => { if ((!s || h.c === selId) && !h.grp && h.el.getClientRects().length && h.el.getBoundingClientRect().top <= top) k = i; });
+        if (!s && k >= 0 && heads[k].c) selId = heads[k].c;
+        win.querySelectorAll(".toc .tr").forEach((t, i) => t.classList.toggle("on", i === k || (s && k < 0 && heads[i]?.ch && heads[i].c === selId)));
+        win.querySelectorAll(".toc .tr[data-c]").forEach(t => t.classList.toggle("cur", t.dataset.c === selId));
         win.querySelector(".toc .tr.on")?.scrollIntoView({ block: "nearest" });
-        let ch = null;
-        for (let i = k; i >= 0; i--) if (heads[i].ch) { ch = heads[i].t; break; }
-        const sub = k >= 0 && !heads[k].ch ? heads[k].t : "", max = bd.scrollHeight - bd.clientHeight, pos = max > 0 ? bd.scrollTop / max : 0;
+        const ch = chs.find(c => c.id === selId)?.name || "", sub = k >= 0 && !heads[k].ch ? heads[k].t : "";
+        const max = bd.scrollHeight - bd.clientHeight, pos = max > 0 ? bd.scrollTop / max : 0;
         $(".mt").textContent = [ch, sub].filter(Boolean).join(" › ") + (max > 0 ? ` · ${Math.round(pos * 100)}%` : "");
         clearTimeout(posT);
-        posT = setTimeout(() => remember(cur.path, { pos, where: [ch, sub].filter(Boolean).join(" › ") }), 600);
+        posT = setTimeout(() => remember(cur.path, { pos, sel: selId, where: [ch, sub].filter(Boolean).join(" › ") }), 600);
     };
-    // 이 시나리오에서 찾기: 맞는 곳을 칠하고 Enter 로 다음 (칠하기는 CSS 강조 — 글을 바꾸지 않음)
+    // 이 시나리오에서 찾기 (따로 보기여도 모든 장에서) · Enter 로 다음 — 그 장이 아니면 그 장으로 넘어간다
     const find = () => {
         const q = $(".q").value.trim().toLowerCase(), bd = $(".bd");
         hits = []; hitAt = -1;
@@ -9039,7 +9101,9 @@ const scenNav = (() => {
     const nextHit = d => {
         if (!hits.length) return;
         hitAt = (hitAt + d + hits.length) % hits.length;
-        const r = hits[hitAt], bd = $(".bd"), rb = r.getBoundingClientRect(), bb = bd.getBoundingClientRect();
+        const r = hits[hitAt], bd = $(".bd"), sec = r.startContainer.parentElement?.closest("section.ch");
+        if (sec && sep() && sec.dataset.id !== selId) { selId = sec.dataset.id; applyMode(); }
+        const rb = r.getBoundingClientRect(), bb = bd.getBoundingClientRect();
         bd.scrollTop += (rb.top - bb.top) / aioZoom.get() - bd.clientHeight / 3;
         if (window.CSS?.highlights && window.Highlight) CSS.highlights.set("r20sn-cur", new Highlight(r));
         $(".qn").textContent = `${hitAt + 1}/${hits.length}`;
@@ -9052,9 +9116,7 @@ const scenNav = (() => {
         win.hidden = false;
         win.classList.remove("aio-min");
         win.classList.toggle("notoc", !tocOn());
-        win.classList.toggle("veil", ls(VEIL) === "true");
         $(".tg").setAttribute("aria-pressed", String(tocOn()));
-        $('[data-a="veil"]').setAttribute("aria-pressed", String(ls(VEIL) === "true"));
         $(".pin").setAttribute("aria-pressed", String(pinned()));
         place();
         if (cur) return;
@@ -9085,47 +9147,51 @@ const scenNav = (() => {
     return { inject, setEnabled, open };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · 왼쪽 목차(장 › 제목 줄) | 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 👁 가리기 · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · 제목에 '시나리오' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 제목 줄) · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
         #r20-sn { position:fixed; z-index:10004; display:flex; flex-direction:column; min-width:200px; min-height:140px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.6 sans-serif; overflow:hidden; resize:both; box-sizing:border-box; }
         #r20-sn[hidden], #r20-sn [hidden] { display:none !important; }
-        #r20-sn *, #r20-sn *::before, #r20-sn *::after { box-sizing:border-box; }
+        #r20-sn > *, #r20-sn .hd *, #r20-sn .tb *, #r20-sn .toc *, #r20-sn .pk *, #r20-sn .fl * { box-sizing:border-box; }
         #r20-sn:focus { outline:none; }
         #r20-sn .hd { display:flex; align-items:center; gap:2px; flex-shrink:0; height:30px; padding:0 3px 0 3px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
         #r20-sn .nm { flex:0 1 auto; min-width:0; max-width:40%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; }
         #r20-sn .mt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-4); font-size:10.5px; }
         #r20-sn .ib { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; line-height:22px; cursor:pointer; box-shadow:none; }
         #r20-sn .ib:hover { background:var(--aio-bg-3); }
-        #r20-sn .tg[aria-pressed="true"], #r20-sn [data-a="veil"][aria-pressed="true"] { background:var(--aio-bg-3); }
+        #r20-sn .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
         #r20-sn .pin { filter:grayscale(1); opacity:0.5; } #r20-sn .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
         #r20-sn .warn { color:var(--aio-warn); }
         #r20-sn .sp { display:flex; flex:1; min-height:0; }
         #r20-sn .toc { flex:0 0 112px; overflow-y:auto; overscroll-behavior:contain; padding:3px 2px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
         #r20-sn.notoc .toc { display:none; }
-        #r20-sn .tr { height:22px; padding-right:4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:11px; line-height:22px; cursor:pointer; }
+        #r20-sn .tr { height:22px; padding:0 4px 0 4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:11px; line-height:22px; cursor:pointer; }
+        #r20-sn .tr.h { padding-left:14px; }
+        #r20-sn .toc.sep .tr.h:not(.cur) { display:none; }
         #r20-sn .tr:hover { background:var(--aio-bg-3); }
-        #r20-sn .tr.ch { margin-top:3px; color:var(--aio-ink-3); font-weight:700; font-size:10.5px; }
-        #r20-sn .tr.grp { margin-top:5px; color:var(--aio-accent-dark); font-weight:700; font-size:10.5px; }
+        #r20-sn .tr.ch { margin-top:2px; color:var(--aio-ink-3); font-weight:700; font-size:10.5px; }
+        #r20-sn .tr.ch.key { color:var(--aio-accent-dark); }
+        #r20-sn .tr.ch.cur { background:var(--aio-bg-3); }
+        #r20-sn .tr.grp { margin-top:6px; color:var(--aio-ink-5); font-weight:700; font-size:10px; }
         #r20-sn .tr.on { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
         #r20-sn .pane { display:flex; flex-direction:column; flex:1; min-width:0; }
         #r20-sn .tb { display:flex; align-items:center; gap:4px; flex-shrink:0; padding:3px 6px; border-bottom:1px solid var(--aio-line-4); }
         #r20-sn :is(.q, .pq) { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
         #r20-sn .qn { color:var(--aio-ink-5); font-size:10.5px; white-space:nowrap; }
-        #r20-sn .bd { position:relative; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 10px 12px; user-select:text; outline:none; overflow-wrap:anywhere; }
-        #r20-sn .bd p, #r20-sn .bd div { margin:0 0 5px; }
-        #r20-sn .bd :is(h1, h2, h3, h4) { margin:8px 0 3px; font-size:12.5px; line-height:1.4; }
-        #r20-sn .bd .hx { color:var(--aio-accent-dark); font-weight:700; }
-        #r20-sn .bd .cht { margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; font-weight:700; }
-        #r20-sn .bd section:first-child .cht { margin-top:0; }
-        #r20-sn .bd .grp { margin:14px 0 4px; color:var(--aio-accent-dark); font-weight:700; font-size:11px; }
-        #r20-sn .bd img { display:block; max-width:100%; height:auto; margin:4px 0; border-radius:var(--aio-r-sm); cursor:zoom-in; }
-        #r20-sn .bd table { border-collapse:collapse; margin:4px 0; font-size:11px; } #r20-sn .bd :is(td, th) { padding:2px 5px; border:1px solid var(--aio-line-3); }
-        #r20-sn .bd ul, #r20-sn .bd ol { margin:0 0 5px 18px; padding:0; }
-        #r20-sn .bd .gm { margin:6px 0; padding:4px 8px; border-left:2px solid var(--aio-warn); background:var(--aio-warn-bg); }
-        #r20-sn .bd .gmt { margin:0 0 2px; color:var(--aio-warn-ink); font-size:10.5px; font-weight:700; }
-        #r20-sn .bd a { color:var(--aio-accent-dark); }
+        #r20-sn .md { display:inline-flex; flex-shrink:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
+        #r20-sn .md button { height:20px; margin:0; padding:0 6px; border:0; background:var(--aio-bg); color:var(--aio-ink-4); font-size:10.5px; line-height:20px; cursor:pointer; box-shadow:none; }
+        #r20-sn .md button[aria-checked="true"] { background:var(--aio-accent); color:#fff; font-weight:700; }
+        /* 본문: 핸드아웃 서식 그대로 (Roll20 핸드아웃 창과 같은 바탕 글꼴 · 크기) — 우리 쪽은 장 머리 · GM 메모 테두리만 */
+        #r20-sn .bd { position:relative; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:4px 10px 12px; font-size:14px; line-height:1.5; color:#333; user-select:text; outline:none; overflow-wrap:anywhere; }
+        #r20-sn .bd.sep section:not(.on) { display:none; }
+        #r20-sn .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
+        #r20-sn .bd .cht { margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
+        #r20-sn .bd section.key .cht { color:var(--aio-accent-dark); }
+        #r20-sn .bd section:first-child .cht, #r20-sn .bd.sep .cht { margin-top:0; }
+        #r20-sn .bd .grp { margin:14px 0 4px; color:var(--aio-ink-5); font:700 11px/1.6 sans-serif; }
+        #r20-sn .bd .gm { margin:6px 0; padding:4px 8px; border-left:2px solid var(--aio-warn); }
+        #r20-sn .bd .gmt { margin:0 0 2px; color:var(--aio-warn-ink); font:700 10.5px/1.6 sans-serif; }
         #r20-sn .msg { margin:20px 8px; color:var(--aio-ink-4); text-align:center; font-size:11px; }
         #r20-sn .fl { position:absolute; z-index:2; display:flex; gap:3px; padding:3px; border-radius:13px; background:var(--aio-tip); box-shadow:0 3px 10px rgba(0,0,0,0.3); }
         #r20-sn .fl button { height:20px; margin:0; padding:0 8px; border:1px solid rgba(255,255,255,0.35); border-radius:10px; background:transparent; color:#fff; font-size:11px; cursor:pointer; box-shadow:none; }
@@ -9136,8 +9202,6 @@ addCss(`
         #r20-sn .pr { padding:4px 4px; border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); cursor:pointer; }
         #r20-sn .pr:hover { background:var(--aio-accent-bg); }
         #r20-sn .pn { display:block; font-size:11.5px; } #r20-sn .pn small { display:block; color:var(--aio-ink-4); font-size:10px; line-height:1.4; } #r20-sn .pn em { color:var(--aio-warn); font-style:normal; }
-        /* 👁 가리기: 마우스를 올릴 때만 */
-        #r20-sn.veil:not(:hover) :is(.bd, .toc, .pl) { filter:blur(6px); }
         ::highlight(r20sn-hit) { background-color:#fff3a8; color:inherit; }
         ::highlight(r20sn-cur) { background-color:#ffb347; color:inherit; }
         .r20sn-zoom { position:fixed; inset:0; z-index:10020; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); cursor:zoom-out; }
