@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.75.2
+// @version      1.75.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.75.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.75.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6078,14 +6078,17 @@ addCss(`
         /* 덱 · 매크로를 오른쪽 판 왼쪽 끝에 (단추줄 밑) — 자리 값은 edgeDock 이 CSS 변수로 */
         html body.r20edge-dk #showndecks#showndecks { position:fixed !important; top:auto !important; right:var(--r20e-r) !important; left:auto !important; bottom:var(--r20e-db) !important; max-height:var(--r20e-dmax) !important; margin:0 !important; padding:4px !important; border-radius:var(--aio-r-lg) 0 0 var(--aio-r-lg) !important; }
         html body.r20edge-dk #showndecks:not(:has(.adeck)) { display:none !important; }
-        html body.r20edge-dk #showndecks.r20dk-on .deckstack, html body.r20edge-dk #showndecks.r20dk-on .deckstack .allback, html body.r20edge-dk #showndecks.r20dk-on .deckstack .nextcard > div, html body.r20edge-dk #showndecks.r20dk-on .deckstack img { width:52px !important; }
+        /* 덱 판 폭 = 매크로 단추 폭(62px): 카드 54px + 좌우 4px · 스크롤 막대는 숨김 (휠 · 손가락으로) */
+        html body.r20edge-dk #showndecks#showndecks { width:62px !important; overflow-x:hidden !important; scrollbar-width:none; box-sizing:border-box !important; }
+        html body.r20edge-dk #showndecks::-webkit-scrollbar { display:none; }
+        html body.r20edge-dk #showndecks.r20dk-on .deckstack, html body.r20edge-dk #showndecks.r20dk-on .deckstack .allback, html body.r20edge-dk #showndecks.r20dk-on .deckstack .nextcard > div, html body.r20edge-dk #showndecks.r20dk-on .deckstack img { width:54px !important; }
         html body.r20edge-dk #showndecks.r20dk-on .adeck { margin-bottom:4px !important; }
         /* 매크로: 오른쪽 끝을 맞춘 알약을 위에서부터 · 칸 밖(빈 곳)은 맵을 누를 수 있게 통과 */
         html body.r20edge-mb #macrobar#macrobar { position:fixed !important; top:auto !important; right:var(--r20e-r) !important; bottom:var(--r20e-mb) !important; left:auto !important; width:auto !important; height:auto !important; max-height:var(--r20e-mmax) !important; margin:0 !important; padding:0 !important; overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; touch-action:pan-y; background:none !important; border:0 !important; box-shadow:none !important; scrollbar-width:none; pointer-events:none; }
         html body.r20edge-mb #macrobar::-webkit-scrollbar { display:none; }
         html body.r20edge-mb #macrobar#macrobar > * { background:none !important; }
         html body.r20edge-mb #macrobar_macros { display:block !important; width:auto !important; margin:0 !important; padding:0 !important; white-space:normal !important; text-align:right; pointer-events:none; }
-        html body.r20edge-mb #macrobar #macrobar_macros .macrobox, html body.r20edge-mb #macrobar #macrobar_macros .macrobox:hover { display:block !important; width:auto !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; }
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox, html body.r20edge-mb #macrobar #macrobar_macros .macrobox:hover { display:block !important; width:auto !important; min-width:0 !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; background:none !important; border:0 !important; box-shadow:none !important; }
         /* 폭: 이모지 + 글자 3자까지 (62px) · 넘치는 이름은 마우스를 올리면 왼쪽으로 펼쳐져 다 보인다 */
         html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button { pointer-events:auto; width:62px !important; max-width:none; height:24px !important; padding:0 3px 0 7px !important; border-radius:12px 0 0 12px !important; font-size:11.5px !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:clip; }
         html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:hover, html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:focus-visible { width:auto !important; min-width:62px; padding-right:8px !important; }
