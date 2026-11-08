@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.67.0
+// @version      1.68.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.67.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.68.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -66,7 +66,8 @@ const btnVisible = {
     logbak:    localStorage.getItem("r20_show_logbak") !== "false",
     tokset:    localStorage.getItem("r20_show_tokset") !== "false",
     qfind:     localStorage.getItem("r20_show_qfind") !== "false",
-    winmem:    localStorage.getItem("r20_show_winmem") !== "false"
+    winmem:    localStorage.getItem("r20_show_winmem") !== "false",
+    scen:      localStorage.getItem("r20_show_scen") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -5300,7 +5301,7 @@ const screenUI = (() => {
         const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
-        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-scnbtn"), document.getElementById("r20-qfbtn"));
+        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-scnbtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
             if (!el) return;
             const set = (k, v) => el.style.setProperty(k, v, "important");
@@ -8394,7 +8395,7 @@ const winMemory = (() => {
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
     // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
-    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-scw > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-scw > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
     document.addEventListener("dblclick", e => {
         if (!btnVisible.winmem) return;
         const head = e.target.closest?.(HEADS);
@@ -8612,8 +8613,8 @@ addCss(`
         .ui-dialog-titlebar .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
         /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-scw, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
 `);
 
 addFeature("quickFind", quickFind);
@@ -8624,6 +8625,412 @@ addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+F)", sub: "�
 addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
+
+// ───────── 시나리오 내비게이터 (📖): 저널 폴더 하나 = 시나리오, 그 안의 핸드아웃 = 장 — 옆에 띄워 보며 길 찾기 ─────────
+// 왼쪽 좁은 목차(장 › 제목 줄) | 오른쪽 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기](보내지 않음) · 👁 가리기
+// 폴더는 경로 이름으로 기억 → 복사한 방에서도 그대로. 핸드아웃 내용은 읽기만 (방 데이터는 안 바꿈)
+const scenNav = (() => {
+    const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", VEIL = "r20_sn_veil", TOC_W = 112, TXT_W = 268;
+    let win = null, cur = null, heads = [], spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
+    const $ = q => win.querySelector(q);
+    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+    const recent = () => { try { const a = JSON.parse(ls(REC) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+    const remember = (path, extra) => {
+        const old = recent().find(r => r.path === path) || {};
+        ls(REC, JSON.stringify([{ ...old, path, at: Date.now(), ...extra }, ...recent().filter(r => r.path !== path)].slice(0, 12)));
+    };
+    const canSee = m => isGM() || String(m.get("inplayerjournals") || "").split(",").some(x => x === "all" || x === window.currentPlayer?.id);
+    const shared = m => !!String(m.get("inplayerjournals") || "").trim();
+    // 저널 폴더 나무 → 핸드아웃이 든 폴더 목록 { path, name, items: [{ id, m } | { group }] (하위 폴더는 묶음 제목) }
+    const folders = () => {
+        const C = window.Campaign, out = [];
+        let tree;
+        try { tree = JSON.parse(C?.get?.("journalfolder") || "[]"); } catch (e) { return out; }
+        const hs = new Map((C?.handouts?.models || []).filter(canSee).map(m => [m.id, m]));
+        const walk = (node, path) => {
+            const items = [], at = out.length;         // 저널 순서대로 (바깥 폴더가 먼저)
+            if (path.length) out.push(null);
+            (Array.isArray(node) ? node : []).forEach(x => {
+                if (typeof x === "string") { if (hs.has(x)) items.push({ id: x, m: hs.get(x) }); }
+                else if (x && typeof x === "object") {
+                    const sub = walk(x.i, [...path, x.n || ""]);
+                    if (sub.length) items.push({ group: x.n || "" }, ...sub);
+                }
+            });
+            if (path.length && items.some(it => it.m)) out[at] = { path: path.join(" › "), name: path[path.length - 1], items };
+            return items;
+        };
+        walk(tree, []);
+        return out.filter(Boolean);
+    };
+    // 글자 · 그림만 남기고 안전하게 (스크립트 · 이벤트 · 스타일은 뺌, 글자 색 · 가운데 정렬만)
+    const OK = new Set(["P", "DIV", "BR", "B", "STRONG", "I", "EM", "U", "S", "STRIKE", "SPAN", "H1", "H2", "H3", "H4", "H5", "H6", "UL", "OL", "LI", "BLOCKQUOTE", "PRE", "CODE", "HR", "TABLE", "THEAD", "TBODY", "TR", "TD", "TH", "IMG", "A", "SUB", "SUP", "FONT"]);
+    const unesc = v => { v = String(v || ""); if (/[<>]/.test(v) || !/%(?:[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4})/.test(v)) return v; try { return unescape(v); } catch (e) { return v; } };
+    const clean = html => {
+        const doc = new DOMParser().parseFromString(String(html || ""), "text/html"), frag = document.createDocumentFragment();
+        const copy = (src, dst) => src.childNodes.forEach(n => {
+            if (n.nodeType === 3) return dst.append(n.textContent);
+            if (n.nodeType !== 1) return;
+            if (!OK.has(n.tagName)) { if (!/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|SVG|MATH|TEMPLATE|NOSCRIPT)$/.test(n.tagName)) copy(n, dst); return; }
+            const e = document.createElement(n.tagName === "FONT" ? "span" : n.tagName.toLowerCase());
+            if (n.tagName === "IMG") {
+                const u = r20img(n.getAttribute("src") || "");
+                if (!/^https?:\/\//i.test(u)) return;
+                e.src = u; e.loading = "lazy"; e.alt = n.getAttribute("alt") || "";
+            } else if (n.tagName === "A") {
+                const u = n.getAttribute("href") || "";
+                if (/^https?:\/\//i.test(u)) { e.href = u; e.target = "_blank"; e.rel = "noopener noreferrer"; }
+            }
+            const col = n.style?.color || n.getAttribute("color"), al = n.style?.textAlign;
+            if (col && /^[#a-z0-9(),.\s%]+$/i.test(col)) e.style.color = col;
+            if (al === "center" || al === "right") e.style.textAlign = al;
+            copy(n, e);
+            dst.append(e);
+        });
+        copy(doc.body, frag);
+        return frag;
+    };
+    // 제목 줄: 제목 서식 · 기호로 시작하는 짧은 줄 · 굵은 글씨만 있는 짧은 줄
+    const HEAD_RE = /^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4}\s|【[^】]+】\s*$|「[^」]+」\s*$|\[[^\]]+\]\s*$|\d{1,2}[.)．]\s?\S|第.+[章節話幕]|제\s*\d+\s*[장절화막]|\d+\s*장\b|(장면|씬|シーン|scene|phase|페이즈)\s*\d*\b)/i;
+    const isHead = el => {
+        if (/^H[1-4]$/.test(el.tagName)) return true;
+        const t = el.textContent.trim();
+        if (!t || t.length > 40 || el.querySelector("img")) return false;
+        if (HEAD_RE.test(t)) return true;
+        const b = [...el.querySelectorAll("b, strong")].map(x => x.textContent).join("").trim();
+        return b.length >= 2 && b === t;
+    };
+    const getBlob = (m, f) => new Promise(ok => {
+        const t = setTimeout(() => ok(""), 8000);
+        try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
+    });
+
+    // ── 창 ──
+    const pinned = () => ls(PIN) === "true";
+    const tocOn = () => ls(TOCK) !== "off";
+    const keep = () => { if (win && !win.hidden && pinned() && !win.classList.contains("aio-min")) ls(GEO, JSON.stringify({ l: win.offsetLeft, t: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight })); };
+    // 기본 자리: 맵 왼쪽 끝 (Roll20 도구 줄 바로 오른쪽) — 빠른 찾기 · 장면 창(오른쪽 판 옆)과 안 겹치게
+    const place = () => {
+        let g = null;
+        if (pinned()) try { g = JSON.parse(ls(GEO) || "null"); } catch (e) { /* 없음 */ }
+        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, tools = document.querySelector("#editor-wrapper .tool-bar, #floatingtoolbar, .vtt-toolbar")?.getBoundingClientRect();
+        const w = Math.min(Math.max(200, g?.w || TXT_W + (tocOn() ? TOC_W : 0)), W - 16), h = Math.min(Math.max(160, g?.h || Math.min(600, Math.round(H * 0.7))), H - 16);
+        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, (tools?.right ? tools.right / z : 48) + 8);
+        const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : 40;
+        Object.assign(win.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
+    };
+    const build = () => {
+        win = document.createElement("div");
+        win.id = "r20-sn";
+        win.setAttribute("role", "dialog");
+        win.setAttribute("aria-label", "시나리오");
+        win.tabIndex = -1;
+        win.hidden = true;
+        win.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
+            + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
+            + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
+            + '<button type="button" data-a="veil" class="ib" title="가리기 — 마우스를 올릴 때만 보이게 (화면 공유 · 방송)" aria-label="가리기" aria-pressed="false">👁</button>'
+            + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
+            + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
+            + '<div class="sp"><div class="toc" role="tree" aria-label="목차"></div><div class="pane">'
+            + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span></div>'
+            + '<div class="bd" tabindex="-1"></div></div></div>'
+            + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>';
+        win.addEventListener("keydown", e => {
+            e.stopPropagation();
+            if (e.key === "Escape") { e.preventDefault(); if (!$(".pk").hidden && cur) return showPick(false); close(); }
+            else if (e.key === "Enter" && e.target.matches(".q") && !e.isComposing) { e.preventDefault(); nextHit(e.shiftKey ? -1 : 1); }
+            else if (e.key === "Enter" && e.target.matches(".pq") && !e.isComposing) { e.preventDefault(); $(".pl [data-p]")?.click(); }
+        });
+        win.addEventListener("click", async e => {
+            const b = e.target.closest("button, [data-p], .tr"), a = b?.dataset.a;
+            if (!b) { const img = e.target.closest(".bd img"); if (img) zoomImg(img.src); return; }
+            if (b.dataset.p != null) return openPath(b.dataset.p);
+            if (b.classList.contains("tr")) { const el = $("#" + b.dataset.h); if (el) $(".bd").scrollTop = el.offsetTop - 4; return; }
+            if (a === "x") return close();
+            if (a === "pick") return showPick($(".pk").hidden);
+            if (a === "toc") {
+                const on = !tocOn(), z = aioZoom.get();
+                ls(TOCK, on ? "on" : "off");
+                win.style.width = Math.max(200, Math.min(win.offsetWidth + (on ? TOC_W : -TOC_W), innerWidth / z - 16)) + "px";
+                win.classList.toggle("notoc", !on);
+                b.setAttribute("aria-pressed", String(on));
+                return keep();
+            }
+            if (a === "veil") { const on = !win.classList.contains("veil"); win.classList.toggle("veil", on); ls(VEIL, String(on)); return b.setAttribute("aria-pressed", String(on)); }
+            if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
+            if (a === "warn") return alert("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"));
+            if (a === "put" || a === "copy") {
+                const t = picked;           // 고를 때 잡아 둔 글 (그사이 다른 곳을 눌러도)
+                $(".fl").hidden = true;
+                if (win.contains(getSelection().anchorNode)) getSelection().removeAllRanges();
+                if (!t) return;
+                if (a === "copy") return copyText(t);
+                const ta = document.querySelector("#textchat-input textarea");
+                if (!ta) return;
+                ta.value = ta.value ? ta.value.replace(/\s*$/, "") + "\n" + t : t;
+                ta.dispatchEvent(new Event("input", { bubbles: true }));
+                ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+            }
+        });
+        // 글을 끌어 고르면 그 위에 [입력칸에 넣기] [복사]
+        win.addEventListener("mouseup", () => setTimeout(() => {
+            const sel = getSelection(), fl = $(".fl"), bd = $(".bd");
+            if (!sel || sel.isCollapsed || !String(sel).trim() || !bd.contains(sel.anchorNode)) { fl.hidden = true; return; }
+            picked = String(sel).trim();
+            const r = sel.getRangeAt(0).getBoundingClientRect(), w = win.getBoundingClientRect(), z = aioZoom.get();
+            fl.hidden = false;
+            fl.style.left = Math.max(4, Math.min((r.left - w.left) / z, win.offsetWidth - fl.offsetWidth - 4)) + "px";
+            fl.style.top = Math.max(34, (r.top - w.top) / z - fl.offsetHeight - 6) + "px";
+        }, 0));
+        $(".fl").addEventListener("mousedown", e => e.preventDefault());        // 고른 글이 풀리지 않게
+        $(".bd").addEventListener("scroll", () => { $(".fl").hidden = true; clearTimeout(spyT); spyT = setTimeout(spy, 80); }, { passive: true });
+        $(".q").addEventListener("input", () => find());
+        $(".pq").addEventListener("input", () => drawPick());
+        // 제목줄 끌어 옮기기 · 모서리로 크기
+        const hd = $(".hd");
+        hd.addEventListener("pointerdown", e => {
+            if (e.button !== 0 || e.target.closest("button")) return;
+            const z = aioZoom.get(), sx = e.clientX, sy = e.clientY, l0 = win.offsetLeft, t0 = win.offsetTop;
+            hd.setPointerCapture(e.pointerId);
+            const mv = ev => {
+                win.style.left = Math.max(0, Math.min(l0 + (ev.clientX - sx) / z, innerWidth / z - 60)) + "px";
+                win.style.top = Math.max(0, Math.min(t0 + (ev.clientY - sy) / z, innerHeight / z - 30)) + "px";
+            };
+            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => hd.removeEventListener(t, k ? up : mv)); keep(); };
+            hd.addEventListener("pointermove", mv);
+            hd.addEventListener("pointerup", up);
+            hd.addEventListener("pointercancel", up);
+        });
+        let rt = 0;
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); }).observe(win);
+        document.body.appendChild(win);
+    };
+    const zoomImg = src => {
+        const o = document.createElement("div");
+        o.className = "r20sn-zoom";
+        o.innerHTML = `<img src="${escAttr(src)}" alt="">`;
+        o.addEventListener("click", () => o.remove());
+        document.body.appendChild(o);
+    };
+
+    // ── 시나리오 고르기: 최근 + 핸드아웃이 든 모든 폴더 (이름 · 초성으로 찾기) ──
+    const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+    const cho = t => [...t].map(c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : c; }).join("");
+    let fcache = [];
+    const showPick = on => { $(".pk").hidden = !on; $(".sp").hidden = on; if (on) { fcache = folders(); $(".pq").value = ""; drawPick(); $(".pq").focus(); } };
+    const drawPick = () => {
+        const q = $(".pq").value.trim().toLowerCase().replace(/\s+/g, ""), all = fcache, byPath = new Map(all.map(f => [f.path, f]));
+        const hit = f => !q || f.path.toLowerCase().replace(/\s+/g, "").includes(q) || cho(f.path.replace(/\s+/g, "")).includes(q);
+        const row = (f, last) => {
+            const n = f.items.filter(it => it.m).length, sh = isGM() ? f.items.filter(it => it.m && shared(it.m)).length : 0;
+            return `<div class="pr" role="option" data-p="${escAttr(f.path)}"><span class="pn">${escAttr(f.name)}<small>${escAttr(f.path)} · 핸드아웃 ${n}${last ? " · 마지막: " + escAttr(last) : ""}${sh ? ` · <em>⚠ ${sh}개 공개됨</em>` : ""}</small></span></div>`;
+        };
+        const rec = recent().map(r => byPath.get(r.path) && hit(byPath.get(r.path)) ? row(byPath.get(r.path), r.where) : "").join("");
+        const nameHit = f => !q || f.name.toLowerCase().replace(/\s+/g, "").includes(q) || cho(f.name.replace(/\s+/g, "")).includes(q);
+        const rest = all.filter(hit).sort((a, b) => nameHit(b) - nameHit(a)).slice(0, 200).map(f => row(f)).join("");      // 이름이 맞는 폴더 먼저
+        $(".pl").innerHTML = (rec ? '<div class="pg">최근</div>' + rec : "") + (rest ? '<div class="pg">모든 폴더</div>' + rest : "")
+            || `<div class="msg">${all.length ? "찾는 폴더가 없어요" : "핸드아웃이 든 저널 폴더가 없어요 — 저널에 폴더를 만들고 핸드아웃에 시나리오를 붙여 넣으세요"}</div>`;
+    };
+
+    // ── 열기: 폴더의 핸드아웃을 차례로 읽어 장으로 (본문 + GM 메모) ──
+    const openPath = async path => {
+        const f = folders().find(x => x.path === path);
+        if (!f) return showPick(true);
+        cur = f;
+        showPick(false);
+        $(".nm").textContent = f.name;
+        $(".mt").textContent = "읽는 중…";
+        $(".q").value = ""; hits = []; hitAt = -1; $(".qn").textContent = "";
+        $(".warn").hidden = !(isGM() && f.items.some(it => it.m && shared(it.m)));
+        const bd = $(".bd");
+        bd.textContent = "";
+        // 장 자리를 먼저 만들고, 읽는 대로 채운다
+        const secs = f.items.map(it => {
+            const sec = document.createElement("section");
+            if (it.group != null) { sec.className = "grp"; sec.textContent = it.group; return sec; }
+            sec.className = "ch";
+            sec.dataset.id = it.id;
+            const h = document.createElement("h3");
+            h.className = "cht";
+            h.textContent = it.m.get("name") || "(이름 없음)";
+            sec.append(h);
+            return sec;
+        });
+        bd.append(...secs);
+        const fields = isGM() ? ["notes", "gmnotes"] : ["notes"];
+        await Promise.all(f.items.map(async (it, k) => {
+            if (!it.m || typeof it.m._getLatestBlob !== "function") return;
+            const [notes, gm] = await Promise.all(fields.map(x => getBlob(it.m, x)));
+            if (cur !== f) return;
+            secs[k].append(clean(unesc(notes)));
+            if (gm && String(gm).trim()) {
+                const g = document.createElement("div");
+                g.className = "gm";
+                g.append(Object.assign(document.createElement("div"), { className: "gmt", textContent: "GM 메모" }), clean(unesc(gm)));
+                secs[k].append(g);
+            }
+        }));
+        if (cur !== f) return;
+        // 목차: 장 이름 + 그 안의 제목 줄
+        heads = [];
+        let n = 0;
+        secs.forEach(sec => {
+            if (sec.className === "grp") { sec.id = "sn-h" + n++; heads.push({ el: sec, lv: 0, t: sec.textContent, grp: true }); return; }
+            const h = sec.querySelector(".cht");
+            h.id = "sn-h" + n++;
+            heads.push({ el: h, lv: 0, t: h.textContent, ch: true });
+            sec.querySelectorAll(":is(h1, h2, h3, h4, p, div):not(.gm):not(.gmt):not(.cht)").forEach(el => {
+                if (el.closest(".gm") || el.querySelector("p, div, h1, h2, h3, h4") || !isHead(el)) return;      // GM 메모 안 · 다른 줄을 품은 칸은 빼고
+                el.id = "sn-h" + n++;
+                el.classList.add("hx");
+                heads.push({ el, lv: 1, t: el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "") });
+            });
+        });
+        $(".toc").innerHTML = heads.map(h => `<div class="tr${h.ch ? " ch" : ""}${h.grp ? " grp" : ""}" role="treeitem" data-h="${h.el.id}" style="padding-left:${4 + h.lv * 10}px" title="${escAttr(h.t)}">${h.ch ? "📜 " : ""}${escAttr(h.t)}</div>`).join("")
+            || '<div class="msg">핸드아웃이 없어요</div>';
+        // 읽던 자리
+        const r = recent().find(x => x.path === path);
+        bd.scrollTop = r?.pos ? r.pos * (bd.scrollHeight - bd.clientHeight) : 0;
+        remember(path);
+        spy();
+    };
+    // 지금 보이는 제목 → 목차 표시 · 머리줄 '장 › 제목 · %' · 자리 기억
+    const spy = () => {
+        if (!cur || !win || win.hidden) return;
+        const bd = $(".bd"), top = bd.scrollTop + 8;
+        let k = -1;
+        heads.forEach((h, i) => { if (h.el.offsetTop <= top) k = i; });
+        win.querySelectorAll(".toc .tr").forEach((t, i) => t.classList.toggle("on", i === k));
+        win.querySelector(".toc .tr.on")?.scrollIntoView({ block: "nearest" });
+        let ch = null;
+        for (let i = k; i >= 0; i--) if (heads[i].ch) { ch = heads[i].t; break; }
+        const sub = k >= 0 && !heads[k].ch ? heads[k].t : "", max = bd.scrollHeight - bd.clientHeight, pos = max > 0 ? bd.scrollTop / max : 0;
+        $(".mt").textContent = [ch, sub].filter(Boolean).join(" › ") + (max > 0 ? ` · ${Math.round(pos * 100)}%` : "");
+        clearTimeout(posT);
+        posT = setTimeout(() => remember(cur.path, { pos, where: [ch, sub].filter(Boolean).join(" › ") }), 600);
+    };
+    // 이 시나리오에서 찾기: 맞는 곳을 칠하고 Enter 로 다음 (칠하기는 CSS 강조 — 글을 바꾸지 않음)
+    const find = () => {
+        const q = $(".q").value.trim().toLowerCase(), bd = $(".bd");
+        hits = []; hitAt = -1;
+        if (q) {
+            const tw = document.createTreeWalker(bd, NodeFilter.SHOW_TEXT);
+            for (let n = tw.nextNode(); n && hits.length < 500; n = tw.nextNode()) {
+                const t = n.textContent.toLowerCase();
+                for (let i = t.indexOf(q); i >= 0 && hits.length < 500; i = t.indexOf(q, i + q.length)) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + q.length); hits.push(r); }
+            }
+        }
+        if (window.CSS?.highlights && window.Highlight) { CSS.highlights.set("r20sn-hit", new Highlight(...hits)); CSS.highlights.delete("r20sn-cur"); }
+        $(".qn").textContent = q ? (hits.length ? `${hits.length >= 500 ? "500+" : hits.length}곳` : "없어요") : "";
+    };
+    const nextHit = d => {
+        if (!hits.length) return;
+        hitAt = (hitAt + d + hits.length) % hits.length;
+        const r = hits[hitAt], bd = $(".bd"), rb = r.getBoundingClientRect(), bb = bd.getBoundingClientRect();
+        bd.scrollTop += (rb.top - bb.top) / aioZoom.get() - bd.clientHeight / 3;
+        if (window.CSS?.highlights && window.Highlight) CSS.highlights.set("r20sn-cur", new Highlight(r));
+        $(".qn").textContent = `${hitAt + 1}/${hits.length}`;
+    };
+
+    const isOpen = () => !!win && !win.hidden;
+    const open = () => {
+        if (!btnVisible.scen || !window.Campaign) return;
+        if (!win?.isConnected) build();
+        win.hidden = false;
+        win.classList.remove("aio-min");
+        win.classList.toggle("notoc", !tocOn());
+        win.classList.toggle("veil", ls(VEIL) === "true");
+        $(".tg").setAttribute("aria-pressed", String(tocOn()));
+        $('[data-a="veil"]').setAttribute("aria-pressed", String(ls(VEIL) === "true"));
+        $(".pin").setAttribute("aria-pressed", String(pinned()));
+        place();
+        if (cur) return;
+        const last = recent()[0];
+        if (last && folders().some(f => f.path === last.path)) openPath(last.path); else showPick(true);
+    };
+    function close() { if (!win) return; keep(); win.hidden = true; $(".fl").hidden = true; }
+    // 단추줄: 장면 목차와 🔍 사이 (플레이어도 — 자기에게 보이는 핸드아웃만)
+    const inject = () => {
+        if (!btnVisible.scen || document.getElementById("r20-snbtn") || !document.getElementById("sidebarcontrol")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "r20-snbtn";
+        b.className = "r20-dockbtn";
+        b.title = "시나리오 내비게이터";
+        b.setAttribute("aria-label", "시나리오");
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5C5 4.5 8 4.5 12 6c4-1.5 7-1.5 9-.5V19c-2-1-5-1-9 .5C8 18 5 18 3 19z"/><path d="M12 6v13.5"/></svg>';
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (isOpen()) close(); else open(); });
+        document.body.appendChild(b);
+        FEAT.screenUI?.place();
+    };
+    const setEnabled = on => {
+        if (on) return inject();
+        close();
+        document.getElementById("r20-snbtn")?.remove();
+        FEAT.screenUI?.place();
+    };
+    return { inject, setEnabled, open };
+})();
+addFeature("scenNav", scenNav);
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · 왼쪽 목차(장 › 제목 줄) | 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 👁 가리기 · 플레이어에게 공개된 핸드아웃이면 ⚠",
+    members: [["scen", "scenNav"]] });
+addCss(`
+        /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
+        #r20-sn { position:fixed; z-index:10004; display:flex; flex-direction:column; min-width:200px; min-height:140px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.6 sans-serif; overflow:hidden; resize:both; box-sizing:border-box; }
+        #r20-sn[hidden], #r20-sn [hidden] { display:none !important; }
+        #r20-sn *, #r20-sn *::before, #r20-sn *::after { box-sizing:border-box; }
+        #r20-sn:focus { outline:none; }
+        #r20-sn .hd { display:flex; align-items:center; gap:2px; flex-shrink:0; height:30px; padding:0 3px 0 3px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
+        #r20-sn .nm { flex:0 1 auto; min-width:0; max-width:40%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:12px; }
+        #r20-sn .mt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-4); font-size:10.5px; }
+        #r20-sn .ib { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; line-height:22px; cursor:pointer; box-shadow:none; }
+        #r20-sn .ib:hover { background:var(--aio-bg-3); }
+        #r20-sn .tg[aria-pressed="true"], #r20-sn [data-a="veil"][aria-pressed="true"] { background:var(--aio-bg-3); }
+        #r20-sn .pin { filter:grayscale(1); opacity:0.5; } #r20-sn .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
+        #r20-sn .warn { color:var(--aio-warn); }
+        #r20-sn .sp { display:flex; flex:1; min-height:0; }
+        #r20-sn .toc { flex:0 0 112px; overflow-y:auto; overscroll-behavior:contain; padding:3px 2px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
+        #r20-sn.notoc .toc { display:none; }
+        #r20-sn .tr { height:22px; padding-right:4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:11px; line-height:22px; cursor:pointer; }
+        #r20-sn .tr:hover { background:var(--aio-bg-3); }
+        #r20-sn .tr.ch { margin-top:3px; color:var(--aio-ink-3); font-weight:700; font-size:10.5px; }
+        #r20-sn .tr.grp { margin-top:5px; color:var(--aio-accent-dark); font-weight:700; font-size:10.5px; }
+        #r20-sn .tr.on { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
+        #r20-sn .pane { display:flex; flex-direction:column; flex:1; min-width:0; }
+        #r20-sn .tb { display:flex; align-items:center; gap:4px; flex-shrink:0; padding:3px 6px; border-bottom:1px solid var(--aio-line-4); }
+        #r20-sn :is(.q, .pq) { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
+        #r20-sn .qn { color:var(--aio-ink-5); font-size:10.5px; white-space:nowrap; }
+        #r20-sn .bd { position:relative; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:4px 10px 12px; user-select:text; outline:none; overflow-wrap:anywhere; }
+        #r20-sn .bd p, #r20-sn .bd div { margin:0 0 5px; }
+        #r20-sn .bd :is(h1, h2, h3, h4) { margin:8px 0 3px; font-size:12.5px; line-height:1.4; }
+        #r20-sn .bd .hx { color:var(--aio-accent-dark); font-weight:700; }
+        #r20-sn .bd .cht { margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; font-weight:700; }
+        #r20-sn .bd section:first-child .cht { margin-top:0; }
+        #r20-sn .bd .grp { margin:14px 0 4px; color:var(--aio-accent-dark); font-weight:700; font-size:11px; }
+        #r20-sn .bd img { display:block; max-width:100%; height:auto; margin:4px 0; border-radius:var(--aio-r-sm); cursor:zoom-in; }
+        #r20-sn .bd table { border-collapse:collapse; margin:4px 0; font-size:11px; } #r20-sn .bd :is(td, th) { padding:2px 5px; border:1px solid var(--aio-line-3); }
+        #r20-sn .bd ul, #r20-sn .bd ol { margin:0 0 5px 18px; padding:0; }
+        #r20-sn .bd .gm { margin:6px 0; padding:4px 8px; border-left:2px solid var(--aio-warn); background:var(--aio-warn-bg); }
+        #r20-sn .bd .gmt { margin:0 0 2px; color:var(--aio-warn-ink); font-size:10.5px; font-weight:700; }
+        #r20-sn .bd a { color:var(--aio-accent-dark); }
+        #r20-sn .msg { margin:20px 8px; color:var(--aio-ink-4); text-align:center; font-size:11px; }
+        #r20-sn .fl { position:absolute; z-index:2; display:flex; gap:3px; padding:3px; border-radius:13px; background:var(--aio-tip); box-shadow:0 3px 10px rgba(0,0,0,0.3); }
+        #r20-sn .fl button { height:20px; margin:0; padding:0 8px; border:1px solid rgba(255,255,255,0.35); border-radius:10px; background:transparent; color:#fff; font-size:11px; cursor:pointer; box-shadow:none; }
+        #r20-sn .pk { display:flex; flex-direction:column; flex:1; min-height:0; }
+        #r20-sn .pk .pq { flex:none; margin:5px 6px !important; }
+        #r20-sn .pl { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:0 6px 6px; }
+        #r20-sn .pg { margin:6px 2px 2px; color:var(--aio-accent-dark); font-size:10.5px; font-weight:700; }
+        #r20-sn .pr { padding:4px 4px; border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); cursor:pointer; }
+        #r20-sn .pr:hover { background:var(--aio-accent-bg); }
+        #r20-sn .pn { display:block; font-size:11.5px; } #r20-sn .pn small { display:block; color:var(--aio-ink-4); font-size:10px; line-height:1.4; } #r20-sn .pn em { color:var(--aio-warn); font-style:normal; }
+        /* 👁 가리기: 마우스를 올릴 때만 */
+        #r20-sn.veil:not(:hover) :is(.bd, .toc, .pl) { filter:blur(6px); }
+        ::highlight(r20sn-hit) { background-color:#fff3a8; color:inherit; }
+        ::highlight(r20sn-cur) { background-color:#ffb347; color:inherit; }
+        .r20sn-zoom { position:fixed; inset:0; z-index:10020; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); cursor:zoom-out; }
+        .r20sn-zoom img { max-width:94vw; max-height:94vh; border-radius:4px; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+`);
 
 // ───────── 일괄 편집기: 저널(핸드아웃·캐릭터·폴더)과 주크박스(트랙·플레이리스트)를 한 창에서 편집 ─────────
 // Roll20 팝업을 열지 않고 Campaign / Jukebox 모델을 직접 읽으며, 바뀐 것만 모아 [저장] 때 반영한다.
