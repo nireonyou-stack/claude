@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.76.1
+// @version      1.77.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.76.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.77.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -70,7 +70,8 @@ const btnVisible = {
     scen:      localStorage.getItem("r20_show_scen") !== "false",
     jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false",
     jbmini:    localStorage.getItem("r20_show_jbmini") !== "false",
-    portrait:  localStorage.getItem("r20_show_portrait") !== "false"
+    portrait:  localStorage.getItem("r20_show_portrait") !== "false",
+    home:      localStorage.getItem("r20_show_home") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -2874,6 +2875,143 @@ const sheetShot = (() => {
     const setEnabled = v => { if (v) return inject(); mode?.exit(); document.querySelectorAll(".r20shot").forEach(b => b.remove()); document.getElementById("r20ss")?.remove(); };
     return { inject, setEnabled, watch: ".ui-dialog" };
 })();
+
+// @share-cut-start home — 홈페이지로 보내기 (배포판에서 뺌: 홈페이지 전용)
+// ───────── 홈페이지로 보내기: 캐릭터 시트 창 머리줄 🏠 → 홈페이지 캐릭터 게시판 SHEET 글 (sheet/import.roll20.php) ─────────
+// 보내는 것: 시트 속성 전부(반복 줄 · 차례 포함) · 바이오 · GM 메모(GM 만) · 초상 — 룰별 짝표 변환과 원본 보관은 홈페이지가 한다
+// 홈페이지: 이름 · 룰이 같은 시트가 있으면 '새 판', 없으면 새 비밀 시트(관리자만) · 같은 이름 프로필에 잇기 · 짝표가 없는 룰은 원본만
+// 주소 · 열쇠는 ⚙ 설정(이 브라우저에만 저장) · 열쇠는 홈페이지 import.roll20.config.php 와 같은 값
+const homeExport = (() => {
+    const URL_KEY = "r20_home_url", KEY_KEY = "r20_home_key";
+    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ""; localStorage.setItem(k, v); } catch (e) { return ""; } };
+    const ready = () => /^https:\/\//i.test(ls(URL_KEY)) && ls(KEY_KEY).length >= 12;
+    let toastEl = null, toastT = 0;
+    const toast = (html, ms = 6000) => {
+        if (!toastEl?.isConnected) { toastEl = document.createElement("div"); toastEl.id = "r20-home-toast"; toastEl.setAttribute("role", "status"); document.body.appendChild(toastEl); }
+        toastEl.innerHTML = html;
+        toastEl.hidden = false;
+        clearTimeout(toastT);
+        toastT = setTimeout(() => { toastEl.hidden = true; }, ms);
+    };
+    const post = async body => {
+        // text/plain = 사전 요청 없이 (홈페이지는 본문 JSON 을 읽는다)
+        const r = await fetch(ls(URL_KEY), { method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" }, body: JSON.stringify({ key: ls(KEY_KEY), ...body }) });
+        const t = await r.text();
+        try { return JSON.parse(t); } catch (e) { throw new Error(`홈페이지 응답을 읽지 못했어요 (${r.status})`); }
+    };
+    const blob = (m, f) => new Promise(ok => {
+        const t = setTimeout(() => ok(""), 6000);
+        try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
+    });
+    // 캐릭터 한 명 모으기 — 속성은 시트를 연 적이 있어야 들어 있다
+    const collect = async m => {
+        const attrs = (m.attribs?.models || []).map(a => [a.get("name"), String(a.get("current") ?? ""), String(a.get("max") ?? "")]).filter(a => a[0]);
+        if (!attrs.length) throw new Error("시트 속성이 비어 있어요 — 시트 창을 한 번 연 뒤 보내 주세요");
+        const order = {};
+        attrs.forEach(([n, v]) => { const k = n.match(/^_reporder_repeating_(.+)$/i); if (k && v) order[k[1].toLowerCase()] = v.split(",").map(s => s.trim()).filter(Boolean); });
+        const [bio, gmnotes] = await Promise.all([blob(m, "bio"), isGM() ? blob(m, "gmnotes") : Promise.resolve("")]);
+        return { id: m.id, name: m.get("name") || "", avatar: m.get("avatar") || "", bio, gmnotes, hint: window.Campaign?.get?.("charactersheetname") || "", attrs, order };
+    };
+    const send = async m => {
+        if (!ready()) { toast("🏠 ⚙ 설정의 <b>홈페이지로 보내기</b>에 주소 · 열쇠를 먼저 넣어 주세요"); return null; }
+        const res = await post({ op: "import", char: await collect(m) });
+        if (!res?.ok) throw new Error(res?.error || "홈페이지가 받지 않았어요");
+        return res;
+    };
+    const say = (name, res) => {
+        const nm = `<b>${escAttr(name)}</b>`, open = res.url ? ` · <a href="${escAttr(res.url)}" target="_blank" rel="noopener">열기 ↗</a>` : "";
+        if (res.mode === "new") return toast(`🏠 ${nm} — 홈페이지에 <b>새 시트</b>로 보냈어요 (관리자만 보임)${res.pc ? " · 프로필에 이음" : ""}${open}`);
+        if (res.mode === "ver") return toast(`🏠 ${nm} — 같은 이름 · 같은 룰 시트에 <b>새 판</b>으로 넣었어요 (${escAttr(res.label || "")})${open}`);
+        toast(`🏠 ${nm} — ${escAttr(res.msg || "원본만 보관했어요")}`);
+    };
+    // 시트 창 → 캐릭터 (창의 data-characterid, 없으면 제목 = 이름)
+    const charOf = dlg => {
+        const C = window.Campaign?.characters, id = dlg.querySelector("[data-characterid]")?.dataset.characterid;
+        if (id && C?.get?.(id)) return C.get(id);
+        const t = dlg.querySelector(".ui-dialog-title")?.textContent.trim();
+        return (C?.models || []).find(m => m.get("name") === t) || null;
+    };
+    const press = async (dlg, b) => {
+        const m = charOf(dlg);
+        if (!m) return toast("🏠 이 창의 캐릭터를 찾지 못했어요");
+        if (b.classList.contains("busy")) return;
+        b.classList.add("busy");
+        try { const res = await send(m); if (res) say(m.get("name"), res); }
+        catch (e) { toast(`🏠 <b>${escAttr(m.get("name") || "")}</b> — 못 보냈어요: ${escAttr(e.message || String(e))}`, 9000); }
+        finally { b.classList.remove("busy"); }
+    };
+    const inject = () => {
+        if (!btnVisible.home) return;
+        document.querySelectorAll(".ui-dialog").forEach(dlg => {
+            const bar = dlg.querySelector(":scope > .ui-dialog-titlebar");
+            if (!bar || bar.querySelector(".r20home") || !dlg.querySelector(".characterdialog iframe")) return;
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "r20home";
+            b.textContent = "🏠";
+            b.title = "홈페이지로 보내기 — 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(관리자만)";
+            b.setAttribute("aria-label", "홈페이지로 보내기");
+            b.classList.toggle("off", !ready());
+            b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); press(dlg, b); });
+            const at = bar.querySelector(".r20shot") || bar.querySelector(".ui-dialog-title");       // 📷 시트 촬영 바로 옆
+            if (at) at.after(b); else bar.prepend(b);
+        });
+    };
+    // 설정 창 줄: 주소 · 열쇠 · [연결 확인]
+    const rows = () => {
+        const mk = (label, key, type, ph, tip) => {
+            const row = document.createElement("div");
+            row.className = "cs-row r20home-row";
+            const name = Object.assign(document.createElement("span"), { className: "cs-text" });
+            name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: label }));
+            name.dataset.tip = tip;
+            const inp = Object.assign(document.createElement("input"), { type, value: ls(key), placeholder: ph, spellcheck: false, autocomplete: "off" });
+            inp.addEventListener("change", () => { ls(key, inp.value.trim()); document.querySelectorAll(".r20home").forEach(b => b.classList.toggle("off", !ready())); });
+            inp.addEventListener("keydown", e => e.stopPropagation());
+            row.append(name, inp);
+            return { row, inp };
+        };
+        const u = mk("홈페이지 주소", URL_KEY, "url", "https://…/skin/board/character/sheet/import.roll20.php", "홈페이지에 올린 import.roll20.php 의 주소 (https)");
+        const k = mk("열쇠", KEY_KEY, "password", "홈페이지 import.roll20.config.php 의 key", "홈페이지 import.roll20.config.php 의 key 와 같은 값 · 이 브라우저에만 저장");
+        const st = Object.assign(document.createElement("span"), { className: "r20home-st" });
+        const b = Object.assign(document.createElement("button"), { type: "button", className: "r20pz-open", textContent: "연결 확인" });
+        b.onclick = async e => {
+            e.stopPropagation();
+            ls(URL_KEY, u.inp.value.trim()); ls(KEY_KEY, k.inp.value.trim());
+            if (!ready()) { st.textContent = "주소(https) · 열쇠(12자 이상)를 넣어 주세요"; st.className = "r20home-st bad"; return; }
+            st.textContent = "확인 중…"; st.className = "r20home-st";
+            try {
+                const r = await post({ op: "ping" });
+                if (!r?.ok) throw new Error(r?.error || "받지 않음");
+                st.textContent = `✓ 연결됨 — 짝표: ${(r.rules || []).join(" · ") || "없음"} (틀 ${(r.tpls || []).length}종)`; st.className = "r20home-st ok";
+            } catch (err) { st.textContent = "✗ " + (err.message || err); st.className = "r20home-st bad"; }
+        };
+        k.row.append(b);
+        const sr = document.createElement("div");
+        sr.className = "cs-row r20home-row";
+        sr.append(st);
+        return [u.row, k.row, sr];
+    };
+    const setEnabled = v => { if (v) return inject(); document.querySelectorAll(".r20home").forEach(b => b.remove()); };
+    return { inject, setEnabled, rows, send, watch: ".ui-dialog" };
+})();
+addFeature("homeExport", homeExport);
+addBundle({ place: "main", order: 6.1, label: "홈페이지로 보내기 (캐릭터 시트 🏠)", sub: "캐릭터 시트 창 머리줄 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(관리자만) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
+    members: [["home", "homeExport"]], extra: () => homeExport.rows() });
+addCss(`
+        .ui-dialog-titlebar .r20home { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:1px solid transparent; border-radius:var(--aio-r-sm); background:none; font-size:13px; line-height:22px; cursor:pointer; box-shadow:none; }
+        .ui-dialog-titlebar .r20home:hover { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
+        .ui-dialog-titlebar .r20home.off { filter:grayscale(1); opacity:0.45; }
+        .ui-dialog-titlebar .r20home.busy { animation:r20home-busy 0.8s ease-in-out infinite alternate; }
+        @keyframes r20home-busy { to { opacity:0.3; } }
+        .r20home-row input { flex:1; min-width:0; height:24px !important; margin:0 0 0 8px !important; padding:0 6px !important; font-size:11.5px !important; }
+        .r20home-st { margin-left:auto; color:var(--aio-ink-4); font-size:11px; } .r20home-st.ok { color:#1a7f37; } .r20home-st.bad { color:var(--aio-bad); }
+        #r20-home-toast { position:fixed; left:50%; bottom:90px; z-index:10012; max-width:520px; transform:translateX(-50%); padding:8px 14px; border-radius:8px; background:var(--aio-tip); color:#eee; font:12.5px/1.5 sans-serif; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
+        #r20-home-toast[hidden] { display:none; }
+        #r20-home-toast b { color:#fff; } #r20-home-toast a { color:#ff9ad5; }
+`);
+// @share-cut-end home
 
 // @share-swap-start logBackup — 배포판은 share/logBackup.share.js 로 바꾼다 (홈페이지 전용 문법)
 // ───────── 로그 백업: 채팅을 홈페이지 '세션 로그' 문법 글로 바꿔 클립보드에 (그림은 주소만 · 명단은 따로) ─────────
