@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.74.0
+// @version      1.74.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.74.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.74.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -12465,9 +12465,12 @@ const autofill = (() => {
         } else {
             el.value = value;
         }
-        const Ev = el.ownerDocument.defaultView?.Event || Event;
+        const W = el.ownerDocument.defaultView || window, Ev = W.Event || Event, Fe = W.FocusEvent || FocusEvent;
         el.dispatchEvent(new Ev("input", { bubbles: true }));
         el.dispatchEvent(new Ev("change", { bubbles: true }));
+        // Roll20 시트는 글칸 값을 '포커스가 빠질 때' 저장한다 → 칸에 들어왔다 나간 신호를 보내 저장되게 (실제 포커스는 그대로 이름칸)
+        // 안 보내면 시트 밖을 누를 때 저장 안 된 칸이 비워진다 (칸을 직접 눌렀다 떼야 남던 것)
+        if (el.tagName !== "SELECT") ["focus", "focusin", "blur", "focusout"].forEach(t => el.dispatchEvent(new Fe(t, { bubbles: t.endsWith("in") || t.endsWith("out") })));
     };
 
     const apply = rec => {
