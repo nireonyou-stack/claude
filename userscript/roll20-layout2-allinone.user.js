@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.76.0
+// @version      1.76.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.76.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.76.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -8030,7 +8030,7 @@ const quickFind = (() => {
 
     // ══ 장면 구간 (GM): 채팅에서 '여기부터 → 여기까지'를 찍고 이름을 붙인다 · 겹치면 저절로 들여쓰기 (페이즈 › 사이클 › 장면) ══
     // 이 방의 GM 전용 핸드아웃 '장면 목차'에 저장 (GM 메모 = 데이터, 본문 = 읽기용 목차) → 세션 방마다 따로 쌓인다
-    // 끝을 안 찍으면 '진행 중' — 나중에 목차 [끝 찍기] 또는 채팅 메시지에 마우스를 올려 ■
+    // 끝을 안 찍으면 '진행 중' — 나중에 목차 [끝 찍기] 또는 채팅 발화자 포트레이트에 마우스를 올려 ■
     const SC_NAME = "장면 목차";
     let scn = null, scnRun = null, scnVer = "", scSaveT = 0, pick = null;
     const scHandout = () => (window.Campaign?.handouts?.models || []).find(m => m.get("name") === SC_NAME);
@@ -8084,7 +8084,7 @@ const quickFind = (() => {
         return ok.concat(L.filter(v => v.ia == null).sort((x, y) => x.r.at - y.r.at));
     };
     const scRows = q => (scn || []).length ? resolved().flatMap(v => { const m = q ? match(v.r.n, q) : { hits: [] }; return m ? [{ t: "scn", g: "scene", s: v, html: mark(v.r.n, m.hits) }] : []; }) : [];
-    const scNote = () => scnRun ? "목차 읽는 중…" : "아직 구간이 없어요 — [+ 구간]을 누르거나, 채팅 메시지에 마우스를 올려 ▶";
+    const scNote = () => scnRun ? "목차 읽는 중…" : "아직 구간이 없어요 — [+ 구간]을 누르거나, 채팅 발화자 포트레이트에 마우스를 올려 ▶";
     const tocHtml = () => '<p><b>장면 목차</b> — 올인원 빠른 찾기 \'장면\'이 쓰는 핸드아웃이에요. GM 메모 칸(데이터)은 지우지 마세요.</p>'
         + resolved().map(v => `<p>${"&nbsp;".repeat(v.d * 4)}${escAttr(v.r.n)}${v.span ? " — " + escAttr(v.span) + (v.live ? " 진행 중" : "") : ""}</p>`).join("");
     const msgEl = id => id && document.querySelector(`${CHAT_MSG}[data-messageid="${CSS.escape(id)}"]`);
@@ -8336,7 +8336,8 @@ const quickFind = (() => {
     };
     const resolvedOne = r => { const keep = scn; scn = [r]; const v = resolved()[0]; scn = keep; return v; };
 
-    // ── 채팅 메시지에 마우스: ▶ 여기서 구간 시작(진행 중) · ■ 여기서 끝 (진행 중 구간이 있을 때) ──
+    // ── 채팅 발화자 포트레이트(없으면 이름)에 마우스: ▶ 여기서 구간 시작(진행 중) · ■ 여기서 끝 (진행 중 구간이 있을 때) ──
+    // 메시지 오른쪽 위는 Roll20 '메시지 숨기기' 자리라 비워 둔다 — 포트레이트 오른쪽에 살짝 겹쳐 띄움 (옮겨 가는 틈에 사라지지 않게)
     let hov = null, hovMsg = null;
     const hovEl = () => {
         if (hov?.isConnected) return hov;
@@ -8361,17 +8362,17 @@ const quickFind = (() => {
     document.addEventListener("mouseover", e => {
         if (pick || !isGM() || !btnVisible.qfind) return;
         if (hov?.contains(e.target)) return;
-        const m = e.target.closest?.(CHAT_MSG) || null;
+        const at = e.target.closest?.(`${CHAT_MSG} :is(.avatar, .by)`), m = at?.closest(CHAT_MSG) || null;
         if (m === hovMsg) return;
         hovMsg = m;
         if (!m) { if (hov) hov.hidden = true; return; }
         if (!scn) loadScenes();
-        const h = hovEl(), live = innerLive(m.dataset.messageid), end = h.querySelector('[data-a="b"]'), r = m.getBoundingClientRect();
+        const h = hovEl(), live = innerLive(m.dataset.messageid), end = h.querySelector('[data-a="b"]'), r = at.getBoundingClientRect();
         end.hidden = !live;
         end.title = live ? `여기서 끝 — ${live.n}` : "";
         h.hidden = false;
-        h.style.top = Math.max(0, r.top + 2) + "px";
-        h.style.left = Math.max(0, r.right - h.offsetWidth - 6) + "px";
+        h.style.top = Math.max(0, r.top) + "px";
+        h.style.left = Math.max(0, Math.min(r.right - 3, innerWidth - h.offsetWidth - 2)) + "px";
     }, { passive: true });
     document.addEventListener("scroll", () => { if (hov && !hov.hidden) { hov.hidden = true; hovMsg = null; } }, { capture: true, passive: true });
 
@@ -8991,14 +8992,14 @@ addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · �
     extra: () => [winMemory.modeRow()] });
 
 // ───────── 시나리오 내비게이터 (📖): 저널 폴더 하나 = 시나리오, 그 안의 핸드아웃 = 장 — 옆에 띄워 보며 길 찾기 ─────────
-// 제목에 '시나리오' · '장면표' 가 든 핸드아웃을 맨 앞에 (★) · [따로] 한 장씩 / [이어서] 모두 이어 보기 (기억)
+// 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 (★) · [따로] 한 장씩 / [이어서] 모두 이어 보기 (기억)
 // 핸드아웃 서식은 그대로 (글자 크기 · 색 · 배경 · 테두리 · 표 · 그림) — 스크립트 · 이벤트 · 화면 위로 뜨는 위치만 뺀다
 // 왼쪽 좁은 목차(장 › 제목 줄) | 오른쪽 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기](보내지 않음)
 // 폴더는 경로 이름으로 기억 → 복사한 방에서도 그대로. 핸드아웃 내용은 읽기만 (방 데이터는 안 바꿈)
 // GM: 목차 아래 '🎬 장면' 갈래 = 채팅에서 찍은 장면 구간 (빠른 찾기의 장면 데이터) — 누르면 오른쪽이 그 장면 로그 · 갈래는 ▾ 로 접기 (기억, 장면은 처음엔 접힘)
 const scenNav = (() => {
     const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", MODE = "r20_sn_mode", TOC_W = 112, TXT_W = 268;
-    const KEY_RE = /시나리오|장면표/;        // 먼저 보여 줄 핸드아웃
+    const KEY_RE = /\[본문\]|장면표/;        // 먼저 보여 줄 핸드아웃: 제목에 [본문](대괄호까지) · 장면표 — '시나리오' 만으로는 앵커 · NPC 핸드아웃도 걸려서
     let win = null, cur = null, heads = [], chs = [], selId = null, spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
     // 장면 갈래 (GM): view = 오른쪽에 무엇을 (scen 시나리오 본문 · scn 장면 로그)
     const FOLD = "r20_sn_fold";
@@ -9248,7 +9249,7 @@ const scenNav = (() => {
             || `<div class="msg">${all.length ? "찾는 폴더가 없어요" : "핸드아웃이 든 저널 폴더가 없어요 — 저널에 폴더를 만들고 핸드아웃에 시나리오를 붙여 넣으세요"}</div>`;
     };
 
-    // ── 열기: '시나리오' · '장면표' 핸드아웃을 맨 앞에, 나머지는 저널 순서 · 차례로 읽어 장으로 (본문 + GM 메모) ──
+    // ── 열기: '[본문]' · '장면표' 핸드아웃을 맨 앞에, 나머지는 저널 순서 · 차례로 읽어 장으로 (본문 + GM 메모) ──
     const openPath = async path => {
         const f = folders().find(x => x.path === path);
         if (!f) return showPick(true);
@@ -9449,7 +9450,7 @@ const scenNav = (() => {
         if (!v) {
             $(".mt").textContent = "🎬 장면" + (L.length ? ` · 구간 ${L.length}개` : "");
             $(".qn").textContent = "";
-            lg.innerHTML = `<div class="msg">${L.length ? "왼쪽 🎬 장면에서 구간을 고르세요" : "[＋ 구간]을 누르거나, 채팅 메시지에 마우스를 올려 ▶"}</div>`;
+            lg.innerHTML = `<div class="msg">${L.length ? "왼쪽 🎬 장면에서 구간을 고르세요" : "[＋ 구간]을 누르거나, 채팅 발화자 포트레이트에 마우스를 올려 ▶"}</div>`;
             return;
         }
         $(".mt").textContent = `🎬 ${v.r.n} · ${v.span}${v.live ? " 진행 중" : ""}`;
@@ -9581,7 +9582,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '시나리오' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 제목 줄) · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 제목 줄) · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
