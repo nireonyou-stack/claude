@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.74.1
+// @version      1.75.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.74.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.75.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -69,7 +69,8 @@ const btnVisible = {
     winmem:    localStorage.getItem("r20_show_winmem") !== "false",
     scen:      localStorage.getItem("r20_show_scen") !== "false",
     jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false",
-    jbmini:    localStorage.getItem("r20_show_jbmini") !== "false"
+    jbmini:    localStorage.getItem("r20_show_jbmini") !== "false",
+    portrait:  localStorage.getItem("r20_show_portrait") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -938,7 +939,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf";
+const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -5812,7 +5813,8 @@ const macroBar = (() => {
 
 // ───────── 덱 · 매크로를 오른쪽 판 왼쪽 끝(단추줄 밑)에: 덱 카드 → 매크로 알약을 세로로 (body.r20edge-on) ─────────
 // Roll20 덱 판(#showndecks) · 매크로 줄(#macrobar)은 제자리에 둔 채 자리만 옮긴다 → 누르기 · 길게 눌러 순서 바꾸기 · 덱 메뉴가 그대로
-// 매크로가 길면 매크로 칸만 휠 · 손가락으로 위아래 · 설정(묶음 2)에서 '오른쪽 판 왼쪽 끝' ↔ '원래 자리(맵 아래)'
+// 맨 아래에 붙여 위로 쌓는다 (아래 매크로 → 그 위 덱) · 매크로가 길면 매크로 칸만 휠 · 손가락으로 위아래 · 단추 폭은 같게(잘린 이름은 마우스를 올리면 다)
+// ▶ 붙인 빠른 찾기는 이 위에 떠 있다 (밀어내지 않음) · 설정(묶음 2)에서 '오른쪽 판 왼쪽 끝' ↔ '원래 자리(맵 아래)'
 // 화면 구조 때문에 자리가 안 맞으면(부모가 transform 등) 원래 자리로 되돌린다
 const edgeDock = (() => {
     const KEY = "r20_edge_dm";
@@ -5826,19 +5828,20 @@ const edgeDock = (() => {
         B.classList.toggle("r20edge-dk", act && btnVisible.deckview);
         B.classList.toggle("r20edge-mb", act && btnVisible.macrobar);
         if (!act) return;
-        const st = document.documentElement.style;
-        let top = last.y + 2;
-        const qf = document.querySelector("#r20-qf.dock .qf-box");          // ▶ 붙인 빠른 찾기가 있으면 그 밑
-        if (shown(qf)) top = Math.max(top, qf.getBoundingClientRect().bottom + 6);
+        const st = document.documentElement.style, top = last.y + 4;          // 위 끝: 단추줄 밑
+        const ht = FEAT.jbDrawer?.halfTop?.(), bot = Math.round(ht != null ? innerHeight - ht + 6 : 8);      // 아래 끝: 반쪽 주크박스 서랍이 열려 있으면 그 위
         st.setProperty("--r20e-r", Math.round(innerWidth - last.edge) + "px");
-        st.setProperty("--r20e-dt", Math.round(top) + "px");
+        st.setProperty("--r20e-mb", bot + "px");
         const sd = document.getElementById("showndecks"), hasDeck = btnVisible.deckview && shown(sd) && !!sd.querySelector(".adeck");
-        st.setProperty("--r20e-mt", Math.round(hasDeck ? sd.getBoundingClientRect().bottom + 6 : top) + "px");
-        const ht = FEAT.jbDrawer?.halfTop?.();                              // 반쪽 주크박스 서랍이 열려 있으면 그 위까지만
-        st.setProperty("--r20e-mb", Math.round(ht != null ? innerHeight - ht + 6 : 8) + "px");
-        // 덱 판 크기가 바뀌면(카드 더미 추가 · 숨김) 매크로 칸 시작을 다시
-        if (sd && window.ResizeObserver && roEl !== sd) { ro?.disconnect(); roEl = sd; ro = new ResizeObserver(() => place()); ro.observe(sd); }
-        const mb = document.getElementById("macrobar");
+        const mb = document.getElementById("macrobar"), hasMac = btnVisible.macrobar && shown(mb);
+        // 덱이 먼저 자리를 잡고(카드는 작다), 매크로는 남은 높이 안에서 스크롤
+        const dh = hasDeck ? sd.getBoundingClientRect().height : 0;
+        st.setProperty("--r20e-mmax", Math.max(60, Math.round(innerHeight - bot - top - (dh ? dh + 6 : 0))) + "px");
+        const mh = hasMac ? mb.getBoundingClientRect().height : 0, db = bot + (mh ? Math.round(mh) + 6 : 0);
+        st.setProperty("--r20e-db", db + "px");
+        st.setProperty("--r20e-dmax", Math.max(80, Math.round(innerHeight - top - db)) + "px");
+        // 덱 판 · 매크로 칸 크기가 바뀌면(카드 더미 · 매크로 추가) 다시
+        if (window.ResizeObserver && (roEl?.[0] !== sd || roEl?.[1] !== mb)) { ro?.disconnect(); roEl = [sd, mb]; ro = new ResizeObserver(() => place()); [sd, mb].forEach(el => el && ro.observe(el)); }
         if (mb && wheelEl !== mb) {
             wheelEl = mb;
             // Roll20 맵이 휠을 확대에 쓰므로 매크로 칸 위에선 직접 굴린다
@@ -5885,18 +5888,206 @@ const edgeDock = (() => {
     return { place, modeRow };
 })();
 addFeature("edgeDock", edgeDock);
+// ───────── 포트레이트: 자리 4곳 · 크기 · 가로/세로 · 이름 보임 — 내 화면에서만 (Roll20 #avatarContainer 를 그대로 옮긴다) ─────────
+// 내 포트레이트를 누르면 설정 (플레이어는 '내 권한' 도) · 다른 플레이어 포트레이트를 누르면 그 사람의 저널 권한(조종 · 볼 수 있는 시트 · 핸드아웃)
+// 카드 패(.deckhands)는 포트레이트 안이라 같이 따라간다 · 위쪽에 두면 패를 아래로 연다 · 누르기는 Roll20 에도 그대로 간다
+const portraits = (() => {
+    const KEY = "r20_pz", D = { pos: "bl", size: 0, dir: "row", names: true };
+    const cfg = () => { try { return { ...D, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch (e) { return { ...D }; } };
+    let pop = null, popFor = null, down = null;
+    const ac = () => document.getElementById("avatarContainer");
+    const me = () => window.currentPlayer?.id;
+    const nameOf = pid => window.Campaign?.players?.get?.(pid)?.get?.("displayname") || "";
+    // 이름 띠: 그 사람 이름과 글이 같은 요소 (Roll20 구조가 바뀌어도 찾게)
+    const markNames = () => document.querySelectorAll("#avatarContainer .player[id^='player_']").forEach(p => {
+        const n = nameOf(p.id.slice(7)).trim();
+        if (!n || p.querySelector(".r20pz-name")) return;
+        const el = [...p.querySelectorAll(":scope > *, :scope > * > *")].find(e => !e.closest(".deckhands, .video") && e.textContent.trim() === n && ![...e.children].some(c => c.textContent.trim() === n));
+        el?.classList.add("r20pz-name");
+    });
+    // 자리: 맵 왼쪽 도구 줄 오른쪽 ~ 오른쪽 판(또는 단추줄) 왼쪽 사이 — 확대(zoom)된 칸이라 길이는 배율로 나눠 넣는다
+    const apply = () => {
+        const c = cfg(), B = document.body, on = btnVisible.portrait, a = ac(), z = on && c.size ? c.size / 150 : 1;
+        B.classList.toggle("r20pz-on", on);
+        ["tl", "tc", "bc"].forEach(p => B.classList.toggle("r20pz-" + p, on && c.pos === p));
+        B.classList.toggle("r20pz-top", on && (c.pos === "tl" || c.pos === "tc"));
+        B.classList.toggle("r20pz-col", on && c.dir === "col");
+        B.classList.toggle("r20pz-noname", on && !c.names);
+        const st = document.documentElement.style;
+        st.setProperty("--r20pz-z", String(z));
+        if (!on || !a) return;
+        markNames();
+        if (c.pos === "bl") return;
+        const L = (document.getElementById("playerzone")?.getBoundingClientRect().left || 44) + 6;
+        const side = document.getElementById("rightsidebar")?.getBoundingClientRect(), R = side?.width ? side.left - 40 : innerWidth - 40;
+        const w = a.getBoundingClientRect().width;
+        st.setProperty("--r20pz-l", (c.pos === "tl" ? L : Math.max(L, (L + R) / 2 - w / 2)) / z + "px");
+        st.setProperty("--r20pz-t", (c.pos === "tl" ? 40 : 8) / z + "px");
+        st.setProperty("--r20pz-b", 8 / z + "px");
+    };
+    const save = patch => { try { localStorage.setItem(KEY, JSON.stringify({ ...cfg(), ...patch })); } catch (e) { /* 저장 못 함 */ } apply(); requestAnimationFrame(() => { apply(); placePop(); }); };
+
+    // ── 저널 권한: 조종하는 시트 · (조종은 아니지만) 볼 수 있는 시트 · 볼 수 있는 핸드아웃 — 보관함에 넣은 것은 뺀다 ──
+    const permOf = pid => {
+        const has = v => String(v || "").split(",").map(x => x.trim()).filter(Boolean), via = v => has(v).includes(pid) ? "" : has(v).includes("all") ? "모두" : null;
+        const C = window.Campaign, by = (x, y) => String(x.get("name") || "").localeCompare(String(y.get("name") || ""), "ko");
+        const chars = (C?.characters?.models || []).filter(m => !m.get("archived"));
+        const ctl = chars.filter(m => via(m.get("controlledby")) != null).sort(by);
+        const see = chars.filter(m => !ctl.includes(m) && via(m.get("inplayerjournals")) != null).sort(by);
+        const hos = (C?.handouts?.models || []).filter(m => !m.get("archived") && (via(m.get("inplayerjournals")) != null || via(m.get("controlledby")) != null)).sort(by);
+        return { ctl, see, hos, via };
+    };
+    const openItem = m => {
+        if (typeof m?.view?.showDialog === "function") return m.view.showDialog();
+        const li = document.querySelector(`#journal li.journalitem[data-itemid="${CSS.escape(m.id)}"]`);
+        if (li) (window.jQuery ? window.jQuery(li).trigger("click") : li.click());
+    };
+    const permHtml = pid => {
+        const { ctl, see, hos, via } = permOf(pid);
+        const row = (m, k, ic) => { const v = via(m.get(k)); return `<button type="button" class="pi" data-id="${escAttr(m.id)}" data-k="${ic === "📜" ? "h" : "c"}"><i>${ic}</i><span>${escAttr(m.get("name") || "(이름 없음)")}</span>${v ? `<small>${v}</small>` : ""}</button>`; };
+        const grp = (t, list, k, ic) => `<div class="pg">${t} · ${list.length}</div>` + (list.length ? list.map(m => row(m, k, ic)).join("") : '<div class="pe">없음</div>');
+        return grp("🧾 조종하는 시트", ctl, "controlledby", "🧾") + grp("👁 볼 수 있는 시트", see, "inplayerjournals", "🧾")
+            + grp("📜 볼 수 있는 핸드아웃", hos, "inplayerjournals", "📜") + (isGM() ? "" : '<p class="pn">내 화면에 보이는 것 중에서만</p>');
+    };
+    // ── 설정 (자리 · 크기 · 줄 · 이름) ──
+    const SEG = (k, list, v) => `<span class="seg" role="radiogroup" data-k="${k}">${list.map(([x, l]) => `<button type="button" role="radio" data-v="${x}" aria-checked="${x === v}">${l}</button>`).join("")}</span>`;
+    const setHtml = () => {
+        const c = cfg();
+        return `<div class="r"><b>자리</b>${SEG("pos", [["bl", "왼쪽 아래"], ["tl", "왼쪽 위"], ["tc", "위 가운데"], ["bc", "아래 가운데"]], c.pos)}</div>`
+            + `<div class="r"><b>크기</b><input type="range" min="48" max="200" step="4" value="${c.size || 150}" aria-label="포트레이트 크기"><span class="sv">${c.size ? c.size + "px" : "원래"}</span><button type="button" class="rs" data-a="orig" title="Roll20 원래 크기">원래</button></div>`
+            + `<div class="r"><b>줄</b>${SEG("dir", [["row", "가로"], ["col", "세로"]], c.dir)}<b class="b2">이름</b>${SEG("names", [["1", "보임"], ["0", "숨김"]], c.names ? "1" : "0")}</div>`
+            + '<div class="r ft"><button type="button" class="rs" data-a="reset">↺ 모두 원래대로</button><span>내 화면에서만 바뀌어요</span></div>';
+    };
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "r20-pz-pop";
+        pop.setAttribute("role", "dialog");
+        pop.hidden = true;
+        pop.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.dataset.a === "x") return closePop();
+            if (b.dataset.tab) return showTab(b.dataset.tab);
+            if (b.classList.contains("pi")) { const C = window.Campaign, m = (b.dataset.k === "h" ? C?.handouts : C?.characters)?.get?.(b.dataset.id); return m && openItem(m); }
+            if (b.dataset.a === "orig") { save({ size: 0 }); return draw(); }
+            if (b.dataset.a === "reset") { save({ ...D }); return draw(); }
+            const seg = b.closest(".seg");
+            if (seg) { const k = seg.dataset.k, v = b.dataset.v; save({ [k]: k === "names" ? v === "1" : v }); draw(); }
+        });
+        pop.addEventListener("input", e => { if (e.target.type === "range") { pop.querySelector(".sv").textContent = e.target.value + "px"; save({ size: +e.target.value }); } });
+        pop.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") closePop(); });
+        document.body.appendChild(pop);
+    };
+    let tab = "set";
+    const showTab = t => { tab = t; draw(); };
+    const draw = () => {
+        if (!pop || !popFor) return;
+        const mine = popFor === me(), nm = nameOf(popFor) || "플레이어";
+        const tabs = mine && !isGM() ? `<span class="tabs"><button type="button" data-tab="set" aria-pressed="${tab === "set"}">설정</button><button type="button" data-tab="perm" aria-pressed="${tab === "perm"}">내 권한</button></span>` : "";
+        const body = mine && (isGM() || tab === "set") ? setHtml() : permHtml(popFor);
+        pop.innerHTML = `<div class="hd"><b>${mine ? "포트레이트" : escAttr(nm) + " — 저널 권한"}</b>${tabs}<button type="button" data-a="x" class="x" aria-label="닫기">✕</button></div><div class="bd">${body}</div>`;
+        placePop();
+    };
+    // 포트레이트 옆 화면 안쪽에 (위에 있으면 아래로, 아래에 있으면 위로)
+    const placePop = () => {
+        if (!pop || pop.hidden) return;
+        const v = document.querySelector(`#player_${CSS.escape(popFor || "")} .video`), r = v?.getBoundingClientRect(), z = aioZoom.get();
+        const w = pop.offsetWidth * z, h = pop.offsetHeight * z;
+        const x = r ? Math.min(Math.max(8, r.left), innerWidth - w - 8) : (innerWidth - w) / 2;
+        const y = !r ? 80 : r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6);
+        pop.style.left = zpx(x); pop.style.top = zpx(y);
+    };
+    const openPop = pid => {
+        if (!pop?.isConnected) build();
+        if (!pop.hidden && popFor === pid) return closePop();
+        popFor = pid; tab = "set";
+        pop.hidden = false;
+        draw();
+    };
+    function closePop() { if (pop) pop.hidden = true; popFor = null; }
+    // 포트레이트 누르기 (끌기 · 길게 누르기는 Roll20 몫) — 누름은 Roll20 에도 그대로 간다
+    document.addEventListener("pointerdown", e => {
+        if (pop && !pop.hidden && !e.target.closest?.("#r20-pz-pop, #avatarContainer .player .video")) closePop();
+        const v = btnVisible.portrait && e.button === 0 && e.target.closest?.("#avatarContainer .player .video");
+        down = v ? { v, x: e.clientX, y: e.clientY, t: performance.now() } : null;
+    }, true);
+    document.addEventListener("click", e => {
+        const v = down && e.target.closest?.("#avatarContainer .player .video");
+        if (!v || v !== down.v || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4 || performance.now() - down.t > 500) return;
+        const pid = v.closest(".player")?.id?.replace(/^player_/, "");
+        if (pid) openPop(pid);
+    });
+    window.addEventListener("resize", () => { if (btnVisible.portrait) { apply(); placePop(); } });
+    // 설정 창 줄: 포트레이트 설정 열기 (내 포트레이트 옆에)
+    const modeRow = () => {
+        const row = document.createElement("div");
+        row.className = "cs-row";
+        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
+        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "포트레이트 자리 · 크기" }));
+        name.dataset.tip = "내 포트레이트를 눌러도 열려요 · 다른 플레이어 포트레이트를 누르면 그 사람의 저널 권한";
+        const b = Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기" });
+        b.onclick = e => { e.stopPropagation(); if (me()) openPop(me()); };
+        row.append(name, b);
+        return row;
+    };
+    const inject = () => apply();
+    const setEnabled = on => { if (!on) closePop(); apply(); };
+    return { inject, setEnabled, modeRow };
+})();
+addFeature("portraits", portraits);
+addBundle({ place: "main", order: 2.1, label: "포트레이트 (자리 · 크기 · 누르면 설정 · 권한)", sub: "내 화면에서만 — 포트레이트 묶음을 왼쪽 아래 · 왼쪽 위 · 위 가운데 · 아래 가운데로 · 크기 · 가로/세로 · 이름 숨기기 (카드 패도 따라감) · 내 포트레이트를 누르면 설정, 다른 플레이어 포트레이트를 누르면 그 사람이 조종 · 볼 수 있는 시트와 핸드아웃",
+    members: [["portrait", "portraits"]], extra: () => [portraits.modeRow()] });
+addCss(`
+        /* 포트레이트 (body.r20pz-*) — 크기는 zoom, 자리는 고정 위치 (길이는 portraits 가 배율로 나눠 넣음) */
+        body.r20pz-on #avatarContainer { zoom:var(--r20pz-z, 1); }
+        body.r20pz-on #avatarContainer .player .video { cursor:pointer; }
+        body.r20pz-col #avatarContainer { flex-direction:column !important; }
+        body:is(.r20pz-tl, .r20pz-tc, .r20pz-bc) #avatarContainer { position:fixed !important; left:var(--r20pz-l) !important; right:auto !important; z-index:5; }
+        body:is(.r20pz-tl, .r20pz-tc) #avatarContainer { top:var(--r20pz-t) !important; bottom:auto !important; }
+        body.r20pz-bc #avatarContainer { top:auto !important; bottom:var(--r20pz-b) !important; }
+        body.r20pz-noname #avatarContainer .r20pz-name { display:none !important; }
+        /* 위쪽에 두면 카드 패를 포트레이트 아래로 · 펼친 패도 아래로 */
+        body.r20pz-top #avatarContainer .player .deckhands { top:100% !important; bottom:auto !important; }
+        body.r20pz-top #avatarContainer .player .handcontainer { top:100% !important; bottom:auto !important; }
+        /* 세로 줄이면 카드 패는 포트레이트 오른쪽으로 (위 사람을 가리지 않게) */
+        body.r20pz-col #avatarContainer .player .deckhands { top:0 !important; bottom:auto !important; left:100% !important; margin-left:4px; }
+        body.r20pz-col #avatarContainer .player .handcontainer { top:0 !important; bottom:auto !important; left:100% !important; margin-left:4px; }
+        #r20-pz-pop { position:fixed; z-index:10010; width:280px; max-height:70vh; display:flex; flex-direction:column; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.3); color:var(--aio-ink-2); font:12px/1.4 sans-serif; overflow:hidden; }
+        #r20-pz-pop[hidden] { display:none; }
+        #r20-pz-pop * { box-sizing:border-box; }
+        #r20-pz-pop .hd { display:flex; align-items:center; gap:6px; height:32px; padding:0 4px 0 10px; border-bottom:1px solid var(--aio-line-4); flex-shrink:0; }
+        #r20-pz-pop .hd b { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-pz-pop button { margin:0; font:inherit; cursor:pointer; box-shadow:none; }
+        #r20-pz-pop .x { width:24px; height:24px; padding:0; border:0; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-4); }
+        #r20-pz-pop .tabs { display:inline-flex; gap:2px; } #r20-pz-pop .tabs button { height:22px; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; } #r20-pz-pop .tabs button[aria-pressed="true"] { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
+        #r20-pz-pop .bd { overflow-y:auto; padding:6px 10px 10px; }
+        #r20-pz-pop .r { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:6px 0; } #r20-pz-pop .r > b { width:30px; font-weight:400; color:var(--aio-ink-4); } #r20-pz-pop .r > b.b2 { width:auto; margin-left:6px; }
+        #r20-pz-pop .seg { display:inline-flex; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
+        #r20-pz-pop .seg button { height:22px; padding:0 7px; border:0; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; } #r20-pz-pop .seg button[aria-checked="true"] { background:var(--aio-accent); color:#fff; font-weight:700; }
+        #r20-pz-pop input[type=range] { width:110px; height:14px; margin:0; accent-color:var(--aio-accent); }
+        #r20-pz-pop .sv { min-width:34px; color:var(--aio-ink-3); font-size:11px; }
+        #r20-pz-pop .rs { height:22px; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; }
+        #r20-pz-pop .ft span { color:var(--aio-ink-5); font-size:10.5px; }
+        #r20-pz-pop .pg { margin:8px 0 2px; color:var(--aio-accent-dark); font-size:10.5px; font-weight:700; }
+        #r20-pz-pop .pi { display:flex; align-items:center; gap:6px; width:100%; height:24px; padding:0 4px; border:0; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-2); text-align:left; }
+        #r20-pz-pop .pi:hover { background:var(--aio-accent-bg); } #r20-pz-pop .pi i { font-style:normal; width:16px; text-align:center; } #r20-pz-pop .pi span { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; } #r20-pz-pop .pi small { color:var(--aio-ink-5); font-size:10px; }
+        #r20-pz-pop .pe, #r20-pz-pop .pn { margin:2px 4px; color:var(--aio-ink-5); font-size:11px; }
+`);
+
 addCss(`
         /* 덱 · 매크로를 오른쪽 판 왼쪽 끝에 (단추줄 밑) — 자리 값은 edgeDock 이 CSS 변수로 */
-        html body.r20edge-dk #showndecks { position:fixed !important; top:var(--r20e-dt) !important; right:var(--r20e-r) !important; left:auto !important; bottom:auto !important; max-height:40vh !important; margin:0 !important; padding:4px !important; border-radius:var(--aio-r-lg) 0 0 var(--aio-r-lg) !important; }
+        html body.r20edge-dk #showndecks#showndecks { position:fixed !important; top:auto !important; right:var(--r20e-r) !important; left:auto !important; bottom:var(--r20e-db) !important; max-height:var(--r20e-dmax) !important; margin:0 !important; padding:4px !important; border-radius:var(--aio-r-lg) 0 0 var(--aio-r-lg) !important; }
         html body.r20edge-dk #showndecks:not(:has(.adeck)) { display:none !important; }
         html body.r20edge-dk #showndecks.r20dk-on .deckstack, html body.r20edge-dk #showndecks.r20dk-on .deckstack .allback, html body.r20edge-dk #showndecks.r20dk-on .deckstack .nextcard > div, html body.r20edge-dk #showndecks.r20dk-on .deckstack img { width:52px !important; }
         html body.r20edge-dk #showndecks.r20dk-on .adeck { margin-bottom:4px !important; }
         /* 매크로: 오른쪽 끝을 맞춘 알약을 위에서부터 · 칸 밖(빈 곳)은 맵을 누를 수 있게 통과 */
-        html body.r20edge-mb #macrobar { position:fixed !important; top:var(--r20e-mt) !important; right:var(--r20e-r) !important; bottom:var(--r20e-mb) !important; left:auto !important; width:auto !important; height:auto !important; max-height:none !important; margin:0 !important; padding:0 !important; overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; touch-action:pan-y; background:none !important; border:0 !important; box-shadow:none !important; scrollbar-width:none; pointer-events:none; }
+        html body.r20edge-mb #macrobar#macrobar { position:fixed !important; top:auto !important; right:var(--r20e-r) !important; bottom:var(--r20e-mb) !important; left:auto !important; width:auto !important; height:auto !important; max-height:var(--r20e-mmax) !important; margin:0 !important; padding:0 !important; overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; touch-action:pan-y; background:none !important; border:0 !important; box-shadow:none !important; scrollbar-width:none; pointer-events:none; }
         html body.r20edge-mb #macrobar::-webkit-scrollbar { display:none; }
+        html body.r20edge-mb #macrobar#macrobar > * { background:none !important; }
         html body.r20edge-mb #macrobar_macros { display:block !important; width:auto !important; margin:0 !important; padding:0 !important; white-space:normal !important; text-align:right; pointer-events:none; }
         html body.r20edge-mb #macrobar #macrobar_macros .macrobox, html body.r20edge-mb #macrobar #macrobar_macros .macrobox:hover { display:block !important; width:auto !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; }
-        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button { pointer-events:auto; height:24px !important; max-width:150px; padding:0 9px !important; border-radius:12px 0 0 12px !important; font-size:11.5px !important; line-height:22px !important; }
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button { pointer-events:auto; width:124px !important; max-width:none; height:24px !important; padding:0 9px !important; border-radius:12px 0 0 12px !important; font-size:11.5px !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:hover { width:auto !important; min-width:124px; text-overflow:clip; }
         html body.r20edge-mb #macrobar_macros > .ui-sortable-placeholder { display:block !important; width:auto !important; min-width:0; height:3px !important; margin:0 0 3px !important; }
         html body.r20edge-mb #macrobar_macros > .ui-sortable-helper { pointer-events:auto; }
 `);
