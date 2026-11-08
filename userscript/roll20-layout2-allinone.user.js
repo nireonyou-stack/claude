@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.68.0
+// @version      1.69.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.68.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.69.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -67,7 +67,8 @@ const btnVisible = {
     tokset:    localStorage.getItem("r20_show_tokset") !== "false",
     qfind:     localStorage.getItem("r20_show_qfind") !== "false",
     winmem:    localStorage.getItem("r20_show_winmem") !== "false",
-    scen:      localStorage.getItem("r20_show_scen") !== "false"
+    scen:      localStorage.getItem("r20_show_scen") !== "false",
+    jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -1872,6 +1873,117 @@ addFeature("jukeboxRow", jukeboxRow);
 addFeature("jbBackup", jbBackup);
 addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"], ["jbrow", "jbBackup"]] });
+
+// ───────── 주크박스 서랍: ♪ 탭을 눌러도 탭을 바꾸지 않고, 주크박스 칸을 채팅 판 왼쪽에 위에서 아래까지 펼친다 ─────────
+// Roll20 주크박스 칸(#jukebox)은 제자리(오른쪽 판 안)에 둔 채 화면에만 띄운다 → 재생 · 볼륨 · 오디오 관리와 올인원 미리듣기 · 페이드가 그대로
+// 다시 ♪ · ✕ · Esc · 다른 데 누르기(📌 면 그대로)로 닫기 · 왼쪽 끝을 끌어 폭 조절(기억) · 단추줄은 서랍 왼쪽으로 같이 밀린다
+// 화면 구조 때문에 띄우지 못하면(부모가 transform 등) 원래대로 탭을 바꾼다
+const jbDrawer = (() => {
+    const W_KEY = "r20_jbd_w", PIN_KEY = "r20_jbd_pin";
+    let on = false, hd = null, grip = null, pass = false, ro = null;
+    const tab = () => document.getElementById("jukeboxtab");
+    const pane = () => document.getElementById("jukebox");
+    const width = () => Math.max(240, Math.min(600, parseInt(localStorage.getItem(W_KEY) || "300", 10) || 300));
+    const pinned = () => localStorage.getItem(PIN_KEY) === "true";
+    const sideRect = () => { const r = document.getElementById("rightsidebar")?.getBoundingClientRect(); return r && r.width > 0 && r.left < innerWidth - 1 ? r : null; };
+    // 서랍 왼쪽 끝 (화면 좌표) — 화면 배치가 단추줄을 그 왼쪽에 쌓는다
+    const leftEdge = () => { if (!on) return null; const r = sideRect(); return r ? r.left - width() : null; };
+    const place = () => {
+        const r = sideRect();
+        if (!on) return;
+        if (!r) return close();
+        const st = document.documentElement.style;
+        st.setProperty("--jbd-w", width() + "px");
+        st.setProperty("--jbd-r", Math.round(innerWidth - r.left) + "px");
+        st.setProperty("--jbd-t", Math.round(r.top) + "px");
+    };
+    const build = () => {
+        hd = document.createElement("div");
+        hd.id = "r20-jbd-hd";
+        hd.innerHTML = '<b>♪ 주크박스</b><span class="sp"></span><button type="button" data-a="pin" class="pin" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button>';
+        hd.addEventListener("click", e => {
+            const a = e.target.closest("button")?.dataset.a;
+            if (a === "x") close();
+            else if (a === "pin") { const p = !pinned(); localStorage.setItem(PIN_KEY, String(p)); e.target.closest("button").setAttribute("aria-pressed", String(p)); }
+        });
+        grip = document.createElement("div");
+        grip.id = "r20-jbd-grip";
+        grip.title = "끌어서 폭 조절";
+        grip.addEventListener("pointerdown", e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            grip.setPointerCapture(e.pointerId);
+            const mv = ev => { const r = sideRect(); if (!r) return; localStorage.setItem(W_KEY, String(Math.round(Math.max(240, Math.min(600, r.left - ev.clientX))))); place(); FEAT.screenUI?.place(); };
+            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => grip.removeEventListener(t, k ? up : mv)); };
+            grip.addEventListener("pointermove", mv);
+            grip.addEventListener("pointerup", up);
+            grip.addEventListener("pointercancel", up);
+        });
+        document.body.append(hd, grip);
+    };
+    const open = () => {
+        const p = pane();
+        if (!p || !sideRect()) return false;
+        if (!hd?.isConnected) build();
+        on = true;
+        place();
+        document.body.classList.add("r20jbd-open");
+        tab()?.classList.add("r20jbd-on");
+        hd.querySelector(".pin").setAttribute("aria-pressed", String(pinned()));
+        // 제대로 떴는지: 서랍 오른쪽 끝이 채팅 판 왼쪽에 붙어 있어야 한다
+        const pr = p.getBoundingClientRect(), r = sideRect();
+        if (!pr.width || Math.abs(pr.right - r.left) > 6) { close(); aioErr("주크박스 서랍", "주크박스 칸을 화면에 띄우지 못함 — 원래대로 탭을 바꿈"); return false; }
+        FEAT.screenUI?.place();
+        if (!ro && window.ResizeObserver) { ro = new ResizeObserver(() => { if (on) { place(); FEAT.screenUI?.place(); } }); ro.observe(document.getElementById("rightsidebar")); }
+        return true;
+    };
+    function close() {
+        if (!on) return;
+        on = false;
+        document.body.classList.remove("r20jbd-open");
+        tab()?.classList.remove("r20jbd-on");
+        FEAT.screenUI?.place();
+    }
+    // ♪ 탭: 이미 주크박스 탭이 열려 있으면 Roll20 그대로 · 아니면 서랍
+    document.addEventListener("click", e => {
+        if (pass || !btnVisible.jbdrawer) return;
+        const t = e.target.closest?.("#jukeboxtab");
+        if (!t || t.classList.contains("ui-tabs-active") || t.classList.contains("ui-state-active")) return;
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        if (on) return close();
+        if (!open()) { pass = true; try { t.querySelector("a")?.click(); } finally { pass = false; } }
+    }, true);
+    // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정)과 올인원 주크박스 말풍선은 빼고
+    document.addEventListener("pointerdown", e => {
+        if (!on || pinned()) return;
+        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-grip, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jbb-toast")) return;      // body 의 r20jb- 꼬리표는 안 봄
+        close();
+    }, true);
+    document.addEventListener("keydown", e => {
+        if (!on || e.key !== "Escape") return;
+        const a = document.activeElement;
+        if (a && a !== document.body && !pane()?.contains(a) && !hd?.contains(a)) return;      // 입력칸 등에서의 Esc 는 그쪽 몫
+        close();
+    });
+    window.addEventListener("resize", () => { if (on) { place(); FEAT.screenUI?.place(); } });
+    const setEnabled = v => { if (!v) close(); };
+    return { setEnabled, leftEdge, isOpen: () => on, open, close };
+})();
+addFeature("jbDrawer", jbDrawer);
+addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
+    members: [["jbdrawer", "jbDrawer"]] });
+addCss(`
+        /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
+        body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 30px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:10003 !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; }
+        #r20-jbd-hd, #r20-jbd-grip { display:none; }
+        body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:10004; display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:30px; padding:0 4px 0 10px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
+        body.r20jbd-open #r20-jbd-hd .sp { flex:1; }
+        body.r20jbd-open #r20-jbd-hd button { width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; line-height:22px; cursor:pointer; box-shadow:none; }
+        body.r20jbd-open #r20-jbd-hd button:hover { background:var(--aio-bg-3); }
+        body.r20jbd-open #r20-jbd-hd .pin { filter:grayscale(1); opacity:0.5; } body.r20jbd-open #r20-jbd-hd .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
+        body.r20jbd-open #r20-jbd-grip { position:fixed; z-index:10005; display:block; top:var(--jbd-t, 0px); bottom:0; right:calc(var(--jbd-r, 300px) + var(--jbd-w, 300px) - 3px); width:6px; cursor:ew-resize; }
+        #jukeboxtab.r20jbd-on > a { background:var(--aio-accent) !important; color:#fff !important; border-radius:var(--aio-r-sm); }
+`);
 
 // ══════════ 묶음 2 · 대화 캡처 · 맵시트 촬영 ══════════
 
@@ -5298,7 +5410,7 @@ const screenUI = (() => {
         const hb = document.getElementById("sidebarcontrol");
         if (!hb) return;
         const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const edge = side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right;       // 대화 판 안쪽을 덮지 않게
+        const edge = FEAT.jbDrawer?.leftEdge?.() ?? (side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right);       // 대화 판(· 주크박스 서랍) 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
         els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-scnbtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-qfbtn"));
