@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.71.1
+// @version      1.72.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.71.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.72.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -938,7 +938,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf";
+const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -1402,61 +1402,78 @@ const jukeboxRow = (() => {
         b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); foldAll(sel); });
         return b;
     };
-    // Roll20 '빈 재생목록 추가' 단추를 위쪽 '오디오 관리' 옆으로 옮긴다 (같은 float 로 붙이면 화면에선 옆에 선다)
-    // 아래 줄에 남은 볼륨 · 페이드 칸이 한 줄에 든다. 끄면 제자리로
-    const ADD_RE = /재생목록\s*추가|add.*playlist|new playlist/i, AUD_RE = /^(오디오 관리|Audio Library|Manage Audio)$/i;
-    let addPl = null;      // { b, home }
-    const moveAddPl = on => {
-        if (!on) {
-            if (addPl?.b.isConnected && addPl.home.isConnected) { addPl.b.classList.remove("r20jb-addpl"); addPl.b.style.float = ""; addPl.home.prepend(addPl.b); }
-            addPl = null;
-            return;
-        }
-        const host = document.querySelector("#jukebox .secondarycontrols");
-        const b = host && [...host.querySelectorAll("button, .btn")].find(x => !x.matches(".r20-fold") && ADD_RE.test(x.textContent.trim()));
-        if (!b) return;                         // 이미 옮겼거나 없음 (이때는 주크박스 전체를 훑지 않는다)
-        const aud = [...document.querySelectorAll("#jukebox button, #jukebox .btn")].find(x => !x.closest(".dd-list, .secondarycontrols") && AUD_RE.test(x.textContent.trim()));
-        if (!aud) return;
-        if (addPl?.b !== b && addPl?.b.isConnected) addPl.b.remove();      // Roll20 이 새로 그렸으면 예전에 옮긴 것은 치운다
-        addPl = { b, home: host };
-        b.classList.add("r20jb-addpl");
-        const fl = getComputedStyle(aud).float;
-        b.style.float = fl;
-        if (fl === "right") aud.after(b); else aud.before(b);      // 오른쪽 float 면 뒤에 둬야 '오디오 관리' 왼쪽에 선다
+    // ☰ 주크박스 설정: Roll20 '오디오 관리' · '빈 재생목록 추가' 단추는 숨기고 메뉴에서 대신 누른다
+    // + 폴더 전체 닫기 · ◂ ▸ 볼륨 단위 · ↘ 페이드 시간. 잘못 누르기 쉬운 '알파벳순 음원 정렬' 단추는 숨김. 끄면 모두 제자리로
+    const ADD_RE = /재생목록\s*추가|add.*playlist|new playlist/i, AUD_RE = /^(오디오 관리|Audio Library|Manage Audio)$/i, SORT_RE = /알파벳|alphabet/i;
+    let menu = null;       // { btn, hid: [숨긴 Roll20 단추] }
+    let pop = null;
+    // 곡 목록(#jukeboxfolderroot) 밖의 단추만 본다 — 곡 줄의 단추 수천 개는 훑지 않는다
+    const topBtns = () => {
+        const out = [];
+        for (let el = document.getElementById("jukeboxfolderroot"); el && el.id !== "jukebox" && el.parentElement; el = el.parentElement)
+            for (const ch of el.parentElement.children) {
+                if (ch === el || ch.id === "jukeboxwhatsplaying" || ch.classList.contains("r20jb-mbtn")) continue;
+                if (ch.matches("button, .btn")) out.push(ch); else out.push(...ch.querySelectorAll("button, .btn"));
+            }
+        return out;
     };
+    const findBtn = re => topBtns().find(x => !x.classList.contains("r20jb-mbtn") && re.test(x.textContent.trim()));
+    const closeMenu = () => { pop?.remove(); menu?.btn.setAttribute("aria-expanded", "false"); };
+    const openMenu = () => {
+        if (!pop) {
+            pop = document.createElement("div");
+            pop.className = "r20jb-menu";
+            pop.setAttribute("role", "menu");
+            pop.innerHTML = '<button type="button" role="menuitem" data-a="aud">오디오 관리</button><button type="button" role="menuitem" data-a="add">빈 재생목록 추가</button>'
+                + '<button type="button" role="menuitem" data-a="fold">폴더 전체 닫기</button><div class="sep"></div>'
+                + '<label title="◂ ▸ 를 누를 때 바뀌는 볼륨 크기">볼륨 단위 ±<input type="number" min="1" max="50" data-k="step" aria-label="볼륨 조절 단위(%)">%</label>'
+                + '<label title="↘ 페이드 아웃에 걸리는 시간">페이드 시간<input type="number" min="1" max="30" data-k="fade" aria-label="페이드 아웃 시간(초)">초</label>';
+            pop.addEventListener("click", e => {
+                const a = e.target.closest("button")?.dataset.a;
+                if (!a) return;
+                closeMenu();
+                if (a === "fold") return foldAll("#jukeboxfolderroot");
+                (a === "aud" ? findBtn(AUD_RE) : findBtn(ADD_RE))?.click();
+            });
+            pop.addEventListener("input", e => {
+                const k = e.target.dataset.k, v = parseInt(e.target.value, 10);
+                if (k === "step" && v >= 1 && v <= 50) { STEP = v; localStorage.setItem("r20jb_step", v); }
+                if (k === "fade" && v >= 1 && v <= 30) { FADE = v; localStorage.setItem("r20jb_fade", v); }
+            });
+            pop.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") { closeMenu(); menu?.btn.focus(); } });       // Roll20 단축키로 새지 않게
+        }
+        pop.querySelector('[data-k="step"]').value = STEP;
+        pop.querySelector('[data-k="fade"]').value = FADE;
+        pop.querySelector('[data-a="aud"]').disabled = !findBtn(AUD_RE);
+        pop.querySelector('[data-a="add"]').disabled = !findBtn(ADD_RE);
+        document.body.appendChild(pop);
+        const r = menu.btn.getBoundingClientRect(), z = aioZoom.get();
+        pop.style.top = zpx(r.bottom + 2);
+        pop.style.left = zpx(Math.max(4, Math.min(r.right - pop.offsetWidth * z, innerWidth - pop.offsetWidth * z - 4)));
+        menu.btn.setAttribute("aria-expanded", "true");
+    };
+    document.addEventListener("pointerdown", e => { if (pop?.isConnected && !e.target.closest?.(".r20jb-menu, .r20jb-mbtn")) closeMenu(); }, true);
     const addStepControl = () => {
-        moveAddPl(true);
-        const host = document.querySelector("#jukebox .secondarycontrols");
-        if (host && !host.querySelector(".r20-fold")) host.appendChild(foldBtn("#jukeboxfolderroot"));
-        if (!host || host.querySelector(".r20jb-step")) return;
-        const wrap = document.createElement("label");
-        wrap.className = "r20jb-step";
-        wrap.title = "◂ ▸ 를 누를 때 바뀌는 볼륨 크기";
-        wrap.append("볼륨 ±");
-        const inp = document.createElement("input");
-        inp.type = "number"; inp.min = "1"; inp.max = "50"; inp.value = STEP;
-        inp.setAttribute("aria-label", "볼륨 조절 단위(%)");
-        inp.addEventListener("input", () => {
-            const v = parseInt(inp.value, 10);
-            if (v >= 1 && v <= 50) { STEP = v; localStorage.setItem("r20jb_step", v); }
-        });
-        inp.addEventListener("keydown", e => e.stopPropagation());      // Roll20 단축키로 새지 않게
-        wrap.append(inp, "%");
-        host.appendChild(wrap);
-        const fw = document.createElement("label");
-        fw.className = "r20jb-step";
-        fw.title = "↘ 페이드 아웃에 걸리는 시간";
-        fw.append("페이드");
-        const fi = document.createElement("input");
-        fi.type = "number"; fi.min = "1"; fi.max = "30"; fi.value = FADE;
-        fi.setAttribute("aria-label", "페이드 아웃 시간(초)");
-        fi.addEventListener("input", () => {
-            const v = parseInt(fi.value, 10);
-            if (v >= 1 && v <= 30) { FADE = v; localStorage.setItem("r20jb_fade", v); }
-        });
-        fi.addEventListener("keydown", e => e.stopPropagation());
-        fw.append(fi, "초");
-        host.appendChild(fw);
+        // Roll20 이 위쪽을 다시 그렸을 때만 다시 붙인다 (평소엔 확인만)
+        if (menu?.btn.isConnected && menu.hid.every(b => b.isConnected)) return;
+        const btns = topBtns(), pick = re => btns.find(x => !x.classList.contains("r20jb-mbtn") && re.test(x.textContent.trim()));
+        const aud = pick(AUD_RE), hid = [aud, pick(ADD_RE), pick(SORT_RE)].filter(Boolean);
+        if (!aud && !document.getElementById("jukeboxfolderroot")) return;
+        if (!menu?.btn.isConnected) {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "btn r20jb-mbtn";
+            b.textContent = "☰";
+            b.title = "주크박스 설정 — 오디오 관리 · 빈 재생목록 추가 · 폴더 전체 닫기 · 볼륨 단위 · 페이드 시간";
+            b.setAttribute("aria-label", "주크박스 설정");
+            b.setAttribute("aria-haspopup", "menu");
+            b.setAttribute("aria-expanded", "false");
+            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); if (pop?.isConnected) closeMenu(); else openMenu(); });
+            if (aud) aud.before(b); else document.getElementById("jukeboxfolderroot").parentElement.prepend(b);
+            menu = { btn: b, hid: [] };
+        }
+        hid.forEach(x => x.classList.add("r20jb-hid"));
+        menu.hid = hid;
     };
 
     // Roll20 이 곡 줄을 다시 그리면 그 줄만 다시 붙인다
@@ -1585,8 +1602,10 @@ const jukeboxRow = (() => {
         document.body.classList.toggle("r20jb-on", on);
         if (on) { inject(); jbWatch.all().forEach(decorate); markSeps(); measured = false; if (rootShown) measureSoon(); }
         else {
-            document.querySelectorAll("#jukebox .r20-fold").forEach(b => b.remove());
-            moveAddPl(false);
+            closeMenu();
+            menu?.btn.remove();
+            document.querySelectorAll("#jukebox .r20jb-hid").forEach(b => b.classList.remove("r20jb-hid"));
+            menu = null;
             journalTools(false);
             document.querySelectorAll(TITLE + "[tabindex]").forEach(ti => { ti.removeAttribute("tabindex"); ti.removeAttribute("role"); });
         }
@@ -1612,8 +1631,20 @@ addCss(`
         /* 폴더 닫기 단추 (저널 · 주크박스) */
         body.r20jb-on :is(#jukebox, #journal) .r20-fold { height:22px; margin:0 !important; padding:0 6px !important; font-size:9px; line-height:20px; white-space:nowrap; }
         #jukebox .r20jb-addpl { margin-right:4px !important; }
-        body.r20jb-on #jukebox .r20jb-step { display:inline-flex; align-items:center; gap:3px; margin:0 0 0 auto; font-size:11px; font-weight:normal; color:var(--aio-ink-3); }
-        body.r20jb-on #jukebox .r20jb-step input { width:42px !important; height:22px !important; margin:0 !important; padding:0 4px !important; font-size:11px !important; text-align:center; }
+        /* ☰ 주크박스 설정 · 숨긴 Roll20 단추 · 위쪽(제목 · 지금 재생 중) 여백 줄이기 */
+        body.r20jb-on #jukebox .r20jb-hid { display:none !important; }
+        body.r20jb-on #jukebox .r20jb-mbtn { float:right; width:24px; height:22px; margin:0 0 0 4px !important; padding:0 !important; font-size:13px; line-height:20px; }
+        body.r20jb-on #jukebox :is(h1, h2, h3):not(.dd-list *) { margin:0 !important; line-height:24px !important; }
+        body.r20jb-on #jukebox #jukeboxwhatsplaying { margin:2px 0 4px !important; }
+        body.r20jb-on #jukebox #jukeboxwhatsplaying h4 { margin:0 0 2px !important; }
+        body.r20jb-on #jukebox .secondarycontrols:not(:has(> :not(.r20jb-hid, .r20jb-addpl))) { display:none !important; }
+        .r20jb-menu { position:fixed; z-index:10010; display:flex; flex-direction:column; min-width:170px; padding:4px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.22); color:var(--aio-ink-2); font:12px/1.4 sans-serif; }
+        .r20jb-menu button { height:26px; margin:0; padding:0 8px; border:0; border-radius:var(--aio-r-sm); background:transparent; color:inherit; font-size:12px; text-align:left; cursor:pointer; box-shadow:none; }
+        .r20jb-menu button:hover:not(:disabled) { background:var(--aio-accent-bg); }
+        .r20jb-menu button:disabled { color:var(--aio-ink-5); cursor:default; }
+        .r20jb-menu .sep { height:1px; margin:4px 2px; background:var(--aio-line-4); }
+        .r20jb-menu label { display:flex; align-items:center; gap:4px; height:28px; margin:0; padding:0 8px; font-size:12px; font-weight:normal; white-space:nowrap; }
+        .r20jb-menu input { width:44px !important; height:22px !important; margin:0 0 0 auto !important; padding:0 4px !important; font-size:12px !important; text-align:center; box-sizing:border-box; }
         /* 사이드바 탭(저널 · 주크박스 · 그림 라이브러리 · 컬렉션)의 Roll20 단추를 '일괄 편집' 단추와 같은 모양으로 */
         /* Roll20 새 단추(grimoire__button, 예: 저널 '+ 캐릭터')도 같이. 높이는 테두리 포함 24px */
         body.r20jb-on :is(#journal, #jukebox, #imagedialog, #deckstables) :is(.btn, .grimoire__button) { box-sizing:border-box !important; height:24px !important; min-height:0 !important; padding:0 10px !important; border:1px solid var(--aio-line) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; background-image:none !important; box-shadow:none !important; text-shadow:none !important; color:var(--aio-ink-2) !important; font-size:11px !important; font-weight:700 !important; line-height:22px !important; vertical-align:middle; }
@@ -2027,12 +2058,12 @@ const jbDrawer = (() => {
     }, true);
     // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정)과 올인원 주크박스 말풍선 · 미니 재생 줄은 빼고
     document.addEventListener("pointerdown", e => {
-        if (!on || pinned()) return;
-        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-res, #r20-jbd-grip, #r20-jbd-hgrip, #r20-jbm, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jbb-toast")) return;      // body 의 r20jb- 꼬리표는 안 봄
+        if (!on || pinned() || !e.isTrusted) return;        // 스크립트가 보낸 누르기(⛶ 화면 맞춤이 배율 메뉴를 닫을 때 등)는 무시
+        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-res, #r20-jbd-grip, #r20-jbd-hgrip, #r20-jbm, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jb-menu, .r20jbb-toast")) return;      // body 의 r20jb- 꼬리표는 안 봄
         close();
     }, true);
     document.addEventListener("keydown", e => {
-        if (!on || e.key !== "Escape") return;
+        if (!on || e.key !== "Escape" || !e.isTrusted) return;          // ⛶ 화면 맞춤이 보내는 Esc 는 무시
         const a = document.activeElement;
         if (a && a !== document.body && !pane()?.contains(a) && !hd?.contains(a)) return;      // 입력칸 등에서의 Esc 는 그쪽 몫
         close();
