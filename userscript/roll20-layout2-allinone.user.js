@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.73.1
+// @version      1.74.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.73.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.74.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2070,7 +2070,8 @@ const jbDrawer = (() => {
     });
     window.addEventListener("resize", () => { if (on) { place(); FEAT.screenUI?.place(); } });
     const setEnabled = v => { if (!v) close(); };
-    return { setEnabled, leftEdge, isOpen: () => on, open, close, show };
+    const halfTop = () => { if (!on || !half()) return null; const r = sideRect(); return r ? topOf(r) : null; };
+    return { setEnabled, leftEdge, halfTop, isOpen: () => on, open, close, show };
 })();
 addFeature("jbDrawer", jbDrawer);
 addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그, Enter 재생) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
@@ -5646,6 +5647,7 @@ const screenUI = (() => {
             y += el.getBoundingClientRect().height + 4;
         });
         FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
+        FEAT.edgeDock?.place?.(y, edge);           // 그 밑에 덱 · 매크로 (왼쪽 끝 모드)
     };
     // ── 맵 전체보기: 배율 숫자를 누르면 뜨는 Roll20 메뉴의 'Zoom to Fit' 을 대신 누른다 (Roll20 이 맞추고 가운데로 옮긴다) ──
     // 단추는 Roll20 확대 · 축소 묶음 안, − 바로 밑에 같은 모양(.btnStyle)으로. 메뉴는 보이지 않게 숨겼다가 닫는다
@@ -5797,13 +5799,107 @@ const macroBar = (() => {
         if ($l.sortable("option", "delay") !== want.delay || $l.sortable("option", "cancel") !== want.cancel) $l.sortable("option", want);
         // 두 줄이 되며 아래로 넘치면 아래쪽에 붙인다
         const mb = document.getElementById("macrobar");
-        if (btnVisible.macrobar && mb && mb.getBoundingClientRect().bottom > innerHeight - 2) {
+        // (왼쪽 끝 모드면 하지 않고, 우리가 붙여 둔 것만 걷는다 — Roll20 이 넣은 자리 값은 그대로)
+        if (document.body.classList.contains("r20edge-mb")) { if (mb?.dataset.r20mbPin) { mb.style.removeProperty("top"); mb.style.removeProperty("bottom"); delete mb.dataset.r20mbPin; } }
+        else if (btnVisible.macrobar && mb && mb.getBoundingClientRect().bottom > innerHeight - 2) {
             mb.style.setProperty("top", "auto", "important");
             mb.style.setProperty("bottom", "12px", "important");
+            mb.dataset.r20mbPin = "1";
         }
     };
     return { inject, setEnabled: () => inject() };
 })();
+
+// ───────── 덱 · 매크로를 오른쪽 판 왼쪽 끝(단추줄 밑)에: 덱 카드 → 매크로 알약을 세로로 (body.r20edge-on) ─────────
+// Roll20 덱 판(#showndecks) · 매크로 줄(#macrobar)은 제자리에 둔 채 자리만 옮긴다 → 누르기 · 길게 눌러 순서 바꾸기 · 덱 메뉴가 그대로
+// 매크로가 길면 매크로 칸만 휠 · 손가락으로 위아래 · 설정(묶음 2)에서 '오른쪽 판 왼쪽 끝' ↔ '원래 자리(맵 아래)'
+// 화면 구조 때문에 자리가 안 맞으면(부모가 transform 등) 원래 자리로 되돌린다
+const edgeDock = (() => {
+    const KEY = "r20_edge_dm";
+    const mode = () => localStorage.getItem(KEY) === "map" ? "map" : "edge";
+    let last = null, ro = null, roEl = null, wheelEl = null, failed = false, vT = 0;
+    const shown = el => !!el && el.getClientRects().length > 0;
+    // 화면 배치(screenUI)가 단추줄을 쌓은 뒤 부른다: y = 단추줄 아래 끝, edge = 단추줄 오른쪽 끝(채팅 판 · 서랍 왼쪽)
+    const place = (y, edge) => {
+        if (y != null) last = { y, edge };
+        const B = document.body, act = mode() === "edge" && !failed && !!last;
+        B.classList.toggle("r20edge-dk", act && btnVisible.deckview);
+        B.classList.toggle("r20edge-mb", act && btnVisible.macrobar);
+        if (!act) return;
+        const st = document.documentElement.style;
+        let top = last.y + 2;
+        const qf = document.querySelector("#r20-qf.dock .qf-box");          // ▶ 붙인 빠른 찾기가 있으면 그 밑
+        if (shown(qf)) top = Math.max(top, qf.getBoundingClientRect().bottom + 6);
+        st.setProperty("--r20e-r", Math.round(innerWidth - last.edge) + "px");
+        st.setProperty("--r20e-dt", Math.round(top) + "px");
+        const sd = document.getElementById("showndecks"), hasDeck = btnVisible.deckview && shown(sd) && !!sd.querySelector(".adeck");
+        st.setProperty("--r20e-mt", Math.round(hasDeck ? sd.getBoundingClientRect().bottom + 6 : top) + "px");
+        const ht = FEAT.jbDrawer?.halfTop?.();                              // 반쪽 주크박스 서랍이 열려 있으면 그 위까지만
+        st.setProperty("--r20e-mb", Math.round(ht != null ? innerHeight - ht + 6 : 8) + "px");
+        // 덱 판 크기가 바뀌면(카드 더미 추가 · 숨김) 매크로 칸 시작을 다시
+        if (sd && window.ResizeObserver && roEl !== sd) { ro?.disconnect(); roEl = sd; ro = new ResizeObserver(() => place()); ro.observe(sd); }
+        const mb = document.getElementById("macrobar");
+        if (mb && wheelEl !== mb) {
+            wheelEl = mb;
+            // Roll20 맵이 휠을 확대에 쓰므로 매크로 칸 위에선 직접 굴린다
+            mb.addEventListener("wheel", e => { if (!B.classList.contains("r20edge-mb")) return; e.preventDefault(); e.stopPropagation(); mb.scrollTop += e.deltaY; }, { passive: false });
+        }
+        clearTimeout(vT);
+        vT = setTimeout(() => verify(0), 300);
+    };
+    // 제대로 붙었는지: 오른쪽 끝이 단추줄 오른쪽 끝과 맞아야 한다 (스타일이 붙기 전 · 그리는 중일 수 있어 세 번 보고 판단)
+    const verify = n => {
+        if (failed || !last || mode() !== "edge") return;
+        const sd = document.getElementById("showndecks"), mb = document.getElementById("macrobar");
+        const off = [document.body.classList.contains("r20edge-dk") && shown(sd) && sd.querySelector(".adeck") ? sd : null, document.body.classList.contains("r20edge-mb") && shown(mb) ? mb : null]
+            .filter(Boolean).find(el => Math.abs(el.getBoundingClientRect().right - last.edge) > 6);
+        if (!off) return;
+        if (n < 2) { vT = setTimeout(() => verify(n + 1), 500); return; }
+        failed = true; place(); FEAT.macroBar?.inject();
+        aioErr("덱 · 매크로 자리", `${off.id} 를 오른쪽 판 왼쪽 끝에 붙이지 못함 — 원래 자리로`);
+    };
+    const setMode = v => { localStorage.setItem(KEY, v); failed = false; place(); FEAT.macroBar?.inject(); FEAT.screenUI?.place(); };
+    // 설정 창 줄: 덱 · 매크로 자리
+    const modeRow = () => {
+        const row = document.createElement("div");
+        row.className = "cs-row";
+        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
+        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "덱 · 매크로 자리" }));
+        name.dataset.tip = "오른쪽 판 왼쪽 끝: 단추줄 밑에 덱 카드 → 매크로 단추를 세로로 (매크로가 길면 휠 · 손가락으로 위아래) · 원래 자리: 덱은 Roll20 자리, 매크로는 맵 아래 줄";
+        const seg = document.createElement("div");
+        seg.className = "cs-seg";
+        seg.setAttribute("role", "radiogroup");
+        seg.setAttribute("aria-label", "덱 · 매크로 자리");
+        const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode())));
+        [["edge", "왼쪽 끝"], ["map", "원래 자리"]].forEach(([v, l]) => {
+            const b = Object.assign(document.createElement("button"), { type: "button", textContent: l });
+            b.dataset.v = v;
+            b.setAttribute("role", "radio");
+            b.onclick = () => { setMode(v); sync(); };
+            seg.appendChild(b);
+        });
+        sync();
+        row.append(name, seg);
+        return row;
+    };
+    return { place, modeRow };
+})();
+addFeature("edgeDock", edgeDock);
+addCss(`
+        /* 덱 · 매크로를 오른쪽 판 왼쪽 끝에 (단추줄 밑) — 자리 값은 edgeDock 이 CSS 변수로 */
+        html body.r20edge-dk #showndecks { position:fixed !important; top:var(--r20e-dt) !important; right:var(--r20e-r) !important; left:auto !important; bottom:auto !important; max-height:40vh !important; margin:0 !important; padding:4px !important; border-radius:var(--aio-r-lg) 0 0 var(--aio-r-lg) !important; }
+        html body.r20edge-dk #showndecks:not(:has(.adeck)) { display:none !important; }
+        html body.r20edge-dk #showndecks.r20dk-on .deckstack, html body.r20edge-dk #showndecks.r20dk-on .deckstack .allback, html body.r20edge-dk #showndecks.r20dk-on .deckstack .nextcard > div, html body.r20edge-dk #showndecks.r20dk-on .deckstack img { width:52px !important; }
+        html body.r20edge-dk #showndecks.r20dk-on .adeck { margin-bottom:4px !important; }
+        /* 매크로: 오른쪽 끝을 맞춘 알약을 위에서부터 · 칸 밖(빈 곳)은 맵을 누를 수 있게 통과 */
+        html body.r20edge-mb #macrobar { position:fixed !important; top:var(--r20e-mt) !important; right:var(--r20e-r) !important; bottom:var(--r20e-mb) !important; left:auto !important; width:auto !important; height:auto !important; max-height:none !important; margin:0 !important; padding:0 !important; overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; touch-action:pan-y; background:none !important; border:0 !important; box-shadow:none !important; scrollbar-width:none; pointer-events:none; }
+        html body.r20edge-mb #macrobar::-webkit-scrollbar { display:none; }
+        html body.r20edge-mb #macrobar_macros { display:block !important; width:auto !important; margin:0 !important; padding:0 !important; white-space:normal !important; text-align:right; pointer-events:none; }
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox, html body.r20edge-mb #macrobar #macrobar_macros .macrobox:hover { display:block !important; width:auto !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; }
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button { pointer-events:auto; height:24px !important; max-width:150px; padding:0 9px !important; border-radius:12px 0 0 12px !important; font-size:11.5px !important; line-height:22px !important; }
+        html body.r20edge-mb #macrobar_macros > .ui-sortable-placeholder { display:block !important; width:auto !important; min-width:0; height:3px !important; margin:0 0 3px !important; }
+        html body.r20edge-mb #macrobar_macros > .ui-sortable-helper { pointer-events:auto; }
+`);
 
 addCss(`
         /* 재생 중인 곡 */
@@ -6273,8 +6369,9 @@ addFeature("screenUI", screenUI);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
 addFeature("tokenSet", tokenSet);
-addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄",
-    members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"], ["tokset", "tokenSet"]] });
+addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄 (덱 · 매크로는 오른쪽 판 왼쪽 끝 / 원래 자리)",
+    members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"], ["tokset", "tokenSet"]],
+    extra: () => [edgeDock.modeRow()] });
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 
