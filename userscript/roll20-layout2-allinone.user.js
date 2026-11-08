@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.75.3
+// @version      1.76.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.75.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.76.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5853,6 +5853,7 @@ const edgeDock = (() => {
     // 제대로 붙었는지: 오른쪽 끝이 단추줄 오른쪽 끝과 맞아야 한다 (스타일이 붙기 전 · 그리는 중일 수 있어 세 번 보고 판단)
     const verify = n => {
         if (failed || !last || mode() !== "edge") return;
+        if (n === 1) FEAT.screenUI?.place();         // 단추줄 끝이 그새 바뀌었을 수 있다 (판 크기 · 서랍) → 다시 배치해 본 뒤에 판단
         const sd = document.getElementById("showndecks"), mb = document.getElementById("macrobar");
         const off = [document.body.classList.contains("r20edge-dk") && shown(sd) && sd.querySelector(".adeck") ? sd : null, document.body.classList.contains("r20edge-mb") && shown(mb) ? mb : null]
             .filter(Boolean).find(el => Math.abs(el.getBoundingClientRect().right - last.edge) > 6);
@@ -5888,42 +5889,34 @@ const edgeDock = (() => {
     return { place, modeRow };
 })();
 addFeature("edgeDock", edgeDock);
-// ───────── 포트레이트: 자리 4곳 · 크기 · 가로/세로 · 이름 보임 — 내 화면에서만 (Roll20 #avatarContainer 를 그대로 옮긴다) ─────────
+// ───────── 포트레이트: 자리(왼쪽 아래 · 왼쪽 위) · 크기 · 가로/세로 · 포트레이트 · 이름 보임 — 내 화면에서만 ─────────
+// 묶음을 화면에 고정해 옮기지 않고 Roll20 #playerzone 의 정렬만 위 · 아래로 바꾼다 — 매크로 줄(#macrobar)이 이 묶음 안에 있어서
+// 크기는 사람마다(.player) 따로 확대 → 매크로 줄은 그대로
 // 내 포트레이트를 누르면 설정 (플레이어는 '내 권한' 도) · 다른 플레이어 포트레이트를 누르면 그 사람의 저널 권한(조종 · 볼 수 있는 시트 · 핸드아웃)
 // 카드 패(.deckhands)는 포트레이트 안이라 같이 따라간다 · 위쪽에 두면 패를 아래로 연다 · 누르기는 Roll20 에도 그대로 간다
 const portraits = (() => {
-    const KEY = "r20_pz", D = { pos: "bl", size: 0, dir: "row", names: true };
-    const cfg = () => { try { return { ...D, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch (e) { return { ...D }; } };
+    const KEY = "r20_pz", D = { pos: "bl", size: 0, dir: "row", names: true, pics: true };
+    const cfg = () => { let c; try { c = { ...D, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch (e) { c = { ...D }; } if (c.pos !== "tl") c.pos = "bl"; return c; };      // 예전 가운데 자리는 왼쪽 아래로
     let pop = null, popFor = null, down = null;
     const ac = () => document.getElementById("avatarContainer");
     const me = () => window.currentPlayer?.id;
     const nameOf = pid => window.Campaign?.players?.get?.(pid)?.get?.("displayname") || "";
-    // 이름 띠: 그 사람 이름과 글이 같은 요소 (Roll20 구조가 바뀌어도 찾게)
+    // 이름 띠: Roll20 .playername — 없으면 그 사람 이름과 글이 같은 요소 (Roll20 구조가 바뀌어도 찾게)
     const markNames = () => document.querySelectorAll("#avatarContainer .player[id^='player_']").forEach(p => {
         const n = nameOf(p.id.slice(7)).trim();
-        if (!n || p.querySelector(".r20pz-name")) return;
+        if (!n || p.querySelector(".r20pz-name, .playername")) return;
         const el = [...p.querySelectorAll(":scope > *, :scope > * > *")].find(e => !e.closest(".deckhands, .video") && e.textContent.trim() === n && ![...e.children].some(c => c.textContent.trim() === n));
         el?.classList.add("r20pz-name");
     });
-    // 자리: 맵 왼쪽 도구 줄 오른쪽 ~ 오른쪽 판(또는 단추줄) 왼쪽 사이 — 확대(zoom)된 칸이라 길이는 배율로 나눠 넣는다
     const apply = () => {
-        const c = cfg(), B = document.body, on = btnVisible.portrait, a = ac(), z = on && c.size ? c.size / 150 : 1;
+        const c = cfg(), B = document.body, on = btnVisible.portrait;
         B.classList.toggle("r20pz-on", on);
-        ["tl", "tc", "bc"].forEach(p => B.classList.toggle("r20pz-" + p, on && c.pos === p));
-        B.classList.toggle("r20pz-top", on && (c.pos === "tl" || c.pos === "tc"));
+        B.classList.toggle("r20pz-top", on && c.pos === "tl");
         B.classList.toggle("r20pz-col", on && c.dir === "col");
         B.classList.toggle("r20pz-noname", on && !c.names);
-        const st = document.documentElement.style;
-        st.setProperty("--r20pz-z", String(z));
-        if (!on || !a) return;
-        markNames();
-        if (c.pos === "bl") return;
-        const L = (document.getElementById("playerzone")?.getBoundingClientRect().left || 44) + 6;
-        const side = document.getElementById("rightsidebar")?.getBoundingClientRect(), R = side?.width ? side.left - 40 : innerWidth - 40;
-        const w = a.getBoundingClientRect().width;
-        st.setProperty("--r20pz-l", (c.pos === "tl" ? L : Math.max(L, (L + R) / 2 - w / 2)) / z + "px");
-        st.setProperty("--r20pz-t", (c.pos === "tl" ? 40 : 8) / z + "px");
-        st.setProperty("--r20pz-b", 8 / z + "px");
+        B.classList.toggle("r20pz-nopic", on && !c.pics);
+        document.documentElement.style.setProperty("--r20pz-z", String(on && c.size ? c.size / 150 : 1));
+        if (on && ac()) markNames();
     };
     const save = patch => { try { localStorage.setItem(KEY, JSON.stringify({ ...cfg(), ...patch })); } catch (e) { /* 저장 못 함 */ } apply(); requestAnimationFrame(() => { apply(); placePop(); }); };
 
@@ -5953,9 +5946,11 @@ const portraits = (() => {
     const SEG = (k, list, v) => `<span class="seg" role="radiogroup" data-k="${k}">${list.map(([x, l]) => `<button type="button" role="radio" data-v="${x}" aria-checked="${x === v}">${l}</button>`).join("")}</span>`;
     const setHtml = () => {
         const c = cfg();
-        return `<div class="r"><b>자리</b>${SEG("pos", [["bl", "왼쪽 아래"], ["tl", "왼쪽 위"], ["tc", "위 가운데"], ["bc", "아래 가운데"]], c.pos)}</div>`
+        return `<div class="r"><b>자리</b>${SEG("pos", [["bl", "왼쪽 아래"], ["tl", "왼쪽 위"]], c.pos)}</div>`
             + `<div class="r"><b>크기</b><input type="range" min="48" max="200" step="4" value="${c.size || 150}" aria-label="포트레이트 크기"><span class="sv">${c.size ? c.size + "px" : "원래"}</span><button type="button" class="rs" data-a="orig" title="Roll20 원래 크기">원래</button></div>`
-            + `<div class="r"><b>줄</b>${SEG("dir", [["row", "가로"], ["col", "세로"]], c.dir)}<b class="b2">이름</b>${SEG("names", [["1", "보임"], ["0", "숨김"]], c.names ? "1" : "0")}</div>`
+            + `<div class="r"><b>줄</b>${SEG("dir", [["row", "가로"], ["col", "세로"]], c.dir)}</div>`
+            + `<div class="r"><b>포트레이트</b>${SEG("pics", [["1", "보임"], ["0", "숨김"]], c.pics ? "1" : "0")}</div>`
+            + `<div class="r"><b>이름</b>${SEG("names", [["1", "보임"], ["0", "숨김"]], c.names ? "1" : "0")}</div>`
             + '<div class="r ft"><button type="button" class="rs" data-a="reset">↺ 모두 원래대로</button><span>내 화면에서만 바뀌어요</span></div>';
     };
     const build = () => {
@@ -5972,7 +5967,7 @@ const portraits = (() => {
             if (b.dataset.a === "orig") { save({ size: 0 }); return draw(); }
             if (b.dataset.a === "reset") { save({ ...D }); return draw(); }
             const seg = b.closest(".seg");
-            if (seg) { const k = seg.dataset.k, v = b.dataset.v; save({ [k]: k === "names" ? v === "1" : v }); draw(); }
+            if (seg) { const k = seg.dataset.k, v = b.dataset.v; save({ [k]: k === "names" || k === "pics" ? v === "1" : v }); draw(); }
         });
         pop.addEventListener("input", e => { if (e.target.type === "range") { pop.querySelector(".sv").textContent = e.target.value + "px"; save({ size: +e.target.value }); } });
         pop.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") closePop(); });
@@ -5991,7 +5986,7 @@ const portraits = (() => {
     // 포트레이트 옆 화면 안쪽에 (위에 있으면 아래로, 아래에 있으면 위로)
     const placePop = () => {
         if (!pop || pop.hidden) return;
-        const v = document.querySelector(`#player_${CSS.escape(popFor || "")} .video`), r = v?.getBoundingClientRect(), z = aioZoom.get();
+        const p = document.querySelector(`#player_${CSS.escape(popFor || "")}`), v = [p?.querySelector(".video"), p?.querySelector(".playername, .r20pz-name"), p].find(e => e?.getClientRects().length), r = v?.getBoundingClientRect(), z = aioZoom.get();
         const w = pop.offsetWidth * z, h = pop.offsetHeight * z;
         const x = r ? Math.min(Math.max(8, r.left), innerWidth - w - 8) : (innerWidth - w) / 2;
         const y = !r ? 80 : r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6);
@@ -6007,12 +6002,13 @@ const portraits = (() => {
     function closePop() { if (pop) pop.hidden = true; popFor = null; }
     // 포트레이트 누르기 (끌기 · 길게 누르기는 Roll20 몫) — 누름은 Roll20 에도 그대로 간다
     document.addEventListener("pointerdown", e => {
-        if (pop && !pop.hidden && !e.target.closest?.("#r20-pz-pop, #avatarContainer .player .video")) closePop();
-        const v = btnVisible.portrait && e.button === 0 && e.target.closest?.("#avatarContainer .player .video");
+        const HIT = "#avatarContainer .player :is(.video, .playername, .r20pz-name)";
+        if (pop && !pop.hidden && !e.target.closest?.("#r20-pz-pop, " + HIT)) closePop();
+        const v = btnVisible.portrait && e.button === 0 && e.target.closest?.(HIT);
         down = v ? { v, x: e.clientX, y: e.clientY, t: performance.now() } : null;
     }, true);
     document.addEventListener("click", e => {
-        const v = down && e.target.closest?.("#avatarContainer .player .video");
+        const v = down && e.target.closest?.("#avatarContainer .player :is(.video, .playername, .r20pz-name)");
         if (!v || v !== down.v || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4 || performance.now() - down.t > 500) return;
         const pid = v.closest(".player")?.id?.replace(/^player_/, "");
         if (pid) openPop(pid);
@@ -6035,24 +6031,24 @@ const portraits = (() => {
     return { inject, setEnabled, modeRow };
 })();
 addFeature("portraits", portraits);
-addBundle({ place: "main", order: 2.1, label: "포트레이트 (자리 · 크기 · 누르면 설정 · 권한)", sub: "내 화면에서만 — 포트레이트 묶음을 왼쪽 아래 · 왼쪽 위 · 위 가운데 · 아래 가운데로 · 크기 · 가로/세로 · 이름 숨기기 (카드 패도 따라감) · 내 포트레이트를 누르면 설정, 다른 플레이어 포트레이트를 누르면 그 사람이 조종 · 볼 수 있는 시트와 핸드아웃",
+addBundle({ place: "main", order: 2.1, label: "포트레이트 (자리 · 크기 · 누르면 설정 · 권한)", sub: "내 화면에서만 — 포트레이트 묶음을 왼쪽 아래 · 왼쪽 위로 · 크기 · 가로/세로 · 포트레이트 · 이름 숨기기 (카드 패도 따라감) · 내 포트레이트를 누르면 설정, 다른 플레이어 포트레이트를 누르면 그 사람이 조종 · 볼 수 있는 시트와 핸드아웃",
     members: [["portrait", "portraits"]], extra: () => [portraits.modeRow()] });
 addCss(`
-        /* 포트레이트 (body.r20pz-*) — 크기는 zoom, 자리는 고정 위치 (길이는 portraits 가 배율로 나눠 넣음) */
-        body.r20pz-on #avatarContainer { zoom:var(--r20pz-z, 1); }
-        body.r20pz-on #avatarContainer .player .video { cursor:pointer; }
-        body.r20pz-col #avatarContainer { flex-direction:column !important; }
-        body:is(.r20pz-tl, .r20pz-tc, .r20pz-bc) #avatarContainer { position:fixed !important; left:var(--r20pz-l) !important; right:auto !important; z-index:5; }
-        body:is(.r20pz-tl, .r20pz-tc) #avatarContainer { top:var(--r20pz-t) !important; bottom:auto !important; }
-        body.r20pz-bc #avatarContainer { top:auto !important; bottom:var(--r20pz-b) !important; }
-        body.r20pz-noname #avatarContainer .r20pz-name { display:none !important; }
+        /* 포트레이트 (body.r20pz-*) — 크기는 사람마다 zoom, 위쪽은 Roll20 #playerzone 정렬을 위로 (묶음 · 매크로 줄은 제자리) */
+        body.r20pz-on #avatarContainer .player { zoom:var(--r20pz-z, 1); }
+        body.r20pz-on #avatarContainer .player :is(.video, .playername) { cursor:pointer; }
+        body.r20pz-col #avatarContainer { flex-direction:column !important; align-items:flex-start; }
+        body.r20pz-top #playerzone { align-items:flex-start !important; align-content:flex-start !important; padding-top:40px !important; }
+        body.r20pz-noname #avatarContainer :is(.playername, .r20pz-name) { display:none !important; }
+        body.r20pz-nopic #avatarContainer .player .video { display:none !important; }
+        body.r20pz-nopic #avatarContainer .player .playername { width:auto !important; padding:3px 10px !important; white-space:nowrap; border-radius:3px; }
         /* 위쪽에 두면 카드 패를 포트레이트 아래로 · 펼친 패도 아래로 */
         body.r20pz-top #avatarContainer .player .deckhands { top:100% !important; bottom:auto !important; }
         body.r20pz-top #avatarContainer .player .handcontainer { top:100% !important; bottom:auto !important; }
         /* 세로 줄이면 카드 패는 포트레이트 오른쪽으로 (위 사람을 가리지 않게) */
         body.r20pz-col #avatarContainer .player .deckhands { top:0 !important; bottom:auto !important; left:100% !important; margin-left:4px; }
         body.r20pz-col #avatarContainer .player .handcontainer { top:0 !important; bottom:auto !important; left:100% !important; margin-left:4px; }
-        #r20-pz-pop { position:fixed; z-index:10010; width:280px; max-height:70vh; display:flex; flex-direction:column; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.3); color:var(--aio-ink-2); font:12px/1.4 sans-serif; overflow:hidden; }
+        #r20-pz-pop { position:fixed; z-index:10010; width:290px; max-height:70vh; display:flex; flex-direction:column; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 8px 24px rgba(0,0,0,0.3); color:var(--aio-ink-2); font:12px/1.4 sans-serif; overflow:hidden; }
         #r20-pz-pop[hidden] { display:none; }
         #r20-pz-pop * { box-sizing:border-box; }
         #r20-pz-pop .hd { display:flex; align-items:center; gap:6px; height:32px; padding:0 4px 0 10px; border-bottom:1px solid var(--aio-line-4); flex-shrink:0; }
@@ -6061,7 +6057,7 @@ addCss(`
         #r20-pz-pop .x { width:24px; height:24px; padding:0; border:0; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-4); }
         #r20-pz-pop .tabs { display:inline-flex; gap:2px; } #r20-pz-pop .tabs button { height:22px; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; } #r20-pz-pop .tabs button[aria-pressed="true"] { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
         #r20-pz-pop .bd { overflow-y:auto; padding:6px 10px 10px; }
-        #r20-pz-pop .r { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:6px 0; } #r20-pz-pop .r > b { width:30px; font-weight:400; color:var(--aio-ink-4); } #r20-pz-pop .r > b.b2 { width:auto; margin-left:6px; }
+        #r20-pz-pop .r { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:6px 0; } #r20-pz-pop .r > b { width:56px; font-weight:400; color:var(--aio-ink-4); } #r20-pz-pop .r > b.b2 { width:auto; margin-left:6px; }
         #r20-pz-pop .seg { display:inline-flex; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
         #r20-pz-pop .seg button { height:22px; padding:0 7px; border:0; background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; } #r20-pz-pop .seg button[aria-checked="true"] { background:var(--aio-accent); color:#fff; font-weight:700; }
         #r20-pz-pop input[type=range] { width:110px; height:14px; margin:0; accent-color:var(--aio-accent); }
@@ -6094,6 +6090,8 @@ addCss(`
         html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:hover, html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:focus-visible { width:auto !important; min-width:62px; padding-right:8px !important; }
         html body.r20edge-mb #macrobar_macros > .ui-sortable-placeholder { display:block !important; width:auto !important; min-width:0; height:3px !important; margin:0 0 3px !important; }
         html body.r20edge-mb #macrobar_macros > .ui-sortable-helper { pointer-events:auto; }
+        /* Roll20 이 포트레이트 밑에 비워 두는 매크로 줄 자리(69px)를 걷는다 */
+        html body.r20edge-mb #playerzone.showmacrobar { padding-bottom:25px !important; }
 `);
 
 addCss(`
