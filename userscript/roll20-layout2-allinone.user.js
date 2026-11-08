@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.75.1
+// @version      1.75.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.75.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.75.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6086,8 +6086,9 @@ addCss(`
         html body.r20edge-mb #macrobar#macrobar > * { background:none !important; }
         html body.r20edge-mb #macrobar_macros { display:block !important; width:auto !important; margin:0 !important; padding:0 !important; white-space:normal !important; text-align:right; pointer-events:none; }
         html body.r20edge-mb #macrobar #macrobar_macros .macrobox, html body.r20edge-mb #macrobar #macrobar_macros .macrobox:hover { display:block !important; width:auto !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; }
-        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button { pointer-events:auto; width:124px !important; max-width:none; height:24px !important; padding:0 9px !important; border-radius:12px 0 0 12px !important; font-size:11.5px !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:hover { width:auto !important; min-width:124px; text-overflow:clip; }
+        /* 폭: 이모지 + 글자 3자까지 (62px) · 넘치는 이름은 마우스를 올리면 왼쪽으로 펼쳐져 다 보인다 */
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button { pointer-events:auto; width:62px !important; max-width:none; height:24px !important; padding:0 3px 0 7px !important; border-radius:12px 0 0 12px !important; font-size:11.5px !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:clip; }
+        html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:hover, html body.r20edge-mb #macrobar #macrobar_macros .macrobox > button:focus-visible { width:auto !important; min-width:62px; padding-right:8px !important; }
         html body.r20edge-mb #macrobar_macros > .ui-sortable-placeholder { display:block !important; width:auto !important; min-width:0; height:3px !important; margin:0 0 3px !important; }
         html body.r20edge-mb #macrobar_macros > .ui-sortable-helper { pointer-events:auto; }
 `);
