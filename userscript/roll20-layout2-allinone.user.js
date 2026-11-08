@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.73.0
+// @version      1.73.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.73.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.73.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -11866,8 +11866,9 @@ const bulkEditor = (() => {
         if (!isGM()) return;
         // 햄버거 밑 단추줄(맵 단추 아래)에도 — 마지막에 본 탭으로 연다
         if (!document.getElementById("r20-bebtn") && document.getElementById("sidebarcontrol")) {
-            document.body.appendChild(el("button", { type: "button", id: "r20-bebtn", class: "r20-dockbtn", title: "일괄 편집기", "aria-label": "일괄 편집기 열기",
-                onclick: e => { e.preventDefault(); e.stopPropagation(); open(); } }, el("span", { html: ICON.pen, style: "display:flex" })));
+            // 다시 누르면 닫기 (✕ 와 같음 — 저장 안 한 변경은 남아 있다)
+            document.body.appendChild(el("button", { type: "button", id: "r20-bebtn", class: "r20-dockbtn", title: "일괄 편집기 (다시 누르면 닫기)", "aria-label": "일괄 편집기 열기 · 닫기",
+                onclick: e => { e.preventDefault(); e.stopPropagation(); if (ui?.root.classList.contains("r20be-show")) close(); else open(); } }, el("span", { html: ICON.pen, style: "display:flex" })));
             FEAT.screenUI?.place();
         }
     };
