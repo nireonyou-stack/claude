@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.70.0
+// @version      1.71.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.70.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.71.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -68,7 +68,8 @@ const btnVisible = {
     qfind:     localStorage.getItem("r20_show_qfind") !== "false",
     winmem:    localStorage.getItem("r20_show_winmem") !== "false",
     scen:      localStorage.getItem("r20_show_scen") !== "false",
-    jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false"
+    jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false",
+    jbmini:    localStorage.getItem("r20_show_jbmini") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -1593,7 +1594,10 @@ const jukeboxRow = (() => {
     setEnabled(btnVisible.jbrow);
     // 빠른 찾기가 쓴다: 곡 하나 재생 ↔ 정지 (줄이 없으면 false) · 지금 재생 중인지
     const toggle = id => { const li = rowOf(id); if (!li) return false; playOf(li); return true; };
-    return { inject, setEnabled, toggle, playing: id => isPlaying(rowOf(id)) };
+    // 미니 재생 줄 · 서랍 곡 찾기에서 쓰는 길 (줄이 있어야 함 — 없으면 false)
+    const fade = id => { const li = rowOf(id); if (li) fadeOut(li); return !!li; };
+    const setVol = (id, v) => { const li = rowOf(id); if (li) setVolTo(li, v); return !!li; };
+    return { inject, setEnabled, toggle, playing: id => isPlaying(rowOf(id)), fade, setVol };
 })();
 
 addCss(`
@@ -1874,20 +1878,27 @@ addFeature("jbBackup", jbBackup);
 addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"], ["jbrow", "jbBackup"]] });
 
-// ───────── 주크박스 서랍: ♪ 탭을 눌러도 탭을 바꾸지 않고, 주크박스 칸을 채팅 판 왼쪽에 위에서 아래까지 펼친다 ─────────
+// ───────── 주크박스 서랍: ♪ 탭을 눌러도 탭을 바꾸지 않고, 주크박스 칸을 채팅 판 왼쪽에 펼친다 ─────────
 // Roll20 주크박스 칸(#jukebox)은 제자리(오른쪽 판 안)에 둔 채 화면에만 띄운다 → 재생 · 볼륨 · 오디오 관리와 올인원 미리듣기 · 페이드가 그대로
-// 다시 ♪ · ✕ · Esc · 다른 데 누르기(📌 면 그대로)로 닫기 · 왼쪽 끝을 끌어 폭 조절(기억) · 단추줄은 서랍 왼쪽으로 같이 밀린다
+// [½] 전체 높이 ↔ 반쪽(아래쪽만, 위 끝을 끌어 높이 조절) · 머리줄 곡 찾기(빠른 찾기와 같은 맞추기, Enter 재생 · 정지)
+// 다시 ♪ · ✕ · Esc · 다른 데 누르기(📌 면 그대로)로 닫기 · 왼쪽 끝을 끌어 폭 조절(기억) · 전체 높이면 단추줄도 서랍 왼쪽으로 밀린다
 // 화면 구조 때문에 띄우지 못하면(부모가 transform 등) 원래대로 탭을 바꾼다
 const jbDrawer = (() => {
-    const W_KEY = "r20_jbd_w", PIN_KEY = "r20_jbd_pin";
-    let on = false, hd = null, grip = null, pass = false, ro = null;
+    const W_KEY = "r20_jbd_w", PIN_KEY = "r20_jbd_pin", MODE_KEY = "r20_jbd_mode", H_KEY = "r20_jbd_h", HD_H = 30;
+    let on = false, hd = null, grip = null, hgrip = null, res = null, pass = false, ro = null, hits = [], at = 0;
     const tab = () => document.getElementById("jukeboxtab");
     const pane = () => document.getElementById("jukebox");
     const width = () => Math.max(240, Math.min(600, parseInt(localStorage.getItem(W_KEY) || "300", 10) || 300));
     const pinned = () => localStorage.getItem(PIN_KEY) === "true";
+    const half = () => localStorage.getItem(MODE_KEY) === "half";
     const sideRect = () => { const r = document.getElementById("rightsidebar")?.getBoundingClientRect(); return r && r.width > 0 && r.left < innerWidth - 1 ? r : null; };
-    // 서랍 왼쪽 끝 (화면 좌표) — 화면 배치가 단추줄을 그 왼쪽에 쌓는다
-    const leftEdge = () => { if (!on) return null; const r = sideRect(); return r ? r.left - width() : null; };
+    // 단추줄 맨 아래 — 반쪽 서랍은 그 밑에서만 (단추줄을 가리지 않게)
+    const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-scnbtn", "r20-snbtn", "r20-qfbtn"]
+        .map(id => document.getElementById(id)?.getBoundingClientRect()).filter(r => r && r.height).map(r => r.bottom));
+    // 서랍 위 끝 (화면 좌표): 전체 = 채팅 판 위 · 반쪽 = 화면 아래에서 기억한 높이만큼
+    const topOf = r => half() ? Math.round(Math.max(r.top, dockBottom() + 6, innerHeight - Math.max(160, parseInt(localStorage.getItem(H_KEY) || "340", 10) || 340))) : Math.round(r.top);
+    // 서랍 왼쪽 끝 (화면 좌표) — 화면 배치가 단추줄을 그 왼쪽에 쌓는다. 반쪽이면 단추줄 밑이라 그대로
+    const leftEdge = () => { if (!on || half()) return null; const r = sideRect(); return r ? r.left - width() : null; };
     const place = () => {
         const r = sideRect();
         if (!on) return;
@@ -1895,31 +1906,81 @@ const jbDrawer = (() => {
         const st = document.documentElement.style;
         st.setProperty("--jbd-w", width() + "px");
         st.setProperty("--jbd-r", Math.round(innerWidth - r.left) + "px");
-        st.setProperty("--jbd-t", Math.round(r.top) + "px");
+        st.setProperty("--jbd-t", topOf(r) + "px");
+        document.body.classList.toggle("r20jbd-half", half());
+    };
+    const drag = (el, mv) => el.addEventListener("pointerdown", e => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        el.setPointerCapture(e.pointerId);
+        const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => el.removeEventListener(t, k ? up : mv)); };
+        el.addEventListener("pointermove", mv);
+        el.addEventListener("pointerup", up);
+        el.addEventListener("pointercancel", up);
+    });
+    const setMode = h => {
+        localStorage.setItem(MODE_KEY, h ? "half" : "full");
+        hd?.querySelector(".md")?.setAttribute("aria-pressed", String(h));
+        place(); FEAT.screenUI?.place();
     };
     const build = () => {
         hd = document.createElement("div");
         hd.id = "r20-jbd-hd";
-        hd.innerHTML = '<b>♪ 주크박스</b><span class="sp"></span><button type="button" data-a="pin" class="pin" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button>';
+        hd.innerHTML = '<b>♪</b><input type="search" class="q" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 재생 · 정지" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">'
+            + '<button type="button" data-a="mode" class="md" title="반쪽 높이 ↔ 전체 높이" aria-label="반쪽 높이" aria-pressed="false">½</button>'
+            + '<button type="button" data-a="pin" class="pin" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button>';
         hd.addEventListener("click", e => {
-            const a = e.target.closest("button")?.dataset.a;
+            const b = e.target.closest("button"), a = b?.dataset.a;
             if (a === "x") close();
-            else if (a === "pin") { const p = !pinned(); localStorage.setItem(PIN_KEY, String(p)); e.target.closest("button").setAttribute("aria-pressed", String(p)); }
+            else if (a === "mode") setMode(!half());
+            else if (a === "pin") { const p = !pinned(); localStorage.setItem(PIN_KEY, String(p)); b.setAttribute("aria-pressed", String(p)); }
         });
+        const q = hd.querySelector(".q");
+        q.addEventListener("input", () => { at = 0; find(); });
+        q.addEventListener("keydown", e => {
+            e.stopPropagation();        // Roll20 단축키로 새지 않게
+            if (e.isComposing) return;
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if (hits.length) { at = (at + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length; draw(); } }
+            else if (e.key === "Enter") { e.preventDefault(); if (hits[at]) play(hits[at].id); }
+            else if (e.key === "Escape") { e.preventDefault(); if (q.value) { q.value = ""; find(); } else close(); }
+        });
+        res = document.createElement("div");
+        res.id = "r20-jbd-res";
+        res.setAttribute("role", "listbox");
+        res.setAttribute("aria-label", "찾은 곡");
+        res.hidden = true;
+        res.addEventListener("mousedown", e => e.preventDefault());       // 입력칸 포커스 그대로
+        res.addEventListener("click", e => { const r = e.target.closest("[data-id]"); if (r) { at = +r.dataset.i; play(r.dataset.id); } });
         grip = document.createElement("div");
         grip.id = "r20-jbd-grip";
         grip.title = "끌어서 폭 조절";
-        grip.addEventListener("pointerdown", e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            grip.setPointerCapture(e.pointerId);
-            const mv = ev => { const r = sideRect(); if (!r) return; localStorage.setItem(W_KEY, String(Math.round(Math.max(240, Math.min(600, r.left - ev.clientX))))); place(); FEAT.screenUI?.place(); };
-            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => grip.removeEventListener(t, k ? up : mv)); };
-            grip.addEventListener("pointermove", mv);
-            grip.addEventListener("pointerup", up);
-            grip.addEventListener("pointercancel", up);
-        });
-        document.body.append(hd, grip);
+        drag(grip, ev => { const r = sideRect(); if (!r) return; localStorage.setItem(W_KEY, String(Math.round(Math.max(240, Math.min(600, r.left - ev.clientX))))); place(); FEAT.screenUI?.place(); });
+        hgrip = document.createElement("div");
+        hgrip.id = "r20-jbd-hgrip";
+        hgrip.title = "끌어서 높이 조절";
+        drag(hgrip, ev => { localStorage.setItem(H_KEY, String(Math.round(Math.max(160, innerHeight - ev.clientY)))); place(); });
+        document.body.append(hd, res, grip, hgrip);
+    };
+    // ── 곡 찾기: 빠른 찾기와 같은 맞추기 (FEAT.quickFind.findTracks) · Enter = 재생 ↔ 정지 ──
+    const find = () => {
+        const v = hd.querySelector(".q").value;
+        hits = FEAT.quickFind?.findTracks?.(v, 8) || [];
+        if (at >= hits.length) at = 0;
+        draw();
+    };
+    const draw = () => {
+        const q = hd.querySelector(".q"), v = q.value.trim();
+        res.hidden = !v;
+        q.setAttribute("aria-expanded", String(!!v));
+        if (!v) return;
+        const playing = id => !!FEAT.jukeboxRow?.playing?.(id);
+        res.innerHTML = hits.length ? hits.map((h, i) => `<div class="r${i === at ? " on" : ""}${playing(h.id) ? " pl" : ""}" role="option" aria-selected="${i === at}" data-i="${i}" data-id="${escAttr(h.id)}"><span class="ic">${playing(h.id) ? "■" : "▶"}</span><span class="nm">${h.html}</span></div>`).join("")
+            : '<div class="msg">맞는 곡이 없어요</div>';
+    };
+    const play = id => {
+        const li = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
+        if (!FEAT.jukeboxRow?.toggle?.(id)) li?.querySelector("a.play")?.click();
+        setTimeout(draw, 250);         // Roll20 이 재생 표시를 바꾼 뒤
     };
     const open = () => {
         const p = pane();
@@ -1930,6 +1991,7 @@ const jbDrawer = (() => {
         document.body.classList.add("r20jbd-open");
         tab()?.classList.add("r20jbd-on");
         hd.querySelector(".pin").setAttribute("aria-pressed", String(pinned()));
+        hd.querySelector(".md").setAttribute("aria-pressed", String(half()));
         // 제대로 떴는지: 서랍 오른쪽 끝이 채팅 판 왼쪽에 붙어 있어야 한다
         const pr = p.getBoundingClientRect(), r = sideRect();
         if (!pr.width || Math.abs(pr.right - r.left) > 6) { close(); aioErr("주크박스 서랍", "주크박스 칸을 화면에 띄우지 못함 — 원래대로 탭을 바꿈"); return false; }
@@ -1940,10 +2002,20 @@ const jbDrawer = (() => {
     function close() {
         if (!on) return;
         on = false;
-        document.body.classList.remove("r20jbd-open");
+        document.body.classList.remove("r20jbd-open", "r20jbd-half");
         tab()?.classList.remove("r20jbd-on");
+        if (res) res.hidden = true;
         FEAT.screenUI?.place();
     }
+    // 곡 하나를 서랍에서 보여 주기 (미니 재생 줄의 곡 이름)
+    const show = id => {
+        if (!on && !open()) return;
+        const li = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
+        if (!li?.getClientRects().length) return;
+        li.scrollIntoView({ block: "center" });
+        li.classList.add("r20jbd-flash");
+        setTimeout(() => li.classList.remove("r20jbd-flash"), 1200);
+    };
     // ♪ 탭: 이미 주크박스 탭이 열려 있으면 Roll20 그대로 · 아니면 서랍
     document.addEventListener("click", e => {
         if (pass || !btnVisible.jbdrawer) return;
@@ -1953,10 +2025,10 @@ const jbDrawer = (() => {
         if (on) return close();
         if (!open()) { pass = true; try { t.querySelector("a")?.click(); } finally { pass = false; } }
     }, true);
-    // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정)과 올인원 주크박스 말풍선은 빼고
+    // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정)과 올인원 주크박스 말풍선 · 미니 재생 줄은 빼고
     document.addEventListener("pointerdown", e => {
         if (!on || pinned()) return;
-        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-grip, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jbb-toast")) return;      // body 의 r20jb- 꼬리표는 안 봄
+        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-res, #r20-jbd-grip, #r20-jbd-hgrip, #r20-jbm, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jbb-toast")) return;      // body 의 r20jb- 꼬리표는 안 봄
         close();
     }, true);
     document.addEventListener("keydown", e => {
@@ -1967,22 +2039,141 @@ const jbDrawer = (() => {
     });
     window.addEventListener("resize", () => { if (on) { place(); FEAT.screenUI?.place(); } });
     const setEnabled = v => { if (!v) close(); };
-    return { setEnabled, leftEdge, isOpen: () => on, open, close };
+    return { setEnabled, leftEdge, isOpen: () => on, open, close, show };
 })();
 addFeature("jbDrawer", jbDrawer);
-addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
+addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그, Enter 재생) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
     members: [["jbdrawer", "jbDrawer"]] });
 addCss(`
         /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
         body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 30px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:10003 !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; }
-        #r20-jbd-hd, #r20-jbd-grip { display:none; }
-        body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:10004; display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:30px; padding:0 4px 0 10px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
-        body.r20jbd-open #r20-jbd-hd .sp { flex:1; }
-        body.r20jbd-open #r20-jbd-hd button { width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; line-height:22px; cursor:pointer; box-shadow:none; }
+        #r20-jbd-hd, #r20-jbd-grip, #r20-jbd-hgrip { display:none; }
+        body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:10004; display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:30px; padding:0 4px 0 8px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
+        body.r20jbd-half #r20-jbd-hd { border-top:1px solid var(--aio-line-3); box-shadow:-6px -4px 14px rgba(0,0,0,0.16); }
+        body.r20jbd-open #r20-jbd-hd .q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 4px 0 4px !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; }
+        body.r20jbd-open #r20-jbd-hd button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; line-height:22px; cursor:pointer; box-shadow:none; }
         body.r20jbd-open #r20-jbd-hd button:hover { background:var(--aio-bg-3); }
+        body.r20jbd-open #r20-jbd-hd .md[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
         body.r20jbd-open #r20-jbd-hd .pin { filter:grayscale(1); opacity:0.5; } body.r20jbd-open #r20-jbd-hd .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
         body.r20jbd-open #r20-jbd-grip { position:fixed; z-index:10005; display:block; top:var(--jbd-t, 0px); bottom:0; right:calc(var(--jbd-r, 300px) + var(--jbd-w, 300px) - 3px); width:6px; cursor:ew-resize; }
+        body.r20jbd-half #r20-jbd-hgrip { position:fixed; z-index:10005; display:block; top:calc(var(--jbd-t, 0px) - 3px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:6px; cursor:ns-resize; }
+        #r20-jbd-res { position:fixed; z-index:10006; top:calc(var(--jbd-t, 0px) + 30px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); max-height:236px; overflow-y:auto; padding:3px; border:1px solid var(--aio-line-3); border-top:0; background:var(--aio-bg); box-shadow:0 8px 16px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.4 sans-serif; box-sizing:border-box; }
+        #r20-jbd-res[hidden] { display:none; }
+        #r20-jbd-res .r { display:flex; align-items:center; gap:6px; height:26px; padding:0 6px; border-radius:var(--aio-r-sm); cursor:pointer; }
+        #r20-jbd-res .r:hover { background:var(--aio-bg-3); }
+        #r20-jbd-res .r.on { background:var(--aio-accent-bg); }
+        #r20-jbd-res .ic { flex-shrink:0; width:12px; color:var(--aio-ink-5); font-size:10px; text-align:center; }
+        #r20-jbd-res .r.pl .ic, #r20-jbd-res .r.pl .nm { color:var(--aio-accent-dark); font-weight:700; }
+        #r20-jbd-res .nm { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-jbd-res mark { background:none; color:var(--aio-accent-dark); font-weight:700; }
+        #r20-jbd-res .msg { padding:8px; color:var(--aio-ink-4); font-size:11px; text-align:center; }
+        #jukebox li.jukeboxitem.r20jbd-flash > .dd-content { background:var(--aio-accent-bg) !important; transition:background 0.3s; }
         #jukeboxtab.r20jbd-on > a { background:var(--aio-accent) !important; color:#fff !important; border-radius:var(--aio-r-sm); }
+`);
+
+// ───────── 주크박스 미니 재생 줄 (GM): 채팅 판 맨 위에 지금 나오는 곡 — 정지 · 페이드 · 볼륨을 한 줄에서 ─────────
+// 곡이 없으면 줄도 없음 · 곡 이름을 누르면 서랍에서 그 곡 · ▾ = 서랍 열기/닫기. 재생 · 페이드 · 볼륨은 주크박스 한 줄 보기와 같은 길(Roll20 단추 · 막대 · 저장)
+const jbMini = (() => {
+    const MAX = 3;
+    let bar = null, t = 0, sig = "", busy = false, bound = false, mo = null;
+    const onJb = () => schedule();
+    const track = id => window.Jukebox?.playlist?.get?.(id);
+    const rowOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
+    // 지금 나오는 곡: 주크박스 줄의 재생 표시(Roll20 이 그린 것) — 줄이 아직 없으면 곡 모델로
+    const playingIds = () => {
+        if (document.querySelector("#jukebox li.jukeboxitem"))
+            return [...new Set([...document.querySelectorAll('#jukebox li.jukeboxitem a.play[data-isplaying="true"]')].map(a => a.closest("li.jukeboxitem")?.dataset.itemid).filter(Boolean))];
+        return (window.Jukebox?.playlist?.models || []).filter(m => m.get("playing") && !m.get("softstop")).map(m => m.id);
+    };
+    const volOf = id => Math.round(Number(track(id)?.get("volume")) || 0);
+    const fadingOf = id => !!rowOf(id)?.querySelector(".r20jb-fade.on");
+    const build = () => {
+        bar = document.createElement("div");
+        bar.id = "r20-jbm";
+        bar.setAttribute("role", "region");
+        bar.setAttribute("aria-label", "지금 나오는 곡");
+        bar.addEventListener("pointerdown", () => { busy = true; });
+        bar.addEventListener("click", e => {
+            const b = e.target.closest("button"), id = e.target.closest("[data-id]")?.dataset.id;
+            if (!b) return;
+            const a = b.dataset.a;
+            if (a === "drawer") { const D = FEAT.jbDrawer; return D?.isOpen() ? D.close() : D?.open(); }
+            if (!id) return;
+            if (a === "show") return FEAT.jbDrawer?.show?.(id);
+            if (a === "stop") { if (!FEAT.jukeboxRow?.toggle?.(id)) rowOf(id)?.querySelector("a.play")?.click(); return schedule(); }
+            if (a === "fade") { FEAT.jukeboxRow?.fade?.(id); return schedule(); }
+        });
+        bar.addEventListener("input", e => { const s = e.target.closest("input[type=range]"); if (s) s.nextElementSibling.textContent = s.value; });
+        bar.addEventListener("change", e => {
+            const s = e.target.closest("input[type=range]"), id = e.target.closest("[data-id]")?.dataset.id;
+            if (!s || !id) return;
+            if (!FEAT.jukeboxRow?.setVol?.(id, +s.value)) track(id)?.save?.({ volume: +s.value });
+        });
+        bar.addEventListener("keydown", e => e.stopPropagation());     // Roll20 단축키로 새지 않게
+    };
+    const render = () => {
+        t = 0;
+        const host = document.getElementById("textchat");
+        if (!btnVisible.jbmini || !isGM() || !host) { bar?.remove(); sig = ""; return; }
+        if (busy) return schedule(300);           // 볼륨 막대를 끄는 중이면 다시 그리지 않는다
+        if (!bar) build();
+        const ids = playingIds();
+        if (bar.parentElement !== host || host.firstElementChild !== bar) host.prepend(bar);
+        bar.hidden = !ids.length;
+        const shown = ids.slice(0, MAX), s = shown.map(id => id + ":" + (track(id)?.get("title") || "")).join("|") + "|" + ids.length;
+        if (s !== sig) {
+            sig = s;
+            bar.innerHTML = shown.map((id, i) => {
+                const name = track(id)?.get("title") || rowOf(id)?.querySelector(".title")?.textContent.trim() || "(제목 없음)", v = volOf(id);
+                return `<div class="r" data-id="${escAttr(id)}"><button type="button" data-a="show" class="nm" title="${escAttr(name)} — 서랍에서 보기">♪ ${escAttr(name)}</button>`
+                    + '<button type="button" data-a="stop" class="ib" title="정지" aria-label="정지">■</button>'
+                    + '<button type="button" data-a="fade" class="fd" title="페이드 아웃 — 정한 초 동안 0 까지 (정지는 직접) · 줄이는 중에 다시 누르면 멈춤">페이드</button>'
+                    + `<input type="range" min="0" max="100" step="1" value="${v}" aria-label="${escAttr(name)} 볼륨"><span class="v">${v}</span>`
+                    + (i === 0 ? '<button type="button" data-a="drawer" class="ib" title="주크박스 서랍 열기 · 닫기" aria-label="주크박스 서랍">▾</button>' : '<span class="ib"></span>') + "</div>";
+            }).join("") + (ids.length > MAX ? `<div class="more">그 밖에 ${ids.length - MAX}곡</div>` : "");
+        }
+        // 볼륨 · 페이드 표시는 제자리에서만 맞춘다
+        bar.querySelectorAll(".r[data-id]").forEach(r => {
+            const id = r.dataset.id, v = volOf(id), s = r.querySelector("input");
+            if (document.activeElement !== s && +s.value !== v) { s.value = v; s.nextElementSibling.textContent = v; }
+            r.querySelector(".fd").classList.toggle("on", fadingOf(id));
+        });
+    };
+    const schedule = (ms = 120) => { if (!t) t = setTimeout(render, ms); };
+    document.addEventListener("pointerup", () => { if (busy) { busy = false; schedule(); } }, true);
+    const inject = () => {
+        if (!btnVisible.jbmini || !isGM()) return;
+        if (!bound && window.Jukebox?.playlist?.on) {
+            bound = true;
+            window.Jukebox.playlist.on("change:playing change:softstop change:volume change:title add remove reset", () => schedule());
+        }
+        const jb = document.getElementById("jukebox");
+        if (jb && !mo) { mo = new MutationObserver(onJb); mo.observe(jb, { subtree: true, attributes: true, attributeFilter: ["data-isplaying"] }); }
+        jbWatch.on(onJb);           // Roll20 이 곡 줄을 다시 그릴 때
+        jbWatch.ensure();
+        schedule(0);
+    };
+    const setEnabled = v => { if (v) inject(); else { bar?.remove(); sig = ""; } };
+    return { inject, setEnabled };
+})();
+addFeature("jbMini", jbMini);
+addBundle({ place: "main", order: 1.06, label: "주크박스 미니 재생 줄 (GM · 채팅 맨 위)", sub: "지금 나오는 곡을 채팅 판 맨 위 한 줄에 — ■ 정지 · 페이드 · 볼륨 막대 · 곡 이름을 누르면 서랍에서 그 곡 · ▾ 서랍 열기 · 곡이 없으면 줄도 없어요",
+    members: [["jbmini", "jbMini"]] });
+addCss(`
+        /* 미니 재생 줄: 채팅(스크롤되는 #textchat) 맨 위에 붙어 있음 */
+        #r20-jbm { position:sticky; top:0; z-index:5; padding:2px 4px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-accent-bg); color:var(--aio-ink-2); font:12px/1.4 sans-serif; }
+        #r20-jbm[hidden] { display:none; }
+        #r20-jbm .r { display:flex; align-items:center; gap:3px; height:24px; }
+        #r20-jbm button { flex-shrink:0; height:20px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-3); font-size:11px; line-height:20px; cursor:pointer; box-shadow:none; }
+        #r20-jbm .nm { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; padding:0 2px; color:var(--aio-accent-dark); font-weight:700; text-align:left; }
+        #r20-jbm .r + .r .nm { color:var(--aio-ink-2); font-weight:400; }
+        #r20-jbm .ib { flex-shrink:0; width:20px; }
+        #r20-jbm button:hover { background:rgba(0,0,0,0.06); }
+        #r20-jbm .fd { padding:0 6px; border:1px solid var(--aio-line-2); border-radius:10px; background:var(--aio-bg); font-size:10.5px; }
+        #r20-jbm .fd.on { border-color:var(--aio-accent); color:var(--aio-accent); font-weight:700; animation:r20jb-fade 1s ease-in-out infinite alternate; }
+        #r20-jbm input[type=range] { flex:0 0 56px; width:56px; height:14px; margin:0 0 0 2px; padding:0; accent-color:var(--aio-accent); cursor:pointer; }
+        #r20-jbm .v { flex:0 0 20px; color:var(--aio-ink-4); font-size:10px; text-align:right; }
+        #r20-jbm .more { padding:0 4px; color:var(--aio-ink-4); font-size:10.5px; }
 `);
 
 // ══════════ 묶음 2 · 대화 캡처 · 맵시트 촬영 ══════════
@@ -8364,7 +8555,21 @@ const quickFind = (() => {
             : chat && chat.length > 20 && !chat.some(c => c.at) ? [["채팅 시각 (목차 · 장면 창)", "채팅 아카이브에 시각 칸이 없음"]] : [],
         info: [chat ? `채팅 로그 ${chat.length.toLocaleString()}줄` : "", bodyOf.size ? `본문 읽음 ${bodyOf.size.toLocaleString()}` : "", scn ? `장면 구간 ${scn.length}` : "", macLinked() ? "장면 매크로 연결" : ""].filter(Boolean)
     });
-    return { inject, setEnabled, open, dockAt, health, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
+    // 주크박스 서랍의 곡 찾기 — 여기와 같은 맞추기 (이름 일부 · 초성 · #태그)
+    const findTracks = (v, n = 8) => {
+        const raw = String(v || "").trim().toLowerCase();
+        const tagQ = raw.split(/\s+/).filter(t => t.startsWith("#") && t.length > 1).map(t => t.slice(1)), q = raw.split(/\s+/).filter(t => !t.startsWith("#")).join("");
+        if (!q && !tagQ.length) return [];
+        const out = [];
+        (window.Jukebox?.playlist?.models || []).forEach(m => {
+            const name = m.get("title") || "(제목 없음)";
+            if (tagQ.length && !tagQ.every(t => tagsOf(m.get("tags")).some(x => x.toLowerCase().includes(t)))) return;
+            const r = q ? match(name, q) : { score: 0, hits: [] };
+            if (r) out.push({ id: m.id, name, html: mark(name, r.hits), score: r.score });
+        });
+        return out.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ko")).slice(0, n);
+    };
+    return { inject, setEnabled, open, dockAt, health, findTracks, openButton: () => Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기", onclick: e => { e.stopPropagation(); open(); } }) };
 })();
 
 // ───────── 창 자리 · 크기 기억: Roll20 창 제목줄 📌 — 켠 창은 옮기거나 크기를 바꾼 그대로 다음에 열린다 ─────────
