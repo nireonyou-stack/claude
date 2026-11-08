@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.75.0
+// @version      1.75.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.75.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.75.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6025,7 +6025,7 @@ const portraits = (() => {
         const name = Object.assign(document.createElement("span"), { className: "cs-text" });
         name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "포트레이트 자리 · 크기" }));
         name.dataset.tip = "내 포트레이트를 눌러도 열려요 · 다른 플레이어 포트레이트를 누르면 그 사람의 저널 권한";
-        const b = Object.assign(document.createElement("button"), { type: "button", className: "r20qf-open", textContent: "열기" });
+        const b = Object.assign(document.createElement("button"), { type: "button", className: "r20pz-open", textContent: "열기" });
         b.onclick = e => { e.stopPropagation(); if (me()) openPop(me()); };
         row.append(name, b);
         return row;
@@ -8963,8 +8963,8 @@ addCss(`
         #r20-scq button { width:20px; height:18px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-4); font-size:9px; line-height:16px; opacity:0.75; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.15); }
         #r20-scq button:hover { border-color:var(--aio-accent); color:var(--aio-accent); opacity:1; }
         @keyframes r20qf-flash { 0%, 40% { background-color:rgba(225,0,133,0.14); box-shadow:inset 3px 0 0 var(--aio-accent); } }
-        .r20qf-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
-        .r20qf-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
+        .r20qf-open, .r20pz-open { margin-left:auto; margin-right:6px; padding:1px 8px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; cursor:pointer; }
+        .r20qf-open:hover, .r20pz-open:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
         /* 창 자리 · 크기 기억 📌 (캐릭터 시트 · 핸드아웃 제목줄) */
         .ui-dialog-titlebar .r20wm-pin { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:1px solid transparent; border-radius:var(--aio-r-sm); background:none; font-size:12px; line-height:22px; cursor:pointer; box-shadow:none; filter:grayscale(1); opacity:0.45; }
         .ui-dialog-titlebar .r20wm-pin:hover { opacity:0.8; }
