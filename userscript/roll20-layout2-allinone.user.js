@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.71.0
+// @version      1.71.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.71.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.71.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2075,7 +2075,7 @@ addCss(`
 // 곡이 없으면 줄도 없음 · 곡 이름을 누르면 서랍에서 그 곡 · ▾ = 서랍 열기/닫기. 재생 · 페이드 · 볼륨은 주크박스 한 줄 보기와 같은 길(Roll20 단추 · 막대 · 저장)
 const jbMini = (() => {
     const MAX = 3;
-    let bar = null, t = 0, sig = "", busy = false, bound = false, mo = null;
+    let bar = null, t = 0, sig = "", busy = false, bound = false, mo = null, watched = false;
     const onJb = () => schedule();
     const track = id => window.Jukebox?.playlist?.get?.(id);
     const rowOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
@@ -2119,7 +2119,7 @@ const jbMini = (() => {
         if (!bar) build();
         const ids = playingIds();
         if (bar.parentElement !== host || host.firstElementChild !== bar) host.prepend(bar);
-        bar.hidden = !ids.length;
+        if (bar.hidden !== !ids.length) bar.hidden = !ids.length;
         const shown = ids.slice(0, MAX), s = shown.map(id => id + ":" + (track(id)?.get("title") || "")).join("|") + "|" + ids.length;
         if (s !== sig) {
             sig = s;
@@ -2147,11 +2147,11 @@ const jbMini = (() => {
             bound = true;
             window.Jukebox.playlist.on("change:playing change:softstop change:volume change:title add remove reset", () => schedule());
         }
+        // 주입은 채팅이 올 때마다 불리므로 여기선 한 번만 걸어 두고, 다시 그리기는 재생 · 볼륨 · 곡 줄 변화에서만
         const jb = document.getElementById("jukebox");
-        if (jb && !mo) { mo = new MutationObserver(onJb); mo.observe(jb, { subtree: true, attributes: true, attributeFilter: ["data-isplaying"] }); }
-        jbWatch.on(onJb);           // Roll20 이 곡 줄을 다시 그릴 때
-        jbWatch.ensure();
-        schedule(0);
+        if (jb && !mo) { mo = new MutationObserver(onJb); mo.observe(jb, { subtree: true, attributes: true, attributeFilter: ["data-isplaying"] }); schedule(0); }
+        if (!watched) { watched = true; jbWatch.on(onJb); jbWatch.ensure(); schedule(0); }       // jbWatch: Roll20 이 곡 줄을 다시 그릴 때
+        else if (bar && !bar.isConnected) schedule(0);          // 채팅 판이 새로 그려졌으면 다시 붙인다
     };
     const setEnabled = v => { if (v) inject(); else { bar?.remove(); sig = ""; } };
     return { inject, setEnabled };
