@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.77.0
+// @version      1.78.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.77.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.78.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1959,7 +1959,7 @@ const jbDrawer = (() => {
     const build = () => {
         hd = document.createElement("div");
         hd.id = "r20-jbd-hd";
-        hd.innerHTML = '<b>♪</b><input type="search" class="q" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 재생 · 정지" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">'
+        hd.innerHTML = '<b>♪</b><input type="search" class="q" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 모두에게 재생 · 정지, Shift+Enter 로 미리듣기" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">'
             + '<button type="button" data-a="mode" class="md" title="반쪽 높이 ↔ 전체 높이" aria-label="반쪽 높이" aria-pressed="false">½</button>'
             + '<button type="button" data-a="pin" class="pin" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button>';
         hd.addEventListener("click", e => {
@@ -1974,7 +1974,7 @@ const jbDrawer = (() => {
             e.stopPropagation();        // Roll20 단축키로 새지 않게
             if (e.isComposing) return;
             if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if (hits.length) { at = (at + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length; draw(); } }
-            else if (e.key === "Enter") { e.preventDefault(); if (hits[at]) play(hits[at].id); }
+            else if (e.key === "Enter") { e.preventDefault(); if (hits[at]) (e.shiftKey && pvOn() ? preview : play)(hits[at].id); }
             else if (e.key === "Escape") { e.preventDefault(); if (q.value) { q.value = ""; find(); } else close(); }
         });
         res = document.createElement("div");
@@ -1983,7 +1983,8 @@ const jbDrawer = (() => {
         res.setAttribute("aria-label", "찾은 곡");
         res.hidden = true;
         res.addEventListener("mousedown", e => e.preventDefault());       // 입력칸 포커스 그대로
-        res.addEventListener("click", e => { const r = e.target.closest("[data-id]"); if (r) { at = +r.dataset.i; play(r.dataset.id); } });
+        res.addEventListener("click", e => { const r = e.target.closest("[data-id]"); if (r) { at = +r.dataset.i; (e.target.closest(".pv") ? preview : play)(r.dataset.id); } });
+        FEAT.bgmPreview?.onChange(syncPv);
         grip = document.createElement("div");
         grip.id = "r20-jbd-grip";
         grip.title = "끌어서 폭 조절";
@@ -2006,11 +2007,36 @@ const jbDrawer = (() => {
         res.hidden = !v;
         q.setAttribute("aria-expanded", String(!!v));
         if (!v) return;
-        const playing = id => !!FEAT.jukeboxRow?.playing?.(id);
-        res.innerHTML = hits.length ? hits.map((h, i) => `<div class="r${i === at ? " on" : ""}${playing(h.id) ? " pl" : ""}" role="option" aria-selected="${i === at}" data-i="${i}" data-id="${escAttr(h.id)}"><span class="ic">${playing(h.id) ? "■" : "▶"}</span><span class="nm">${h.html}</span></div>`).join("")
+        const playing = id => !!FEAT.jukeboxRow?.playing?.(id), pv = pvOn() ? FEAT.bgmPreview.current() : null;
+        // 🎧 = 나만 미리듣기 (bgmPreview) · 곡 이름 = 모두에게 재생 · 정지 — 미리듣기 묶음을 끄면 예전처럼 ▶ ■ 표시만
+        res.innerHTML = hits.length ? hits.map((h, i) => `<div class="r${i === at ? " on" : ""}${playing(h.id) ? " pl" : ""}" role="option" aria-selected="${i === at}" data-i="${i}" data-id="${escAttr(h.id)}">`
+            + (pvOn() ? `<button type="button" class="pv${pv === h.id ? " on" : ""}" tabindex="-1" title="미리듣기 — 나만 듣기 (Shift+Enter)" aria-label="미리듣기">${pv === h.id ? "■" : "🎧"}</button>` : `<span class="ic">${playing(h.id) ? "■" : "▶"}</span>`)
+            + `<span class="nm" title="누르면 모두에게 재생 · 정지">${h.html}</span>${pv === h.id ? '<span class="tm"></span>' : ""}${pvOn() && playing(h.id) ? '<span class="st">■ 재생 중</span>' : ""}</div>`).join("")
             : '<div class="msg">맞는 곡이 없어요</div>';
+        syncPv();
+    };
+    const pvOn = () => !!btnVisible.bgm && !!FEAT.bgmPreview;
+    // 미리듣기 시간만 고친다 (timeupdate 마다 목록을 다시 그리면 누르는 중인 단추가 바뀜)
+    const syncPv = () => {
+        if (!res || res.hidden || !pvOn()) return;
+        const P = FEAT.bgmPreview, id = P.current();
+        res.querySelectorAll(".r[data-id]").forEach(r => {
+            const b = r.querySelector(".pv"), on = r.dataset.id === id;
+            if (!b) return;
+            if (b.classList.contains("on") !== on) return draw();
+            const tm = r.querySelector(".tm"), st = P.status(r.dataset.id);
+            if (tm) tm.textContent = "🎧 " + (st.match(/재생 중 (\S+)/)?.[1] || "");
+            else if (/실패/.test(st)) { b.textContent = "!"; b.title = "미리듣기 실패 — 콘솔 확인"; }
+        });
+    };
+    const preview = id => {
+        const P = FEAT.bgmPreview;
+        if (!pvOn()) return;
+        if (P.current() === id) P.stop(); else P.play(id);
+        draw();
     };
     const play = id => {
+        if (FEAT.bgmPreview?.current()) FEAT.bgmPreview.stop();         // 모두에게 재생하면 미리듣기는 멈춤
         const li = document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
         if (!FEAT.jukeboxRow?.toggle?.(id)) li?.querySelector("a.play")?.click();
         setTimeout(draw, 250);         // Roll20 이 재생 표시를 바꾼 뒤
@@ -2076,7 +2102,7 @@ const jbDrawer = (() => {
     return { setEnabled, leftEdge, halfTop, isOpen: () => on, open, close, show };
 })();
 addFeature("jbDrawer", jbDrawer);
-addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그, Enter 재생) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
+addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그 · 🎧 나만 미리듣기 · 곡 이름 = 모두에게 재생 · Enter 재생 · Shift+Enter 미리듣기) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
     members: [["jbdrawer", "jbDrawer"]] });
 addCss(`
         /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
@@ -2100,6 +2126,11 @@ addCss(`
         #r20-jbd-res .r.pl .ic, #r20-jbd-res .r.pl .nm { color:var(--aio-accent-dark); font-weight:700; }
         #r20-jbd-res .nm { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         #r20-jbd-res mark { background:none; color:var(--aio-accent-dark); font-weight:700; }
+        #r20-jbd-res .pv { flex-shrink:0; width:22px; height:20px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; line-height:18px; cursor:pointer; box-shadow:none; }
+        #r20-jbd-res .pv:hover { border-color:var(--aio-accent); }
+        #r20-jbd-res .pv.on { border-color:var(--aio-accent); background:var(--aio-accent); color:#fff; }
+        #r20-jbd-res :is(.tm, .st) { flex-shrink:0; color:var(--aio-accent-dark); font-size:10.5px; font-weight:700; white-space:nowrap; }
+        #r20-jbd-res .st { font-weight:400; }
         #r20-jbd-res .msg { padding:8px; color:var(--aio-ink-4); font-size:11px; text-align:center; }
         #jukebox li.jukeboxitem.r20jbd-flash > .dd-content { background:var(--aio-accent-bg) !important; transition:background 0.3s; }
         #jukeboxtab.r20jbd-on > a { background:var(--aio-accent) !important; color:#fff !important; border-radius:var(--aio-r-sm); }
@@ -6027,6 +6058,85 @@ const edgeDock = (() => {
     return { place, modeRow };
 })();
 addFeature("edgeDock", edgeDock);
+
+// ───────── Roll20 왼쪽 도구 줄 가늘게: 원래 · 가늘게 · 짧게 · 숨김 띠 (기본 가늘게, 내 화면에서만) ─────────
+// 도구 줄(.master-toolbar-outer, Vue)의 속 구조를 건드리지 않고 통째로 zoom → 단추 · 서랍이 함께 줄고, 라벨 글씨만 숨긴다
+// 옆으로 나오는 서랍(.drawer-outer)은 거꾸로 확대해 원래 크기로 · 맵 아래 포트레이트(#playerzone)는 줄어든 폭에 맞춘다
+const leftBar = (() => {
+    const KEY = "r20_lt_mode", Z = 0.6;
+    const PZ = { thin: "26px", short: "0px", strip: "4px" };        // #playerzone 왼쪽 (짧게는 도구 줄이 위쪽만이라 0)
+    const mode = () => { const v = localStorage.getItem(KEY); return v === "orig" || v in PZ ? v : "thin"; };
+    const bar = () => document.querySelector(".master-toolbar-outer");
+    const subs = new Set();
+    let mo = null, moEl = null, vT = 0, warned = false;
+    // 도구 줄 오른쪽 끝 (화면 px) — 접혀 있거나 없으면 0
+    const edge = () => {
+        const r = bar()?.getBoundingClientRect();
+        return r && r.height && r.right > 0 ? Math.round(document.body.classList.contains("r20lt-strip") ? Math.min(r.right, 4) : r.right) : 0;
+    };
+    const notify = () => subs.forEach(fn => { try { fn(); } catch (e) { aioErr("왼쪽 도구 줄", e); } });
+    const apply = () => {
+        const m = mode(), B = document.body;
+        B.classList.toggle("r20lt-on", m !== "orig");
+        ["short", "strip"].forEach(k => B.classList.toggle("r20lt-" + k, m === k));
+        document.documentElement.style.setProperty("--r20lt-pz", PZ[m] || "44px");
+        // Roll20 '축소'(«) · 다시 그리기 → 붙어 있는 내비게이터가 따라오게
+        const t = bar();
+        if (t && moEl !== t && window.MutationObserver) {
+            mo?.disconnect(); moEl = t;
+            mo = new MutationObserver(() => setTimeout(notify, 250));          // left 가 200ms 동안 움직인다
+            mo.observe(t, { attributes: true, attributeFilter: ["class", "style"] });
+        }
+        notify();
+        clearTimeout(vT);
+        vT = setTimeout(verify, 400);
+    };
+    // 줄었는지 한 번 확인 (zoom 이 안 먹는 화면이면 원래대로 두고 알림)
+    const verify = () => {
+        const t = bar(), m = mode();
+        if (!t || m === "orig" || warned) return;
+        const r = t.getBoundingClientRect();
+        if (!r.width || t.classList.contains("master-toolbar-collapsed")) return;
+        if (r.width > 34) { warned = true; aioErr("왼쪽 도구 줄", `도구 줄이 줄지 않음 (폭 ${Math.round(r.width)}px)`); }
+    };
+    const inject = () => { if (bar() !== moEl) apply(); };
+    const setMode = v => { localStorage.setItem(KEY, v); warned = false; apply(); };
+    const modeRow = () => {
+        const row = document.createElement("div");
+        row.className = "cs-row";
+        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
+        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "왼쪽 도구 줄" }));
+        name.dataset.tip = "가늘게: 26px · 라벨 글씨 숨김 · 짧게: 단추 길이만큼 반투명 · 숨김 띠: 평소 4px, 마우스를 왼쪽 끝에 대면 나옴";
+        const seg = document.createElement("div");
+        seg.className = "cs-seg";
+        seg.setAttribute("role", "radiogroup");
+        seg.setAttribute("aria-label", "왼쪽 도구 줄");
+        const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode())));
+        [["orig", "원래"], ["thin", "가늘게"], ["short", "짧게"], ["strip", "숨김 띠"]].forEach(([v, l]) => {
+            const b = Object.assign(document.createElement("button"), { type: "button", textContent: l });
+            b.dataset.v = v;
+            b.setAttribute("role", "radio");
+            b.onclick = () => { setMode(v); sync(); };
+            seg.appendChild(b);
+        });
+        sync();
+        row.append(name, seg);
+        return row;
+    };
+    addCss(`
+        html body.r20lt-on .master-toolbar-outer { zoom:${Z}; }
+        html body.r20lt-on .master-toolbar-outer :is(.label, .spacer-header) { display:none !important; }
+        html body.r20lt-on .master-toolbar-outer .drawer-outer { zoom:${+(1 / Z).toFixed(4)}; left:28px !important; }
+        html body.r20lt-short .master-toolbar-outer:not(.master-toolbar-collapsed) { height:auto !important; padding-bottom:10px !important; border-bottom-right-radius:12px; background:color-mix(in srgb, var(--vtt-container-bg, #fff) 72%, transparent) !important; }
+        html body.r20lt-strip .master-toolbar-outer { transform:translateX(calc(-100% + ${+(4 / Z).toFixed(2)}px)); transition:left 200ms, transform 150ms ease 400ms; }
+        html body.r20lt-strip .master-toolbar-outer:is(:hover, :focus-within) { transform:none; transition-delay:0s, 0s; }
+        html body.r20lt-on #playerzone.toolbar-collapse-adjust:not(.master-toolbar-collapsed):not(.shortened-toolbar) { left:var(--r20lt-pz) !important; }
+        html body.r20lt-on #secondary-toolbar.legacy-menu.toolbar-collapse-adjust:not(.master-toolbar-collapsed) { left:calc(var(--r20lt-pz) + 48px) !important; }
+    `);
+    apply();
+    return { inject, edge, modeRow, onChange: fn => subs.add(fn), watch: ".master-toolbar-outer" };
+})();
+addFeature("leftBar", leftBar);
 // ───────── 포트레이트: 자리(왼쪽 아래 · 왼쪽 위) · 크기 · 가로/세로 · 포트레이트 · 이름 보임 — 내 화면에서만 ─────────
 // 묶음을 화면에 고정해 옮기지 않고 Roll20 #playerzone 의 정렬만 위 · 아래로 바꾼다 — 매크로 줄(#macrobar)이 이 묶음 안에 있어서
 // 크기는 사람마다(.player) 따로 확대 → 매크로 줄은 그대로
@@ -6700,9 +6810,9 @@ addFeature("screenUI", screenUI);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
 addFeature("tokenSet", tokenSet);
-addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄 (덱 · 매크로는 오른쪽 판 왼쪽 끝 / 원래 자리)",
+addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄 (덱 · 매크로는 오른쪽 판 왼쪽 끝 / 원래 자리) · 왼쪽 도구 줄 가늘게",
     members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"], ["tokset", "tokenSet"]],
-    extra: () => [edgeDock.modeRow()] });
+    extra: () => [edgeDock.modeRow(), leftBar.modeRow()] });
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 
@@ -9137,11 +9247,12 @@ addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · �
 // GM: 목차 아래 '🎬 장면' 갈래 = 채팅에서 찍은 장면 구간 (빠른 찾기의 장면 데이터) — 누르면 오른쪽이 그 장면 로그 · 갈래는 ▾ 로 접기 (기억, 장면은 처음엔 접힘)
 const scenNav = (() => {
     const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", MODE = "r20_sn_mode", TOC_W = 112, TXT_W = 268;
+    const DOCK = "r20_sn_dock", DW = "r20_sn_dw", TW = "r20_sn_tw";         // 왼쪽 끝에 붙이기 · 붙였을 때 너비 · 목차 너비
     const KEY_RE = /\[본문\]|장면표/;        // 먼저 보여 줄 핸드아웃: 제목에 [본문](대괄호까지) · 장면표 — '시나리오' 만으로는 앵커 · NPC 핸드아웃도 걸려서
     let win = null, cur = null, heads = [], chs = [], selId = null, spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
     // 장면 갈래 (GM): view = 오른쪽에 무엇을 (scen 시나리오 본문 · scn 장면 로그)
     const FOLD = "r20_sn_fold";
-    let view = "scen", scnId = null, lgRows = [], lgAt = -1, bdPos = 0, subbed = false;
+    let view = "scen", scnId = null, lgRows = [], lgAt = -1, bdPos = 0, subbed = false, permSub = false;
     const SA = () => FEAT.quickFind?.scene;
     const gmScn = () => isGM() && !!SA();
     const folded = b => { try { const o = JSON.parse(ls(FOLD) || "{}"); return o[b] ?? b === "scn"; } catch (e) { return b === "scn"; } };
@@ -9156,6 +9267,96 @@ const scenNav = (() => {
     };
     const canSee = m => isGM() || String(m.get("inplayerjournals") || "").split(",").some(x => x === "all" || x === window.currentPlayer?.id);
     const shared = m => !!String(m.get("inplayerjournals") || "").trim();
+    // ── 보는 사람 (GM): 핸드아웃 보기 권한(inplayerjournals) 칩 · 📢 보여주기 · ↗ Roll20 창 · 목차 줄의 동그라미 ──
+    const H = id => window.Campaign?.handouts?.get?.(id);
+    const seeList = m => String(m.get("inplayerjournals") || "").split(",").map(x => x.trim()).filter(Boolean);
+    const people = () => (window.Campaign?.players?.models || []).filter(p => p.id !== window.currentPlayer?.id)
+        .sort((a, b) => !!b.get("online") - !!a.get("online") || String(a.get("displayname") || "").localeCompare(String(b.get("displayname") || ""), "ko"));
+    const pcol = p => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(p.get("color") || "") ? p.get("color") : "#888888";
+    const pink = hex => { const h = hex.slice(1), f = h.length === 3 ? [...h].map(c => c + c).join("") : h, [r, g, b] = [0, 2, 4].map(i => parseInt(f.slice(i, i + 2), 16)); return r * 0.299 + g * 0.587 + b * 0.114 > 160 ? "#222" : "#fff"; };
+    const pnm = p => String(p.get("displayname") || "?").trim();
+    // 목차 줄 오른쪽: 볼 수 있는 사람 (플레이어 색 · 이름 첫 글자, 모두 공개면 '모두')
+    const whoHtml = m => {
+        const v = seeList(m);
+        if (v.includes("all")) return '<span class="who"><u class="all" title="모든 플레이어">모두</u></span>';
+        const ps = people().filter(p => v.includes(p.id));
+        return ps.length ? `<span class="who">${ps.slice(0, 4).map(p => `<u style="background:${pcol(p)};color:${pink(pcol(p))}" title="${escAttr(pnm(p))}">${escAttr([...pnm(p)][0] || "?")}</u>`).join("")}${ps.length > 4 ? `<u class="all">+${ps.length - 4}</u>` : ""}</span>` : "";
+    };
+    const pmAll = new Set();          // 접속 안 한 사람까지 펼친 핸드아웃
+    const stripHtml = m => {
+        const v = seeList(m), A = v.includes("all"), ps = people();
+        const show = pmAll.has(m.id) || ps.length <= 8 ? ps : ps.filter(p => p.get("online") || v.includes(p.id)), more = ps.length - show.length, id = escAttr(m.id);
+        const chip = (pid, label, col, on, tip) => `<button type="button" class="pm-c${on ? " on" : ""}${A && pid !== "all" ? " via" : ""}" data-a="pm" data-pid="${escAttr(pid)}" data-hid="${id}" aria-pressed="${on}" title="${escAttr(tip)}"><i style="background:${col}"></i>${escAttr(label)}</button>`;
+        return `<div class="pm" data-hid="${id}"><span class="pm-l" title="보기 권한 — 누르면 켜고 끔">👁</span>`
+            + chip("all", "모두", "#777", A, "모든 플레이어가 보기")
+            + show.map(p => chip(p.id, pnm(p), pcol(p), A || v.includes(p.id), (p.get("online") ? "접속 중 · " : "") + (A ? "누르면 이 사람만 빼기" : "누르면 보기 권한 켜고 끔"))).join("")
+            + (more > 0 ? `<button type="button" class="pm-c" data-a="pmore" data-hid="${id}" title="접속하지 않은 플레이어 ${more}명 더">+${more}</button>` : "")
+            + `<i class="pm-g"></i><button type="button" class="pm-b" data-a="bc" data-hid="${id}" title="Roll20 Show to Players">📢 보여주기</button><button type="button" class="pm-b gh" data-a="ro" data-hid="${id}" title="Roll20 핸드아웃 창으로 열기 (고치기 등)" aria-label="Roll20 창으로 열기">↗</button></div>`;
+    };
+    // 칩 누르기: 모두 ↔ 끄기 · 사람 하나 켜고 끔 (모두인데 한 사람을 누르면 '그 사람만 빼고')
+    const setSee = (hid, pid) => {
+        const m = H(hid);
+        if (!m || !isGM()) return;
+        let v = seeList(m);
+        if (pid === "all") v = v.includes("all") ? v.filter(x => x !== "all") : [...v, "all"];
+        else if (v.includes("all")) v = people().map(p => p.id).filter(x => x !== pid);
+        else v = v.includes(pid) ? v.filter(x => x !== pid) : [...v, pid];
+        try { m.save({ inplayerjournals: v.join(",") }); } catch (e) { aioErr("시나리오 보기 권한", e); }
+        permSync(hid);
+    };
+    const permSync = hid => {
+        if (!win || !cur) return;
+        win.querySelectorAll(".pm[data-hid]").forEach(el => { const m = (!hid || el.dataset.hid === hid) && H(el.dataset.hid); if (m) el.outerHTML = stripHtml(m); });
+        win.querySelectorAll(".ls .tr.pmx[data-c]").forEach(r => {
+            const m = (!hid || r.dataset.c === hid) && H(r.dataset.c);
+            if (!m) return;
+            r.querySelector(".who")?.remove();
+            r.querySelector(".tn")?.insertAdjacentHTML("afterend", whoHtml(m));
+        });
+        $(".warn").hidden = !(isGM() && cur.items.some(it => it.m && shared(it.m)));
+    };
+    // 📢 보여주기: Roll20 핸드아웃 창의 Show to Players 단추를 그대로 누른다 (창이 닫혀 있었으면 열었다가 다시 닫음)
+    const broadcast = async (hid, btn) => {
+        const m = H(hid);
+        if (!m || !isGM()) return;
+        const say = t => { if (!btn?.isConnected) return; const o = btn.dataset.t ?? (btn.dataset.t = btn.textContent); btn.textContent = btn.classList.contains("pm-b") ? t : t[0]; setTimeout(() => { if (btn.isConnected) btn.textContent = o; }, 1500); };
+        const vis = () => [...document.querySelectorAll(".ui-dialog")].filter(d => d.getClientRects().length && d.querySelector(".broadcasthandout"));
+        const name = String(m.get("name") || "").trim(), mine = list => list.find(d => d.querySelector(".ui-dialog-title")?.textContent.trim() === name);
+        const before = vis(), had = mine(before);
+        let d = had;
+        if (!d) try { m.view?.showDialog?.(); } catch (e) { aioErr("시나리오 보여주기", e); }
+        for (let i = 0; !d && i < 30; i++) { await new Promise(r => setTimeout(r, 50)); const now = vis(); d = mine(now) || now.find(x => !before.includes(x)); }
+        const bt = d?.querySelector(".broadcasthandout");
+        if (!bt) { aioErr("시나리오 보여주기", "Roll20 핸드아웃 창에서 Show to Players 단추를 찾지 못함"); return say("✗ 못 함"); }
+        bt.click();
+        if (!had) setTimeout(() => d.querySelector(".ui-dialog-titlebar-close")?.click(), 150);
+        say("✓ 보냄");
+    };
+    // 목차 줄 👁: 그 줄 옆에 칩 상자
+    const seePop = row => {
+        const m = row && H(row.dataset.c);
+        if (!m) return;
+        let pp = $(".pp");
+        if (!pp) { pp = Object.assign(document.createElement("div"), { className: "pp" }); win.append(pp); }
+        if (!pp.hidden && pp.dataset.hid === m.id) return ppOff();
+        pp.dataset.hid = m.id;
+        pp.innerHTML = `<b>${escAttr(m.get("name") || "")}</b>` + stripHtml(m);
+        pp.hidden = false;
+        document.addEventListener("keydown", ppKey, true);          // 칩을 누르면 칩이 새로 그려져 포커스가 창 밖으로 나가므로 문서에서 받는다
+        document.addEventListener("pointerdown", ppDown, true);
+        const z = aioZoom.get(), w = win.getBoundingClientRect(), r = row.getBoundingClientRect();
+        pp.style.left = Math.max(4, Math.min((r.right - w.left) / z + 4, win.offsetWidth - pp.offsetWidth - 4)) + "px";
+        pp.style.top = Math.max(34, Math.min((r.top - w.top) / z, win.offsetHeight - pp.offsetHeight - 4)) + "px";
+    };
+    function ppOff() {
+        const pp = win?.querySelector(".pp");
+        if (pp) pp.hidden = true;
+        document.removeEventListener("keydown", ppKey, true);
+        document.removeEventListener("pointerdown", ppDown, true);
+    }
+    function ppKey(e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); ppOff(); } }
+    function ppDown(e) { if (!e.target.closest?.(".pp, [data-a='see']")) ppOff(); }
+    const stickH = c => chs.find(x => x.id === c)?.sec.querySelector(".cht")?.offsetHeight || 0;      // 붙어 있는 장 머리 높이
     // 저널 폴더 나무 → 핸드아웃이 든 폴더 목록 { path, name, items: [{ id, m, gp: 하위 폴더 경로 }] }
     const folders = () => {
         const C = window.Campaign, out = [];
@@ -9216,19 +9417,25 @@ const scenNav = (() => {
         copy(doc.body, frag);
         return frag;
     };
-    // 제목 줄: 제목 서식 · 기호로 시작하는 짧은 줄 · 굵은 글씨만 있는 짧은 줄 · 큰 글씨(16px 넘게)인 짧은 줄
-    const HEAD_RE = /^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4}\s|【[^】]+】\s*$|「[^」]+」\s*$|\[[^\]]+\]\s*$|\d{1,2}[.)．]\s?\S|第.+[章節話幕]|제\s*\d+\s*[장절화막]|\d+\s*장\b|(장면|씬|シーン|scene|phase|페이즈)\s*\d*\b)/i;
+    // 제목 줄 깊이: 1 = 큰 제목 (H1~H2 · 【…】 로 시작 · 큰 글씨), 2 = 작은 제목 (H3~H5 · 기호 · 번호 · 장면 줄 · 굵은 글씨만 있는 짧은 줄), 0 = 제목 아님
+    // 「대사」 처럼 따옴표로 시작하는 줄은 굵거나 커도 제목이 아니다 (본문 속 대사가 목차를 채우던 것)
+    const HEAD_RE = /^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4}\s|\[[^\]]+\]\s*$|\d{1,2}[.)．]\s?\S|第.+[章節話幕]|제\s*\d+\s*[장절화막]|\d+\s*장\b|(장면|씬|シーン|scene|phase|페이즈)\s*\d*\b)/i;
+    const QUOTE_RE = /^[「『“"‘']/, BIG_RE = /^【[^】]+】[^.。!?！？]{0,24}$/;          // 【…】 뒤에 짧은 이름까지만 (【단서】 계산대 밑의 … . 같은 문장은 아님)
     const bigText = el => {
         let px = parseFloat(el.style?.fontSize) || 0;
         el.querySelectorAll("[style*='font-size'], font[size]").forEach(x => { px = Math.max(px, parseFloat(x.style.fontSize) || (+x.getAttribute("size") >= 5 ? 20 : 0)); });
         return px >= 16;
     };
-    const isHead = el => {
+    const headLv = el => {
         const t = el.textContent.trim();
-        if (t.length < 2 || t.length > 40 || /^[\d\s.,·:/-]+$/.test(t) || el.querySelector("img, table")) return false;      // 숫자뿐인 칸(표 번호)은 아님
-        if (/^H[1-4]$/.test(el.tagName) || HEAD_RE.test(t) || bigText(el)) return true;
+        if (t.length < 2 || t.length > 40 || /^[\d\s.,·:/-]+$/.test(t) || el.querySelector("img, table")) return 0;      // 숫자뿐인 칸(표 번호)은 아님
+        if (/^H[12]$/.test(el.tagName)) return 1;
+        if (/^H[3-5]$/.test(el.tagName)) return 2;
+        if (QUOTE_RE.test(t)) return 0;
+        if (BIG_RE.test(t) || bigText(el)) return 1;
+        if (HEAD_RE.test(t)) return 2;
         const b = [...el.querySelectorAll("b, strong")].map(x => x.textContent).join("").trim();
-        return b.length >= 2 && b === t && !/^(LI|TD)$/.test(el.tagName);       // 목록 · 표 칸의 굵은 글씨는 강조일 뿐
+        return b.length >= 2 && b === t && !/^(LI|TD)$/.test(el.tagName) ? 2 : 0;       // 목록 · 표 칸의 굵은 글씨는 강조일 뿐
     };
     const getBlob = (m, f) => new Promise(ok => {
         const t = setTimeout(() => ok(""), 8000);
@@ -9238,16 +9445,65 @@ const scenNav = (() => {
     // ── 창 ──
     const pinned = () => ls(PIN) === "true";
     const tocOn = () => ls(TOCK) !== "off";
-    const keep = () => { if (win && !win.hidden && pinned() && !win.classList.contains("aio-min")) ls(GEO, JSON.stringify({ l: win.offsetLeft, t: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight })); };
+    const docked = () => ls(DOCK) === "1";
+    const tocW = () => Math.max(70, Math.min(420, parseFloat(ls(TW)) || TOC_W));
+    const keep = () => { if (win && !win.hidden && pinned() && !docked() && !win.classList.contains("aio-min")) ls(GEO, JSON.stringify({ l: win.offsetLeft, t: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight })); };
+    // Roll20 왼쪽 도구 줄 오른쪽 끝 (화면 px) — 가늘게 · 접힘도 따라감
+    const toolsRight = () => FEAT.leftBar?.edge?.() || document.querySelector("#editor-wrapper .tool-bar, #floatingtoolbar, .vtt-toolbar")?.getBoundingClientRect().right || 0;
     // 기본 자리: 맵 왼쪽 끝 (Roll20 도구 줄 바로 오른쪽) — 빠른 찾기 · 장면 창(오른쪽 판 옆)과 안 겹치게
+    // 붙이기(⇤): 도구 줄 오른쪽에 위아래 끝까지 · 너비는 오른쪽 끝을 끌어서
     const place = () => {
+        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, tr = toolsRight();
+        win.style.setProperty("--sn-tw", tocW() + "px");
+        win.classList.toggle("dock", docked());
+        if (docked()) {
+            const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
+            Object.assign(win.style, { left: tr / z + "px", top: "0px", width: w + "px", height: H + "px" });
+            return dockSync();
+        }
         let g = null;
         if (pinned()) try { g = JSON.parse(ls(GEO) || "null"); } catch (e) { /* 없음 */ }
-        const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, tools = document.querySelector("#editor-wrapper .tool-bar, #floatingtoolbar, .vtt-toolbar")?.getBoundingClientRect();
-        const w = Math.min(Math.max(200, g?.w || TXT_W + (tocOn() ? TOC_W : 0)), W - 16), h = Math.min(Math.max(160, g?.h || Math.min(600, Math.round(H * 0.7))), H - 16);
-        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, (tools?.right ? tools.right / z : 48) + 8);
+        const w = Math.min(Math.max(200, g?.w || TXT_W + (tocOn() ? tocW() : 0)), W - 16), h = Math.min(Math.max(160, g?.h || Math.min(600, Math.round(H * 0.7))), H - 16);
+        const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, (tr ? tr / z : 48) + 8);
         const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : 40;
         Object.assign(win.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
+        dockSync();
+    };
+    // 붙어 있으면 포트레이트 줄(#playerzone)을 창 오른쪽으로 비키고, 붙인 채 닫으면 왼쪽 끝에 '📖 시나리오' 손잡이
+    const dockSync = () => {
+        const on = !!win && docked() && isOpen();
+        document.body.classList.toggle("r20sn-dock", on);
+        if (on) document.documentElement.style.setProperty("--r20sn-pz", Math.round(win.getBoundingClientRect().right) + "px");
+        tabSync(true);
+    };
+    const tabSync = pos => {
+        let t = document.getElementById("r20-sn-tab");
+        if (!(btnVisible.scen && docked() && !isOpen() && window.Campaign)) return t?.remove();
+        if (!t) {
+            t = Object.assign(document.createElement("button"), { type: "button", id: "r20-sn-tab", textContent: "📖 시나리오", title: "시나리오 내비게이터 펴기" });
+            t.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); open(); });
+            document.body.appendChild(t);
+            pos = true;
+        }
+        if (pos) t.style.left = toolsRight() + "px";
+    };
+    const reDock = () => { if (!docked()) return; if (isOpen()) place(); else tabSync(true); };
+    let rdT = 0;
+    addEventListener("resize", () => { clearTimeout(rdT); rdT = setTimeout(reDock, 150); });
+    FEAT.leftBar?.onChange?.(reDock);
+    // 가로로 끄는 손잡이 (목차 경계 · 붙인 창 오른쪽 끝) — 두 번 누르면 기본 너비
+    const dragX = (el, mv, done, reset) => {
+        el.addEventListener("pointerdown", e => {
+            if (e.button !== 0) return;
+            e.preventDefault(); e.stopPropagation();
+            el.setPointerCapture(e.pointerId);
+            el.classList.add("on");
+            const up = () => { el.classList.remove("on"); ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => el.removeEventListener(t, k ? up : mv)); done?.(); };
+            el.addEventListener("pointermove", mv);
+            el.addEventListener("pointerup", up);
+            el.addEventListener("pointercancel", up);
+        });
+        el.addEventListener("dblclick", e => { e.preventDefault(); reset(); });
     };
     const build = () => {
         win = document.createElement("div");
@@ -9260,17 +9516,20 @@ const scenNav = (() => {
             + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
             + '<button type="button" data-a="cfg" class="ib cfgb" hidden aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
             + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
+            + '<button type="button" data-a="dock" class="ib dk" title="왼쪽 끝에 붙이기 ↔ 띄우기" aria-label="왼쪽 끝에 붙이기" aria-pressed="false">⇤</button>'
             + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
             + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
             + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
             + '<div class="sp"><div class="toc" role="tree" aria-label="목차"><div class="br" data-b="scen" hidden role="button" aria-expanded="true">📖 시나리오<i></i></div><div class="ls"></div>'
-            + '<div class="br sc" data-b="scn" hidden role="button" aria-expanded="false">🎬 장면<i></i><span class="dot" hidden></span></div><div class="lc" hidden></div></div><div class="pane">'
+            + '<div class="br sc" data-b="scn" hidden role="button" aria-expanded="false">🎬 장면<i></i><span class="dot" hidden></span></div><div class="lc" hidden></div></div>'
+            + '<div class="tgr" role="separator" aria-orientation="vertical" aria-label="목차 너비" title="끌어서 목차 너비 · 두 번 누르면 기본"></div><div class="pane">'
             + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
             + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
             + '<span class="md" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
             + '<div class="bd" tabindex="-1"></div><div class="lg" tabindex="-1" hidden></div></div></div>'
-            + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>';
+            + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>'
+            + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>';
         win.addEventListener("keydown", e => {
             e.stopPropagation();
             if (e.target.matches(".lc input")) return;          // 장면 이름 고치는 중
@@ -9293,6 +9552,12 @@ const scenNav = (() => {
             if (srow) return scnRowClick(e, srow);
             const b = e.target.closest("button, [data-p], .tr"), a = b?.dataset.a;
             if (!b) { const img = e.target.closest(".bd img"); if (img && !img.closest("a")) zoomImg(img.src); return; }
+            const hid = b.dataset.hid || b.closest("[data-c]")?.dataset.c;
+            if (a === "pm") return setSee(hid, b.dataset.pid);
+            if (a === "pmore") { pmAll.add(hid); return permSync(hid); }
+            if (a === "bc") return broadcast(hid, b);
+            if (a === "ro") return H(hid)?.view?.showDialog?.();
+            if (a === "see") return seePop(b.closest(".tr"));
             if (a === "cfg") return showCfg(b);
             if (a === "lcopy") { copyText(SA()?.text(lgRows) || "").then(ok => { b.textContent = ok ? "✓" : "못 함"; setTimeout(() => { b.textContent = "복사"; }, 1500); }); return; }
             if (b.dataset.p != null) return openPath(b.dataset.p);
@@ -9303,12 +9568,13 @@ const scenNav = (() => {
             if (a === "toc") {
                 const on = !tocOn(), z = aioZoom.get();
                 ls(TOCK, on ? "on" : "off");
-                win.style.width = Math.max(200, Math.min(win.offsetWidth + (on ? TOC_W : -TOC_W), innerWidth / z - 16)) + "px";
+                if (!docked()) win.style.width = Math.max(200, Math.min(win.offsetWidth + (on ? tocW() : -tocW()), innerWidth / z - 16)) + "px";
                 win.classList.toggle("notoc", !on);
                 b.setAttribute("aria-pressed", String(on));
                 return keep();
             }
             if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
+            if (a === "dock") { ls(DOCK, docked() ? "" : "1"); b.setAttribute("aria-pressed", String(docked())); $(".pin").hidden = docked(); return place(); }
             if (a === "warn") return alert("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"));
             if (a === "put" || a === "copy") {
                 const t = picked;           // 고를 때 잡아 둔 글 (그사이 다른 곳을 눌러도)
@@ -9344,7 +9610,7 @@ const scenNav = (() => {
         // 제목줄 끌어 옮기기 · 모서리로 크기
         const hd = $(".hd");
         hd.addEventListener("pointerdown", e => {
-            if (e.button !== 0 || e.target.closest("button")) return;
+            if (e.button !== 0 || e.target.closest("button") || docked()) return;
             const z = aioZoom.get(), sx = e.clientX, sy = e.clientY, l0 = win.offsetLeft, t0 = win.offsetTop;
             hd.setPointerCapture(e.pointerId);
             const mv = ev => {
@@ -9358,6 +9624,11 @@ const scenNav = (() => {
         });
         let rt = 0;
         new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); }).observe(win);
+        const setTw = () => win.style.setProperty("--sn-tw", tocW() + "px");
+        dragX($(".tgr"), ev => { const z = aioZoom.get(); ls(TW, String(Math.round(Math.max(70, Math.min(420, (ev.clientX - $(".toc").getBoundingClientRect().left) / z))))); setTw(); }, null,
+            () => { try { localStorage.removeItem(TW); } catch (e) { /* 없음 */ } setTw(); });
+        dragX($(".eg"), ev => { const z = aioZoom.get(); ls(DW, String(Math.round(Math.max(240, (ev.clientX - win.getBoundingClientRect().left) / z)))); place(); }, null,
+            () => { try { localStorage.removeItem(DW); } catch (e) { /* 없음 */ } place(); });
         document.body.appendChild(win);
     };
     const zoomImg = src => {
@@ -9414,7 +9685,8 @@ const scenNav = (() => {
             sec.dataset.id = it.id;
             const h = document.createElement("h3");
             h.className = "cht";
-            h.textContent = (it.key ? "★ " : "") + (it.m.get("name") || "(이름 없음)");
+            h.append(Object.assign(document.createElement("span"), { className: "cn", textContent: (it.key ? "★ " : "") + (it.m.get("name") || "(이름 없음)") }));
+            if (isGM()) h.insertAdjacentHTML("beforeend", stripHtml(it.m));
             sec.append(h);
             chs.push({ id: it.id, sec, key: !!it.key, name: it.m.get("name") || "" });
             return sec;
@@ -9444,19 +9716,33 @@ const scenNav = (() => {
             if (sec.className === "grp") { sec.id = "sn-h" + n++; heads.push({ el: sec, grp: true, t: sec.textContent }); return; }
             const h = sec.querySelector(".cht"), c = sec.dataset.id;
             h.id = "sn-h" + n++;
-            heads.push({ el: h, ch: true, c, key: sec.classList.contains("key"), t: h.textContent });
+            heads.push({ el: h, ch: true, c, key: sec.classList.contains("key"), t: h.querySelector(".cn").textContent });
+            // 이 장의 제목 줄: 같은 이름이 거듭되면 처음 한 번만 · 큰 제목이 있으면 첫 큰 제목 앞의 작은 줄(머리말 · 지은이)은 뺀다
+            const found = [], seen = new Set();
             sec.querySelectorAll(".cb :is(h1, h2, h3, h4, h5, p, div, center, li, td)").forEach(el => {
-                if (el.querySelector("p, div, h1, h2, h3, h4, h5, li, table") || !isHead(el)) return;      // 다른 줄을 품은 칸은 빼고
-                el.id = "sn-h" + n++;
-                heads.push({ el, c, t: el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "") });
+                if (el.querySelector("p, div, h1, h2, h3, h4, h5, li, table")) return;      // 다른 줄을 품은 칸은 빼고
+                const lv = headLv(el), t = lv && el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "");
+                if (!lv || seen.has(t)) return;
+                seen.add(t);
+                found.push({ el, c, t, lv });
+            });
+            const first = found.findIndex(x => x.lv === 1);
+            found.filter((x, i) => first < 0 || i >= first || x.lv === 1).forEach(x => {
+                x.el.id = "sn-h" + n++;
+                heads.push({ ...x, lv: first < 0 ? 1 : x.lv });          // 큰 제목이 하나도 없으면 모두 한 단계
             });
         });
-        $(".ls").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h"}${h.key ? " key" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${h.ch && !h.key ? "📜 " : ""}${escAttr(h.t)}</div>`).join("")
+        $(".ls").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h h" + h.lv}${h.key ? " key" : ""}${h.ch && isGM() ? " pmx" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${rowInner(h)}</div>`).join("")
             || '<div class="msg">핸드아웃이 없어요</div>';
         const r = recent().find(x => x.path === path);
         selId = chs.some(c => c.id === r?.sel) ? r.sel : chs[0]?.id || null;
         applyMode(r?.pos);
         remember(path);
+    };
+    // 목차 줄 속: GM 은 장 줄에 볼 수 있는 사람 · 마우스를 올리면 👁 📢
+    const rowInner = h => {
+        const txt = (h.ch && !h.key ? "📜 " : "") + escAttr(h.t), m = h.ch && isGM() && H(h.c);
+        return m ? `<span class="tn">${txt}</span>${whoHtml(m)}<span class="ta"><button type="button" data-a="see" title="보는 사람">👁</button><button type="button" data-a="bc" title="보여주기 (Show to Players)">📢</button></span>` : txt;
     };
     // [따로] 고른 장만 · [이어서] 모두 — 목차의 제목 줄도 같이
     const applyMode = pos => {
@@ -9481,7 +9767,7 @@ const scenNav = (() => {
         if (h.c && sep() && h.c !== selId) { selId = h.c; applyMode(); }
         else if (h.c) selId = h.c;
         if (h.ch && sep()) { $(".bd").scrollTop = 0; return spy(); }
-        $(".bd").scrollTop = yOf(h.el) - 4;
+        $(".bd").scrollTop = h.ch ? yOf(h.el.closest("section")) : yOf(h.el) - 4 - stickH(h.c);
         spy();
     };
     // 다른 핸드아웃 고리: 이 시나리오 안이면 그 장으로, 아니면 Roll20 핸드아웃 창
@@ -9494,7 +9780,7 @@ const scenNav = (() => {
     // 지금 보이는 제목 → 목차 표시 · 머리줄 '장 › 제목 · %' · 자리 기억
     const spy = () => {
         if (!cur || !win || win.hidden || view !== "scen") return;
-        const bd = $(".bd"), top = bd.getBoundingClientRect().top + 8 * aioZoom.get(), s = sep();
+        const bd = $(".bd"), top = bd.getBoundingClientRect().top + (8 + stickH(selId)) * aioZoom.get(), s = sep();
         let k = -1;
         heads.forEach((h, i) => { if ((!s || h.c === selId) && !h.grp && h.el.getClientRects().length && h.el.getBoundingClientRect().top <= top) k = i; });
         if (!s && k >= 0 && heads[k].c) selId = heads[k].c;
@@ -9514,6 +9800,7 @@ const scenNav = (() => {
         if (q) {
             const tw = document.createTreeWalker(bd, NodeFilter.SHOW_TEXT);
             for (let n = tw.nextNode(); n && hits.length < 500; n = tw.nextNode()) {
+                if (n.parentElement?.closest(".pm")) continue;          // 보는 사람 칩 글자는 빼고
                 const t = n.textContent.toLowerCase();
                 for (let i = t.indexOf(q); i >= 0 && hits.length < 500; i = t.indexOf(q, i + q.length)) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + q.length); hits.push(r); }
             }
@@ -9686,7 +9973,14 @@ const scenNav = (() => {
         win.classList.toggle("notoc", !tocOn());
         $(".tg").setAttribute("aria-pressed", String(tocOn()));
         $(".pin").setAttribute("aria-pressed", String(pinned()));
+        $(".dk").setAttribute("aria-pressed", String(docked()));
+        $(".pin").hidden = docked();
         place();
+        if (!permSub && isGM() && window.Campaign?.handouts?.on) {
+            permSub = true;
+            window.Campaign.handouts.on("change:inplayerjournals", m => { if (isOpen() && cur?.items?.some(it => it.id === m.id)) permSync(m.id); });
+            window.Campaign.players?.on?.("change:online add remove", () => { if (isOpen()) permSync(); });
+        }
         if (!subbed && SA()) { subbed = true; SA().on(() => { if (isOpen() && gmScn()) renderScenes(); }); }
         if (gmScn()) SA().load();
         drawBranches();
@@ -9696,9 +9990,10 @@ const scenNav = (() => {
         else if (noPick || (gmScn() && !folders().length)) { showPick(false); $(".ls").innerHTML = '<div class="msg">📁 로 시나리오(저널 폴더)를 고르세요</div>'; }       // 시나리오 폴더가 없으면 GM 은 장면 갈래를 바로
         else showPick(true);
     };
-    function close() { if (!win) return; keep(); win.hidden = true; $(".fl").hidden = true; }
+    function close() { if (!win) return; keep(); ppOff(); win.hidden = true; $(".fl").hidden = true; dockSync(); }
     // 단추줄: 장면 목차와 🔍 사이 (플레이어도 — 자기에게 보이는 핸드아웃만)
     const inject = () => {
+        if (btnVisible.scen && docked() && !isOpen() && !document.getElementById("r20-sn-tab")) tabSync(true);
         if (!btnVisible.scen || document.getElementById("r20-snbtn") || !document.getElementById("sidebarcontrol")) return;
         const b = document.createElement("button");
         b.type = "button";
@@ -9715,12 +10010,13 @@ const scenNav = (() => {
         if (on) return inject();
         close();
         document.getElementById("r20-snbtn")?.remove();
+        document.getElementById("r20-sn-tab")?.remove();
         FEAT.screenUI?.place();
     };
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 제목 줄) · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기 · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -9737,10 +10033,22 @@ addCss(`
         #r20-sn .pin { filter:grayscale(1); opacity:0.5; } #r20-sn .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
         #r20-sn .warn { color:var(--aio-warn); }
         #r20-sn .sp { display:flex; flex:1; min-height:0; }
-        #r20-sn .toc { flex:0 0 112px; overflow-y:auto; overscroll-behavior:contain; padding:3px 2px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
-        #r20-sn.notoc .toc { display:none; }
+        #r20-sn .toc { flex:0 0 var(--sn-tw, 112px); overflow-y:auto; overscroll-behavior:contain; padding:3px 2px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
+        #r20-sn.notoc :is(.toc, .tgr) { display:none; }
+        #r20-sn .tgr { position:relative; z-index:2; flex:none; width:6px; margin:0 -3px; cursor:col-resize; touch-action:none; }
+        #r20-sn .eg { position:absolute; z-index:3; top:0; right:0; bottom:0; width:6px; cursor:col-resize; touch-action:none; display:none; }
+        #r20-sn :is(.tgr, .eg):is(:hover, .on) { background:var(--aio-accent); opacity:0.45; }
+        #r20-sn.dock { resize:none; min-height:0; border-width:0 1px 0 0; border-radius:0; box-shadow:3px 0 10px rgba(0,0,0,0.18); }
+        #r20-sn.dock .eg { display:block; }
+        #r20-sn.dock .hd { cursor:default; }
+        #r20-sn .dk[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
+        html body.r20sn-dock #playerzone#playerzone { left:var(--r20sn-pz) !important; }
+        #r20-sn-tab { position:fixed; z-index:10004; top:42%; width:22px; margin:0; padding:8px 0; border:1px solid var(--aio-line-3); border-left:0; border-radius:0 8px 8px 0; background:var(--aio-bg); color:var(--aio-accent-dark); font:700 11px/1.2 sans-serif; writing-mode:vertical-rl; letter-spacing:1px; cursor:pointer; box-shadow:2px 0 6px rgba(0,0,0,0.25); }
+        #r20-sn-tab:hover { background:var(--aio-accent-bg); }
         #r20-sn .tr { height:22px; padding:0 4px 0 4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:11px; line-height:22px; cursor:pointer; }
-        #r20-sn .tr.h { padding-left:14px; }
+        #r20-sn .tr.h { padding-left:12px; }
+        #r20-sn .tr.h1 { font-weight:600; }
+        #r20-sn .tr.h2 { padding-left:22px; color:var(--aio-ink-3); }
         #r20-sn .toc.sep .tr.h:not(.cur) { display:none; }
         #r20-sn .tr:hover { background:var(--aio-bg-3); }
         #r20-sn .tr.ch { margin-top:2px; color:var(--aio-ink-3); font-weight:700; font-size:10.5px; }
@@ -9796,7 +10104,28 @@ addCss(`
         #r20-sn .bd { position:relative; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:4px 10px 12px; font-size:14px; line-height:1.5; color:#333; user-select:text; outline:none; overflow-wrap:anywhere; }
         #r20-sn .bd.sep section:not(.on) { display:none; }
         #r20-sn .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
-        #r20-sn .bd .cht { margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
+        #r20-sn .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
+        #r20-sn .bd .cht .cn { flex:1 1 100%; min-width:0; }
+        #r20-sn .pm { display:flex; flex:1 1 100%; flex-wrap:wrap; align-items:center; gap:3px; padding:1px 0 2px; font:400 10.5px/1.4 sans-serif; user-select:none; }
+        #r20-sn .pm-l { color:var(--aio-ink-4); }
+        #r20-sn .pm-c { display:inline-flex; align-items:center; gap:3px; height:20px; margin:0; padding:0 7px 0 3px; border:1px solid var(--aio-line-2); border-radius:10px; background:var(--aio-bg); color:var(--aio-ink-4); font:inherit; cursor:pointer; box-shadow:none; }
+        #r20-sn .pm-c i { width:11px; height:11px; border-radius:50%; opacity:0.35; }
+        #r20-sn .pm-c.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
+        #r20-sn .pm-c.on i { opacity:1; }
+        #r20-sn .pm-c.via { border-style:dashed; font-weight:400; }
+        #r20-sn .pm-g { flex:1; }
+        #r20-sn .pm-b { height:20px; margin:0; padding:0 8px; border:1px solid var(--aio-accent); border-radius:10px; background:var(--aio-accent); color:#fff; font:700 10.5px/18px sans-serif; white-space:nowrap; cursor:pointer; box-shadow:none; }
+        #r20-sn .pm-b.gh { padding:0 6px; border-color:var(--aio-line-2); background:var(--aio-bg); color:var(--aio-ink-3); }
+        #r20-sn .pp { position:absolute; z-index:4; width:250px; padding:6px 8px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); box-shadow:0 6px 16px rgba(0,0,0,0.25); font-size:11px; }
+        #r20-sn .pp > b { display:block; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20-sn .tr.pmx { --tr-bg:var(--aio-bg-3); position:relative; display:flex; align-items:center; gap:3px; }
+        #r20-sn .tr.pmx.on { --tr-bg:var(--aio-accent-bg); }
+        #r20-sn .tr.pmx:hover .ta { display:flex; }
+        #r20-sn .tr.pmx:hover .who { visibility:hidden; }
+        #r20-sn .tr.pmx .ta button { width:18px; font-size:10px; }
+        #r20-sn .who { display:inline-flex; flex:none; gap:1px; margin-left:auto; }
+        #r20-sn .who u { min-width:14px; height:14px; padding:0 3px; border-radius:7px; font:700 8.5px/14px sans-serif; text-align:center; text-decoration:none; box-sizing:border-box; }
+        #r20-sn .who u.all { background:#6b6b6b; color:#fff; }
         #r20-sn .bd section.key .cht { color:var(--aio-accent-dark); }
         #r20-sn .bd section:first-child .cht, #r20-sn .bd.sep .cht { margin-top:0; }
         #r20-sn .bd .grp { margin:14px 0 4px; color:var(--aio-ink-5); font:700 11px/1.6 sans-serif; }
