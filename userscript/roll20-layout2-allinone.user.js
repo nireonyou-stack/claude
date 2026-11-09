@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.78.1
+// @version      1.78.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.78.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.78.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -9243,7 +9243,7 @@ addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · �
     extra: () => [winMemory.modeRow()] });
 
 // ───────── 시나리오 내비게이터 (📖): 저널 폴더 하나 = 시나리오, 그 안의 핸드아웃 = 장 — 옆에 띄워 보며 길 찾기 ─────────
-// 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 (★) · [따로] 한 장씩 / [이어서] 모두 이어 보기 (기억)
+// 이름이 ▶ 로 시작하는 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 이어 보기 (기억)
 // 핸드아웃 서식은 그대로 (글자 크기 · 색 · 배경 · 테두리 · 표 · 그림) — 스크립트 · 이벤트 · 화면 위로 뜨는 위치만 뺀다
 // 왼쪽 좁은 목차(장 › 제목 줄) | 오른쪽 본문 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기](보내지 않음)
 // 폴더는 경로 이름으로 기억 → 복사한 방에서도 그대로. 핸드아웃 내용은 읽기만 (방 데이터는 안 바꿈)
@@ -9252,7 +9252,7 @@ const scenNav = (() => {
     const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", MODE = "r20_sn_mode", TOC_W = 112, TXT_W = 268;
     const DOCK = "r20_sn_dock", DW = "r20_sn_dw", TW = "r20_sn_tw";         // 왼쪽 끝에 붙이기 · 붙였을 때 너비 · 목차 너비
     const HALF = "r20_sn_half", DH = "r20_sn_dh";          // 붙였을 때 반쪽(위쪽) · 그 높이(화면 높이에 대한 비율)
-    const KEY_RE = /\[본문\]|장면표/;        // 먼저 보여 줄 핸드아웃: 제목에 [본문](대괄호까지) · 장면표 — '시나리오' 만으로는 앵커 · NPC 핸드아웃도 걸려서
+    const KEY_RE = /^\s*▶/;        // 먼저 보여 줄 핸드아웃: 이름이 ▶ 로 시작 (▶시나리오 본문 · ▶장면표 …) — 나머지는 저널 순서대로
     let win = null, cur = null, heads = [], chs = [], selId = null, spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
     // 장면 갈래 (GM): view = 오른쪽에 무엇을 (scen 시나리오 본문 · scn 장면 로그)
     const FOLD = "r20_sn_fold";
@@ -9469,7 +9469,7 @@ const scenNav = (() => {
             const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
             Object.assign(win.style, { left: tr / z + "px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });
             padBadge();
-            return dockSync();
+            return;
         }
         $(".hd").style.paddingLeft = "";
         let g = null;
@@ -9478,10 +9478,8 @@ const scenNav = (() => {
         const l = g?.l != null ? Math.max(0, Math.min(g.l, W - w)) : Math.max(8, (tr ? tr / z : 48) + 8);
         const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : 40;
         Object.assign(win.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
-        dockSync();
     };
-    // 붙인 창은 포트레이트 위에 뜬다 (포트레이트 줄은 그대로) · 붙인 채 닫으면 왼쪽 끝에 '📖 시나리오' 손잡이
-    const dockSync = () => tabSync(true);
+    // 붙인 창은 포트레이트 위에 뜬다 (포트레이트 줄은 그대로) · 닫고 열기는 오른쪽 판 단추줄의 📖
     // Roll20 도구 줄의 축소 · 확장(« ») 단추가 머리줄 위에 겹치면 그만큼 비운다 — 창보다 위에 그려진 작은 요소만 잰다
     const padBadge = () => {
         const hd = $(".hd");
@@ -9497,18 +9495,7 @@ const scenNav = (() => {
         }
         if (right > r.left) hd.style.paddingLeft = Math.round((right - r.left) / aioZoom.get() + 4) + "px";
     };
-    const tabSync = pos => {
-        let t = document.getElementById("r20-sn-tab");
-        if (!(btnVisible.scen && docked() && !isOpen() && window.Campaign)) return t?.remove();
-        if (!t) {
-            t = Object.assign(document.createElement("button"), { type: "button", id: "r20-sn-tab", textContent: "📖 시나리오", title: "시나리오 내비게이터 펴기" });
-            t.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); open(); });
-            document.body.appendChild(t);
-            pos = true;
-        }
-        if (pos) t.style.left = toolsRight() + "px";
-    };
-    const reDock = () => { if (!docked()) return; if (isOpen()) place(); else tabSync(true); };
+    const reDock = () => { if (docked() && isOpen()) place(); };
     let rdT = 0;
     addEventListener("resize", () => { clearTimeout(rdT); rdT = setTimeout(reDock, 150); });
     FEAT.leftBar?.onChange?.(reDock);
@@ -9543,8 +9530,8 @@ const scenNav = (() => {
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
             + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
             + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
-            + '<div class="sp"><div class="toc" role="tree" aria-label="목차"><div class="br" data-b="scen" hidden role="button" aria-expanded="true">📖 시나리오<i></i></div><div class="ls"></div>'
-            + '<div class="br sc" data-b="scn" hidden role="button" aria-expanded="false">🎬 장면<i></i><span class="dot" hidden></span></div><div class="lc" hidden></div></div>'
+            + '<div class="sp"><div class="toc" role="tree" aria-label="목차"><div class="br" data-b="scen" hidden role="button" aria-expanded="true"><i></i><span class="bn">📖 시나리오</span></div><div class="ls"></div>'
+            + '<div class="br sc" data-b="scn" hidden role="button" aria-expanded="false"><i></i><span class="bn">🎬 장면</span><span class="dot" hidden></span></div><div class="lc" hidden></div></div>'
             + '<div class="tgr" role="separator" aria-orientation="vertical" aria-label="목차 너비" title="끌어서 목차 너비 · 두 번 누르면 기본"></div><div class="pane">'
             + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
             + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
@@ -9675,7 +9662,7 @@ const scenNav = (() => {
         const hit = f => !q || f.path.toLowerCase().replace(/\s+/g, "").includes(q) || cho(f.path.replace(/\s+/g, "")).includes(q);
         const row = (f, last) => {
             const n = f.items.filter(it => it.m).length, key = f.items.filter(it => it.m && KEY_RE.test(it.m.get("name") || "")).length, sh = isGM() ? f.items.filter(it => it.m && shared(it.m)).length : 0;
-            return `<div class="pr" role="option" data-p="${escAttr(f.path)}"><span class="pn">${escAttr(f.name)}<small>${escAttr(f.path)} · 핸드아웃 ${n}${key ? ` · ★ ${key}` : ""}${last ? " · 마지막: " + escAttr(last) : ""}${sh ? ` · <em>⚠ ${sh}개 공개됨</em>` : ""}</small></span></div>`;
+            return `<div class="pr" role="option" data-p="${escAttr(f.path)}"><span class="pn">${escAttr(f.name)}<small>${escAttr(f.path)} · 핸드아웃 ${n}${key ? ` · ▶ ${key}` : ""}${last ? " · 마지막: " + escAttr(last) : ""}${sh ? ` · <em>⚠ ${sh}개 공개됨</em>` : ""}</small></span></div>`;
         };
         const rec = recent().map(r => byPath.get(r.path) && hit(byPath.get(r.path)) ? row(byPath.get(r.path), r.where) : "").join("");
         const nameHit = f => !q || f.name.toLowerCase().replace(/\s+/g, "").includes(q) || cho(f.name.replace(/\s+/g, "")).includes(q);
@@ -9684,7 +9671,7 @@ const scenNav = (() => {
             || `<div class="msg">${all.length ? "찾는 폴더가 없어요" : "핸드아웃이 든 저널 폴더가 없어요 — 저널에 폴더를 만들고 핸드아웃에 시나리오를 붙여 넣으세요"}</div>`;
     };
 
-    // ── 열기: '[본문]' · '장면표' 핸드아웃을 맨 앞에, 나머지는 저널 순서 · 차례로 읽어 장으로 (본문 + GM 메모) ──
+    // ── 열기: ▶ 로 시작하는 핸드아웃을 맨 앞에, 나머지는 저널 순서 · 차례로 읽어 장으로 (본문 + GM 메모) ──
     const openPath = async path => {
         const f = folders().find(x => x.path === path);
         if (!f) return showPick(true);
@@ -9711,7 +9698,7 @@ const scenNav = (() => {
             sec.dataset.id = it.id;
             const h = document.createElement("h3");
             h.className = "cht";
-            h.append(Object.assign(document.createElement("span"), { className: "cn", textContent: (it.key ? "★ " : "") + (it.m.get("name") || "(이름 없음)") }));
+            h.append(Object.assign(document.createElement("span"), { className: "cn", textContent: it.m.get("name") || "(이름 없음)" }));
             if (isGM()) h.insertAdjacentHTML("beforeend", stripHtml(it.m));
             sec.append(h);
             chs.push({ id: it.id, sec, key: !!it.key, name: it.m.get("name") || "" });
@@ -9876,8 +9863,8 @@ const scenNav = (() => {
         $(".cfgb").hidden = !gm;
         $(".ls").hidden = gm && fs;
         $(".lc").hidden = !gm || fc;
-        bs.querySelector("i").textContent = fs ? "▸" : "▾"; bs.setAttribute("aria-expanded", String(!fs));
-        bc.querySelector("i").textContent = fc ? "▸" : "▾"; bc.setAttribute("aria-expanded", String(!fc));
+        bs.querySelector("i").textContent = fs ? "+" : "−"; bs.setAttribute("aria-expanded", String(!fs));
+        bc.querySelector("i").textContent = fc ? "+" : "−"; bc.setAttribute("aria-expanded", String(!fc));
         if (gm) renderScenes();
     };
     const renderScenes = () => {
@@ -10016,10 +10003,9 @@ const scenNav = (() => {
         else if (noPick || (gmScn() && !folders().length)) { showPick(false); $(".ls").innerHTML = '<div class="msg">📁 로 시나리오(저널 폴더)를 고르세요</div>'; }       // 시나리오 폴더가 없으면 GM 은 장면 갈래를 바로
         else showPick(true);
     };
-    function close() { if (!win) return; keep(); ppOff(); win.hidden = true; $(".fl").hidden = true; dockSync(); }
+    function close() { if (!win) return; keep(); ppOff(); win.hidden = true; $(".fl").hidden = true; }
     // 단추줄: 장면 목차와 🔍 사이 (플레이어도 — 자기에게 보이는 핸드아웃만)
     const inject = () => {
-        if (btnVisible.scen && docked() && !isOpen() && !document.getElementById("r20-sn-tab")) tabSync(true);
         if (!btnVisible.scen || document.getElementById("r20-snbtn") || !document.getElementById("sidebarcontrol")) return;
         const b = document.createElement("button");
         b.type = "button";
@@ -10036,13 +10022,12 @@ const scenNav = (() => {
         if (on) return inject();
         close();
         document.getElementById("r20-snbtn")?.remove();
-        document.getElementById("r20-sn-tab")?.remove();
         FEAT.screenUI?.place();
     };
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -10071,8 +10056,6 @@ addCss(`
         #r20-sn.dock.half { border-bottom-width:1px; border-bottom-right-radius:var(--aio-r-lg); }
         #r20-sn :is(.dk, .hf)[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
         #r20-sn .hf { font-weight:700; }
-        #r20-sn-tab { position:fixed; z-index:10004; top:42%; width:22px; margin:0; padding:8px 0; border:1px solid var(--aio-line-3); border-left:0; border-radius:0 8px 8px 0; background:var(--aio-bg); color:var(--aio-accent-dark); font:700 11px/1.2 sans-serif; writing-mode:vertical-rl; letter-spacing:1px; cursor:pointer; box-shadow:2px 0 6px rgba(0,0,0,0.25); }
-        #r20-sn-tab:hover { background:var(--aio-accent-bg); }
         #r20-sn .tr { height:22px; padding:0 4px 0 4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:11px; line-height:22px; cursor:pointer; }
         #r20-sn .tr.h { padding-left:12px; }
         #r20-sn .tr.h1 { font-weight:600; }
@@ -10085,10 +10068,11 @@ addCss(`
         #r20-sn .tr.grp { margin-top:6px; color:var(--aio-ink-5); font-weight:700; font-size:10px; }
         #r20-sn .tr.on { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
         /* 목차 두 갈래 (GM): 📖 시나리오 · 🎬 장면 */
-        #r20-sn .br { display:flex; align-items:center; gap:3px; height:22px; margin:2px 0 1px; padding:0 4px; border-radius:var(--aio-r-sm); color:var(--aio-ink-4); font-size:10.5px; font-weight:700; cursor:pointer; user-select:none; }
+        #r20-sn .br { display:flex; align-items:center; gap:2px; height:24px; margin:0 0 2px; padding:0 4px 0 0; border-bottom:1px solid var(--aio-line-3); color:var(--aio-ink-2); font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; cursor:pointer; user-select:none; }
+        #r20-sn .br .bn { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
         #r20-sn .br:hover { background:var(--aio-bg-3); }
         #r20-sn .br.sc { margin-top:8px; color:#6b4592; }
-        #r20-sn .br i { font-style:normal; font-size:9px; }
+        #r20-sn .br i { flex:none; width:14px; font-style:normal; font-size:12px; text-align:center; color:var(--aio-ink-4); }
         #r20-sn :is(.br, .tr.sc) .dot { flex:none; width:5px; height:5px; margin-left:auto; border-radius:50%; background:var(--aio-accent); }
         #r20-sn .tr.sc { --tr-bg:var(--aio-bg-3); position:relative; display:flex; align-items:center; gap:3px; color:#4f3270; }
         #r20-sn .tr.sc:hover { background:var(--tr-bg); }
@@ -10131,6 +10115,8 @@ addCss(`
         /* 본문: 핸드아웃 서식 그대로 (Roll20 핸드아웃 창과 같은 바탕 글꼴 · 크기) — 우리 쪽은 장 머리 · GM 메모 테두리만 */
         #r20-sn .bd { position:relative; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:4px 10px 12px; font-size:14px; line-height:1.5; color:#333; user-select:text; outline:none; overflow-wrap:anywhere; }
         #r20-sn .bd.sep section:not(.on) { display:none; }
+        #r20-sn .bd { overflow-x:hidden; }
+        #r20-sn .bd :is(.cb, .gm) { overflow-x:auto; }
         #r20-sn .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
         #r20-sn .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
         #r20-sn .bd .cht .cn { flex:1 1 100%; min-width:0; }
