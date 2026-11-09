@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.78.0
+// @version      1.78.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.78.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.78.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -940,7 +940,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop";
+const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -2106,7 +2106,10 @@ addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누
     members: [["jbdrawer", "jbDrawer"]] });
 addCss(`
         /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
-        body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 30px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:10003 !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; }
+        body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 30px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:10003 !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; scrollbar-width:thin; }
+        body.r20jbd-open #jukebox#jukebox { padding-left:2px !important; padding-right:2px !important; }
+        body.r20jbd-open #jukebox :is(#jukeboxfolderroot, #jukeboxfolderroot > .dd-list) { margin-left:0 !important; margin-right:0 !important; padding-left:0 !important; padding-right:0 !important; list-style:none !important; }
+        body.r20jb-on.r20jbd-open #jukeboxfolderroot li.dd-folder > ol.dd-list { padding-left:calc(var(--r20jb-ind, 18px) - 10px) !important; }
         #r20-jbd-hd, #r20-jbd-grip, #r20-jbd-hgrip { display:none; }
         body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:10004; display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:30px; padding:0 4px 0 8px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
         body.r20jbd-half #r20-jbd-hd { border-top:1px solid var(--aio-line-3); box-shadow:-6px -4px 14px rgba(0,0,0,0.16); }
@@ -9248,6 +9251,7 @@ addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · �
 const scenNav = (() => {
     const REC = "r20_sn_recent", GEO = "r20_sn_geo", PIN = "r20_sn_pin", TOCK = "r20_sn_toc", MODE = "r20_sn_mode", TOC_W = 112, TXT_W = 268;
     const DOCK = "r20_sn_dock", DW = "r20_sn_dw", TW = "r20_sn_tw";         // 왼쪽 끝에 붙이기 · 붙였을 때 너비 · 목차 너비
+    const HALF = "r20_sn_half", DH = "r20_sn_dh";          // 붙였을 때 반쪽(위쪽) · 그 높이(화면 높이에 대한 비율)
     const KEY_RE = /\[본문\]|장면표/;        // 먼저 보여 줄 핸드아웃: 제목에 [본문](대괄호까지) · 장면표 — '시나리오' 만으로는 앵커 · NPC 핸드아웃도 걸려서
     let win = null, cur = null, heads = [], chs = [], selId = null, spyT = 0, posT = 0, hitAt = -1, hits = [], picked = "";
     // 장면 갈래 (GM): view = 오른쪽에 무엇을 (scen 시나리오 본문 · scn 장면 로그)
@@ -9273,14 +9277,13 @@ const scenNav = (() => {
     const people = () => (window.Campaign?.players?.models || []).filter(p => p.id !== window.currentPlayer?.id)
         .sort((a, b) => !!b.get("online") - !!a.get("online") || String(a.get("displayname") || "").localeCompare(String(b.get("displayname") || ""), "ko"));
     const pcol = p => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(p.get("color") || "") ? p.get("color") : "#888888";
-    const pink = hex => { const h = hex.slice(1), f = h.length === 3 ? [...h].map(c => c + c).join("") : h, [r, g, b] = [0, 2, 4].map(i => parseInt(f.slice(i, i + 2), 16)); return r * 0.299 + g * 0.587 + b * 0.114 > 160 ? "#222" : "#fff"; };
     const pnm = p => String(p.get("displayname") || "?").trim();
-    // 목차 줄 오른쪽: 볼 수 있는 사람 (플레이어 색 · 이름 첫 글자, 모두 공개면 '모두')
+    // 목차 줄 오른쪽: 볼 수 있는 사람 — 저널 탭처럼 플레이어 색 점 (모두 공개면 모든 플레이어)
     const whoHtml = m => {
-        const v = seeList(m);
-        if (v.includes("all")) return '<span class="who"><u class="all" title="모든 플레이어">모두</u></span>';
-        const ps = people().filter(p => v.includes(p.id));
-        return ps.length ? `<span class="who">${ps.slice(0, 4).map(p => `<u style="background:${pcol(p)};color:${pink(pcol(p))}" title="${escAttr(pnm(p))}">${escAttr([...pnm(p)][0] || "?")}</u>`).join("")}${ps.length > 4 ? `<u class="all">+${ps.length - 4}</u>` : ""}</span>` : "";
+        const v = seeList(m), ps = v.includes("all") ? people() : people().filter(p => v.includes(p.id));
+        if (!ps.length) return "";
+        const tip = (v.includes("all") ? "모두: " : "") + ps.map(pnm).join(", ");
+        return `<span class="who" title="${escAttr(tip)}">${ps.slice(0, 6).map(p => `<i style="color:${pcol(p)}">●</i>`).join("")}${ps.length > 6 ? `<b>+${ps.length - 6}</b>` : ""}</span>`;
     };
     const pmAll = new Set();          // 접속 안 한 사람까지 펼친 핸드아웃
     const stripHtml = m => {
@@ -9446,6 +9449,8 @@ const scenNav = (() => {
     const pinned = () => ls(PIN) === "true";
     const tocOn = () => ls(TOCK) !== "off";
     const docked = () => ls(DOCK) === "1";
+    const half = () => ls(HALF) === "1";
+    const dhFrac = () => Math.max(0.2, Math.min(0.95, parseFloat(ls(DH)) || 0.5));
     const tocW = () => Math.max(70, Math.min(420, parseFloat(ls(TW)) || TOC_W));
     const keep = () => { if (win && !win.hidden && pinned() && !docked() && !win.classList.contains("aio-min")) ls(GEO, JSON.stringify({ l: win.offsetLeft, t: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight })); };
     // Roll20 왼쪽 도구 줄 오른쪽 끝 (화면 px) — 가늘게 · 접힘도 따라감
@@ -9456,11 +9461,17 @@ const scenNav = (() => {
         const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, tr = toolsRight();
         win.style.setProperty("--sn-tw", tocW() + "px");
         win.classList.toggle("dock", docked());
+        win.classList.toggle("half", docked() && half());
+        $(".hf").hidden = !docked();
+        $(".hf").setAttribute("aria-pressed", String(docked() && half()));
         if (docked()) {
+            // 높이는 % (화면 기준) — 글자 크기(배율)를 바꿔도 위아래 끝이 그대로
             const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
-            Object.assign(win.style, { left: tr / z + "px", top: "0px", width: w + "px", height: H + "px" });
+            Object.assign(win.style, { left: tr / z + "px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });
+            padBadge();
             return dockSync();
         }
+        $(".hd").style.paddingLeft = "";
         let g = null;
         if (pinned()) try { g = JSON.parse(ls(GEO) || "null"); } catch (e) { /* 없음 */ }
         const w = Math.min(Math.max(200, g?.w || TXT_W + (tocOn() ? tocW() : 0)), W - 16), h = Math.min(Math.max(160, g?.h || Math.min(600, Math.round(H * 0.7))), H - 16);
@@ -9469,12 +9480,22 @@ const scenNav = (() => {
         Object.assign(win.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
         dockSync();
     };
-    // 붙어 있으면 포트레이트 줄(#playerzone)을 창 오른쪽으로 비키고, 붙인 채 닫으면 왼쪽 끝에 '📖 시나리오' 손잡이
-    const dockSync = () => {
-        const on = !!win && docked() && isOpen();
-        document.body.classList.toggle("r20sn-dock", on);
-        if (on) document.documentElement.style.setProperty("--r20sn-pz", Math.round(win.getBoundingClientRect().right) + "px");
-        tabSync(true);
+    // 붙인 창은 포트레이트 위에 뜬다 (포트레이트 줄은 그대로) · 붙인 채 닫으면 왼쪽 끝에 '📖 시나리오' 손잡이
+    const dockSync = () => tabSync(true);
+    // Roll20 도구 줄의 축소 · 확장(« ») 단추가 머리줄 위에 겹치면 그만큼 비운다 — 창보다 위에 그려진 작은 요소만 잰다
+    const padBadge = () => {
+        const hd = $(".hd");
+        hd.style.paddingLeft = "";
+        const r = hd.getBoundingClientRect(), y = r.top + r.height / 2;
+        let right = 0;
+        for (let x = r.left + 2; x < r.left + 90; x += 6) {
+            for (const el of document.elementsFromPoint(x, y)) {
+                if (el === win || win.contains(el)) break;
+                const er = el.getBoundingClientRect();
+                if (er.width && er.width < 90 && er.height < 90) right = Math.max(right, er.right);
+            }
+        }
+        if (right > r.left) hd.style.paddingLeft = Math.round((right - r.left) / aioZoom.get() + 4) + "px";
     };
     const tabSync = pos => {
         let t = document.getElementById("r20-sn-tab");
@@ -9516,6 +9537,7 @@ const scenNav = (() => {
             + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
             + '<button type="button" data-a="cfg" class="ib cfgb" hidden aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
             + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
+            + '<button type="button" data-a="half" class="ib hf" hidden title="반쪽 높이 ↔ 전체 높이" aria-label="반쪽 높이" aria-pressed="false">½</button>'
             + '<button type="button" data-a="dock" class="ib dk" title="왼쪽 끝에 붙이기 ↔ 띄우기" aria-label="왼쪽 끝에 붙이기" aria-pressed="false">⇤</button>'
             + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
@@ -9529,7 +9551,8 @@ const scenNav = (() => {
             + '<span class="md" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
             + '<div class="bd" tabindex="-1"></div><div class="lg" tabindex="-1" hidden></div></div></div>'
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>'
-            + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>';
+            + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>'
+            + '<div class="hg" role="separator" aria-orientation="horizontal" aria-label="창 높이" title="끌어서 높이 · 두 번 누르면 반쪽"></div>';
         win.addEventListener("keydown", e => {
             e.stopPropagation();
             if (e.target.matches(".lc input")) return;          // 장면 이름 고치는 중
@@ -9574,6 +9597,7 @@ const scenNav = (() => {
                 return keep();
             }
             if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
+            if (a === "half") { ls(HALF, half() ? "" : "1"); return place(); }
             if (a === "dock") { ls(DOCK, docked() ? "" : "1"); b.setAttribute("aria-pressed", String(docked())); $(".pin").hidden = docked(); return place(); }
             if (a === "warn") return alert("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"));
             if (a === "put" || a === "copy") {
@@ -9627,6 +9651,8 @@ const scenNav = (() => {
         const setTw = () => win.style.setProperty("--sn-tw", tocW() + "px");
         dragX($(".tgr"), ev => { const z = aioZoom.get(); ls(TW, String(Math.round(Math.max(70, Math.min(420, (ev.clientX - $(".toc").getBoundingClientRect().left) / z))))); setTw(); }, null,
             () => { try { localStorage.removeItem(TW); } catch (e) { /* 없음 */ } setTw(); });
+        dragX($(".hg"), ev => { ls(DH, String(Math.round(Math.max(0.2, Math.min(0.95, (ev.clientY - win.getBoundingClientRect().top) / innerHeight)) * 1000) / 1000)); place(); }, null,
+            () => { try { localStorage.removeItem(DH); } catch (e) { /* 없음 */ } place(); });
         dragX($(".eg"), ev => { const z = aioZoom.get(); ls(DW, String(Math.round(Math.max(240, (ev.clientX - win.getBoundingClientRect().left) / z)))); place(); }, null,
             () => { try { localStorage.removeItem(DW); } catch (e) { /* 없음 */ } place(); });
         document.body.appendChild(win);
@@ -10016,7 +10042,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기 · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 제목에 '[본문]' · '장면표' 가 든 핸드아웃을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -10037,12 +10063,14 @@ addCss(`
         #r20-sn.notoc :is(.toc, .tgr) { display:none; }
         #r20-sn .tgr { position:relative; z-index:2; flex:none; width:6px; margin:0 -3px; cursor:col-resize; touch-action:none; }
         #r20-sn .eg { position:absolute; z-index:3; top:0; right:0; bottom:0; width:6px; cursor:col-resize; touch-action:none; display:none; }
-        #r20-sn :is(.tgr, .eg):is(:hover, .on) { background:var(--aio-accent); opacity:0.45; }
+        #r20-sn .hg { position:absolute; z-index:3; left:0; right:0; bottom:0; height:6px; cursor:row-resize; touch-action:none; display:none; }
+        #r20-sn.dock.half .hg { display:block; }
         #r20-sn.dock { resize:none; min-height:0; border-width:0 1px 0 0; border-radius:0; box-shadow:3px 0 10px rgba(0,0,0,0.18); }
         #r20-sn.dock .eg { display:block; }
         #r20-sn.dock .hd { cursor:default; }
-        #r20-sn .dk[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
-        html body.r20sn-dock #playerzone#playerzone { left:var(--r20sn-pz) !important; }
+        #r20-sn.dock.half { border-bottom-width:1px; border-bottom-right-radius:var(--aio-r-lg); }
+        #r20-sn :is(.dk, .hf)[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
+        #r20-sn .hf { font-weight:700; }
         #r20-sn-tab { position:fixed; z-index:10004; top:42%; width:22px; margin:0; padding:8px 0; border:1px solid var(--aio-line-3); border-left:0; border-radius:0 8px 8px 0; background:var(--aio-bg); color:var(--aio-accent-dark); font:700 11px/1.2 sans-serif; writing-mode:vertical-rl; letter-spacing:1px; cursor:pointer; box-shadow:2px 0 6px rgba(0,0,0,0.25); }
         #r20-sn-tab:hover { background:var(--aio-accent-bg); }
         #r20-sn .tr { height:22px; padding:0 4px 0 4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:11px; line-height:22px; cursor:pointer; }
@@ -10123,9 +10151,10 @@ addCss(`
         #r20-sn .tr.pmx:hover .ta { display:flex; }
         #r20-sn .tr.pmx:hover .who { visibility:hidden; }
         #r20-sn .tr.pmx .ta button { width:18px; font-size:10px; }
-        #r20-sn .who { display:inline-flex; flex:none; gap:1px; margin-left:auto; }
-        #r20-sn .who u { min-width:14px; height:14px; padding:0 3px; border-radius:7px; font:700 8.5px/14px sans-serif; text-align:center; text-decoration:none; box-sizing:border-box; }
-        #r20-sn .who u.all { background:#6b6b6b; color:#fff; }
+        #r20-sn .who { display:inline-flex; flex:none; align-items:center; gap:1px; margin-left:auto; font-size:11px; line-height:1; }
+        #r20-sn .who i { font-style:normal; }
+        #r20-sn .who b { margin-left:1px; color:var(--aio-ink-5); font-size:9px; }
+        #r20-sn .bd .cht .pm { zoom:0.9; }
         #r20-sn .bd section.key .cht { color:var(--aio-accent-dark); }
         #r20-sn .bd section:first-child .cht, #r20-sn .bd.sep .cht { margin-top:0; }
         #r20-sn .bd .grp { margin:14px 0 4px; color:var(--aio-ink-5); font:700 11px/1.6 sans-serif; }
