@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.88.1
+// @version      1.89.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.88.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1134,26 +1134,29 @@ const aioDockSeg = (modes, cur, onPick) => {
     g.set(cur);
     return g;
 };
-// 끌어 옮기기: head 를 누르고 끌면 win(position:fixed) 이 따라온다 · 단추 · 입력칸 위에서는 안 함 · 다 끌면 onEnd(left, top) (배율 나눈 값)
-const aioDrag = (win, head, onEnd) => {
-    head.addEventListener("pointerdown", e => {
-        if (e.button !== 0 || e.target.closest("button, input, select, textarea, a, label, [contenteditable]")) return;
-        const z = aioZoom.get(), r = win.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
-        let moved = false;
-        const mv = ev => {
-            const dx = ev.clientX - sx, dy = ev.clientY - sy;
-            if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
-            moved = true;
-            win.style.left = Math.max(0, Math.min(innerWidth - 60, r.left + dx)) / z + "px";
-            win.style.top = Math.max(0, Math.min(innerHeight - 30, r.top + dy)) / z + "px";
-        };
-        const up = () => {
-            removeEventListener("pointermove", mv); removeEventListener("pointerup", up);
-            if (moved) onEnd?.(parseFloat(win.style.left), parseFloat(win.style.top));
-        };
-        addEventListener("pointermove", mv); addEventListener("pointerup", up);
-    });
+// 끌어 옮기기: 머리줄을 누르고 끌면 win(position:fixed) 이 따라온다 · 단추 · 입력칸 위에서는 안 함 · 다 끌면 onEnd(left, top) (배율 나눈 값)
+const aioDragFrom = (win, e, onEnd) => {
+    if (e.button !== 0 || e.target.closest("button, input, select, textarea, a, label, [contenteditable]")) return;
+    const z = aioZoom.get(), r = win.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
+    let moved = false;
+    const mv = ev => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+        if (!moved) Object.assign(win.style, { right: "auto", bottom: "auto", transform: "none" });      // 오른쪽 · 아래 기준 자리였어도 끄는 동안은 왼쪽 · 위로
+        moved = true;
+        win.style.left = Math.max(0, Math.min(innerWidth - 60, r.left + dx)) / z + "px";
+        win.style.top = Math.max(0, Math.min(innerHeight - 30, r.top + dy)) / z + "px";
+    };
+    const up = () => {
+        removeEventListener("pointermove", mv); removeEventListener("pointerup", up);
+        if (moved) onEnd?.(parseFloat(win.style.left), parseFloat(win.style.top));
+    };
+    addEventListener("pointermove", mv); addEventListener("pointerup", up);
 };
+const aioDrag = (win, head, onEnd) => head.addEventListener("pointerdown", e => aioDragFrom(win, e, onEnd));
+// 작은 창들(로그 백업 · 코코포리아 맵 가져오기 · 맵 맞추기)은 머리줄을 끌어 옮긴다 — ⠿ 는 CSS 로
+const AIO_DRAG_HEADS = "#r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd";
+document.addEventListener("pointerdown", e => { const h = e.target.closest?.(AIO_DRAG_HEADS); if (h) aioDragFrom(h.parentElement, e); });
 // 이 스크립트 파일 주소 (오류 스택에 이 주소가 있으면 올인원 오류) — 오류가 났을 때 처음 한 번만 알아낸다
 // (불러올 때 스택을 만들면 스크립트 전체를 다시 읽어 40ms 가 든다 · 이벤트 처리 안에서는 작은 함수만)
 let aioSrc = null;
@@ -1249,6 +1252,9 @@ const CORE_CSS = `
         @media (prefers-reduced-motion: reduce) { .aio-t { animation:none; } }
         /* 공용 창 틀 — ⠿ 끌기 손잡이 · 자리 고르기 (aioDockSeg) */
         .aio-drag { flex:none; width:14px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; cursor:move; user-select:none; touch-action:none; }
+        :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd { cursor:move; justify-content:flex-start !important; gap:6px; }
+        :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd > .x { margin-left:auto; }
+        :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd::before { content:"⠿"; flex:none; width:14px; margin-right:2px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; }
         .aio-dock { display:inline-flex; flex:none; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
         .aio-dock button { height:20px; margin:0; padding:0 6px; border:0; border-radius:0; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-4); font-size:var(--aio-fs-xs); line-height:20px; white-space:nowrap; cursor:pointer; }
         .aio-dock button + button { border-left:1px solid var(--aio-line-2); }
@@ -9156,9 +9162,7 @@ const quickFind = (() => {
         if (!keepOpen()) box.classList.remove("aio-min");
         pinBtn.setAttribute("aria-pressed", String(pinned));
         pinBtn.title = pinned ? "이 자리에 고정 중 — 누르면 풀기" : "이 자리에 고정 — 실행해도 안 닫히고, 옮긴 자리 · 크기를 기억해요";
-        dockBtn.textContent = docked ? "◀" : "▶";
-        dockBtn.title = docked ? "떼어 내기 — 따로 띄워요" : "붙이기 — 채팅 왼쪽, 맵 · 편집기 · 찾기 단추 밑에 붙여 열어 둬요";
-        dockBtn.setAttribute("aria-label", docked ? "떼어 내기" : "붙이기");
+        dockBtn.set(docked ? "dock" : "float");
         if (docked) { FEAT.screenUI?.place(); dockPlace(); } else placeBox();
     };
 
@@ -9168,11 +9172,12 @@ const quickFind = (() => {
         root.id = "r20-qf";
         // 머리줄 = 검색칸 (접어도 검색칸은 남는다) · 📌 동안엔 왼쪽 ⋮⋮ 로 옮기고 두 번 눌러 접기
         root.innerHTML = '<div class="qf-box" role="dialog" aria-label="빠른 찾기">'
-            + '<div class="qf-head"><span class="qf-grip" title="끌어서 옮기기 · 두 번 눌러 접기" aria-hidden="true">⋮⋮</span>'
-            + '<input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="빠른 찾기 — 이름 · 초성 · #태그 · > 로 시작하면 명령" placeholder="찾기 — 이름 · 초성 · #태그 · > 명령" autocomplete="off" spellcheck="false">'
-            + '<button type="button" class="qf-ib qf-dock">▶</button>'
+            + '<div class="qf-head"><span class="qf-grip aio-drag" title="끌어서 옮기기 · 두 번 눌러 접기" aria-hidden="true">⠿</span><b class="qf-tt">🔍 빠른 찾기</b><span class="qf-sp"></span><span class="dkw"></span>'
             + '<button type="button" class="qf-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
             + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
+            + '<div class="qf-qrow">'
+            + '<input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="빠른 찾기 — 이름 · 초성 · #태그 · > 로 시작하면 명령" placeholder="찾기 — 이름 · 초성 · #태그 · > 명령" autocomplete="off" spellcheck="false">'
+            + '</div>'
             + '<div class="qf-cats" role="group" aria-label="찾을 곳"><label class="qf-all"><input type="checkbox" class="qf-allc">전체</label>' + CATS.map(([c, l]) => `<label${gmOnly(c) ? ' class="qf-gmc"' : ""}><input type="checkbox" data-c="${c}">${l}<i></i></label>`).join("") + '</div>'
             + '<div class="qf-ctx" hidden>앞뒤<input type="number" class="qf-n" min="0" max="100" step="1" aria-label="앞뒤 몇 개">개'
             + '<span class="qf-ord" role="radiogroup" aria-label="묶음 순서"><label><input type="radio" name="r20qf-ord" value="new">최신순</label><label><input type="radio" name="r20qf-ord" value="old">오래된순</label></span><span class="qf-src"></span></div>'
@@ -9186,15 +9191,16 @@ const quickFind = (() => {
         catBox = root.querySelector(".qf-cats");
         ctxRow = root.querySelector(".qf-ctx");
         pinBtn = root.querySelector(".qf-pin");
-        dockBtn = root.querySelector(".qf-dock");
-        root.querySelector(".qf-x").addEventListener("click", close);
-        dockBtn.addEventListener("click", () => {
-            docked = !docked;
+        // 자리: 붙임(채팅 왼쪽에 열어 둠) · 떠 있기 — 공용 창 틀의 자리 고르기
+        dockBtn = aioDockSeg([["dock", "붙임"], ["float", "떠 있기"]], docked ? "dock" : "float", v => {
+            docked = v === "dock";
             try { localStorage.setItem(DOCK_KEY, String(docked)); } catch (e) { /* 저장 못 함 */ }
             box.classList.remove("aio-min");
             applyPin();
             inp.focus();
         });
+        root.querySelector(".dkw").replaceWith(dockBtn);
+        root.querySelector(".qf-x").addEventListener("click", close);
         pinBtn.addEventListener("click", () => {
             pinned = !pinned;
             try { localStorage.setItem(PIN_KEY, String(pinned)); } catch (e) { /* 저장 못 함 */ }
@@ -9567,8 +9573,12 @@ addCss(`
         #r20-qf.dock .qf-head { padding-left:2px; }
         #r20-qf.dock .qf-box { border-top-right-radius:0; border-bottom-right-radius:0; }
         #r20-qf.dock .qf-pin { display:none; }
-        #r20-qf .qf-dock { font-size:8px; }
-        #r20-qf .qf-grip { display:none; flex-shrink:0; width:11px; color:var(--aio-ink-5); font-size:var(--aio-fs-xs); letter-spacing:-3px; text-align:center; }
+        #r20-qf .qf-grip { display:none; flex-shrink:0; }
+        #r20-qf .qf-tt { margin:0 2px; color:var(--aio-ink-2); font-size:var(--aio-fs-md); white-space:nowrap; }
+        #r20-qf .qf-sp { flex:1; }
+        #r20-qf .qf-head .aio-dock { margin-right:2px; }
+        #r20-qf .qf-qrow { display:flex; flex-shrink:0; padding:5px 8px; border-bottom:1px solid var(--aio-line-4); }
+        #r20-qf .qf-qrow .qf-in { flex:1; min-width:0; }
         #r20-qf:is(.pin, .dock) .qf-grip { display:block; }
         #r20-qf.dock .qf-grip { cursor:default; }
         #r20-qf .qf-ib { width:21px; height:21px; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
@@ -9677,7 +9687,7 @@ addCss(`
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
         /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
         :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .ui-dialog-titlebar) { display:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .qf-qrow, .ui-dialog-titlebar) { display:none !important; }
 `);
 
 addFeature("quickFind", quickFind);
