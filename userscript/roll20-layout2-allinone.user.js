@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.89.1
+// @version      1.89.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.89.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1230,7 +1230,7 @@ const zpx = v => v / aioZoom.get() + "px";
 
 const CORE_CSS = `
         /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
-        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#666; --aio-ink-5:#767676; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-tip-bad:rgba(92,20,20,0.96); --aio-alt:#8a3d9e; --aio-shadow-sm:0 1px 3px rgba(0,0,0,0.2); --aio-shadow-md:0 4px 12px rgba(0,0,0,0.2); --aio-shadow-lg:0 8px 24px rgba(0,0,0,0.25); --aio-z-dock:2999; --aio-z-win:10003; --aio-z-pop:10010; --aio-z-tip:100000; --aio-z-toast:100050; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
+        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#666; --aio-ink-5:#767676; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-tip-bad:rgba(92,20,20,0.96); --aio-alt:#8a3d9e; --aio-shadow-sm:0 1px 3px rgba(0,0,0,0.2); --aio-shadow-md:0 4px 12px rgba(0,0,0,0.2); --aio-shadow-lg:0 8px 24px rgba(0,0,0,0.25); --aio-z-dock:2999; --aio-z-win:10003; --aio-z-pop:10010; --aio-z-tip:100000; --aio-z-toast:100050; --aio-h-sm:22px; --aio-h:26px; --aio-h-lg:30px; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
         /* 누구나 읽고 쓸 수 있게 (UX 원칙 5): 키보드로 옮길 때 어디인지 늘 보이게 · '움직임 줄이기'면 미끄러짐 끔 */
         :is(${AIO_ZOOMED}) :where(button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [role="button"], [role="option"]):focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         @media (prefers-reduced-motion: reduce) {
@@ -1250,6 +1250,13 @@ const CORE_CSS = `
         .aio-t button:focus-visible { outline:2px solid var(--aio-accent-mid); outline-offset:1px; }
         @keyframes aio-t-in { from { opacity:0; transform:translateY(6px); } }
         @media (prefers-reduced-motion: reduce) { .aio-t { animation:none; } }
+        /* 공용 부품: − + 한 쌍 (썸네일 · 아이콘 크기) — 기본 26px, .sm 22px
+           앞의 :is(…) 는 Roll20 대화창 · 메뉴 안 단추 규칙보다 세게 하려는 것 (id 가 섞여 있어 우선순위가 올라감) */
+        .aio-pm { display:inline-flex; flex-shrink:0; gap:2px; }
+        .aio-pm[hidden] { display:none !important; }
+        :is(.ui-dialog, #imagedialog, #r20be, .vtt-page-card-menu, body) .aio-pm > button { width:var(--aio-h); height:var(--aio-h); margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-xl); line-height:1; cursor:pointer; }
+        :is(.ui-dialog, #imagedialog, #r20be, .vtt-page-card-menu, body) .aio-pm.sm > button { width:var(--aio-h-sm); height:var(--aio-h-sm); font-size:var(--aio-fs-lg); }
+        :is(.ui-dialog, #imagedialog, #r20be, .vtt-page-card-menu, body) .aio-pm > button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         /* 공용 창 틀 — ⠿ 끌기 손잡이 · 자리 고르기 (aioDockSeg) */
         .aio-drag { flex:none; width:14px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; cursor:move; user-select:none; touch-action:none; }
         :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd { cursor:move; justify-content:flex-start !important; gap:6px; }
@@ -5191,7 +5198,7 @@ const sidePicker = (() => {
         bar.className = "r20cs-bar";
         bar.innerHTML = '<strong class="r20cs-num"></strong><span class="r20cs-info"></span><span class="r20cs-flex"></span>'
             + '<label>번호로 가기 <input type="number" min="1" aria-label="번호로 가기"></label>'
-            + '<span class="r20cs-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span>';
+            + '<span class="r20cs-zoom aio-pm sm"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span>';
         bar.querySelector(".r20cs-num").textContent = `${cur + 1}번`;
         bar.querySelector(".r20cs-info").textContent = `/ 전체 ${list.length}면 · 지금 ${cur + 1}번 · 더블클릭하면 바로 적용`;
         const inp = bar.querySelector("input");
@@ -6273,7 +6280,7 @@ const pagePanel = (() => {
             const row = menu.querySelector(".input-row");
             if (!row || row.querySelector(".r20pg-zoom")) return;       // Vue 가 다시 그리면 다시 단다
             const z = document.createElement("span");
-            z.className = "r20pg-zoom";
+            z.className = "r20pg-zoom aio-pm sm";
             z.innerHTML = '<button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button>';
             z.addEventListener("click", e => {
                 const b = e.target.closest("button[data-d]");
@@ -6714,9 +6721,6 @@ addCss(`
         body.r20pg-on .vtt-page-card-menu .page-search-input .grimoire__roll20-icon { --v7353a950:14px !important; color:var(--aio-ink-4) !important; }
         body.r20pg-on .vtt-page-card-menu .create-page button { height:28px !important; min-height:0 !important; padding:0 10px !important; font-size:var(--aio-fs-md) !important; }
         body.r20pg-on .vtt-page-card-menu .create-page__label, body.r20pg-on .block-submenu:has([data-testid^="pageSettings-"]) .grimoire-tab__label { font-size:var(--aio-fs-md) !important; font-weight:700 !important; }
-        body.r20pg-on .vtt-page-card-menu .r20pg-zoom { display:flex; gap:2px; flex-shrink:0; }
-        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button { width:24px; height:24px; margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-lg); line-height:1; cursor:pointer; }
-        body.r20pg-on .vtt-page-card-menu .r20pg-zoom button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         body.r20pg-on .vtt-page-card-menu .breadcrumb-wrapper { min-height:0 !important; height:32px !important; font-size:var(--aio-fs-md) !important; color:var(--aio-ink-4) !important; }
         body.r20pg-on .vtt-page-card-menu .breadcrumb-item { font-size:var(--aio-fs-md) !important; color:var(--aio-ink-4) !important; }
         body.r20pg-on .vtt-page-card-menu .breadcrumb-item:last-of-type { color:var(--aio-ink-2) !important; font-weight:700 !important; }
@@ -6899,9 +6903,6 @@ addCss(`
         .r20cs-bar .r20cs-flex { flex:1; }
         .r20cs-bar label { display:flex; align-items:center; gap:4px; margin:0; font-size:var(--aio-fs-sm); font-weight:normal; color:var(--aio-ink-3); }
         .r20cs-bar input { width:58px !important; height:24px !important; margin:0 !important; padding:0 6px !important; font-size:var(--aio-fs-md) !important; }
-        .r20cs-zoom { display:flex; gap:2px; }
-        .r20cs-zoom button { width:24px; height:22px; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-lg); line-height:1; cursor:pointer; }
-        .r20cs-zoom button:hover { background:var(--aio-bg-4); color:var(--aio-ink); }
 `);
 // ───────── 토큰 설정 창 정리: Roll20 '토큰 설정'의 세부 정보 탭을 한 화면 표로 (GM용 메모 탭 · 저장 · 취소는 Roll20 그대로) ─────────
 // [원래 칸은 숨겨 두고 새 칸이 대신 바꾼다] Roll20 은 저장할 때 원래 칸(.bar1_value · .showplayers_name …)을 읽는다.
@@ -7497,7 +7498,7 @@ const roomImages = (() => {
             + `<button type="button" data-m="room" aria-pressed="${mode === "room"}">이 방의 이미지</button></div>`
             + `<div class="r20ri-body">`
             + `<div class="r20ri-bar"><label class="r20ri-q">${SEARCH_SVG}<input type="search" placeholder="이름·사용처 검색" aria-label="이미지 검색"></label>`
-            + `<span class="r20ri-zoom"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
+            + `<span class="r20ri-zoom aio-pm"><button type="button" data-d="-1" aria-label="작게">−</button><button type="button" data-d="1" aria-label="크게">+</button></span></div>`
             + `<div class="r20ri-chips">${KINDS.map(([k, l]) => `<button type="button" data-src="${k}" aria-pressed="${src === k}">${l}</button>`).join("")}</div>`
             + `<div class="r20ri-note" hidden><span></span><button type="button" data-a="load"></button></div>`
             + `<div class="r20ri-list"></div>`
@@ -7663,7 +7664,7 @@ const queryPicker = (() => {
         const box = document.createElement("div");
         box.className = "r20qp-box";
         box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
-            + '<span class="r20qp-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
+            + '<span class="r20qp-zoom aio-pm"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
             + '<div class="r20qp-grid"></div>';
         const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input");
         let gd = null;
@@ -8086,9 +8087,6 @@ addCss(`
         #custom-journal-popup .cj-ft { display:flex; align-items:center; justify-content:flex-end; gap:3px; flex-shrink:0; padding:2px 8px; border-top:1px solid var(--aio-line-4); color:var(--aio-ink-5); font-size:var(--aio-fs-sm); }
         .ui-dialog.r20qp .r20qp-bar { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
         .ui-dialog.r20qp .r20qp-bar input { flex:1; min-width:0; height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:var(--aio-fs-md) !important; box-sizing:border-box; }
-        .ui-dialog.r20qp .r20qp-zoom { display:flex; gap:2px; }
-        .ui-dialog.r20qp .r20qp-zoom button { width:26px; height:26px; margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-xl); line-height:1; cursor:pointer; }
-        .ui-dialog.r20qp .r20qp-zoom button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         /* 'Macro Options' 제목은 감추고 제목줄은 끌어 옮기는 얇은 띠로만 */
         .ui-dialog.r20qp .ui-dialog-titlebar { min-height:0 !important; height:12px !important; padding:0 !important; border:0 !important; background:transparent !important; cursor:move; }
         .ui-dialog.r20qp .ui-dialog-titlebar .ui-dialog-title { display:none !important; }
@@ -8121,8 +8119,6 @@ addCss(`
         #imagedialog .r20ri-bar { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
         #imagedialog .r20ri-q { flex:1; display:flex; align-items:center; gap:6px; height:28px; margin:0; padding:0 8px; border-radius:var(--aio-r); background:var(--aio-bg-3); min-width:0; }
         #imagedialog .r20ri-q input { flex:1; min-width:0; width:auto; height:26px; margin:0; padding:0; border:0 !important; background:transparent; box-shadow:none !important; font-size:var(--aio-fs-md); outline:none; }
-        #imagedialog .r20ri-zoom { display:flex; gap:2px; }
-        #imagedialog .r20ri-zoom button { width:24px; height:24px; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-lg); }
         #imagedialog .r20ri-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
         #imagedialog .r20ri-chips button, #imagedialog .r20ri-foot button, #imagedialog .r20ri-note button { height:24px; padding:0 9px; border:1px solid var(--aio-line-2); border-radius:12px; background:var(--aio-bg); font-size:var(--aio-fs-sm); color:var(--aio-ink-3); white-space:nowrap; }
         #imagedialog .r20ri-chips button[aria-pressed="true"] { background:var(--aio-accent); border-color:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
@@ -13809,7 +13805,7 @@ const bulkEditor = (() => {
         ui.vList = el("button", { type: "button", "aria-label": "목록으로 보기", title: "목록", html: ICON.list, onclick: () => setView(false) });
         ui.vGrid = el("button", { type: "button", "aria-label": "아이콘으로 보기", title: "아이콘", html: ICON.grid, onclick: () => setView(true) });
         ui.view = el("span", { class: "r20be-vw", role: "group", "aria-label": "보기 방식", hidden: true }, ui.vList, ui.vGrid);
-        ui.zoom = el("span", { class: "r20be-zm", hidden: true },
+        ui.zoom = el("span", { class: "r20be-izm aio-pm sm", hidden: true },
             el("button", { type: "button", "aria-label": "아이콘 작게", onclick: () => zoom(-1) }, "−"),
             el("button", { type: "button", "aria-label": "아이콘 크게", onclick: () => zoom(1) }, "+"));
         // 폴더 · 플레이리스트 한꺼번에 펼치기 · 접기 (저널 · BGM 의 폴더 보기에서만)
