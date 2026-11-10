@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.85.0
+// @version      1.86.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.85.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.86.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1198,7 +1198,12 @@ const zpx = v => v / aioZoom.get() + "px";
 
 const CORE_CSS = `
         /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
-        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-tip-bad:rgba(92,20,20,0.96); --aio-alt:#8a3d9e; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
+        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#666; --aio-ink-5:#767676; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-tip-bad:rgba(92,20,20,0.96); --aio-alt:#8a3d9e; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
+        /* 누구나 읽고 쓸 수 있게 (UX 원칙 5): 키보드로 옮길 때 어디인지 늘 보이게 · '움직임 줄이기'면 미끄러짐 끔 */
+        :is(${AIO_ZOOMED}) :where(button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [role="button"], [role="option"]):focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        @media (prefers-reduced-motion: reduce) {
+            :is(${AIO_ZOOMED}), :is(${AIO_ZOOMED}) *, :is(${AIO_ZOOMED}) *::before, :is(${AIO_ZOOMED}) *::after, body.r20lt-on .master-toolbar-outer, .aio-t { transition:none !important; animation:none !important; scroll-behavior:auto !important; }
+        }
         /* 공용 알림 (aioToast) — 맵 아래 가운데, 위로 쌓임 */
         #aio-toasts { position:fixed; left:0; bottom:16px; z-index:100050; display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; }
         .aio-t { display:flex; align-items:center; gap:10px; min-width:260px; max-width:min(560px, 90vw); padding:7px 8px 7px 12px; border-radius:var(--aio-r-lg); background:var(--aio-tip); color:var(--aio-ink-inv); font-size:var(--aio-fs-md); line-height:1.4; box-shadow:0 6px 18px rgba(0,0,0,0.35); pointer-events:auto; animation:aio-t-in .16s ease-out; }
@@ -13957,7 +13962,7 @@ addCss(`
         #r20be .qe-qt { padding:5px 8px; border-bottom:1px solid var(--aio-line); background:#f0f0f0; font-weight:700; }
         #r20be .qe-ql { max-height:220px; overflow-y:auto; }
         #r20be .qe-ql .o { padding:2px 8px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-        #r20be .qe-ql .o.on { background:#1e90ff; color:var(--aio-ink-inv); } #r20be .qe-ql .o.k-grp { color:#888; } #r20be .qe-ql .o.k-sep { color:#bbb; }
+        #r20be .qe-ql .o.on { background:#1e90ff; color:var(--aio-ink-inv); } #r20be .qe-ql .o.k-grp { color:var(--aio-ink-5); } #r20be .qe-ql .o.k-sep { color:#bbb; }
         #r20be .qe-chat { display:flex; flex-direction:column; gap:6px; } #r20be .qe-who { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
         #r20be .qe-chat img { align-self:flex-start; max-width:100%; max-height:160px; border-radius:4px; object-fit:contain; }
         #r20be .qe-chat code { color:var(--aio-ink-3); font-size:10.5px; overflow-wrap:anywhere; }
