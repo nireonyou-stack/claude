@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.80.2
+// @version      1.80.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.80.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.80.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7257,10 +7257,16 @@ const queryPicker = (() => {
     const DASHES = "\\s—–\\-─━=_~·.―‒⸺⸻－ー";
     const isDivider = o => !imgOf(o.value) && new RegExp(`^[${DASHES}]{3,}$`).test(o.textContent);
     const trimDash = t => t.replace(new RegExp(`^[${DASHES}]+|[${DASHES}]+$`, "g"), "");
-    // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
+    // imgur JPG 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게 — PNG · GIF 는 원본 (작은 썸네일은 JPEG 라 투명한 곳이 검게 나온다 · 칸은 보일 때만 받음)
     const thumbOf = url => {
         const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
-        return m ? `https://i.imgur.com/${m[1]}m${m[2] || ".png"}` : r20img(url);
+        return m && /^\.jpe?g$/i.test(m[2] || "") ? `https://i.imgur.com/${m[1]}m${m[2]}` : r20img(url);
+    };
+    // 투명한 곳 바탕: Roll20 채팅에 그림이 나오는 자리의 색 (마지막 /desc 메시지 → 아무 메시지 → 채팅 칸)
+    const chatBg = () => {
+        const pick = el => { for (let e = el; e && e !== document.documentElement; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (c && c !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(c)) return c; } return ""; };
+        const last = q => { const l = document.querySelectorAll(q); return l[l.length - 1]; };
+        return pick(last("#textchat .content .message.desc")) || pick(last("#textchat .content .message")) || pick(document.querySelector("#textchat .content")) || "#fff";
     };
     const choose = dlg => {
         const btns = [...dlg.querySelectorAll(".ui-dialog-buttonset button")];
@@ -7303,6 +7309,7 @@ const queryPicker = (() => {
         dlg.classList.add("r20qp");
         dlg._r20qpSel = sel;
         dlg.style.setProperty("--qp-size", size + "px");
+        dlg.style.setProperty("--qp-bg", chatBg());
         const box = document.createElement("div");
         box.className = "r20qp-box";
         box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
@@ -7702,7 +7709,7 @@ addCss(`
         .ui-dialog.r20qp .r20qp-img { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:16/9; padding:4px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; text-align:center; overflow:hidden; box-sizing:border-box; object-fit:contain; pointer-events:none; }
         .ui-dialog.r20qp .ui-dialog-content > p { display:flex; align-items:center; gap:6px; margin:0 0 2px !important; font-size:12px !important; color:var(--aio-ink-3); }
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-3) !important; font-size:11px !important; }
-        .ui-dialog.r20qp img.r20qp-img { padding:0; }
+        .ui-dialog.r20qp img.r20qp-img { padding:0; background:var(--qp-bg, var(--aio-bg-3)); }
         .ui-dialog.r20qp .r20qp-lb { font-size:11px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:clip; }
         /* @share-cut-start css-room — 이 방의 이미지 (배포판에서 뺌) */
         #imagedialog .r20ri { display:flex; flex-direction:column; color:var(--aio-ink-2); font-size:12px; }
