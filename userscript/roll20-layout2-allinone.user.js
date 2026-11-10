@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.78.2
+// @version      1.78.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.78.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.78.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -10027,7 +10027,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃 본문은 65% 크기) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -10117,6 +10117,8 @@ addCss(`
         #r20-sn .bd.sep section:not(.on) { display:none; }
         #r20-sn .bd { overflow-x:hidden; }
         #r20-sn .bd :is(.cb, .gm) { overflow-x:auto; }
+        /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 — 꾸민 카드도 좁은 창에 들어오게 (GM 메모는 그대로) */
+        #r20-sn .bd section.ch:not(.key) > .cb { zoom:0.65; }
         #r20-sn .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
         #r20-sn .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
         #r20-sn .bd .cht .cn { flex:1 1 100%; min-width:0; }
