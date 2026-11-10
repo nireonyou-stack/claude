@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.78.3
+// @version      1.78.4
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.78.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.78.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -10117,8 +10117,9 @@ addCss(`
         #r20-sn .bd.sep section:not(.on) { display:none; }
         #r20-sn .bd { overflow-x:hidden; }
         #r20-sn .bd :is(.cb, .gm) { overflow-x:auto; }
-        /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 — 꾸민 카드도 좁은 창에 들어오게 (GM 메모는 그대로) */
-        #r20-sn .bd section.ch:not(.key) > .cb { zoom:0.65; }
+        /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 (GM 메모는 그대로)
+           zoom 만 주면 창 폭에 맞춘 그림(max-width:100%)이 도로 창 폭만큼 커진다 → 폭도 65% 로 (안쪽 배치는 100% 때와 같고 보이는 크기만 줄어듦) */
+        #r20-sn .bd section.ch:not(.key) > .cb { zoom:0.65; width:65%; margin-left:auto; margin-right:auto; }
         #r20-sn .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
         #r20-sn .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
         #r20-sn .bd .cht .cn { flex:1 1 100%; min-width:0; }
