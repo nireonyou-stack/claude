@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.87.0
+// @version      1.88.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.87.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.88.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -8180,7 +8180,7 @@ const quickFind = (() => {
     // 찾을 곳 (켠 것만 · 이 브라우저에 기억). journal = 핸드아웃 · 캐릭터 이름
     const CATS = [["journal", "이름"], ["body", "본문"], ["bgm", "BGM"], ["macro", "매크로"], ["chat", "채팅"], ["scene", "장면"]];
     const GROUP = { handout: "journal", char: "journal", track: "bgm", macro: "macro" };
-    const GLABEL = { recent: "최근", journal: "핸드아웃 · 캐릭터", body: "본문", bgm: "BGM", macro: "매크로", chat: "채팅", scene: "이 방 구간" };
+    const GLABEL = { cmd: "명령", recent: "최근", journal: "핸드아웃 · 캐릭터", body: "본문", bgm: "BGM", macro: "매크로", chat: "채팅", scene: "이 방 구간" };
     const ICON = { handout: "📜", char: "👤", track: "♪", macro: "⚙" };
     const RKEY = "r20_qf_recent", CAT_KEY = "r20_qf_cats", CTX_KEY = "r20_qf_ctx", ORD_KEY = "r20_qf_order", PER_GROUP = 6, MAX = 60, MAX_BLK = 40;
     const CHAT_MSG = "#textchat .content > .message[data-messageid]";
@@ -8456,7 +8456,38 @@ const quickFind = (() => {
 
     // ── 찾기: 켠 곳마다 찾고 개수를 센다. 여러 곳이면 곳마다 몇 줄씩(+ 'n개 더'), 한 곳만 켜면 길게, 채팅만이면 앞뒤 n개 묶음 ──
     let counts = null;
+    // ── 명령 (UX 원칙 3): 기능 창 열기 · 설정 바로가기도 이 칸에서. '>' 로 시작하면 명령만 ──
+    const openSettings = q => {
+        const pop = document.getElementById("custom-settings-popup");
+        if (!pop || getComputedStyle(pop).display === "none") document.getElementById("custom-settings-btn")?.click();
+        const i = document.querySelector("#custom-settings-popup .cs-search input");
+        if (!i) return;
+        i.value = q; i.dispatchEvent(new Event("input")); i.focus();
+    };
+    const cmdList = () => {
+        const L = [], add = (icon, label, sub, fn) => L.push({ icon, label, sub, fn });
+        if (btnVisible.scen && FEAT.scenNav?.open) add("📖", "시나리오 내비게이터 열기", "목차 · 공개 범위 · Show to Players", () => FEAT.scenNav.open());
+        if (isGM() && btnVisible.bulk && FEAT.bulkEditor?.open) {
+            add("✎", "일괄 편집기 열기", "저널 · BGM · 매크로 · 굴림표 · 덱", () => FEAT.bulkEditor.open());
+            add("🔗", "링크 점검 열기", "안 열리는 · 너무 큰 그림 주소 찾아 고치기 — 일괄 편집기", () => FEAT.bulkEditor.open("links"));
+        }
+        if (isGM() && btnVisible.jbdrawer && FEAT.jbDrawer?.open) add("♪", "주크박스 서랍 열기", "채팅 왼쪽에 펼치기", () => FEAT.jbDrawer.open());
+        if (isGM() && window.Jukebox?.playlist?.models) add("■", "주크박스 모두 멈춤", "지금 나오는 곡을 모두 멈추기", () => {
+            const on = window.Jukebox.playlist.models.filter(m => m.get("playing"));
+            on.forEach(m => m.save({ playing: false, softstop: false }));
+            aioToast(on.length ? `${on.length}곡을 멈췄어요` : "나오는 곡이 없어요", { kind: "ok" });
+        });
+        add("⚙", "설정 열기", "올인원 설정", () => openSettings(""));
+        BUNDLES.forEach(b => add("⚙", "설정 · " + b.label, b.sub || "", () => openSettings(b.label.replace(/\s*\(.*$/, "").split(" · ")[0])));
+        return L;
+    };
+    // 보통 찾기에서는 이름만 (설명까지 보면 '곡' 같은 낱말에 명령이 맨 위로 와서 Enter 를 가로챔) · '>' 명령만일 때는 설명도
+    const cmdRows = (q, lim, deep) => cmdList().map(c => {
+        const m = q ? match(c.label, q) || (deep && match(c.sub, q) && { score: -50, hits: [] }) : { score: 0, hits: [] };
+        return m && { t: "cmd", g: "cmd", c, html: mark(c.label, m.hits), score: m.score };
+    }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, lim);
     const search = () => {
+        if (inp.value.trim().startsWith(">")) return cmdRows(inp.value.trim().slice(1).replace(/\s+/g, "").toLowerCase(), 40, true);
         const raw = inp.value.trim().toLowerCase();
         const tagQ = raw.split(/\s+/).filter(t => t.startsWith("#") && t.length > 1).map(t => t.slice(1));
         const q = raw.split(/\s+/).filter(t => !t.startsWith("#")).join("");
@@ -8523,6 +8554,8 @@ const quickFind = (() => {
             if (!solo && arr.length > lim) out.push({ t: "more", g, n: arr.length - lim });
             if (!arr.length && (g === "body" || g === "chat") && status(g, true)) out.push({ t: "note", g, html: escAttr(status(g, true)) });
         });
+        // 명령은 찾은 것 뒤에 조금만 — Enter 는 늘 찾은 것부터 (찾은 것이 없으면 명령이 맨 위)
+        if (q && !tagQ.length && !solo) out.push(...cmdRows(q, 3));
         return out;
     };
     // 곳 제목 오른쪽 · 비었을 때 알림
@@ -8544,6 +8577,7 @@ const quickFind = (() => {
     };
     const rowHtml = (r, i) => {
         const a = `role="option" id="r20-qf-o${i}" data-i="${i}" aria-selected="${i === sel}"`;
+        if (r.t === "cmd") return `<div class="qf-it qf-cmd" ${a} title="${escAttr(r.c.sub)}"><span class="qf-th" aria-hidden="true">${r.c.icon}</span><span class="qf-nm">${r.html}</span><span class="qf-pt">${escAttr(r.c.sub)}</span><span class="qf-act">실행</span></div>`;
         if (r.t === "more") return `<div class="qf-it qf-more" ${a}><span class="qf-th" aria-hidden="true">⋯</span><span class="qf-pt">${GLABEL[r.g]} ${r.n}개 더 — ${r.g === "chat" ? "채팅만 켜면 앞뒤까지 보여요" : "이것만 켜서 보기"}</span></div>`;
         if (r.t === "scn") {
             const v = r.s;
@@ -8684,6 +8718,7 @@ const quickFind = (() => {
     const act = (r, shift, i = sel, how) => {
         if (!r) return;
         if (r.t === "item" || r.t === "body") return run(r.it, shift, i);
+        if (r.t === "cmd") { if (!keepOpen()) close(); try { r.c.fn(); } catch (e) { aioErr("빠른 찾기 명령", e); } return; }
         if (r.t === "more") return only(r.g);
         if (r.t === "chat") return only("chat", r.c);
         if (r.t === "blk") return (how || (r.go ? "go" : "copy")) === "go" ? goTo(r.go) : copyBlk(r, i);
@@ -9134,7 +9169,7 @@ const quickFind = (() => {
         // 머리줄 = 검색칸 (접어도 검색칸은 남는다) · 📌 동안엔 왼쪽 ⋮⋮ 로 옮기고 두 번 눌러 접기
         root.innerHTML = '<div class="qf-box" role="dialog" aria-label="빠른 찾기">'
             + '<div class="qf-head"><span class="qf-grip" title="끌어서 옮기기 · 두 번 눌러 접기" aria-hidden="true">⋮⋮</span>'
-            + '<input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="빠른 찾기 — 이름 · 초성 · #태그" placeholder="빠른 찾기 — 이름 · 초성 · #태그" autocomplete="off" spellcheck="false">'
+            + '<input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="빠른 찾기 — 이름 · 초성 · #태그 · > 로 시작하면 명령" placeholder="찾기 — 이름 · 초성 · #태그 · > 명령" autocomplete="off" spellcheck="false">'
             + '<button type="button" class="qf-ib qf-dock">▶</button>'
             + '<button type="button" class="qf-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
             + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
