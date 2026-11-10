@@ -67,7 +67,7 @@ const SHOT = process.env.SHOT;
   const geo = () => p.evaluate(() => { const r = id => { const e = document.getElementById(id); if (!e || !e.getClientRects().length) return '-'; const b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom].map(Math.round).join(','); }; return `주크박스 ${r('jukebox')} · 머리줄 ${r('r20-jbd-hd')} · 🔍 ${r('r20-qfbtn')}`; });
   await p.click('#jukeboxtab a'); await p.waitForTimeout(100);
   console.log('♪ (전체) →', await geo());
-  await p.click('#r20-jbd-hd [data-a="mode"]'); await p.waitForTimeout(100);
+  await p.click('#r20-jbd-hd .aio-dock [data-v="half"]'); await p.waitForTimeout(100);
   console.log('½ (반쪽) →', await geo(), '| 기억:', await p.evaluate(() => localStorage.getItem('r20_jbd_mode')));
   const hg = await (await p.$('#r20-jbd-hgrip')).boundingBox();
   await p.mouse.move(hg.x + 100, hg.y + 3); await p.mouse.down(); await p.mouse.move(hg.x + 100, hg.y - 97, { steps: 5 }); await p.mouse.up(); await p.waitForTimeout(80);

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.89.0
+// @version      1.89.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.89.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -2194,13 +2194,14 @@ addBundle({ place: "main", order: 1, group: "view", label: "주크박스 · 저�
 // 다시 ♪ · ✕ · Esc · 다른 데 누르기(📌 면 그대로)로 닫기 · 왼쪽 끝을 끌어 폭 조절(기억) · 전체 높이면 단추줄도 서랍 왼쪽으로 밀린다
 // 화면 구조 때문에 띄우지 못하면(부모가 transform 등) 원래대로 탭을 바꾼다
 const jbDrawer = (() => {
-    const W_KEY = "r20_jbd_w", PIN_KEY = "r20_jbd_pin", MODE_KEY = "r20_jbd_mode", H_KEY = "r20_jbd_h", HD_H = 30;
+    const W_KEY = "r20_jbd_w", PIN_KEY = "r20_jbd_pin", MODE_KEY = "r20_jbd_mode", H_KEY = "r20_jbd_h", HD_H = 62;      // 머리줄 높이 (제목 줄 + 찾기 줄) — CSS 의 --jbd-hh 와 같게
     let on = false, hd = null, grip = null, hgrip = null, res = null, pass = false, ro = null, hits = [], at = 0;
     const tab = () => document.getElementById("jukeboxtab");
     const pane = () => document.getElementById("jukebox");
     const width = () => Math.max(240, Math.min(600, parseInt(localStorage.getItem(W_KEY) || "300", 10) || 300));
     const pinned = () => localStorage.getItem(PIN_KEY) === "true";
     const half = () => localStorage.getItem(MODE_KEY) === "half";
+    let dkSeg = null;       // 자리 고르기 (붙임 · ½)
     const sideRect = () => { const r = document.getElementById("rightsidebar")?.getBoundingClientRect(); return r && r.width > 0 && r.left < innerWidth - 1 ? r : null; };
     // 단추줄 맨 아래 — 반쪽 서랍은 그 밑에서만 (단추줄을 가리지 않게)
     const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-snbtn", "r20-qfbtn"]
@@ -2230,19 +2231,21 @@ const jbDrawer = (() => {
     });
     const setMode = h => {
         localStorage.setItem(MODE_KEY, h ? "half" : "full");
-        hd?.querySelector(".md")?.setAttribute("aria-pressed", String(h));
+        dkSeg?.set(h ? "half" : "dock");
         place(); FEAT.screenUI?.place();
     };
     const build = () => {
         hd = document.createElement("div");
         hd.id = "r20-jbd-hd";
-        hd.innerHTML = '<b>♪</b><input type="search" class="q" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 모두에게 재생 · 정지, Shift+Enter 로 미리듣기" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">'
-            + '<button type="button" data-a="mode" class="md" title="반쪽 높이 ↔ 전체 높이" aria-label="반쪽 높이" aria-pressed="false">½</button>'
-            + '<button type="button" data-a="pin" class="pin" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button>';
+        // 공용 창 틀: ♪ 주크박스 · (빈칸) · 자리(붙임 · ½) · 📌 · ✕ — 찾기 칸은 아랫줄 (CSS 에서 줄바꿈)
+        hd.innerHTML = '<b class="tt">♪ 주크박스</b><span class="sp"></span><span class="dkw"></span>'
+            + '<button type="button" data-a="pin" class="pin" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button>'
+            + '<input type="search" class="q" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 모두에게 재생 · 정지, Shift+Enter 로 미리듣기" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">';
+        dkSeg = aioDockSeg([["dock", "붙임"], ["half", "½"]], half() ? "half" : "dock", v => setMode(v === "half"));
+        hd.querySelector(".dkw").replaceWith(dkSeg);
         hd.addEventListener("click", e => {
             const b = e.target.closest("button"), a = b?.dataset.a;
             if (a === "x") close();
-            else if (a === "mode") setMode(!half());
             else if (a === "pin") { const p = !pinned(); localStorage.setItem(PIN_KEY, String(p)); b.setAttribute("aria-pressed", String(p)); }
         });
         const q = hd.querySelector(".q");
@@ -2327,7 +2330,7 @@ const jbDrawer = (() => {
         document.body.classList.add("r20jbd-open");
         tab()?.classList.add("r20jbd-on");
         hd.querySelector(".pin").setAttribute("aria-pressed", String(pinned()));
-        hd.querySelector(".md").setAttribute("aria-pressed", String(half()));
+        dkSeg?.set(half() ? "half" : "dock");
         // 제대로 떴는지: 서랍 오른쪽 끝이 채팅 판 왼쪽에 붙어 있어야 한다
         const pr = p.getBoundingClientRect(), r = sideRect();
         if (!pr.width || Math.abs(pr.right - r.left) > 6) { close(); aioErr("주크박스 서랍", "주크박스 칸을 화면에 띄우지 못함 — 원래대로 탭을 바꿈"); return false; }
@@ -2383,21 +2386,24 @@ addBundle({ place: "main", order: 1.05, group: "play", label: "주크박스 서�
     members: [["jbdrawer", "jbDrawer"]] });
 addCss(`
         /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
-        body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 30px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:var(--aio-z-win) !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; scrollbar-width:thin; }
+        body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 62px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:var(--aio-z-win) !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; scrollbar-width:thin; }
         body.r20jbd-open #jukebox#jukebox { padding-left:2px !important; padding-right:2px !important; }
         body.r20jbd-open #jukebox :is(#jukeboxfolderroot, #jukeboxfolderroot > .dd-list) { margin-left:0 !important; margin-right:0 !important; padding-left:0 !important; padding-right:0 !important; list-style:none !important; }
         body.r20jb-on.r20jbd-open #jukeboxfolderroot li.dd-folder > ol.dd-list { padding-left:calc(var(--r20jb-ind, 18px) - 10px) !important; }
         #r20-jbd-hd, #r20-jbd-grip, #r20-jbd-hgrip { display:none; }
-        body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:calc(var(--aio-z-win) + 1); display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:30px; padding:0 4px 0 8px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
+        body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:calc(var(--aio-z-win) + 1); display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:62px; padding:4px 4px 4px 8px; flex-wrap:wrap; align-content:space-between; row-gap:4px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
         body.r20jbd-half #r20-jbd-hd { border-top:1px solid var(--aio-line-3); box-shadow:-6px -4px 14px rgba(0,0,0,0.16); }
         body.r20jbd-open #r20-jbd-hd .q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 4px 0 4px !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:var(--aio-fs-sm) !important; }
-        body.r20jbd-open #r20-jbd-hd button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
-        body.r20jbd-open #r20-jbd-hd button:hover { background:var(--aio-bg-3); }
-        body.r20jbd-open #r20-jbd-hd .md[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
+        body.r20jbd-open #r20-jbd-hd > button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
+        body.r20jbd-open #r20-jbd-hd > button:hover { background:var(--aio-bg-3); }
+        body.r20jbd-open #r20-jbd-hd .tt { color:var(--aio-ink-2); font-size:var(--aio-fs-md); white-space:nowrap; }
+        body.r20jbd-open #r20-jbd-hd .sp { flex:1; }
+        body.r20jbd-open #r20-jbd-hd .aio-dock { margin-right:2px; }
+        body.r20jbd-open #r20-jbd-hd .q { order:9; flex:1 0 100% !important; margin:0 !important; }
         body.r20jbd-open #r20-jbd-hd .pin { filter:grayscale(1); opacity:0.5; } body.r20jbd-open #r20-jbd-hd .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
         body.r20jbd-open #r20-jbd-grip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:var(--jbd-t, 0px); bottom:0; right:calc(var(--jbd-r, 300px) + var(--jbd-w, 300px) - 3px); width:6px; cursor:ew-resize; }
         body.r20jbd-half #r20-jbd-hgrip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:calc(var(--jbd-t, 0px) - 3px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:6px; cursor:ns-resize; }
-        #r20-jbd-res { position:fixed; z-index:calc(var(--aio-z-win) + 3); top:calc(var(--jbd-t, 0px) + 30px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); max-height:236px; overflow-y:auto; padding:3px; border:1px solid var(--aio-line-3); border-top:0; background:var(--aio-bg); box-shadow:var(--aio-shadow-md); color:var(--aio-ink-2); font:12px/1.4 sans-serif; box-sizing:border-box; }
+        #r20-jbd-res { position:fixed; z-index:calc(var(--aio-z-win) + 3); top:calc(var(--jbd-t, 0px) + 62px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); max-height:236px; overflow-y:auto; padding:3px; border:1px solid var(--aio-line-3); border-top:0; background:var(--aio-bg); box-shadow:var(--aio-shadow-md); color:var(--aio-ink-2); font:12px/1.4 sans-serif; box-sizing:border-box; }
         #r20-jbd-res[hidden] { display:none; }
         #r20-jbd-res .r { display:flex; align-items:center; gap:6px; height:26px; padding:0 6px; border-radius:var(--aio-r-sm); cursor:pointer; }
         #r20-jbd-res .r:hover { background:var(--aio-bg-3); }
