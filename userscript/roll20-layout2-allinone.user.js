@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.79.1
+// @version      1.80.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.79.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.80.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7369,6 +7369,8 @@ const queryPicker = (() => {
 // 고르는 것은 Roll20 #speakingas 값을 바꾸는 것 그대로 (목록도 그 선택지에서)
 const quickJournal = (() => {
     const ORD = "r20_char_order", REC = "r20_speak_recent", VIEW = "r20_cj_view", PIN = "r20_cj_pin", SIZE = "r20_cj_size", W = 264;
+    // 붙이기(기본) ↔ 띄우기(독립 창) · 붙였을 때 너비 · 높이 · 띄운 창 자리와 크기
+    const DOCK = "r20_cj_dock", DW = "r20_cj_w", DH = "r20_cj_h", GEO = "r20_cj_geo";
     const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
     const cho = t => [...t].map(c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : c; }).join("");
     const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
@@ -7376,6 +7378,9 @@ const quickJournal = (() => {
     const grid = () => ls(VIEW) === "grid";
     const pinned = () => ls(PIN) === "true";
     const size = () => Math.max(30, Math.min(120, parseInt(ls(SIZE), 10) || 50));
+    const docked = () => ls(DOCK) !== "off";
+    const dockW = () => Math.max(200, Math.min(600, parseInt(ls(DW), 10) || W));
+    const geo = () => { try { return JSON.parse(ls(GEO) || "null"); } catch (e) { return null; } };
     let pop = null, chars = [], hl = -1, recWatched = null;
     const isOpen = () => !!pop?.classList.contains("show");
 
@@ -7427,14 +7432,47 @@ const quickJournal = (() => {
         document.querySelector("#textchat-input textarea")?.focus();
     };
 
-    // 자리: 채팅 판(· 펼친 주크박스 서랍) 왼쪽 끝 · 아래 끝은 화면 아래(반쪽 주크박스 서랍이면 그 위) · 위로는 단추줄 밑까지
+    // 자리: 붙였으면 채팅 판(· 펼친 주크박스 서랍) 왼쪽 끝 · 아래 끝은 화면 아래(반쪽 주크박스 서랍이면 그 위) · 위로는 단추줄 밑까지
+    //       띄웠으면 기억한 자리 · 크기 (처음엔 채팅 판 왼쪽 아래)
     const place = () => {
         if (!isOpen()) return;
-        const side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const z = aioZoom.get(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        pop.classList.toggle("float", !docked());
+        pop.querySelector("[data-a='dock']").setAttribute("aria-pressed", String(docked()));
+        if (!docked()) {
+            const g = geo(), Wv = innerWidth / z, Hv = innerHeight / z;
+            const w = Math.min(Math.max(200, g?.w || W), Wv - 8), h = Math.min(Math.max(160, g?.h || 360), Hv - 8);
+            const l = g?.l != null ? Math.max(0, Math.min(g.l, Wv - w)) : Math.max(0, (side?.width ? side.left : innerWidth) / z - w - 8);
+            const t = g?.t != null ? Math.max(0, Math.min(g.t, Hv - 40)) : Math.max(0, Hv - h - 8);
+            Object.assign(pop.style, { left: l + "px", top: t + "px", right: "auto", bottom: "auto", width: w + "px", height: h + "px", maxHeight: "" });
+            return;
+        }
         if (!side || !side.width) return close();
-        const z = aioZoom.get(), edge = FEAT.jbDrawer?.leftEdge?.() ?? side.left, ht = FEAT.jbDrawer?.halfTop?.();
-        const bottom = ht != null ? innerHeight - ht : 0, top = (FEAT.jbDrawer?.dockBottom?.() || 0) + 6;
-        Object.assign(pop.style, { right: (innerWidth - edge) / z + "px", bottom: bottom / z + "px", left: "auto", top: "auto", width: W + "px", maxHeight: Math.max(160, innerHeight - bottom - top) / z + "px" });
+        const edge = FEAT.jbDrawer?.leftEdge?.() ?? side.left, ht = FEAT.jbDrawer?.halfTop?.();
+        const bottom = ht != null ? innerHeight - ht : 0, top = (FEAT.jbDrawer?.dockBottom?.() || 0) + 6, room = Math.max(160, innerHeight - bottom - top), dh = parseInt(ls(DH), 10);
+        Object.assign(pop.style, { right: (innerWidth - edge) / z + "px", bottom: bottom / z + "px", left: "auto", top: "auto", width: dockW() + "px", height: dh > 0 ? Math.min(dh, room / z) + "px" : "", maxHeight: room / z + "px" });
+    };
+    // 붙이기 ↔ 띄우기: 처음 띄울 땐 지금 자리 · 크기 그대로
+    const toggleDock = () => {
+        const z = aioZoom.get();
+        if (docked()) {
+            const r = pop.getBoundingClientRect();
+            if (!geo()) ls(GEO, JSON.stringify({ l: r.left / z, t: r.top / z, w: r.width / z, h: r.height / z }));
+            ls(DOCK, "off");
+        } else ls(DOCK, "");
+        place();
+    };
+    // 띄운 창: 머리줄 끌어 옮기기 · 모서리로 크기 (기억) — 붙인 창: 왼쪽 끝 · 위 끝을 끌어 너비 · 높이 (두 번 누르면 기본)
+    const keepGeo = () => { if (isOpen() && !docked()) { const z = aioZoom.get(), r = pop.getBoundingClientRect(); ls(GEO, JSON.stringify({ l: r.left / z, t: r.top / z, w: r.width / z, h: r.height / z })); } };
+    const grip = (el, mv, reset) => {
+        el.addEventListener("pointerdown", e => {
+            if (e.button !== 0) return;
+            e.preventDefault(); e.stopPropagation();
+            el.setPointerCapture(e.pointerId);
+            const up = () => ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => el.removeEventListener(t, k ? up : mv));
+            el.addEventListener("pointermove", mv); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+        });
+        el.addEventListener("dblclick", e => { e.preventDefault(); reset(); place(); });
     };
     const open = () => {
         if (!btnVisible.journal || !sel()) return;
@@ -7488,18 +7526,21 @@ const quickJournal = (() => {
         pop.id = "custom-journal-popup";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "말하는 사람 고르기");
-        pop.innerHTML = '<div class="cj-hd"><input type="search" class="cj-q" placeholder="찾기 — 이름 · 초성" aria-label="말하는 사람 찾기 — ↑↓ Enter" autocomplete="off" spellcheck="false">'
+        pop.innerHTML = '<div class="cj-hd"><span class="cj-mv" title="끌어서 옮기기" aria-hidden="true">⠿</span><input type="search" class="cj-q" placeholder="찾기 — 이름 · 초성" aria-label="말하는 사람 찾기 — ↑↓ Enter" autocomplete="off" spellcheck="false">'
             + '<button type="button" data-a="view" title="크게 보기 ↔ 목록" aria-label="크게 보기" aria-pressed="false">▦</button>'
+            + '<button type="button" data-a="dock" class="cj-dk" title="채팅 옆에 붙이기 ↔ 띄우기" aria-label="채팅 옆에 붙이기" aria-pressed="true">⇥</button>'
             + '<button type="button" data-a="pin" class="cj-pin" title="고른 뒤에도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button></div>'
             + '<div class="cj-recw" hidden><div class="cj-lb">최근</div><div class="cj-rec"></div></div>'
             + '<div class="cj-list" role="listbox" aria-label="말하는 사람"></div>'
-            + '<div class="cj-ft" hidden>아이콘 <button type="button" data-a="sz" data-d="-10" aria-label="아이콘 작게">−</button><button type="button" data-a="sz" data-d="10" aria-label="아이콘 크게">+</button></div>';
+            + '<div class="cj-ft" hidden>아이콘 <button type="button" data-a="sz" data-d="-10" aria-label="아이콘 작게">−</button><button type="button" data-a="sz" data-d="10" aria-label="아이콘 크게">+</button></div>'
+            + '<div class="cj-gw" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div><div class="cj-gh" role="separator" aria-orientation="horizontal" aria-label="창 높이" title="끌어서 높이 · 두 번 누르면 기본"></div>';
         pop.addEventListener("click", e => {
             const b = e.target.closest("button");
             if (!b) return;
             const a = b.dataset.a;
             if (b.classList.contains("cj-ri")) return pick(b.dataset.v);
             if (a === "x") return close();
+            if (a === "dock") return toggleDock();
             if (a === "view") { ls(VIEW, grid() ? "list" : "grid"); return draw(); }
             if (a === "pin") { ls(PIN, String(!pinned())); return draw(); }
             if (a === "sz") { ls(SIZE, String(Math.max(30, Math.min(120, size() + +b.dataset.d)))); return draw(); }
@@ -7510,6 +7551,21 @@ const quickJournal = (() => {
             e.preventDefault();
             startDrag(e, it);
         });
+        const z = () => aioZoom.get();
+        grip(pop.querySelector(".cj-gw"), ev => { ls(DW, String(Math.round(Math.max(200, Math.min(600, (pop.getBoundingClientRect().right - ev.clientX) / z()))))); place(); }, () => { try { localStorage.removeItem(DW); } catch (e) { /* 없음 */ } });
+        grip(pop.querySelector(".cj-gh"), ev => { ls(DH, String(Math.round(Math.max(120, (pop.getBoundingClientRect().bottom - ev.clientY) / z())))); place(); }, () => { try { localStorage.removeItem(DH); } catch (e) { /* 없음 */ } });
+        const hd = pop.querySelector(".cj-hd");
+        hd.addEventListener("pointerdown", e => {
+            if (docked() || e.button !== 0 || e.target.closest("input, button")) return;
+            e.preventDefault();
+            const sx = e.clientX, sy = e.clientY, l0 = pop.offsetLeft, t0 = pop.offsetTop;
+            hd.setPointerCapture(e.pointerId);
+            const mv = ev => { pop.style.left = Math.max(0, Math.min(l0 + (ev.clientX - sx) / z(), innerWidth / z() - 60)) + "px"; pop.style.top = Math.max(0, Math.min(t0 + (ev.clientY - sy) / z(), innerHeight / z() - 30)) + "px"; };
+            const up = () => { ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => hd.removeEventListener(t, k ? up : mv)); keepGeo(); };
+            hd.addEventListener("pointermove", mv); hd.addEventListener("pointerup", up); hd.addEventListener("pointercancel", up);
+        });
+        let rt = 0;
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keepGeo, 300); }).observe(pop);       // 띄운 창 모서리로 크기를 바꾸면 기억
         const q = pop.querySelector(".cj-q");
         q.addEventListener("input", () => { hl = q.value.trim() ? 0 : -1; draw(); });
         q.addEventListener("keydown", e => {
@@ -7602,6 +7658,14 @@ addCss(`
         #custom-journal-popup .cj-list.grid .cj-drop-before { box-shadow:inset 3px 0 0 var(--aio-accent); }
         #custom-journal-popup .cj-list.grid .cj-drop-after { box-shadow:inset -3px 0 0 var(--aio-accent); }
         #custom-journal-popup .cj-none { padding:14px 8px; color:var(--aio-ink-4); font-size:11px; text-align:center; }
+        #custom-journal-popup.float { border-right:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); box-shadow:0 8px 24px rgba(0,0,0,0.25); resize:both; min-width:200px; min-height:160px; }
+        #custom-journal-popup .cj-mv { display:none; flex:none; width:14px; color:var(--aio-ink-5); font-size:13px; text-align:center; cursor:move; user-select:none; }
+        #custom-journal-popup.float .cj-mv { display:inline-block; }
+        #custom-journal-popup.float .cj-hd { touch-action:none; }
+        #custom-journal-popup :is(.cj-gw, .cj-gh) { position:absolute; z-index:2; touch-action:none; }
+        #custom-journal-popup .cj-gw { left:0; top:0; bottom:0; width:6px; cursor:ew-resize; }
+        #custom-journal-popup .cj-gh { left:0; right:0; top:0; height:5px; cursor:ns-resize; }
+        #custom-journal-popup.float :is(.cj-gw, .cj-gh) { display:none; }
         #custom-journal-popup .cj-ft { display:flex; align-items:center; justify-content:flex-end; gap:3px; flex-shrink:0; padding:2px 8px; border-top:1px solid var(--aio-line-4); color:var(--aio-ink-5); font-size:10.5px; }
         .ui-dialog.r20qp .r20qp-bar { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
         .ui-dialog.r20qp .r20qp-bar input { flex:1; min-width:0; height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:12px !important; box-sizing:border-box; }
@@ -9649,7 +9713,8 @@ const scenNav = (() => {
             if (cur !== f) return;
             const body = document.createElement("div");
             body.className = "cb";
-            body.append(clean(unesc(notes)));
+            body.append(Object.assign(document.createElement("div"), { className: "cz" }));          // 줄여 보일 때 크기를 맡는 겹 (본문 칸 .cb 는 넘치면 옆으로 넘기는 칸)
+            body.lastChild.append(clean(unesc(notes)));
             secs[k].append(body);
             if (gm && String(gm).trim()) {
                 const g = document.createElement("div");
@@ -9669,7 +9734,7 @@ const scenNav = (() => {
             heads.push({ el: h, ch: true, c, key: sec.classList.contains("key"), t: h.querySelector(".cn").textContent });
             // 이 장의 제목 줄: 같은 이름이 거듭되면 처음 한 번만 · 큰 제목이 있으면 첫 큰 제목 앞의 작은 줄(머리말 · 지은이)은 뺀다
             const found = [], seen = new Set();
-            sec.querySelectorAll(".cb :is(h1, h2, h3, h4, h5, p, div, center, li, td)").forEach(el => {
+            sec.querySelectorAll(".cb :is(h1, h2, h3, h4, h5, p, div, center, li, td):not(.cz)").forEach(el => {
                 if (el.querySelector("p, div, h1, h2, h3, h4, h5, li, table")) return;      // 다른 줄을 품은 칸은 빼고
                 const lv = headLv(el), t = lv && el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "");
                 if (!lv || seen.has(t)) return;
@@ -10056,7 +10121,9 @@ addCss(`
         #r20-sn .bd :is(.cb, .gm) { overflow-x:auto; }
         /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 (GM 메모는 그대로)
            zoom 만 주면 창 폭에 맞춘 그림(max-width:100%)이 도로 창 폭만큼 커진다 → 폭도 65% 로 (안쪽 배치는 100% 때와 같고 보이는 크기만 줄어듦) */
-        #r20-sn .bd section.ch:not(.key) > .cb { zoom:0.65; width:65%; margin-left:auto; margin-right:auto; }
+        /* 고정 폭 카드(예: 500px)는 65% 칸에서 다시 넘친다 → 안쪽 겹(.cz)이 내용의 최소 폭보다 좁아지지 않게 (카드 전체가 65% 로 보임)
+           그래도 창보다 넓으면 본문 칸(.cb) 안에서만 옆으로 넘긴다 (위에 붙은 장 머리는 그대로) */
+        #r20-sn .bd section.ch:not(.key) > .cb > .cz { zoom:0.65; width:65%; min-width:min-content; margin-left:auto; margin-right:auto; }
         #r20-sn .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
         #r20-sn .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
         #r20-sn .bd .cht .cn { flex:1 1 100%; min-width:0; }
@@ -11349,16 +11416,353 @@ const bulkEditor = (() => {
             addBox, bar, grid);
     };
 
-    // 매크로 편집칸
-    const macroPane = n => el("div", { class: "r20be-pane-in" }, paneHead(n),
-        el("div", { class: "r20be-grid" },
-            field("매크로 이름 (#이름으로 부를 때 공백은 안 됨)", nameInput(n)),
-            field("보이는 사람", el("select", { class: "r20be-in", onchange: e => { setField(n, "share", e.target.value); refreshRow(n); } },
-                shareOptions(n.cur.share).map(o => el("option", { value: o.v, selected: o.v === n.cur.share }, o.v ? o.label : "나만"))))),
-        el("label", { class: "r20be-chk" },
-            el("input", { type: "checkbox", checked: n.cur.token, onchange: e => { setField(n, "token", e.target.checked); refreshRow(n); } }), "토큰 액션으로 보이기"),
-        field("내용", el("textarea", { class: "r20be-ta mono", value: n.cur.action, spellcheck: "false", "aria-label": "매크로 내용",
-            oninput: e => { setField(n, "action", e.target.value); autosize(e.target); refreshRow(n); } })));
+    // ── 매크로 선택지 편집 (?{질문|이름,값|…}): 표로 풀어 고치기 · 앞뒤 붙이기 / 빼기 · 찾아 바꾸기 · 주소 확인 · 미리보기 ──
+    // 첫 ?{…} 하나만 표로 (안쪽 질문 · @{…} 등은 값 글 그대로) · 고치면 바로 매크로 글로 되돌려 써서 저장 대상이 된다
+    // 값이 없는 줄: 글자가 있으면 '묶음 이름'(그 아래 줄들의 묶음), 줄표(― - =)뿐이면 '구분선'
+    const QE_MODE = new Map();           // 매크로 id → "tab"(선택지 표) | "txt"(글) — 이 창을 연 동안만
+    let qeSeq = 0;
+    const qFind = s => {
+        const i = s.indexOf("?{");
+        if (i < 0) return null;
+        for (let k = i + 1, d = 0; k < s.length; k++) {
+            if (s[k] === "{") d++;
+            else if (s[k] === "}" && !--d) return { a: i, b: k, inner: s.slice(i + 2, k) };
+        }
+        return null;
+    };
+    // 중괄호 밖의 ch 로 나누기 (max 번까지만)
+    const splitTop = (s, ch, max = Infinity) => {
+        const out = [];
+        let d = 0, st = 0;
+        for (let k = 0; k < s.length && out.length < max; k++) {
+            const c = s[k];
+            if (c === "{") d++;
+            else if (c === "}") d = Math.max(0, d - 1);
+            else if (c === ch && !d) { out.push(s.slice(st, k)); st = k + 1; }
+        }
+        out.push(s.slice(st));
+        return out;
+    };
+    const qRow = r => r.label + (r.value != null ? "," + r.value : "");
+    const qMake = (pre, raw) => { const [label, ...rest] = splitTop(raw, ",", 1); return { id: ++qeSeq, pre, label, value: rest.length ? rest[0] : null, orig: null }; };
+    const qParse = s => {
+        const q = qFind(s);
+        if (!q) return null;
+        const [prompt, ...opts] = splitTop(q.inner, "|");
+        const rows = opts.map(raw => { const pre = raw.match(/^\s*/)[0], r = qMake(pre, raw.slice(pre.length)); r.orig = qRow(r); return r; });
+        return { head: s.slice(0, q.a), tail: s.slice(q.b + 1), prompt, rows };
+    };
+    const qText = Q => Q.head + "?{" + Q.prompt + Q.rows.map(r => "|" + r.pre + qRow(r)).join("") + "}" + Q.tail;
+    const qKind = r => r.value != null ? "opt" : r.label.replace(/[\s\-―—─━=_~·.]/g, "") ? "grp" : "sep";
+    // Roll20 특수 글자: 이름의 , | } 와 값의 | } 는 HTML 엔티티로 (안에 { } 를 쓴 매크로는 그대로)
+    const qeEsc = (v, label) => { if (/\{/.test(v)) return v; v = v.replace(/\|/g, "&#124;").replace(/\}/g, "&#125;"); return label ? v.replace(/,/g, "&#44;") : v; };
+    const qGrp = (Q, r) => { let g = ""; for (const x of Q.rows) { if (x === r) break; const k = qKind(x); if (k === "grp") g = x.label.trim().replace(/^[\-―—─━=_~·.\s]+|[\-―—─━=_~·.\s]+$/g, ""); else if (k === "sep") g = ""; } return g; };
+    // 값 속 그림 주소: [글](주소) 의 주소 · 아니면 처음 나오는 http(s) / blob: 주소
+    const qUrl = v => { if (v == null) return ""; const m = v.match(/\]\((\S+?)\)/) || v.match(/((?:blob:)?https?:\/\/[^\s|]+)/i); return m ? m[1] : ""; };
+    const qIssues = r => {
+        const out = [], v = r.value;
+        if (v == null) return out;
+        const first = v.split("\n")[0], u = qUrl(first);
+        if (/\n\s*\S/.test(v)) out.push({ msg: "값 안에 줄바꿈 — 앞 줄 끝의 | 가 빠진 듯", fix: "split", fl: "두 줄로 나누기" });
+        if (u && /^blob:/i.test(u)) out.push({ msg: "blob: 주소는 올린 사람 브라우저에서만 열려요 — 그림을 다시 올려 주소를 바꿔 주세요" });
+        else if (u && /^https?:\/\/(i\.)?imgur\.com(?!\/)/i.test(u)) out.push({ msg: "imgur.com 뒤에 / 가 빠졌어요", fix: "slash", fl: "/ 넣기" });
+        else if (u && /^https?:\/\/i\.imgur\.com\/[A-Za-z0-9]+$/i.test(u)) out.push({ msg: "확장자가 없어요 — .png 를 붙이면 그림으로 보여요", fix: "ext", fl: ".png 붙이기" });
+        else if (u) { try { new URL(u); } catch (e) { out.push({ msg: "주소 모양이 이상해요" }); } }
+        if (/\)\s*$/.test(first) && !/\]\(/.test(first)) out.push({ msg: "끝에 ) 가 있어요 — | 를 잘못 친 듯", fix: "paren", fl: ") 빼기" });
+        return out;
+    };
+    const qFix = (Q, r, f) => {
+        if (f === "slash") r.value = r.value.replace(/(https?:\/\/(?:i\.)?imgur\.com)(?!\/)/i, "$1/");
+        else if (f === "ext") r.value = r.value.replace(/(https?:\/\/i\.imgur\.com\/[A-Za-z0-9]+)(?![\w.])/i, "$1.png");
+        else if (f === "paren") { const ls = r.value.split("\n"); ls[0] = ls[0].replace(/\)\s*$/, ""); r.value = ls.join("\n"); }
+        else if (f === "split") {
+            const [a, ...b] = r.value.split("\n");
+            r.value = a.replace(/\s+$/, "");
+            const rest = b.join("\n"), lead = rest.match(/^\s*/)[0];
+            Q.rows.splice(Q.rows.indexOf(r) + 1, 0, qMake("\n" + lead.replace(/\n/g, ""), rest.slice(lead.length)));
+        }
+    };
+
+    const qEditor = n => {
+        let E = n.qe;
+        if (!E || qText(E.Q) !== n.cur.action) {
+            const Q = qParse(n.cur.action);
+            if (!Q) return null;
+            E = n.qe = { Q, tgt: "value", mode: "add", pre: "", suf: "", find: "", rep: "", sel: new Set(), cur: null, last: -1, fold: new Set(), hist: [], pv: false, focus: null };
+        }
+        const Q = E.Q;
+        const root = el("div", { class: "r20be-qe" });
+        let cT = 0, pT = 0;
+        const commit = () => { setField(n, "action", qText(Q)); refreshRow(n); };
+        const commitSoon = () => { clearTimeout(cT); cT = setTimeout(() => { commit(); drawPv(); drawInfo(); }, 200); };
+        const snap = () => { E.hist.push(JSON.stringify({ p: Q.prompt, h: Q.head, t: Q.tail, r: Q.rows })); if (E.hist.length > 60) E.hist.shift(); };
+        const opts = () => Q.rows.filter(r => qKind(r) === "opt");
+        // 적용 대상: 고른 줄 중 선택지 · 고른 게 없으면 모든 선택지
+        const scope = () => { const s = opts().filter(r => E.sel.has(r.id)); return s.length ? s : E.sel.size ? [] : opts(); };
+        const xform = (r, i) => {
+            const tok = s => s.replace(/\{이름\}/g, r.label).replace(/\{값\}/g, r.value ?? r.label).replace(/\{번호\}/g, String(i + 1)).replace(/\{묶음\}/g, qGrp(Q, r));
+            let v = E.tgt === "label" ? r.label : r.value ?? "";
+            const pre = tok(E.pre), suf = tok(E.suf);
+            if (E.mode === "add") v = pre + v + suf;
+            else { if (pre && v.startsWith(pre)) v = v.slice(pre.length); if (suf && v.endsWith(suf)) v = v.slice(0, -suf.length); }
+            if (E.find) v = v.split(E.find).join(E.rep);
+            return qeEsc(v, E.tgt === "label");
+        };
+        const busy = () => !!(E.pre || E.suf || E.find);
+        const pending = () => { const m = new Map(); if (busy()) scope().forEach((r, i) => { const v = xform(r, i), old = E.tgt === "label" ? r.label : r.value; if (v !== old) m.set(r.id, v); }); return m; };
+
+        // ── 머리 (앞 · 질문 · 뒤 · 수) ──
+        const info = el("div", { class: "qe-info" });
+        const inp = (cls, v, lab, on) => el("input", { class: "r20be-in qe-s " + cls, value: v, spellcheck: "false", "aria-label": lab, onchange: on });
+        info.append(el("span", {}, "앞"), inp("qe-head", Q.head, "질문 앞 글", e => { snap(); Q.head = e.target.value; commit(); drawPv(); }),
+            el("span", {}, "질문"), inp("qe-pr", Q.prompt, "질문 글", e => { snap(); Q.prompt = qeEsc(e.target.value, false); e.target.value = Q.prompt; commit(); drawPv(); }),
+            el("span", {}, "뒤"), inp("qe-tail", Q.tail, "질문 뒤 글", e => { snap(); Q.tail = e.target.value; commit(); drawPv(); }),
+            el("span", { class: "qe-cnt" }));
+        const drawInfo = () => {
+            const o = opts().length, g = Q.rows.filter(r => qKind(r) === "grp").length, w = Q.rows.filter(r => qIssues(r).length).length;
+            info.querySelector(".qe-cnt").innerHTML = `선택지 <b>${o}</b> · 묶음 ${g}` + (w ? ` · <button type="button" class="qe-wn" title="다음 확인할 줄로">⚠ 확인할 줄 ${w}</button>` : "");
+        };
+        info.addEventListener("click", e => {
+            if (!e.target.closest(".qe-wn")) return;
+            const ws = Q.rows.filter(r => qIssues(r).length), k = ws.findIndex(r => r.id === E.cur), r = ws[(k + 1) % ws.length];
+            E.cur = r.id;
+            const g = Q.rows.slice(0, Q.rows.indexOf(r)).reverse().find(x => qKind(x) !== "opt");
+            if (g && E.fold.has(g.id)) E.fold.delete(g.id);
+            drawTbl(); drawPv();
+            tbl.querySelector(`.qe-r[data-id="${r.id}"]`)?.scrollIntoView({ block: "center" });
+        });
+
+        // ── 한꺼번에: 이름 / 값 · 붙이기 / 빼기 · 앞 · 뒤 · 찾아 바꾸기 · 적용 · 되돌리기 ──
+        const seg = (k, list) => el("div", { class: "r20be-seg qe-seg", role: "radiogroup" }, list.map(([v, l]) => el("button", { type: "button", class: E[k] === v ? "on" : null, role: "radio", "aria-checked": String(E[k] === v), onclick: () => { E[k] = v; drawBulk(); drawTbl(); } }, l)));
+        const bulk = el("div", { class: "qe-bulk" });
+        let bT = 0;
+        const bin = (k, ph, lab) => el("input", { class: "r20be-in qe-b", value: E[k], placeholder: ph, spellcheck: "false", "aria-label": lab, "data-k": k,
+            onfocus: e => { E.focus = k; }, oninput: e => { E[k] = e.target.value; clearTimeout(bT); bT = setTimeout(() => { drawTbl(); drawBulkSum(); }, 150); } });
+        const drawBulkSum = () => {
+            const s = scope().length, p = pending().size;
+            bulk.querySelector(".qe-sum").textContent = E.sel.size ? `고른 ${s}줄` : `모든 선택지 ${s}줄 (고른 줄 없음)`;
+            bulk.querySelector(".qe-go").disabled = !p;
+            bulk.querySelector(".qe-go").textContent = p ? `적용 (${p}줄)` : "적용";
+            delBtn.disabled = !E.sel.size;
+            delBtn.textContent = E.sel.size ? `고른 ${E.sel.size}줄 지우기` : "고른 줄 지우기";
+        };
+        const delBtn = el("button", { type: "button", class: "r20be-sec danger", disabled: true, onclick: () => delSel() }, "고른 줄 지우기");
+        const PRESET = [["그림으로 보이기 [이름](값)", { tgt: "value", mode: "add", pre: "[{이름}](", suf: ")" }], ["이름 앞에 묶음 이름", { tgt: "label", mode: "add", pre: "{묶음}-", suf: "" }], ["앞뒤 빼기", { mode: "del" }]];
+        const drawBulk = () => {
+            bulk.textContent = "";
+            bulk.append(
+                el("div", { class: "qe-line" }, el("span", { class: "qe-sum" }), el("span", {}, "의"), seg("tgt", [["label", "이름"], ["value", "값"]]), seg("mode", [["add", "붙이기"], ["del", "빼기"]]),
+                    el("span", {}, "앞에"), bin("pre", "예: [{이름}](", "앞에 붙일 글"), el("span", {}, "뒤에"), bin("suf", "예: )", "뒤에 붙일 글")),
+                el("div", { class: "qe-line" }, el("span", {}, "찾기"), bin("find", "찾을 글", "찾을 글"), el("span", {}, "→"), bin("rep", "바꿀 글 (비우면 지움)", "바꿀 글"),
+                    el("button", { type: "button", class: "r20be-pri qe-go", onclick: apply }, "적용"),
+                    el("button", { type: "button", class: "r20be-sec", disabled: !E.hist.length, onclick: undo }, "되돌리기")),
+                el("div", { class: "qe-line qe-pre" }, el("span", {}, "자주 쓰는 것:"),
+                    PRESET.map(([l, o]) => el("button", { type: "button", class: "qe-chip", onclick: () => { Object.assign(E, o); drawBulk(); drawTbl(); } }, l)),
+                    ["{이름}", "{값}", "{번호}", "{묶음}"].map(t => el("button", { type: "button", class: "qe-tok", title: "누르면 마지막에 쓰던 칸에 넣기", onclick: () => { const k = E.focus || "pre"; E[k] += t; drawBulk(); drawTbl(); bulk.querySelector(`.qe-b[data-k="${k}"]`)?.focus(); } }, t))));
+            drawBulkSum();
+        };
+        function apply() {
+            const p = pending();
+            if (!p.size) return;
+            snap();
+            Q.rows.forEach(r => { if (p.has(r.id)) { if (E.tgt === "label") r.label = p.get(r.id); else r.value = p.get(r.id); } });
+            E.pre = E.suf = E.find = E.rep = "";          // 두 번 눌러 두 번 붙지 않게 비운다
+            commit(); drawAll();
+        }
+        function undo() {
+            const h = E.hist.pop();
+            if (!h) return;
+            const o = JSON.parse(h);
+            Q.prompt = o.p; Q.head = o.h; Q.tail = o.t; Q.rows = o.r;
+            commit(); drawAll();
+        }
+        function delSel() {
+            if (!E.sel.size) return;
+            snap();
+            Q.rows = Q.rows.filter(r => !E.sel.has(r.id));
+            E.sel.clear();
+            commit(); drawAll();
+        }
+
+        // ── 표 ──
+        const tbl = el("div", { class: "qe-tbl", role: "grid", "aria-label": "선택지" });
+        const thumb = r => { const u = qUrl(r.value); return u && /^https?:/i.test(u) ? `<img src="${escAttr(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('bad')">` : ""; };
+        const rowHtml = (r, p) => {
+                const k = qKind(r), iss = qIssues(r), nv = p.get(r.id), chg = r.orig !== qRow(r);
+                const cnt = k === "grp" ? (() => { let c = 0; for (let i = Q.rows.indexOf(r) + 1; i < Q.rows.length && qKind(Q.rows[i]) === "opt"; i++) c++; return c; })() : 0;
+                return (`<div class="qe-r k-${k}${E.sel.has(r.id) ? " sel" : ""}${E.cur === r.id ? " cur" : ""}${chg ? " chg" : ""}" data-id="${r.id}">`
+                    + `<input type="checkbox" class="qe-cb" ${E.sel.has(r.id) ? "checked" : ""} aria-label="고르기">`
+                    + `<span class="qe-dr" title="끌어서 순서 바꾸기">⋮⋮</span>`
+                    + (k === "grp" ? `<span class="qe-g"><button type="button" class="qe-fd" aria-expanded="${!E.fold.has(r.id)}" title="접기 · 펴기">${E.fold.has(r.id) ? "▸" : "▾"}</button><input class="qe-l" value="${escAttr(r.label)}" spellcheck="false" aria-label="묶음 이름"><small>${cnt}</small></span>`
+                        : `<input class="qe-l" value="${escAttr(r.label)}" spellcheck="false" aria-label="${k === "sep" ? "구분선" : "이름"}">`)
+                    + (k === "opt" ? `<input class="qe-v" value="${escAttr(r.value)}" spellcheck="false" aria-label="값">` : `<span class="qe-vn">${k === "grp" ? "(묶음 이름 — 값 없음)" : "(구분선)"}</span>`)
+                    + `<span class="qe-th">${k === "opt" ? thumb(r) : ""}</span>`
+                    + `<button type="button" class="qe-x" title="이 줄 지우기" aria-label="지우기">✕</button>`
+                    + (nv != null ? `<div class="qe-new"><s>${escAttr(E.tgt === "label" ? r.label : r.value)}</s><span>${escAttr(nv)}</span></div>` : "")
+                    + iss.map(w => `<div class="qe-w">⚠ ${escAttr(w.msg)}${w.fix ? ` <button type="button" class="qe-fx" data-fix="${w.fix}">${escAttr(w.fl)}</button>` : ""}${w.fix && fixN[w.fix] > 1 ? `<button type="button" class="qe-fx" data-fix="${w.fix}" data-all="1" title="같은 것 모두 고치기">모두 ${fixN[w.fix]}곳</button>` : ""}</div>`).join("")
+                    + `</div>`);
+        };
+        let fixN = {};          // 고치기 종류별 줄 수 ('모두 n곳' 단추)
+        const drawTbl = () => {
+            const p = pending(), rows = [];
+            fixN = {};
+            Q.rows.forEach(r => qIssues(r).forEach(w => { if (w.fix) fixN[w.fix] = (fixN[w.fix] || 0) + 1; }));
+            let fold = false;
+            Q.rows.forEach(r => {
+                const k = qKind(r);
+                if (k !== "opt") fold = k === "grp" && E.fold.has(r.id);
+                else if (fold) return;
+                rows.push(rowHtml(r, p));
+            });
+            const top = tbl.scrollTop;
+            tbl.innerHTML = `<div class="qe-r qe-hd"><input type="checkbox" class="qe-all" aria-label="모두 고르기" ${E.sel.size && E.sel.size >= Q.rows.length ? "checked" : ""}><span></span><span>이름 (선택창에 보임)</span><span>값 (채팅에 나감)</span><span>그림</span><span></span></div>`
+                + (rows.join("") || '<p class="r20be-empty">선택지가 없어요</p>');
+            tbl.scrollTop = top;
+        };
+        const rowOf = t => Q.rows.find(r => r.id === +t.closest(".qe-r[data-id]")?.dataset.id);
+        tbl.addEventListener("click", e => {
+            const t = e.target, r = rowOf(t);
+            if (t.matches(".qe-all")) { if (t.checked) Q.rows.forEach(x => E.sel.add(x.id)); else E.sel.clear(); drawTbl(); drawBulk(); return; }
+            if (!r) return;
+            if (t.matches(".qe-cb")) {
+                const vis = [...tbl.querySelectorAll(".qe-r[data-id]")].map(x => +x.dataset.id), i = vis.indexOf(r.id);
+                const ids = e.shiftKey && E.last >= 0 ? vis.slice(Math.min(i, E.last), Math.max(i, E.last) + 1) : [r.id];
+                // 묶음 이름을 고르면 그 아래 선택지도
+                if (qKind(r) === "grp") for (let k = Q.rows.indexOf(r) + 1; k < Q.rows.length && qKind(Q.rows[k]) === "opt"; k++) ids.push(Q.rows[k].id);
+                ids.forEach(id => t.checked ? E.sel.add(id) : E.sel.delete(id));
+                E.last = i;
+                drawTbl(); drawBulk(); return;
+            }
+            if (t.matches(".qe-x")) { snap(); Q.rows.splice(Q.rows.indexOf(r), 1); E.sel.delete(r.id); commit(); drawAll(); return; }
+            if (t.matches(".qe-fd")) { E.fold.has(r.id) ? E.fold.delete(r.id) : E.fold.add(r.id); drawTbl(); return; }
+            if (t.matches(".qe-fx")) {
+                snap();
+                const f = t.dataset.fix;
+                (t.dataset.all ? Q.rows.filter(x => qIssues(x).some(w => w.fix === f)) : [r]).forEach(x => qFix(Q, x, f));
+                commit(); drawAll(); return;
+            }
+            if (E.cur !== r.id) { E.cur = r.id; tbl.querySelectorAll(".qe-r.cur").forEach(x => x.classList.remove("cur")); t.closest(".qe-r").classList.add("cur"); drawPv(); }
+        });
+        tbl.addEventListener("focusin", e => { const r = rowOf(e.target); if (r && E.cur !== r.id) { E.cur = r.id; tbl.querySelectorAll(".qe-r.cur").forEach(x => x.classList.remove("cur")); e.target.closest(".qe-r").classList.add("cur"); drawPv(); } });
+        let typing = null;
+        tbl.addEventListener("input", e => {
+            const r = rowOf(e.target);
+            if (!r || !e.target.matches(".qe-l, .qe-v")) return;
+            if (typing !== r.id) { snap(); typing = r.id; }
+            if (e.target.matches(".qe-l")) r.label = e.target.value; else r.value = e.target.value;
+            e.target.closest(".qe-r").classList.toggle("chg", r.orig !== qRow(r));
+            commitSoon();
+        });
+        tbl.addEventListener("change", e => {
+            const r = rowOf(e.target);
+            if (!r || !e.target.matches(".qe-l, .qe-v")) return;
+            typing = null;
+            const lab = e.target.matches(".qe-l"), v = qeEsc(e.target.value, lab && qKind(r) === "opt");
+            if (lab) r.label = v; else r.value = v;
+            commit();
+            const row = e.target.closest(".qe-r");
+            setTimeout(() => { if (row.isConnected) row.outerHTML = rowHtml(r, pending()); drawInfo(); drawPv(); }, 0);
+        });
+        // 끌어서 순서: ⋮⋮ 을 잡고 위 · 아래로 (묶음 이름을 끌면 그 묶음 통째로)
+        tbl.addEventListener("pointerdown", e => {
+            const h = e.target.closest(".qe-dr"), r = h && rowOf(h);
+            if (!r || e.button !== 0) return;
+            e.preventDefault();
+            h.setPointerCapture(e.pointerId);
+            const rowEl = h.closest(".qe-r");
+            rowEl.classList.add("drag");
+            let tgt = null, after = false;
+            const mv = ev => {
+                tbl.querySelectorAll(".qe-r.drop-b, .qe-r.drop-a").forEach(x => x.classList.remove("drop-b", "drop-a"));
+                const o = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(".qe-r[data-id]");
+                if (!o || o === rowEl) { tgt = null; return; }
+                const b = o.getBoundingClientRect();
+                after = ev.clientY > b.top + b.height / 2;
+                tgt = rowOf(o);
+                o.classList.add(after ? "drop-a" : "drop-b");
+                if (ev.clientY < tbl.getBoundingClientRect().top + 20) tbl.scrollTop -= 12; else if (ev.clientY > tbl.getBoundingClientRect().bottom - 20) tbl.scrollTop += 12;
+            };
+            const up = () => {
+                ["pointermove", "pointerup", "pointercancel"].forEach((t, k) => h.removeEventListener(t, k ? up : mv));
+                rowEl.classList.remove("drag");
+                if (!tgt || tgt === r) return drawTbl();
+                snap();
+                const i = Q.rows.indexOf(r);
+                let n2 = 1;
+                if (qKind(r) === "grp") while (i + n2 < Q.rows.length && qKind(Q.rows[i + n2]) === "opt") n2++;
+                const moving = Q.rows.splice(i, n2);
+                if (moving.includes(tgt)) { Q.rows.splice(i, 0, ...moving); return drawTbl(); }
+                Q.rows.splice(Q.rows.indexOf(tgt) + (after ? 1 : 0), 0, ...moving);
+                commit(); drawAll();
+            };
+            h.addEventListener("pointermove", mv); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
+        });
+
+        // ── 아래 줄: 더하기 · 미리보기 ──
+        const add = (label, value) => {
+            snap();
+            const at = E.sel.size ? Math.max(...Q.rows.map((r, i) => E.sel.has(r.id) ? i : -1)) + 1 : Q.rows.length;
+            const r = { id: ++qeSeq, pre: "\n", label, value, orig: null };
+            Q.rows.splice(at, 0, r);
+            E.cur = r.id;
+            commit(); drawAll();
+            const inp2 = tbl.querySelector(`.qe-r[data-id="${r.id}"] .qe-l`);
+            inp2?.scrollIntoView({ block: "center" }); inp2?.select();
+        };
+        const foot = el("div", { class: "qe-ft" },
+            el("button", { type: "button", class: "r20be-sec", onclick: () => add("새 선택지", "") }, "＋ 줄"),
+            el("button", { type: "button", class: "r20be-sec", onclick: () => add("――――――――――――――", null) }, "＋ 구분선"),
+            el("button", { type: "button", class: "r20be-sec", onclick: () => add("새 묶음", null) }, "＋ 묶음"),
+            delBtn,
+            el("span", { class: "qe-hint" }, "고른 줄 다음에 · Shift 로 여러 줄 · ⋮⋮ 끌어서 순서"),
+            el("button", { type: "button", class: "r20be-sec qe-pvb", "aria-expanded": String(E.pv), onclick: e => { E.pv = !E.pv; e.currentTarget.setAttribute("aria-expanded", String(E.pv)); e.currentTarget.textContent = E.pv ? "미리보기 ▾" : "미리보기 ▸"; drawPv(); } }, E.pv ? "미리보기 ▾" : "미리보기 ▸"));
+
+        // ── 미리보기: Roll20 선택창 · 채팅에 나올 것 · 만들어질 매크로 글 ──
+        const pv = el("div", { class: "qe-pv" });
+        const drawPv = () => {
+            clearTimeout(pT);
+            pv.hidden = !E.pv;
+            if (!E.pv) return;
+            pT = setTimeout(() => {
+                const cur = Q.rows.find(r => r.id === E.cur && qKind(r) === "opt") || opts()[0];
+                const sel = `<div class="qe-q"><div class="qe-qt">${escAttr(Q.prompt || "(질문)")}</div><div class="qe-ql">` + Q.rows.map(r => { const k = qKind(r); return `<div class="o k-${k}${r === cur ? " on" : ""}">${escAttr(k === "sep" ? "――――――――" : r.label.trim())}</div>`; }).join("") + "</div></div>";
+                const u = cur && qUrl(cur.value);
+                const chat = cur ? `<div class="qe-chat"><div class="qe-who">${escAttr(Q.head.trim() || "(앞 글 없음)")} + <b>${escAttr(cur.label.trim())}</b></div>`
+                    + (u && /^https?:/i.test(u) ? `<img src="${escAttr(u)}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'qe-bad',textContent:'그림을 못 불러와요'}))">` : "")
+                    + `<code>${escAttr(cur.value)}</code>${qIssues(cur).map(w => `<p class="qe-bad">⚠ ${escAttr(w.msg)}</p>`).join("")}</div>` : '<p class="r20be-empty">선택지가 없어요</p>';
+                const line = r => { const s = escAttr("|" + r.pre + qRow(r)); return qIssues(r).length ? `<span class="w">${s}</span>` : r.orig !== qRow(r) ? `<span class="a">${s}</span>` : s; };
+                const txt = qText(Q);
+                pv.innerHTML = `<div class="qe-card"><h4>선택창 <small>(매크로를 누르면 뜨는 것)</small></h4>${sel}</div>`
+                    + `<div class="qe-card"><h4>채팅 <small>(${cur ? escAttr(cur.label.trim()) : "-"} 을 고르면)</small></h4>${chat}</div>`
+                    + `<div class="qe-card qe-wide"><h4>만들어질 매크로 글 <small>(바뀐 곳 초록 · 확인할 곳 주황 · ${txt.length.toLocaleString()}자)</small> <button type="button" class="r20be-sec qe-cp">복사</button></h4>`
+                    + `<pre class="qe-code"><span class="k">${escAttr(Q.head + "?{" + Q.prompt)}</span>${Q.rows.map(line).join("")}<span class="k">}</span>${escAttr(Q.tail)}</pre></div>`;
+                pv.querySelector(".qe-ql .on")?.scrollIntoView({ block: "nearest" });
+                pv.querySelector(".qe-cp").onclick = e => copyText(txt).then(ok => { e.target.textContent = ok ? "✓ 복사됨" : "못 함"; });
+            }, 60);
+        };
+        const drawAll = () => { drawInfo(); drawBulk(); drawTbl(); drawPv(); };
+        root.append(info, bulk, tbl, foot, pv);
+        drawAll();
+        return root;
+    };
+
+    // 매크로 편집칸 — 내용에 ?{…} 이 있으면 [선택지 표 | 글]
+    const macroPane = n => {
+        const hasQ = !!qFind(n.cur.action), qe = hasQ && (QE_MODE.get(n.id) || "tab") === "tab" ? qEditor(n) : null;
+        const ta = el("textarea", { class: "r20be-ta mono", value: n.cur.action, spellcheck: "false", "aria-label": "매크로 내용",
+            oninput: e => { setField(n, "action", e.target.value); autosize(e.target); refreshRow(n); } });
+        return el("div", { class: "r20be-pane-in" }, paneHead(n),
+            el("div", { class: "r20be-grid" },
+                field("매크로 이름 (#이름으로 부를 때 공백은 안 됨)", nameInput(n)),
+                field("보이는 사람", el("select", { class: "r20be-in", onchange: e => { setField(n, "share", e.target.value); refreshRow(n); } },
+                    shareOptions(n.cur.share).map(o => el("option", { value: o.v, selected: o.v === n.cur.share }, o.v ? o.label : "나만"))))),
+            el("label", { class: "r20be-chk" },
+                el("input", { type: "checkbox", checked: n.cur.token, onchange: e => { setField(n, "token", e.target.checked); refreshRow(n); } }), "토큰 액션으로 보이기"),
+            hasQ ? el("div", { class: "qe-mode" }, el("span", { class: "r20be-lb" }, "내용"),
+                el("div", { class: "r20be-seg", role: "radiogroup", "aria-label": "내용 보기" }, [["tab", "선택지 표"], ["txt", "글"]].map(([v, l]) =>
+                    el("button", { type: "button", role: "radio", class: (qe ? "tab" : "txt") === v ? "on" : null, "aria-checked": String((qe ? "tab" : "txt") === v), onclick: () => { QE_MODE.set(n.id, v); renderPane(); } }, l)))) : null,
+            qe || (hasQ ? ta : field("내용", ta)));
+    };
 
     // 합치기: 같은 탭의 다른 굴림표·덱 항목을 이 표 끝에 복사 (저장할 때 반영)
     const openMerge = n => {
@@ -12701,6 +13105,68 @@ addCss(`
         #r20be .r20be-ctab.on { border-bottom-color:var(--aio-accent); color:var(--aio-accent); }
         #r20be .r20be-ta { flex:1 0 auto; width:100%; min-height:200px; overflow:hidden; margin:0; padding:10px 12px; border:0; border-radius:0; box-shadow:none; resize:none; outline:none; font-family:inherit; font-size:13px; line-height:1.7; }
         #r20be .r20be-ta.mono { font-family:Consolas, monospace; font-size:12px; }
+        /* 매크로 선택지 편집 (?{…} 표) */
+        #r20be .qe-mode { display:flex; align-items:center; gap:10px; } #r20be .qe-mode .r20be-lb { margin:0; }
+        #r20be .r20be-qe { display:flex; flex-direction:column; gap:8px; }
+        #r20be .qe-info { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; color:var(--aio-ink-4); font-size:11px; }
+        #r20be .qe-info .qe-s { width:auto; height:24px; padding:0 6px; font-family:Consolas, monospace; font-size:11.5px; }
+        #r20be .qe-info :is(.qe-head, .qe-tail) { flex:0 1 90px; } #r20be .qe-info .qe-pr { flex:0 1 160px; }
+        #r20be .qe-cnt { margin-left:auto; } #r20be .qe-cnt b { color:var(--aio-ink-2); }
+        #r20be .qe-wn { height:20px; margin:0; padding:0 7px; border:1px solid var(--aio-warn); border-radius:10px; background:var(--aio-warn-bg); color:var(--aio-warn); font-size:11px; cursor:pointer; }
+        #r20be .qe-bulk { display:flex; flex-direction:column; gap:5px; padding:7px 10px; border:1px solid var(--aio-accent-soft); border-radius:var(--aio-r); background:#fff8fc; color:var(--aio-ink-3); font-size:11.5px; }
+        #r20be .qe-line { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
+        #r20be .qe-sum { color:var(--aio-accent-dark); font-weight:700; }
+        #r20be .qe-seg button { height:22px; padding:0 9px; font-size:11px; }
+        #r20be .qe-b { width:120px; height:24px; font-family:Consolas, monospace; font-size:11.5px; }
+        #r20be .qe-bulk :is(.r20be-pri, .r20be-sec) { height:24px; }
+        #r20be .qe-pre { color:var(--aio-ink-4); font-size:11px; }
+        #r20be :is(.qe-chip, .qe-tok) { height:20px; margin:0; padding:0 8px; border-radius:10px; font-size:10.5px; cursor:pointer; }
+        #r20be .qe-chip { border:0; background:var(--aio-bg-4); color:var(--aio-ink-3); } #r20be .qe-chip:hover { background:var(--aio-accent-bg); }
+        #r20be .qe-tok { border:1px dashed var(--aio-accent); background:var(--aio-bg); color:var(--aio-accent-dark); }
+        #r20be .qe-tbl { max-height:52vh; overflow:auto; overscroll-behavior:contain; border:1px solid var(--aio-line-3); border-radius:var(--aio-r); }
+        #r20be .qe-r { display:grid; grid-template-columns:16px 14px minmax(0, 0.8fr) minmax(0, 1.4fr) 38px 18px; gap:2px 6px; align-items:center; min-height:30px; padding:2px 8px; border-bottom:1px solid var(--aio-line-4); font-size:12px; content-visibility:auto; contain-intrinsic-size:auto 32px; }
+        #r20be .qe-hd { position:sticky; top:0; z-index:2; min-height:24px; background:var(--aio-bg-3); color:var(--aio-ink-5); font-size:10.5px; font-weight:700; content-visibility:visible; }
+        #r20be .qe-r input[type="checkbox"] { margin:0; }
+        #r20be .qe-dr { color:#c8c8c8; font-size:10px; letter-spacing:-2px; cursor:grab; touch-action:none; user-select:none; }
+        #r20be .qe-r :is(.qe-l, .qe-v) { width:100%; min-width:0; height:24px; margin:0; padding:0 6px; border:1px solid transparent; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-2); font-size:12px; box-shadow:none; }
+        #r20be .qe-r :is(.qe-l, .qe-v):hover { border-color:var(--aio-line-2); }
+        #r20be .qe-r :is(.qe-l, .qe-v):focus { border-color:var(--aio-accent); background:var(--aio-bg); outline:none; }
+        #r20be .qe-r .qe-v { color:var(--aio-ink-3); font-family:Consolas, monospace; font-size:11px; }
+        #r20be .qe-vn { padding-left:6px; color:var(--aio-ink-5); font-size:10.5px; }
+        #r20be .qe-g { display:flex; align-items:center; gap:2px; min-width:0; } #r20be .qe-g .qe-l { font-weight:700; } #r20be .qe-g small { color:var(--aio-ink-5); font-size:10px; }
+        #r20be .qe-fd { flex:none; width:16px; height:20px; margin:0; padding:0; border:0; background:none; color:var(--aio-ink-4); cursor:pointer; }
+        #r20be .qe-r.k-grp { background:var(--aio-bg-2); } #r20be .qe-r.k-sep .qe-l { color:var(--aio-ink-5); }
+        #r20be .qe-th { width:38px; height:24px; overflow:hidden; border-radius:3px; background:var(--aio-bg-3); }
+        #r20be .qe-th img { display:block; width:100%; height:100%; object-fit:cover; }
+        #r20be .qe-th.bad { background:repeating-linear-gradient(45deg, #fff, #fff 3px, #f5d0d0 3px, #f5d0d0 6px); } #r20be .qe-th.bad img { display:none; }
+        #r20be .qe-r:is(.k-grp, .k-sep) .qe-th { background:none; }
+        #r20be .qe-x { width:18px; height:20px; margin:0; padding:0; border:0; background:none; color:#bbb; cursor:pointer; } #r20be .qe-x:hover { color:var(--aio-bad); }
+        #r20be .qe-r.sel { background:#fffafd; }
+        #r20be .qe-r.chg { box-shadow:inset 2px 0 0 var(--aio-ok); }
+        #r20be .qe-r.cur { box-shadow:inset 3px 0 0 var(--aio-accent); }
+        #r20be .qe-r.drag { opacity:0.5; }
+        #r20be .qe-r.drop-b { box-shadow:inset 0 2px 0 var(--aio-accent); } #r20be .qe-r.drop-a { box-shadow:inset 0 -2px 0 var(--aio-accent); }
+        #r20be .qe-r > :is(.qe-new, .qe-w) { grid-column:3 / -1; font-size:10.5px; }
+        #r20be .qe-new { display:flex; flex-direction:column; padding:1px 6px; border-radius:3px; background:var(--aio-ok-bg); font-family:Consolas, monospace; overflow-wrap:anywhere; }
+        #r20be .qe-new s { color:var(--aio-ink-5); } #r20be .qe-new span { color:var(--aio-ok); }
+        #r20be .qe-w { padding:0 6px; color:var(--aio-warn); }
+        #r20be .qe-fx { height:18px; margin:0 0 0 4px; padding:0 6px; border:1px solid var(--aio-warn); border-radius:9px; background:var(--aio-bg); color:var(--aio-warn); font-size:10.5px; cursor:pointer; }
+        #r20be .qe-ft { display:flex; flex-wrap:wrap; align-items:center; gap:6px; } #r20be .qe-hint { color:var(--aio-ink-5); font-size:10.5px; } #r20be .qe-pvb { margin-left:auto; }
+        #r20be .qe-pv { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:10px; } #r20be .qe-pv[hidden] { display:none; }
+        #r20be .qe-card { min-width:0; padding:8px 10px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r); }
+        #r20be .qe-wide { grid-column:1 / -1; }
+        #r20be .qe-card h4 { display:flex; align-items:center; gap:6px; margin:0 0 6px; font-size:12px; } #r20be .qe-card h4 small { color:var(--aio-ink-4); font-weight:400; } #r20be .qe-cp { height:22px; margin-left:auto; }
+        #r20be .qe-q { overflow:hidden; border:1px solid #aaa; border-radius:4px; font-size:12px; }
+        #r20be .qe-qt { padding:5px 8px; border-bottom:1px solid #ccc; background:#f0f0f0; font-weight:700; }
+        #r20be .qe-ql { max-height:220px; overflow-y:auto; }
+        #r20be .qe-ql .o { padding:2px 8px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20be .qe-ql .o.on { background:#1e90ff; color:#fff; } #r20be .qe-ql .o.k-grp { color:#888; } #r20be .qe-ql .o.k-sep { color:#bbb; }
+        #r20be .qe-chat { display:flex; flex-direction:column; gap:6px; } #r20be .qe-who { color:var(--aio-ink-4); font-size:11px; }
+        #r20be .qe-chat img { align-self:flex-start; max-width:100%; max-height:160px; border-radius:4px; object-fit:contain; }
+        #r20be .qe-chat code { color:var(--aio-ink-3); font-size:10.5px; overflow-wrap:anywhere; }
+        #r20be .qe-bad { margin:0; color:var(--aio-warn); font-size:11px; }
+        #r20be .qe-code { max-height:220px; overflow:auto; margin:0; padding:8px; border-radius:6px; background:#1e1e22; color:#ddd; font:10.5px/1.6 Consolas, monospace; white-space:pre-wrap; word-break:break-all; }
+        #r20be .qe-code .k { color:#ff9ad5; } #r20be .qe-code .a { color:#7ee2a8; } #r20be .qe-code .w { background:#5a3a10; color:#ffd28a; }
         /* 맵 탭 */
         #r20be .r20be-gth { flex:none; width:22px; height:22px; border-radius:var(--aio-r-sm); object-fit:contain; background:var(--aio-bg-3); }
         #r20be .r20be-gfl { flex:none; padding:0 6px; border-radius:var(--aio-r-lg); font-size:10px; font-weight:700; line-height:16px; }
@@ -12868,7 +13334,7 @@ addCss(`
         .r20be-mini:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
 `);
 addFeature("bulkEditor", bulkEditor);
-addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 편집기", sub: "덱 · 굴림표 · 이미지도 — 굴림표 항목 · 덱 카드 순서 바꾸기",
+addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 편집기", sub: "덱 · 굴림표 · 이미지도 — 굴림표 항목 · 덱 카드 순서 바꾸기 · 매크로 선택지(?{…})는 표로: 앞뒤 붙이기 · 찾아 바꾸기 · 그림 주소 확인 · 미리보기",
     members: [["bulk", "bulkEditor"]],
     extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
 
