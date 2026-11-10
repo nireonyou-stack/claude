@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.81.0
+// @version      1.82.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.81.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.82.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -887,6 +887,87 @@ const tagList = s => String(s || "").split(/[\s,]+/).map(t => t.replace(/^#/, ""
 // files.d20.io 그림은 …/thumb|med|max|original.확장자 로 크기만 다르다
 const VARIANT = /\/(?:thumb|med|max|original)\.([a-z0-9]+)(\?[^#]*)?$/i;
 const sizedUrl = (u, s) => VARIANT.test(u) ? u.replace(VARIANT, (m, ext, qs) => `/${s}.${ext}${qs || ""}`) : u;
+// 굴림표 묶음: Roll20 굴림표에는 구분선이 없어서 그림 없는 항목 '――― 네온 ―――'(이름 없으면 '――――――――')을 묶음 제목으로 쓴다
+// 가중치 0 으로 두면 굴림에는 안 나온다 · 일괄 편집기와 토큰 면 고르기 창이 같이 쓴다
+const TBL_DASH = "—–\\-─━=_~―‒⸺⸻－ー";
+const TBL_HEAD_RE = new RegExp(`^\\s*[${TBL_DASH}]{2,}|[${TBL_DASH}]{2,}\\s*$`);
+const TBL_TRIM_RE = new RegExp(`^[\\s${TBL_DASH}]+|[\\s${TBL_DASH}]+$`, "g");
+const tblHead = (name, avatar) => !avatar && TBL_HEAD_RE.test(String(name || "")) ? { name: String(name).replace(TBL_TRIM_RE, "") } : null;
+const tblHeadName = t => t ? `――― ${t} ―――` : "――――――――";
+// 항목 → 묶음 [{name, head, items}] — 첫 묶음 제목 앞 항목은 제목 없는 묶음 · 이름 없는 묶음은 '묶음 n'
+const tblSections = (list, get) => {
+    const out = [];
+    let sec = null;
+    list.forEach(it => {
+        const a = get(it), h = tblHead(a.name, a.avatar);
+        if (h) { sec = { name: h.name, head: it, items: [] }; out.push(sec); return; }
+        if (!sec) { sec = { name: "", head: null, items: [] }; out.push(sec); }
+        sec.items.push(it);
+    });
+    out.forEach((x, k) => { if (!x.name) x.name = `묶음 ${k + 1}`; });
+    return out;
+};
+// 묶음 고르기 드롭다운 — 매크로 그림 창 · 토큰 면 창 · 일괄 편집기 굴림표가 같이 쓴다
+// 단추 = 고른 묶음의 첫 그림 + 이름 ▾ · 펼치면 묶음마다 첫 그림 · 이름 · 개수 (↑↓ Enter Esc · 바깥 누르면 닫힘)
+// groups: [{name, thumb, count, hidden}] (부른 쪽이 고친 뒤 w.refresh()) · cur -1 = 전체 · total = 전체 개수 (null 이면 묶음 합)
+let grpDropSeq = 0;
+const grpDrop = (groups, cur, total, onPick) => {
+    const id = "aio-gd" + (++grpDropSeq);
+    const w = document.createElement("div");
+    w.className = "aio-gd";
+    w.innerHTML = `<button type="button" class="aio-gd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="묶음만 보기"></button><div class="aio-gd-menu" role="listbox" id="${id}" hidden></div>`;
+    const btn = w.firstChild, menu = w.lastChild;
+    btn.setAttribute("aria-controls", id);
+    const pic = u => u ? `<img src="${escAttr(u)}" alt="" loading="lazy" draggable="false">` : '<i aria-hidden="true">▦</i>';
+    const label = k => k < 0 ? "전체" : groups[k].name;
+    const thumb = k => k < 0 ? "" : groups[k].thumb;
+    let act = cur;
+    const draw = () => {
+        btn.innerHTML = `${pic(thumb(cur))}<span>${escAttr(label(cur))}</span><b>${k2n(cur)}</b><em aria-hidden="true">▾</em>`;
+        menu.innerHTML = [-1, ...groups.map((_, k) => k)].filter(k => k < 0 || !groups[k].hidden).map(k =>
+            `<div role="option" id="${id}-${k + 1}" class="aio-gd-op${k === act ? " act" : ""}" data-g="${k}" aria-selected="${k === cur}">${pic(thumb(k))}<span>${escAttr(label(k))}</span><b>${k2n(k)}</b></div>`).join("");
+        btn.setAttribute("aria-activedescendant", `${id}-${act + 1}`);
+    };
+    const k2n = k => k >= 0 ? groups[k].count : total ?? groups.reduce((a, g) => a + (g.hidden ? 0 : g.count), 0);
+    const opts = () => [...menu.querySelectorAll(".aio-gd-op")];
+    const outside = e => { if (!w.contains(e.target)) close(); };
+    const open = () => {
+        if (!menu.hidden) return;
+        act = cur; draw();
+        menu.hidden = false; btn.setAttribute("aria-expanded", "true");
+        menu.querySelector(".act")?.scrollIntoView({ block: "nearest" });
+        document.addEventListener("mousedown", outside, true);
+    };
+    const close = () => {
+        menu.hidden = true; btn.setAttribute("aria-expanded", "false");
+        document.removeEventListener("mousedown", outside, true);
+    };
+    const pick = k => { cur = act = k; close(); draw(); onPick(k); btn.focus(); };
+    btn.addEventListener("click", () => menu.hidden ? open() : close());
+    menu.addEventListener("click", e => { const o = e.target.closest(".aio-gd-op"); if (o) pick(+o.dataset.g); });
+    // 첫 그림이 안 불러와지면 ▦ 로
+    w.addEventListener("error", e => { if (e.target.tagName === "IMG") e.target.replaceWith(Object.assign(document.createElement("i"), { textContent: "▦" })); }, true);
+    btn.addEventListener("keydown", e => {
+        e.stopPropagation();        // Roll20 단축키 · Enter 제출 막기
+        const L = opts().map(o => +o.dataset.g);
+        if (e.key === "Escape") { if (!menu.hidden) { e.preventDefault(); close(); } return; }
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            if (menu.hidden) return open();
+            act = L[Math.max(0, Math.min(L.length - 1, L.indexOf(act) + (e.key === "ArrowDown" ? 1 : -1)))];
+            opts().forEach(o => o.classList.toggle("act", +o.dataset.g === act));
+            btn.setAttribute("aria-activedescendant", `${id}-${act + 1}`);
+            menu.querySelector(".act")?.scrollIntoView({ block: "nearest" });
+        } else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (menu.hidden) open(); else pick(act);
+        }
+    });
+    w.refresh = () => { if (cur >= 0 && groups[cur]?.hidden) cur = -1; draw(); };
+    w.set = k => { cur = act = k; draw(); };
+    draw();
+    return w;
+};
 const escAttr = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 // 움직이는 그림 중 webm·mp4 는 <img> 로 그릴 수 없어 <video> 로 (Roll20 도 움직이는 그림은 med.webm 을 쓴다)
 const isAnimVideo = u => /\.(?:webm|mp4)(?:[?#]|$)/i.test(String(u || ""));
@@ -1004,6 +1085,23 @@ const zpx = v => v / aioZoom.get() + "px";
 const CORE_CSS = `
         /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
         :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); }
+        /* 묶음 고르기 드롭다운 (grpDrop) */
+        .aio-gd { position:relative; flex-shrink:0; }
+        .aio-gd-btn { display:flex; align-items:center; gap:6px; max-width:260px; height:28px; margin:0; padding:0 8px 0 3px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink); font-size:12px; line-height:1; cursor:pointer; }
+        .aio-gd-btn:hover, .aio-gd-btn[aria-expanded="true"] { border-color:var(--aio-accent-mid); }
+        .aio-gd-btn:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        .aio-gd :is(.aio-gd-btn, .aio-gd-op) > img, .aio-gd :is(.aio-gd-btn, .aio-gd-op) > i { flex-shrink:0; width:38px; height:22px; border-radius:3px; background:var(--qp-bg, var(--aio-bg-3)); object-fit:contain; color:var(--aio-ink-4); font-size:13px; font-style:normal; line-height:22px; text-align:center; }
+        .aio-gd :is(.aio-gd-btn, .aio-gd-op) > span { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-weight:700; }
+        .aio-gd :is(.aio-gd-btn, .aio-gd-op) > b { flex-shrink:0; color:var(--aio-ink-5); font-size:10.5px; font-weight:400; }
+        .aio-gd-btn > em { flex-shrink:0; color:var(--aio-ink-4); font-size:10px; font-style:normal; }
+        .aio-gd-menu { position:absolute; left:0; top:calc(100% + 3px); z-index:20; width:max-content; min-width:100%; max-width:min(420px, 80vw); max-height:min(48vh, 400px); overflow-y:auto; padding:3px; border:1px solid var(--aio-line); border-radius:var(--aio-r); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.18); }
+        .aio-gd-menu[hidden] { display:none; }
+        .aio-gd-op { display:flex; align-items:center; gap:8px; padding:3px 8px 3px 3px; border-radius:var(--aio-r-sm); color:var(--aio-ink-2); font-size:12px; cursor:pointer; }
+        .aio-gd-op > img, .aio-gd-op > i { width:64px !important; height:36px !important; line-height:36px !important; }
+        .aio-gd-op > span { flex:1; font-weight:400 !important; }
+        .aio-gd-op:hover, .aio-gd-op.act { background:var(--aio-bg-3); }
+        .aio-gd-op[aria-selected="true"] { color:var(--aio-accent); }
+        .aio-gd-op[aria-selected="true"] > span { font-weight:700 !important; }
         /* 글자 크기 (aioZoom): 올인원 창 · (켜면) 채팅 기록과 입력칸 */
         :is(${AIO_ZOOMED}) { zoom:var(--aio-z, 1); }
         /* 햄버거 밑 단추줄(맵 단추 아래)에 붙는 올인원 단추 — 자리는 화면 배치(screenUI.place)가 잡는다 */
@@ -4850,6 +4948,62 @@ const sidePicker = (() => {
         (btns.find(b => /choose/i.test(b.textContent)) || btns[0])?.click();
     };
 
+    // 굴림표 토큰이면 면을 굴림표 묶음('――― 이름 ―――' 항목)으로 나눈다 → [{name, sides:[면 번호…]}] · 표 id
+    // 면 수가 항목 수(또는 그림 있는 항목 수)와 같고 그림이 차례대로 맞으면 차례로, 아니면 그림 주소로 맞춘다
+    const GRP_KEY = "r20_cs_grp";      // 굴림표 id → 마지막에 고른 묶음 이름
+    const keyOf = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
+    const sideGroups = list => {
+        const srcs = list.map(c => { const m = c.querySelector("img, video"); return m ? keyOf(m.getAttribute("src") || "") : ""; });
+        const need = Math.max(1, Math.ceil(srcs.filter(Boolean).length * 0.6));
+        const tabs = (window.Campaign || window.d20?.Campaign)?.rollabletables?.models || [];
+        let best = null;
+        tabs.forEach(t => {
+            const items = t.tableitems?.models || [];
+            const S = tblSections(items, m => ({ name: m.get("name"), avatar: m.get("avatar") }));
+            if (!S.some(x => x.head)) return;
+            const gOf = new Map();
+            S.forEach((x, k) => { if (x.head) gOf.set(x.head, -1); x.items.forEach(m => gOf.set(m, k)); });
+            const ak = m => keyOf(m.get("avatar") || "");
+            const tries = [items, items.filter(m => m.get("avatar"))].filter(a => a.length === list.length).map(a => {
+                const score = a.reduce((n, m, i) => n + (srcs[i] && srcs[i] === ak(m) ? 1 : 0), 0);
+                return { score, g: a.map(m => gOf.get(m)) };
+            });
+            const byKey = new Map();
+            items.forEach(m => { const k = ak(m); if (k && !byKey.has(k)) byKey.set(k, gOf.get(m)); });
+            const g = srcs.map(k => byKey.get(k));
+            tries.push({ score: g.filter(x => x != null).length, g });
+            tries.forEach(c => { if (c.score >= need && (!best || c.score > best.score)) best = { ...c, S, id: t.id }; });
+        });
+        if (!best) return null;
+        const groups = best.S.map((x, k) => ({ name: x.name, sides: best.g.map((v, i) => v === k ? i : -1).filter(i => i >= 0) })).filter(x => x.sides.length);
+        return groups.length > 1 ? { groups, id: best.id, heads: best.g.map((v, i) => v === -1 ? i : -1).filter(i => i >= 0) } : null;
+    };
+    const addGroups = (dlg, list, bar) => {
+        list.forEach((c, i) => { c.dataset.n = i + 1; c.hidden = false; });
+        const info = sideGroups(list);
+        if (!info) return;
+        info.heads.forEach(i => list[i].classList.add("r20cs-hdside"));      // 묶음 제목 자리(빈 면)는 감춤
+        let mem = {};
+        try { mem = JSON.parse(localStorage.getItem(GRP_KEY) || "{}") || {}; } catch (e) {}
+        let grp = info.groups.findIndex(x => x.name === mem[info.id]);
+        const row = document.createElement("div");
+        row.className = "r20cs-grps";
+        const apply = () => {
+            const keep = grp >= 0 ? new Set(info.groups[grp].sides) : null;
+            list.forEach((c, i) => { c.hidden = !!keep && !keep.has(i); });
+        };
+        const src = i => list[i]?.querySelector("img")?.getAttribute("src") || "";
+        const total = list.length - info.heads.length;
+        row.appendChild(grpDrop(info.groups.map(x => ({ name: x.name, count: x.sides.length, thumb: src(x.sides[0]) })), grp, total, k => {
+            grp = k;
+            if (grp < 0) delete mem[info.id]; else mem[info.id] = info.groups[grp].name;
+            try { localStorage.setItem(GRP_KEY, JSON.stringify(mem)); } catch (e) {}
+            apply();
+        }));
+        bar.after(row);
+        apply();
+    };
+
     const enhance = dlg => {
         const list = choicesOf(dlg), cur = Math.max(0, list.findIndex(c => c.getAttribute("data-selected") === "true"));
         dlg.classList.add("r20cs");
@@ -4877,6 +5031,7 @@ const sidePicker = (() => {
             dlg.style.setProperty("--cs-size", size + "px");
         }));
         dlg.querySelector(".ui-dialog-titlebar")?.after(bar);
+        addGroups(dlg, list, bar);
         // 창을 키워서 화면 가운데로
         const w = Math.min(760, window.innerWidth - 40);
         dlg.style.width = w + "px";
@@ -4916,6 +5071,7 @@ const sidePicker = (() => {
                 if (dlg._r20csFirst === first) return;
                 // Roll20 이 같은 창을 다른 토큰으로 다시 쓴 경우: 새로 꾸민다
                 dlg.querySelector(".r20cs-bar")?.remove();
+                dlg.querySelector(".r20cs-grps")?.remove();
                 dlg.querySelectorAll(".r20cs-cur").forEach(c => c.classList.remove("r20cs-cur"));
             }
             enhance(dlg);
@@ -6554,6 +6710,9 @@ addCss(`
         .ui-dialog.r20cs .sidechoices { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(var(--cs-size, 96px), 1fr)); gap:8px; counter-reset:side; }
         .ui-dialog.r20cs .sidechoice { position:relative !important; display:block !important; float:none !important; width:auto !important; height:auto !important; aspect-ratio:1; margin:0 !important; padding:0 !important; border-radius:var(--aio-r-lg); overflow:hidden; background:var(--aio-bg-4); cursor:pointer; counter-increment:side; }
         .ui-dialog.r20cs .sidechoice img, .ui-dialog.r20cs .sidechoice video { position:absolute !important; inset:0 !important; display:block !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; object-fit:contain !important; pointer-events:none; }
+        .ui-dialog.r20cs .sidechoice[hidden], .ui-dialog.r20cs .sidechoice.r20cs-hdside { display:none !important; }
+        .ui-dialog.r20cs .r20cs-grps { display:flex; margin:0; padding:6px 12px; border-bottom:1px solid var(--aio-line-3); }
+        .ui-dialog.r20cs .sidechoice[data-n]::after { content:attr(data-n) !important; }
         .ui-dialog.r20cs .sidechoice::after { content:counter(side); position:absolute; left:4px; bottom:4px; padding:0 5px; border-radius:var(--aio-r); background:rgba(0,0,0,0.55); color:#fff; font-size:10px; font-weight:700; line-height:15px; }
         .ui-dialog.r20cs .sidechoice:hover { outline:2px solid var(--aio-accent-mid); outline-offset:-2px; }
         .ui-dialog.r20cs .sidechoice[data-selected="true"] { outline:3px solid var(--aio-accent); outline-offset:-3px; }
@@ -7252,7 +7411,11 @@ const queryPicker = (() => {
     // 값 → 그림 주소: 전체 주소이거나, imgur 그림 ID 만 고르는 꼴(https://imgur.com/?{…|이름,oTmvLxD|…}.png)
     // ID 판별: 5~8자 영문·숫자 섞임 — 'Attack' 같은 보통 낱말·숫자만은 뺀다
     const imgurId = v => /^[A-Za-z0-9]{5,8}$/.test(v) && /[A-Za-z]/.test(v) && !/^[A-Z]?[a-z]+$|^[A-Z]+$/.test(v);
-    const imgOf = v => /^https?:\/\/\S+$/i.test(v) ? v : imgurId(v) ? `https://i.imgur.com/${v}.png` : "";
+    // 값이 '[도입](https://i.imgur.com/….gif)' 같은 채팅 그림 링크면 괄호 속 주소
+    const imgOf = raw => {
+        const v = String(raw || "").trim(), md = v.match(/^\[[^\]]*\]\((https?:\/\/[^\s)]+)\)$/i);
+        return md ? md[1] : /^https?:\/\/\S+$/i.test(v) ? v : imgurId(v) ? `https://i.imgur.com/${v}.png` : "";
+    };
     const labelOf = o => o.textContent.trim();
     // '—————' 같은 항목은 묶음 구분선으로 (가로 막대 ― · 전각 － 등도)
     const DASHES = "\\s—–\\-─━=_~·.―‒⸺⸻－ー";
@@ -7261,7 +7424,7 @@ const queryPicker = (() => {
     // imgur JPG 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게 — PNG · GIF 는 원본 (작은 썸네일은 JPEG 라 투명한 곳이 검게 나온다 · 칸은 보일 때만 받음)
     const thumbOf = url => {
         const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
-        return m && /^\.jpe?g$/i.test(m[2] || "") ? `https://i.imgur.com/${m[1]}m${m[2]}` : r20img(url);
+        return !m || !m[2] ? r20img(url) : `https://i.imgur.com/${m[1]}${/^\.jpe?g$/i.test(m[2]) ? "m" : ""}${m[2]}`;
     };
     // 투명한 곳 바탕: Roll20 채팅에 그림이 나오는 자리의 색 (마지막 /desc 메시지 → 아무 메시지 → 채팅 칸)
     const chatBg = () => {
@@ -7315,8 +7478,9 @@ const queryPicker = (() => {
         box.className = "r20qp-box";
         box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
             + '<span class="r20qp-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
-            + '<div class="r20qp-grps" role="group" aria-label="묶음만 보기" hidden></div><div class="r20qp-grid"></div>';
-        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input"), grps = box.querySelector(".r20qp-grps");
+            + '<div class="r20qp-grid"></div>';
+        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input");
+        let gd = null;
         let sec = null;
         const newSec = () => { sec = document.createElement("div"); sec.className = "r20qp-sec"; grid.appendChild(sec); };
         newSec();
@@ -7336,8 +7500,8 @@ const queryPicker = (() => {
         // 그림 칸이 없는 묶음은 감춘다 (찾는 중 · 그림이 안 불러와져 숨긴 칸 포함)
         grid._secs = () => {
             grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.querySelectorAll(".r20qp-tile")].some(b => !b.hidden); });
-            // 그림이 하나도 안 불러와진 묶음은 칩도 숨김
-            grps.querySelectorAll("button[data-g]").forEach(b => { const s = secs[+b.dataset.g]; if (s) b.hidden = ![...s.querySelectorAll(".r20qp-tile")].some(t => t.dataset.broken !== "1"); });
+            // 묶음 목록: 첫 그림 · 개수 다시 (그림이 하나도 안 불러와진 묶음은 숨김)
+            if (gd) { gList.forEach((g, k) => Object.assign(g, gInfo(secs[k]))); gd.refresh(); }
         };
         grid.querySelectorAll(".r20qp-sec").forEach(s => { if (!s.querySelector(".r20qp-tile")) s.remove(); });
         // 묶음만 보기: 전체 + 묶음마다 칩 하나 (제목 없는 묶음은 '묶음 n') · 고른 묶음은 이 질문마다 기억
@@ -7355,10 +7519,14 @@ const queryPicker = (() => {
             try { localStorage.setItem(GRP_KEY, JSON.stringify(mem)); } catch (e) {}
             apply();
         };
+        const gInfo = sc => {
+            const ok = [...sc.querySelectorAll(".r20qp-tile")].filter(b => b.dataset.broken !== "1");
+            return { count: ok.length, hidden: !ok.length, thumb: ok[0]?.querySelector("img")?.getAttribute("src") || "" };
+        };
+        const gList = secs.map((sc, k) => ({ name: names[k], ...gInfo(sc) }));
         if (secs.length > 1) {
-            grps.hidden = false;
-            grps.innerHTML = '<button type="button" data-g="-1">전체</button>' + names.map((t, k) => `<button type="button" data-g="${k}">${escAttr(t)}</button>`).join("");
-            grps.addEventListener("click", e => { const b = e.target.closest("button[data-g]"); if (b) setGrp(+b.dataset.g); });
+            gd = grpDrop(gList, grp, null, k => setGrp(k));
+            box.querySelector(".r20qp-bar").prepend(gd);
         }
         (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
 
@@ -7384,7 +7552,6 @@ const queryPicker = (() => {
             grid._secs();
             grid.classList.toggle("searching", !!v);
             grid.classList.toggle("one", grp >= 0);
-            grps.querySelectorAll("button").forEach(b => { const on = +b.dataset.g === grp; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         }
         q.addEventListener("input", apply);
         box.querySelectorAll(".r20qp-zoom button").forEach(b => b.addEventListener("click", () => {
@@ -7728,11 +7895,9 @@ addCss(`
         .ui-dialog.r20qp .r20qp-zoom { display:flex; gap:2px; }
         .ui-dialog.r20qp .r20qp-zoom button { width:26px; height:26px; margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:14px; line-height:1; cursor:pointer; }
         .ui-dialog.r20qp .r20qp-zoom button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
-        .ui-dialog.r20qp .r20qp-grps { display:flex; flex-wrap:wrap; gap:3px; margin:-2px 0 6px; max-height:52px; overflow-y:auto; }
-        .ui-dialog.r20qp .r20qp-grps[hidden], .ui-dialog.r20qp .r20qp-grps button[hidden] { display:none; }
-        .ui-dialog.r20qp .r20qp-grps button { max-width:180px; height:22px; margin:0; padding:0 8px; border:1px solid var(--aio-line); border-radius:11px; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:11px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
-        .ui-dialog.r20qp .r20qp-grps button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
-        .ui-dialog.r20qp .r20qp-grps button.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent); font-weight:700; }
+        /* 'Macro Options' 제목은 감추고 제목줄은 끌어 옮기는 얇은 띠로만 */
+        .ui-dialog.r20qp .ui-dialog-titlebar { min-height:0 !important; height:12px !important; padding:0 !important; border:0 !important; background:transparent !important; cursor:move; }
+        .ui-dialog.r20qp .ui-dialog-titlebar .ui-dialog-title { display:none !important; }
         .ui-dialog.r20qp .r20qp-grid { max-height:min(55vh, 480px); overflow-y:auto; padding:2px; }
         .ui-dialog.r20qp .r20qp-sec { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--qp-size, 140px), 1fr)); gap:4px; }
         .ui-dialog.r20qp .r20qp-sec + .r20qp-sec { margin-top:8px; padding-top:8px; border-top:1px solid var(--aio-line-2); }
@@ -11228,7 +11393,85 @@ const bulkEditor = (() => {
         const fmt = k => tb.pattern.split("{n}").join(String(tb.start + k));
         const grid = el("div", { class: "r20be-tgrid" });
         const bar = el("div", { class: "r20be-tbar", hidden: true });
+        const chips = el("div", { class: "r20be-tgrps", hidden: true });
         const changed = () => { refreshRow(n); updateBar(); };
+        // 묶음: '――― 이름 ―――' 항목(tblHead)부터 다음 묶음 제목 전까지 · n.tgrp = 보고 있는 묶음 번호(-1 = 전체)
+        const isHd = it => !!tblHead(it.cur.name, it.cur.avatar);
+        const secs = () => tblSections(live(), it => it.cur);
+        if (n.tgrp == null) n.tgrp = -1;
+        const shown = () => {
+            const s = secs()[n.tgrp];
+            if (!s) { n.tgrp = -1; return live(); }
+            return s.head ? [s.head, ...s.items] : s.items;
+        };
+        // 새 항목 자리: 묶음을 보고 있으면 그 묶음 끝, 아니면 맨 끝
+        const endAt = () => {
+            const s = secs()[n.tgrp];
+            const last = s ? (s.items[s.items.length - 1] || s.head) : null;
+            return last ? n.items.indexOf(last) + 1 : n.items.length;
+        };
+        const redraw = () => { drawGrid(); drawBar(); changed(); };
+        // 구분선 · 묶음 제목 넣기 — 고른 카드가 있으면 그 앞(= 거기부터 새 묶음), 없으면 새 항목 자리
+        const addHead = named => {
+            const h = itemNode(null, { name: tblHeadName(named ? "새 묶음" : ""), avatar: "", weight: 0 });
+            const sel = picked();
+            n.items.splice(sel.length ? n.items.indexOf(sel[0]) : endAt(), 0, h);
+            markOrder(n);
+            n.checkedItems.clear(); n.tgrp = -1;
+            redraw();
+            const inp = grid.querySelector(`[data-hid="${h.id}"] input`);
+            inp?.scrollIntoView({ block: "nearest" });
+            if (named) { inp?.focus(); inp?.select(); }
+        };
+        // 고른 항목을 그 묶음 끝으로 (묶음 제목은 그대로)
+        const moveTo = head => {
+            const mv = picked().filter(it => !isHd(it));
+            if (!mv.length) return;
+            n.items = n.items.filter(it => !mv.includes(it));
+            const s = tblSections(live(), it => it.cur).find(x => x.head === head);
+            const last = s ? (s.items[s.items.length - 1] || s.head) : null;
+            n.items.splice(last ? n.items.indexOf(last) + 1 : 0, 0, ...mv);
+            markOrder(n);
+            redraw();
+            setStatus(`${mv.length}개를 옮겼습니다 (저장해야 Roll20에 반영)`, "ok");
+        };
+        const toggleIn = (it, c, cb) => {
+            if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id);
+            c.classList.toggle("chk"); cb.classList.toggle("on");
+            drawBar();
+        };
+        // 묶음 제목 줄: 이름 고치기 · 항목 수 · 가중치가 0 이 아니면 경고 · ✕ (항목은 앞 묶음으로 합쳐짐)
+        const headCard = (it, s) => {
+            const on = n.checkedItems.has(it.id);
+            const c = el("div", { class: "r20be-card r20be-hd" + (on ? " chk" : "") + (itemDirty(it) ? " dirty" : ""), "data-hid": it.id });
+            const cb = el("button", { type: "button", class: "r20be-cb2" + (on ? " on" : ""), "aria-label": "묶음 제목 선택", html: ICON.check });
+            cb.onclick = () => toggleIn(it, c, cb);
+            c.append(cb,
+                el("span", { class: "r20be-hdl", "aria-hidden": "true" }),
+                el("input", { class: "r20be-in r20be-mini", value: s.head && tblHead(it.cur.name, "").name, placeholder: "이름 없는 구분선", "aria-label": "묶음 이름",
+                    oninput: e => { setItem(it, "name", tblHeadName(e.target.value.trim())); c.classList.toggle("dirty", itemDirty(it)); changed(); },
+                    onchange: () => drawChips() }),
+                el("span", { class: "r20be-note" }, `${s.items.length}개`),
+                el("span", { class: "r20be-hdl", "aria-hidden": "true" }),
+                it.cur.weight > 0 ? el("button", { type: "button", class: "r20be-xs", title: "가중치가 0 이 아니면 굴림에 묶음 제목이 나올 수 있습니다",
+                    onclick: () => { setItem(it, "weight", 0); redraw(); } }, `⚠ 가중치 ${it.cur.weight} → 0`) : "",
+                el("button", { type: "button", class: "r20be-xs", title: "묶음 제목 지우기 — 항목은 앞 묶음으로 합쳐집니다", "aria-label": "묶음 제목 지우기",
+                    onclick: () => {
+                        if (it.isNew) n.items.splice(n.items.indexOf(it), 1); else it.deleted = true;
+                        n.checkedItems.delete(it.id); markOrder(n); n.tgrp = -1;
+                        redraw();
+                    } }, "✕"));
+            return c;
+        };
+        const drawChips = () => {
+            const S = secs();
+            chips.textContent = "";
+            chips.hidden = !S.some(x => x.head);
+            if (chips.hidden) return;
+            const first = x => x.items.find(it => it.cur.avatar)?.cur.avatar;
+            chips.append(grpDrop(S.map(x => ({ name: x.name, count: x.items.length, thumb: first(x) ? sizedUrl(r20img(first(x)), "thumb") : "" })),
+                n.tgrp, null, k => { n.tgrp = k; n.checkedItems.clear(); drawGrid(); drawBar(); chips.querySelector(".aio-gd-btn")?.focus(); }));
+        };
         const card = it => {
             const on = n.checkedItems.has(it.id);
             const c = el("div", { class: "r20be-card" + (on ? " chk" : "") + (itemDirty(it) ? " dirty" : "") });
@@ -11245,7 +11488,8 @@ const bulkEditor = (() => {
             const mark = () => { c.classList.toggle("dirty", itemDirty(it)); changed(); };
             c.append(thumb, cb,
                 el("input", { class: "r20be-in r20be-mini", value: it.cur.name, "aria-label": "항목 이름",
-                    oninput: e => { setItem(it, "name", e.target.value); mark(); } }),
+                    oninput: e => { setItem(it, "name", e.target.value); mark(); },
+                    onchange: () => { if (isHd(it)) drawGrid(); } }),
                 el("label", { class: "r20be-wl" }, "가중치",
                     el("input", { class: "r20be-in r20be-mini", type: "number", min: "0", value: String(it.cur.weight),
                         oninput: e => { setItem(it, "weight", Math.max(0, parseInt(e.target.value, 10) || 0)); mark(); } })));
@@ -11253,9 +11497,10 @@ const bulkEditor = (() => {
         };
         const drawGrid = () => {
             grid.textContent = "";
-            const list = live();
+            drawChips();
+            const list = shown(), S = secs();
             if (!list.length) grid.append(el("p", { class: "r20be-empty" }, "항목이 없습니다 · [+ 항목 추가]로 넣어 주세요"));
-            list.forEach(it => grid.append(card(it)));
+            list.forEach(it => grid.append(isHd(it) ? headCard(it, S.find(x => x.head === it)) : card(it)));
         };
         const drawBar = () => {
             const sel = picked();
@@ -11291,17 +11536,25 @@ const bulkEditor = (() => {
                     setStatus(`${sel.length}개를 지웠습니다 (저장해야 Roll20에 반영)`, "ok");
                 } }, "삭제"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { n.checkedItems.clear(); drawGrid(); drawBar(); } }, "선택 해제"));
+            const S = secs();
+            if (S.some(x => x.head) && sel.some(it => !isHd(it))) {
+                const to = el("select", { class: "r20be-in r20be-mini", "aria-label": "옮길 묶음", style: "width:auto;max-width:160px" }, S.map((x, k) => el("option", { value: String(k) }, x.name)));
+                bar.append(el("span", { class: "r20be-sepv" }), el("span", { class: "r20be-note" }, "묶음으로"), to,
+                    el("button", { type: "button", class: "r20be-sec", onclick: () => moveTo(S[+to.value].head) }, "옮기기"));
+            }
         };
         // 한 줄에 하나: "이미지 주소" 또는 "이름 | 이미지 주소" 또는 이름만(글자 표)
         const addBox = el("div", { class: "r20be-add", hidden: !t.adding });
         const ta = el("textarea", { class: "r20be-in", "aria-label": "새 항목", placeholder: "한 줄에 하나씩 · 이미지 주소만 / 이름 | 이미지 주소 / 이름만" });
         addBox.append(ta, el("button", { type: "button", class: "r20be-pri", onclick: () => {
             const lines = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
-            lines.forEach(l => {
+            const at = endAt();
+            n.items.splice(at, 0, ...lines.map(l => {
                 const [a, b] = l.split("|").map(x => x.trim());
                 const attrs = b !== undefined ? { name: a, avatar: b } : /^https?:\/\//.test(a) ? { name: "", avatar: a } : { name: a, avatar: "" };
-                n.items.push(itemNode(null, { ...attrs, weight: 1 }));
-            });
+                return itemNode(null, { ...attrs, weight: tblHead(attrs.name, attrs.avatar) ? 0 : 1 });      // 줄표 줄은 묶음 제목(가중치 0)
+            }));
+            markOrder(n);
             ta.value = "";
             drawGrid(); changed();
             setStatus(`항목 ${lines.length}개를 추가했습니다 (저장해야 Roll20에 반영)`, "ok");
@@ -11314,16 +11567,18 @@ const bulkEditor = (() => {
                     el("input", { type: "checkbox", checked: !!n.cur.show, onchange: e => { setField(n, "show", e.target.checked); changed(); } }),
                     "플레이어의 목록 뽑기 허용"),
                 el("span", { class: "r20be-flex" }),
-                el("button", { type: "button", class: "r20be-sec", onclick: () => { live().forEach(it => n.checkedItems.add(it.id)); drawGrid(); drawBar(); } }, "모두 선택"),
+                el("button", { type: "button", class: "r20be-sec", onclick: () => { shown().forEach(it => n.checkedItems.add(it.id)); drawGrid(); drawBar(); } }, "모두 선택"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => {
-                    live().forEach(it => { if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id); });
+                    shown().forEach(it => { if (n.checkedItems.has(it.id)) n.checkedItems.delete(it.id); else n.checkedItems.add(it.id); });
                     drawGrid(); drawBar();
                 } }, "선택 반전"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => openMerge(n) }, "합치기…"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => openRollMacro([n]) }, "굴림 매크로"),
                 el("button", { type: "button", class: "r20be-sec", disabled: live().length < 2, onclick: openOrder }, "순서 바꾸기…"),
+                el("button", { type: "button", class: "r20be-sec", title: "고른 카드 앞(없으면 끝)에 이름 없는 구분선", onclick: () => addHead(false) }, "＋구분선"),
+                el("button", { type: "button", class: "r20be-sec", title: "고른 카드 앞(없으면 끝)에 묶음 제목 — 가중치 0 이라 굴림에는 안 나옵니다", onclick: () => addHead(true) }, "＋묶음"),
                 el("button", { type: "button", class: "r20be-sec", onclick: () => { t.adding = !t.adding; addBox.hidden = !t.adding; if (t.adding) ta.focus(); } }, ico("plus"), "항목 추가")),
-            addBox, bar, grid);
+            addBox, bar, chips, grid);
         // 항목 순서 — 토큰 메뉴의 '면 순서 바꾸기'와 같은 창. 굴림표를 맵에 끌어 놓으면 이 순서가 롤러블 토큰의 면 순서가 된다
         function openOrder() { openItemOrder(n, "항목", () => { drawGrid(); drawBar(); changed(); }); }
     };
@@ -13340,6 +13595,14 @@ addCss(`
         #r20be .r20be-sepv { width:1px; height:18px; background:var(--aio-accent-soft); }
         #r20be .r20be-tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; }
         #r20be .r20be-tgrid > .r20be-empty { grid-column:1 / -1; }
+        #r20be .r20be-tgrps { display:flex; margin:0 0 8px; }
+        #r20be .r20be-tgrps[hidden] { display:none; }
+        #r20be .r20be-card.r20be-hd { grid-column:1 / -1; flex-direction:row; align-items:center; gap:6px; padding:3px 6px; border-style:dashed; background:var(--aio-bg-2); }
+        #r20be .r20be-hd .r20be-cb2 { position:static; flex-shrink:0; }
+        #r20be .r20be-hd input { flex:0 1 220px; min-width:60px; font-weight:700; }
+        #r20be .r20be-hd .r20be-hdl { flex:1 1 12px; min-width:12px; height:1px; background:var(--aio-line); }
+        #r20be .r20be-hd .r20be-hdl:first-of-type { flex:0 0 14px; }
+        #r20be .r20be-hd .r20be-note { flex-shrink:0; }
         #r20be .r20be-card { position:relative; display:flex; flex-direction:column; gap:4px; padding:5px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-lg); background:var(--aio-bg); }
         #r20be .r20be-card.chk { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
         #r20be .r20be-card.dirty { box-shadow:inset 0 0 0 1px #f0b27a; }
