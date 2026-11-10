@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.82.0
+// @version      1.82.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.82.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.82.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -934,6 +934,12 @@ const grpDrop = (groups, cur, total, onPick) => {
     const open = () => {
         if (!menu.hidden) return;
         act = cur; draw();
+        // 잘리는 위 상자(overflow) 아래 끝 · 화면 끝까지 남은 높이에 맞춘다
+        let lim = window.innerHeight;
+        for (let e = w.parentElement; e && e !== document.body; e = e.parentElement) {
+            if (getComputedStyle(e).overflowY !== "visible") { lim = Math.min(lim, e.getBoundingClientRect().bottom); break; }
+        }
+        menu.style.maxHeight = Math.max(140, Math.min(400, lim - btn.getBoundingClientRect().bottom - 8)) + "px";
         menu.hidden = false; btn.setAttribute("aria-expanded", "true");
         menu.querySelector(".act")?.scrollIntoView({ block: "nearest" });
         document.addEventListener("mousedown", outside, true);
@@ -7459,8 +7465,17 @@ const queryPicker = (() => {
             pic.alt = ""; pic.loading = "lazy"; pic.draggable = false;
             const thumb = thumbOf(url);
             let retried = thumb === url;
-            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 그 칸은 숨김 (위 목록에서는 고를 수 있음)
-            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = url; } else { b.dataset.broken = "1"; b.hidden = true; b.closest(".r20qp-grid")?._secs?.(); } });
+            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 이름 칸으로 바꿔 둔다 (만료된 Discord 링크 등 — 칸 · 묶음이 사라지지 않게)
+            pic.addEventListener("error", () => {
+                if (!retried) { retried = true; pic.src = url; return; }
+                b.dataset.broken = "1";
+                b.title = labelOf(o) + " — 그림이 안 열립니다: " + url;
+                const t = textPic(o);
+                t.classList.add("r20qp-bad");
+                t.appendChild(Object.assign(document.createElement("small"), { textContent: "그림 안 열림" }));
+                pic.replaceWith(t);
+                b.closest(".r20qp-grid")?._secs?.();
+            });
             pic.src = thumb;
         } else pic = textPic(o);
         const lb = document.createElement("span");
@@ -7520,8 +7535,8 @@ const queryPicker = (() => {
             apply();
         };
         const gInfo = sc => {
-            const ok = [...sc.querySelectorAll(".r20qp-tile")].filter(b => b.dataset.broken !== "1");
-            return { count: ok.length, hidden: !ok.length, thumb: ok[0]?.querySelector("img")?.getAttribute("src") || "" };
+            const all = sc.querySelectorAll(".r20qp-tile");
+            return { count: all.length, thumb: [...all].find(b => b.dataset.broken !== "1")?.querySelector("img")?.getAttribute("src") || "" };
         };
         const gList = secs.map((sc, k) => ({ name: names[k], ...gInfo(sc) }));
         if (secs.length > 1) {
@@ -7547,7 +7562,7 @@ const queryPicker = (() => {
             secs.forEach((s, k) => {
                 const out = grp >= 0 && k !== grp;
                 const cap = s.querySelector(".r20qp-cap"), whole = !!v && !!cap && has(cap.textContent);
-                s.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = out || b.dataset.broken === "1" || (!!v && !whole && !has(b.title)); });
+                s.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = out || (!!v && !whole && !has(b.querySelector(".r20qp-lb")?.textContent || "")); });
             });
             grid._secs();
             grid.classList.toggle("searching", !!v);
@@ -7898,7 +7913,9 @@ addCss(`
         /* 'Macro Options' 제목은 감추고 제목줄은 끌어 옮기는 얇은 띠로만 */
         .ui-dialog.r20qp .ui-dialog-titlebar { min-height:0 !important; height:12px !important; padding:0 !important; border:0 !important; background:transparent !important; cursor:move; }
         .ui-dialog.r20qp .ui-dialog-titlebar .ui-dialog-title { display:none !important; }
-        .ui-dialog.r20qp .r20qp-grid { max-height:min(55vh, 480px); overflow-y:auto; padding:2px; }
+        .ui-dialog.r20qp .r20qp-bad { flex-direction:column; gap:2px; border:1px dashed var(--aio-line); background:var(--aio-bg-2); }
+        .ui-dialog.r20qp .r20qp-bad small { color:var(--aio-warn); font-size:10px; }
+        .ui-dialog.r20qp .r20qp-grid { min-height:min(40vh, 300px); max-height:min(55vh, 480px); overflow-y:auto; padding:2px; }
         .ui-dialog.r20qp .r20qp-sec { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--qp-size, 140px), 1fr)); gap:4px; }
         .ui-dialog.r20qp .r20qp-sec + .r20qp-sec { margin-top:8px; padding-top:8px; border-top:1px solid var(--aio-line-2); }
         .ui-dialog.r20qp .r20qp-grid:is(.searching, .one) .r20qp-sec + .r20qp-sec { margin-top:4px; padding-top:0; border-top:0; }
