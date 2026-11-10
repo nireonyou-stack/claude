@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.80.1
+// @version      1.80.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.80.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.80.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7341,7 +7341,12 @@ const queryPicker = (() => {
         q.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키·Enter 제출 막기
         q.addEventListener("input", () => {
             const v = q.value.replace(/\s+/g, "").toLowerCase();
-            grid.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = b.dataset.broken === "1" || (!!v && !b.title.replace(/\s+/g, "").toLowerCase().includes(v)); });
+            const has = t => t.replace(/\s+/g, "").toLowerCase().includes(v);
+            // 묶음 제목에 찾는 글이 있으면 그 묶음은 통째로
+            grid.querySelectorAll(".r20qp-sec").forEach(s => {
+                const cap = s.querySelector(".r20qp-cap"), whole = !!v && !!cap && has(cap.textContent);
+                s.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = b.dataset.broken === "1" || (!!v && !whole && !has(b.title)); });
+            });
             grid._secs();
             grid.classList.toggle("searching", !!v);
         });
@@ -7694,7 +7699,6 @@ addCss(`
         .ui-dialog.r20qp .r20qp-tile.on { background:var(--aio-accent-bg); box-shadow:inset 0 0 0 2px var(--aio-accent); }
         .ui-dialog.r20qp .r20qp-tile[hidden], .ui-dialog.r20qp .r20qp-sec[hidden] { display:none !important; }
         .ui-dialog.r20qp .r20qp-cap { grid-column:1 / -1; padding:2px 2px 0; color:var(--aio-ink-3); font-size:11px; font-weight:700; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-        .ui-dialog.r20qp .r20qp-grid.searching .r20qp-cap { display:none; }
         .ui-dialog.r20qp .r20qp-img { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:16/9; padding:4px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; text-align:center; overflow:hidden; box-sizing:border-box; object-fit:contain; pointer-events:none; }
         .ui-dialog.r20qp .ui-dialog-content > p { display:flex; align-items:center; gap:6px; margin:0 0 2px !important; font-size:12px !important; color:var(--aio-ink-3); }
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-3) !important; font-size:11px !important; }
