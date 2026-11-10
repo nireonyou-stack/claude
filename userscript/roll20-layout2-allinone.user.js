@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.78.4
+// @version      1.79.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.78.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.79.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -498,7 +498,7 @@ function applyCocofoliaLayout() {
         zRow.className = "cs-row";
         const zText = document.createElement("span");
         zText.className = "cs-text";
-        zText.dataset.tip = "올인원이 띄우는 창 전체 — 일괄 편집기 · 빠른 저널 · 설정 · 이모지 · 시트 촬영 · 말풍선 …";
+        zText.dataset.tip = "올인원이 띄우는 창 전체 — 일괄 편집기 · 말하는 사람 고르기 · 설정 · 이모지 · 시트 촬영 · 말풍선 …";
         zText.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "글자 크기" }));
         zRow.append(zText, aioZoom.control("cs-seg"));
         settingsPopup.append(zRow, switchRow("Roll20 채팅 글자도 같이", "채팅 기록 · 입력칸도 같은 배율로", aioZoom.chat(), on => aioZoom.chat(on)), sep());
@@ -2099,7 +2099,7 @@ const jbDrawer = (() => {
     window.addEventListener("resize", () => { if (on) { place(); FEAT.screenUI?.place(); } });
     const setEnabled = v => { if (!v) close(); };
     const halfTop = () => { if (!on || !half()) return null; const r = sideRect(); return r ? topOf(r) : null; };
-    return { setEnabled, leftEdge, halfTop, isOpen: () => on, open, close, show };
+    return { setEnabled, leftEdge, halfTop, dockBottom, isOpen: () => on, open, close, show };
 })();
 addFeature("jbDrawer", jbDrawer);
 addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그 · 🎧 나만 미리듣기 · 곡 이름 = 모두에게 재생 · Enter 재생 · Shift+Enter 미리듣기) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
@@ -5821,6 +5821,7 @@ const screenUI = (() => {
         });
         FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
         FEAT.edgeDock?.place?.(y, edge);           // 그 밑에 덱 · 매크로 (왼쪽 끝 모드)
+        FEAT.quickJournal?.place?.();               // 열린 말하는 사람 고르기 창도 (주크박스 서랍을 열고 닫으면 자리가 바뀜)
     };
     // ── 맵 전체보기: 배율 숫자를 누르면 뜨는 Roll20 메뉴의 'Zoom to Fit' 을 대신 누른다 (Roll20 이 맞추고 가운데로 옮긴다) ──
     // 단추는 Roll20 확대 · 축소 묶음 안, − 바로 밑에 같은 모양(.btnStyle)으로. 메뉴는 보이지 않게 숨겼다가 닫는다
@@ -7354,318 +7355,244 @@ const queryPicker = (() => {
     return { inject, watch: ".ui-dialog" };
 })();
 
-// ───────── 빠른 저널: 말하는 사람 줄 ⚙ 왼쪽 단추 → 캐릭터 아이콘 격자에서 골라 말하는 사람 바꾸기 (끌어서 순서 바꾸기) ─────────
+// ───────── 말하는 사람 고르기 (빠른 저널 합침): 입력칸 왼쪽 ▼(포트레이트)를 누르면 채팅 판 왼쪽 끝에 붙은 선택창 ─────────
+// 채팅을 가리지 않게 주크박스 서랍처럼 대화 판 바깥(왼쪽)에, 아래에 붙여 위로 · 맨 위 최근 말한 5명 · 아래 목록(☰) ↔ 크게(▦: 포트레이트 + 이름)
+// 이름 · 초성으로 찾기 · ↑↓ Enter · Esc · 끌어서 순서 바꾸기(빠른 저널 순서 그대로) · 고르면 닫힘(📌 면 열어 둠)
+// 고르는 것은 Roll20 #speakingas 값을 바꾸는 것 그대로 (목록도 그 선택지에서)
 const quickJournal = (() => {
-    const inject = () => {
-        const gear = document.getElementById("custom-settings-btn");
-        if (!btnVisible.journal || !gear || document.getElementById("custom-journal-toggle")) return;
-        const speakingAsSelect = document.getElementById("speakingas");
-        let charList = [];
-        const journalBtn = document.createElement("button");
-        journalBtn.id = "custom-journal-toggle";
-        journalBtn.type = "button";
-        journalBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>';
-        journalBtn.title = "빠른 저널";
-        journalBtn.setAttribute("aria-label", "빠른 저널");
-        journalBtn.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer;"
-            + `background-color: ${CONFIG.inactiveBg} !important; color: ${CONFIG.inactiveText} !important; border-color: ${CONFIG.inactiveBorder} !important;`;
+    const ORD = "r20_char_order", REC = "r20_speak_recent", VIEW = "r20_cj_view", PIN = "r20_cj_pin", SIZE = "r20_cj_size", W = 264;
+    const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+    const cho = t => [...t].map(c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : c; }).join("");
+    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+    const sel = () => document.getElementById("speakingas");
+    const grid = () => ls(VIEW) === "grid";
+    const pinned = () => ls(PIN) === "true";
+    const size = () => Math.max(30, Math.min(120, parseInt(ls(SIZE), 10) || 50));
+    let pop = null, chars = [], hl = -1, recWatched = null;
+    const isOpen = () => !!pop?.classList.contains("show");
 
-        const popup = document.createElement("div");
-        popup.id = "custom-journal-popup";
+    // 선택지 → [{ value, name, id }] (빠른 저널에서 정해 둔 순서)
+    const load = () => {
+        const s = sel(), raw = [];
+        [...(s?.options || [])].forEach(o => { const name = o.text.trim(), value = o.value; if (name && value) raw.push({ value, name, id: value.startsWith("character|") ? value.split("|")[1] : null }); });
+        let order = null;
+        try { order = JSON.parse(ls(ORD) || "null"); } catch (e) { /* 없음 */ }
+        chars = Array.isArray(order) ? [...order.map(v => raw.find(c => c.value === v)).filter(Boolean), ...raw.filter(c => !order.includes(c.value))] : raw;
+    };
+    // 포트레이트: 저널 목록에 Roll20 이 그려 둔 썸네일 (모델의 avatar 주소는 안 열리는 것이 있다) · 없으면 이름 첫 글자
+    const avatar = c => {
+        const img = c.id ? document.querySelector(`li.character[data-itemid="${CSS.escape(c.id)}"] img`) : null;
+        const src = img ? img.getAttribute("src") || img.getAttribute("data-src") || "" : "";
+        return src && !src.includes("images/character.png") && !src.includes("default")
+            ? `<img class="cj-av" src="${escAttr(src)}" alt="" draggable="false">`
+            : `<span class="cj-av cj-ini">${escAttr([...c.name.trim()][0] || "?")}</span>`;
+    };
+    const recent = () => { try { const a = JSON.parse(ls(REC) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+    const remember = v => { if (v) ls(REC, JSON.stringify([v, ...recent().filter(x => x !== v)].slice(0, 5))); };
+    const hit = (c, q) => { const n = c.name.toLowerCase().replace(/\s+/g, ""); return !q || n.includes(q) || cho(n).includes(q); };
 
-        const header = document.createElement("div");
-        header.className = "cj-header";
-        const titleSpan = document.createElement("span");
-        titleSpan.textContent = "빠른 저널";
-        const closeBtn = document.createElement("button");
-        closeBtn.className = "cj-close-btn";
-        closeBtn.textContent = "✕";
-        closeBtn.onclick = (e) => {
-            e.stopPropagation();
-            popup.classList.remove("show");
-            journalBtn.style.setProperty("background-color", CONFIG.inactiveBg, "important");   // 이거 없으면 롤20이 자꾸 덮어씌우네요…….
-            journalBtn.style.setProperty("color", CONFIG.inactiveText, "important");
+    const draw = () => {
+        if (!pop) return;
+        const q = pop.querySelector(".cj-q").value.trim().toLowerCase().replace(/\s+/g, ""), cur = sel()?.value || "", g = grid();
+        const rec = q ? [] : recent().map(v => chars.find(c => c.value === v)).filter(Boolean);
+        pop.querySelector(".cj-rec").innerHTML = rec.map(c => `<button type="button" class="cj-ri${c.value === cur ? " on" : ""}" data-v="${escAttr(c.value)}" title="${escAttr(c.name)}" aria-label="${escAttr(c.name)}">${avatar(c)}</button>`).join("");
+        pop.querySelector(".cj-recw").hidden = !rec.length;
+        const list = chars.filter(c => hit(c, q)), box = pop.querySelector(".cj-list");
+        if (hl >= list.length) hl = list.length - 1;
+        box.classList.toggle("grid", g);
+        box.innerHTML = list.map((c, i) => `<div class="cj-item${c.value === cur ? " cj-selected" : ""}${i === hl ? " hl" : ""}" role="option" aria-selected="${c.value === cur}" data-char-value="${escAttr(c.value)}" title="${escAttr(c.name)}">${avatar(c)}<span class="cj-nm">${escAttr(c.name)}</span></div>`).join("")
+            || '<div class="cj-none">맞는 이름이 없어요</div>';
+        pop.querySelector(".cj-ft").hidden = !g;
+        pop.querySelector("[data-a='view']").setAttribute("aria-pressed", String(g));
+        pop.querySelector("[data-a='pin']").setAttribute("aria-pressed", String(pinned()));
+        pop.style.setProperty("--cj-size", size() + "px");
+        box.querySelector(".hl")?.scrollIntoView({ block: "nearest" });
+    };
+    const pick = v => {
+        const s = sel();
+        if (!s || !v) return;
+        s.value = v;
+        s.dispatchEvent(new Event("change", { bubbles: true }));
+        remember(v);
+        if (!pinned()) close();
+        else draw();
+        document.querySelector("#textchat-input textarea")?.focus();
+    };
+
+    // 자리: 채팅 판(· 펼친 주크박스 서랍) 왼쪽 끝 · 아래 끝은 화면 아래(반쪽 주크박스 서랍이면 그 위) · 위로는 단추줄 밑까지
+    const place = () => {
+        if (!isOpen()) return;
+        const side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        if (!side || !side.width) return close();
+        const z = aioZoom.get(), edge = FEAT.jbDrawer?.leftEdge?.() ?? side.left, ht = FEAT.jbDrawer?.halfTop?.();
+        const bottom = ht != null ? innerHeight - ht : 0, top = (FEAT.jbDrawer?.dockBottom?.() || 0) + 6;
+        Object.assign(pop.style, { right: (innerWidth - edge) / z + "px", bottom: bottom / z + "px", left: "auto", top: "auto", width: W + "px", maxHeight: Math.max(160, innerHeight - bottom - top) / z + "px" });
+    };
+    const open = () => {
+        if (!btnVisible.journal || !sel()) return;
+        if (!pop?.isConnected) build();
+        load();
+        hl = -1;
+        pop.querySelector(".cj-q").value = "";
+        pop.classList.add("show");
+        document.getElementById("custom-select-visual")?.setAttribute("aria-expanded", "true");
+        draw();
+        place();
+        pop.querySelector(".cj-q").focus();
+    };
+    function close() {
+        if (!pop) return;
+        pop.classList.remove("show");
+        document.getElementById("custom-select-visual")?.setAttribute("aria-expanded", "false");
+    }
+
+    // 끌어서 순서 바꾸기: 누른 채 4px 넘게 움직이면 (목록은 위 · 아래, 크게 보기는 왼쪽 · 오른쪽), 그냥 떼면 고르기
+    const startDrag = (e, item) => {
+        const sx = e.clientX, sy = e.clientY, from = item.dataset.charValue, g = grid();
+        let dragged = false;
+        const target = ev => document.elementFromPoint(ev.clientX, ev.clientY)?.closest("#custom-journal-popup .cj-item[data-char-value]");
+        const before = (t, ev) => { const r = t.getBoundingClientRect(); return g ? ev.clientX < r.left + r.width / 2 : ev.clientY < r.top + r.height / 2; };
+        const clear = () => pop.querySelectorAll(".cj-item").forEach(x => x.classList.remove("cj-drop-before", "cj-drop-after"));
+        const mv = ev => {
+            if (!dragged) { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return; dragged = true; item.classList.add("cj-dragging"); document.body.style.userSelect = "none"; }
+            clear();
+            const t = target(ev);
+            if (t && t !== item) t.classList.add(before(t, ev) ? "cj-drop-before" : "cj-drop-after");
         };
-        // 아이콘 크기 −/+ (기억해 둔다)
-        let cjSize = parseInt(localStorage.getItem("r20_cj_size"), 10) || 50;
-        const applyCjSize = () => { popup.style.setProperty("--cj-size", cjSize + "px"); localStorage.setItem("r20_cj_size", cjSize); };
-        const zoom = document.createElement("span");
-        zoom.className = "cj-zoom";
-        [["−", -10, "아이콘 작게"], ["+", 10, "아이콘 크게"]].forEach(([label, d, title]) => {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.textContent = label;
-            b.title = title;
-            b.setAttribute("aria-label", title);
-            b.onclick = (e) => { e.stopPropagation(); cjSize = Math.max(30, Math.min(120, cjSize + d)); applyCjSize(); };
-            zoom.appendChild(b);
-        });
-        applyCjSize();
-        header.appendChild(titleSpan);
-        header.appendChild(zoom);
-        header.appendChild(closeBtn);
-        popup.appendChild(header);
+        const up = ev => {
+            removeEventListener("mousemove", mv); removeEventListener("mouseup", up);
+            if (!dragged) return pick(from);
+            document.body.style.userSelect = "";
+            const t = target(ev);
+            clear();
+            item.classList.remove("cj-dragging");
+            if (!t || t === item) return;
+            const moved = chars.splice(chars.findIndex(c => c.value === from), 1)[0], at = chars.findIndex(c => c.value === t.dataset.charValue);
+            chars.splice(before(t, ev) ? at : at + 1, 0, moved);
+            ls(ORD, JSON.stringify(chars.map(c => c.value)));
+            draw();
+        };
+        addEventListener("mousemove", mv); addEventListener("mouseup", up);
+    };
 
-        header.addEventListener("mousedown", (e) => {
-            if (e.target.closest(".cj-close-btn, .cj-zoom")) return;
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "custom-journal-popup";
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", "말하는 사람 고르기");
+        pop.innerHTML = '<div class="cj-hd"><input type="search" class="cj-q" placeholder="찾기 — 이름 · 초성" aria-label="말하는 사람 찾기 — ↑↓ Enter" autocomplete="off" spellcheck="false">'
+            + '<button type="button" data-a="view" title="크게 보기 ↔ 목록" aria-label="크게 보기" aria-pressed="false">▦</button>'
+            + '<button type="button" data-a="pin" class="cj-pin" title="고른 뒤에도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button></div>'
+            + '<div class="cj-recw" hidden><div class="cj-lb">최근</div><div class="cj-rec"></div></div>'
+            + '<div class="cj-list" role="listbox" aria-label="말하는 사람"></div>'
+            + '<div class="cj-ft" hidden>아이콘 <button type="button" data-a="sz" data-d="-10" aria-label="아이콘 작게">−</button><button type="button" data-a="sz" data-d="10" aria-label="아이콘 크게">+</button></div>';
+        pop.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            const a = b.dataset.a;
+            if (b.classList.contains("cj-ri")) return pick(b.dataset.v);
+            if (a === "x") return close();
+            if (a === "view") { ls(VIEW, grid() ? "list" : "grid"); return draw(); }
+            if (a === "pin") { ls(PIN, String(!pinned())); return draw(); }
+            if (a === "sz") { ls(SIZE, String(Math.max(30, Math.min(120, size() + +b.dataset.d)))); return draw(); }
+        });
+        pop.querySelector(".cj-list").addEventListener("mousedown", e => {
+            const it = e.target.closest(".cj-item[data-char-value]");
+            if (!it || e.button !== 0) return;
             e.preventDefault();
-            const r = popup.getBoundingClientRect();
-            popup.style.left = zpx(r.left); popup.style.top = zpx(r.top);
-            popup.style.right = "auto"; popup.style.bottom = "auto";
-            const sx = e.clientX, sy = e.clientY;
-            const onMove = (e) => {
-                popup.style.left = zpx(r.left + e.clientX - sx);
-                popup.style.top  = zpx(r.top  + e.clientY - sy);
-            };
-            const onUp = () => {
-                popup.dataset.userMoved = "true";
-                localStorage.setItem("r20_popup_left", popup.style.left);
-                localStorage.setItem("r20_popup_top",  popup.style.top);
-                window.removeEventListener("mousemove", onMove);
-                window.removeEventListener("mouseup",   onUp);
-            };
-            window.addEventListener("mousemove", onMove);
-            window.addEventListener("mouseup",   onUp);
+            startDrag(e, it);
         });
-
-        const searchContainer = document.createElement("div");
-        searchContainer.className = "cj-search-container";
-        const searchInput = document.createElement("input");
-        searchInput.type = "text";
-        searchInput.className = "cj-search-input";
-        searchInput.placeholder = "검색...";
-        searchInput.addEventListener("keydown", (e) => e.stopPropagation());
-        searchContainer.appendChild(searchInput);
-
-        const listContainer = document.createElement("div");
-        listContainer.className = "cj-list-container";
-        popup.appendChild(searchContainer);
-        popup.appendChild(listContainer);
-
-        let dragSrcValue = null;
-
-        const clearDragStyles = () => {
-            listContainer.querySelectorAll(".cj-item").forEach(el =>
-                el.classList.remove("cj-drag-over-left", "cj-drag-over-right"));
-        };
-
-        const updateList = (filterText = "") => {
-            listContainer.innerHTML = "";
-            charList.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()))
-            .forEach(char => {
-                const item = document.createElement("div");
-                const currentVal = speakingAsSelect ? speakingAsSelect.value : "";
-                item.className = "cj-item" + (char.value === currentVal ? " cj-selected" : "");
-                item.dataset.charValue = char.value;
-                item.title = char.name;                         // 이름은 마우스를 올리면 툴팁으로
-                item.setAttribute("role", "button");
-                item.setAttribute("aria-label", char.name);
-
-                // 아이콘을 누른 채 4px 넘게 움직이면 순서 바꾸기(좌우), 그냥 떼면 선택
-                let dragged = false;
-                item.addEventListener("mousedown", (e) => {
-                    if (e.button !== 0) return;
-                    e.preventDefault(); e.stopPropagation();
-                    const sx = e.clientX, sy = e.clientY;
-                    dragged = false;
-                    const dropTarget = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest(".cj-item[data-char-value]");
-                    const onMove = (ev) => {
-                        if (!dragged) {
-                            if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
-                            dragged = true;
-                            dragSrcValue = char.value;
-                            item.style.opacity = "0.5";
-                            document.body.style.userSelect = "none";
-                        }
-                        clearDragStyles();
-                        const target = dropTarget(ev);
-                        if (target && target.dataset.charValue !== dragSrcValue) {
-                            const mid = target.getBoundingClientRect().left + target.offsetWidth / 2;
-                            target.classList.add(ev.clientX < mid ? "cj-drag-over-left" : "cj-drag-over-right");
-                        }
-                    };
-                    const onUp = (ev) => {
-                        window.removeEventListener("mousemove", onMove);
-                        window.removeEventListener("mouseup",   onUp);
-                        if (!dragged) return;
-                        item.style.opacity = "";
-                        document.body.style.userSelect = "";
-                        const target = dropTarget(ev);
-                        clearDragStyles();
-                        if (target && target.dataset.charValue !== dragSrcValue) {
-                            const fromIdx = charList.findIndex(c => c.value === dragSrcValue);
-                            const toIdx   = charList.findIndex(c => c.value === target.dataset.charValue);
-                            if (fromIdx !== -1 && toIdx !== -1) {
-                                const mid   = target.getBoundingClientRect().left + target.offsetWidth / 2;
-                                const after = ev.clientX >= mid;
-                                const removed = charList.splice(fromIdx, 1)[0];
-                                const newTo   = charList.findIndex(c => c.value === target.dataset.charValue);
-                                charList.splice(after ? newTo + 1 : newTo, 0, removed);
-                                localStorage.setItem("r20_char_order", JSON.stringify(charList.map(c => c.value)));
-                                updateList(searchInput.value);
-                            }
-                        }
-                        dragSrcValue = null;
-                    };
-                    window.addEventListener("mousemove", onMove);
-                    window.addEventListener("mouseup",   onUp);
-                });
-
-                const jItem = char.id ? document.querySelector(`li.character[data-itemid="${char.id}"]`) : null;
-                const img   = jItem?.querySelector("img");
-                const src   = img ? (img.getAttribute("src") || img.getAttribute("data-src") || "") : "";
-                let avatarEl;
-                if (src && !src.includes("images/character.png") && !src.includes("default")) {
-                    avatarEl = document.createElement("img");
-                    avatarEl.src = src; avatarEl.className = "cj-avatar";
-                    avatarEl.draggable = false;
-                } else {
-                    // 아바타가 없으면 이름 첫 글자
-                    avatarEl = document.createElement("div");
-                    avatarEl.className = "cj-avatar cj-initial";
-                    avatarEl.textContent = char.name.trim().charAt(0) || "?";
-                }
-
-                item.appendChild(avatarEl);
-                item.onclick = () => {
-                    if (dragged) return;
-                    if (speakingAsSelect) {
-                        speakingAsSelect.value = char.value;
-                        speakingAsSelect.dispatchEvent(new Event("change", { bubbles: true }));
-                    }
-                    updateList(searchInput.value);
-                };
-                listContainer.appendChild(item);
-            });
-        };
-
-        const loadCharacters = () => {
-            const raw = [];
-            if (speakingAsSelect) {
-                Array.from(speakingAsSelect.options).forEach(opt => {
-                    const name = opt.text.trim(), val = opt.value;
-                    if (!name || !val) return;
-                    raw.push({ value: val, name, id: val.startsWith("character|") ? val.split("|")[1] : null });
-                });
-            }
-            let order = null;
-            try { order = JSON.parse(localStorage.getItem("r20_char_order") || "null"); } catch(e) {}
-            if (order) {
-                const ordered = [];
-                order.forEach(v => { const c = raw.find(r => r.value === v); if (c) ordered.push(c); });
-                raw.forEach(c => { if (!ordered.find(o => o.value === c.value)) ordered.push(c); });
-                charList = ordered;
-            } else {
-                charList = raw;
-            }
-            updateList(searchInput.value);
-        };
-
-
-        journalBtn.onclick = (e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (popup.classList.contains("show")) {
-                popup.classList.remove("show");
-                journalBtn.style.setProperty("background-color", CONFIG.inactiveBg, "important");
-                journalBtn.style.setProperty("color", CONFIG.inactiveText, "important");
-                return;
-            }
-            loadCharacters();
-            const savedL = localStorage.getItem("r20_popup_left");
-            const savedT = localStorage.getItem("r20_popup_top");
-            if (savedL && savedT) {
-                popup.style.left = savedL; popup.style.top = savedT;
-                popup.style.right = "auto"; popup.style.bottom = "auto";
-            } else if (!popup.dataset.userMoved) {
-                const rect = journalBtn.getBoundingClientRect();
-                // 단추가 대화 판 안(⚙ 옆)에 있으니 판 왼쪽 바깥에 연다
-                const sideL = document.getElementById("rightsidebar")?.getBoundingClientRect().left;
-                popup.style.right  = zpx(window.innerWidth - (sideL > 0 ? sideL - 8 : rect.left - 210));
-                popup.style.bottom = zpx(window.innerHeight - rect.top + 8);
-                popup.style.left   = "auto"; popup.style.top = "auto";
-            }
-            const savedW = localStorage.getItem("r20_popup_w");
-            const savedH = localStorage.getItem("r20_popup_h");
-            if (savedW) popup.style.width = savedW;
-            if (savedH) popup.style.height = savedH;
-            popup.classList.add("show");
-            aioZoom.fit(popup);
-            // 캐릭터가 많아도 팝업이 화면 밖으로 넘치지 않게 (목록은 안에서 스크롤)
-            popup.style.maxHeight = "";
-            const pr = popup.getBoundingClientRect();
-            const room = popup.style.top && popup.style.top !== "auto" ? window.innerHeight - pr.top : pr.bottom;
-            popup.style.maxHeight = zpx(Math.max(160, room - 8));
-            journalBtn.style.setProperty("background-color", "#444", "important");
-            journalBtn.style.setProperty("color", "#fff", "important");
-            searchInput.value = ""; updateList("");
-            searchInput.focus();
-        };
-
-        searchInput.oninput = (e) => updateList(e.target.value);
-
-        const resizeHandle = document.createElement("div");
-        resizeHandle.className = "cj-resize-handle";
-        resizeHandle.addEventListener("mousedown", (e) => {
-            e.preventDefault(); e.stopPropagation();
-            const startX = e.clientX, startY = e.clientY;
-            const startW = popup.offsetWidth, startH = popup.offsetHeight;
-            const onMove = (ev) => {
-                popup.style.width  = Math.max(150, startW + (ev.clientX - startX) / aioZoom.get()) + "px";
-                popup.style.height = Math.max(120, startH + (ev.clientY - startY) / aioZoom.get()) + "px";
-            };
-            const onUp = () => {
-                localStorage.setItem("r20_popup_w", popup.style.width);
-                localStorage.setItem("r20_popup_h", popup.style.height);
-                window.removeEventListener("mousemove", onMove);
-                window.removeEventListener("mouseup", onUp);
-            };
-            window.addEventListener("mousemove", onMove);
-            window.addEventListener("mouseup", onUp);
+        const q = pop.querySelector(".cj-q");
+        q.addEventListener("input", () => { hl = q.value.trim() ? 0 : -1; draw(); });
+        q.addEventListener("keydown", e => {
+            e.stopPropagation();         // Roll20 단축키로 새지 않게
+            if (e.isComposing) return;
+            const items = [...pop.querySelectorAll(".cj-item[data-char-value]")];
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if (items.length) { hl = (hl + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; draw(); } }
+            else if (e.key === "Enter") { e.preventDefault(); const it = items[Math.max(0, hl)]; if (it) pick(it.dataset.charValue); }
         });
-        popup.appendChild(resizeHandle);
+        document.body.appendChild(pop);
+    };
 
-        document.body.appendChild(popup);
-        // 말하는 사람 줄: [저널] [캡처 단추들] [⚙]
-        (document.getElementById("custom-capture-copy") || gear).before(journalBtn);
+    // ▼ (입력칸 왼쪽 포트레이트) 누르기 → Roll20 기본 목록 대신 이 창 (묶음을 끄면 Roll20 기본 목록)
+    const hookVisual = () => {
+        const v = document.getElementById("custom-select-visual"), s = sel();
+        if (!v || !s) return;
+        s.style.pointerEvents = btnVisible.journal ? "none" : "";
+        if (btnVisible.journal) {
+            v.setAttribute("role", "button"); v.tabIndex = 0; v.style.cursor = "pointer";
+            v.setAttribute("aria-label", "말하는 사람 고르기"); v.setAttribute("aria-haspopup", "dialog"); v.title = "말하는 사람 고르기";
+        } else { ["role", "aria-label", "aria-haspopup", "aria-expanded", "title"].forEach(k => v.removeAttribute(k)); v.removeAttribute("tabindex"); }
+        if (recWatched !== s) { recWatched = s; s.addEventListener("change", () => { remember(s.value); if (isOpen()) draw(); }); }
     };
-    const setEnabled = on => {
-        if (on) return inject();
-        document.getElementById("custom-journal-toggle")?.remove();
-        document.getElementById("custom-journal-popup")?.remove();
-    };
-    // Esc 로 닫기 (다른 창들과 같게) — 닫기 단추를 대신 누른다. 검색칸이 키를 막으므로 잡는 단계(capture)에서
-    document.addEventListener("keydown", e => {
-        if (e.key !== "Escape") return;
-        const p = document.getElementById("custom-journal-popup");
-        if (p?.classList.contains("show")) p.querySelector(".cj-close-btn")?.click();
+    document.addEventListener("click", e => {
+        if (!btnVisible.journal || !e.target.closest?.("#custom-select-visual")) return;
+        e.preventDefault(); e.stopPropagation();
+        isOpen() ? close() : open();
     }, true);
-    return { inject, setEnabled };
+    document.addEventListener("keydown", e => {
+        if (!btnVisible.journal) return;
+        if (e.key === "Escape" && isOpen()) { e.preventDefault(); e.stopPropagation(); close(); return; }
+        if ((e.key === "Enter" || e.key === " ") && e.target.closest?.("#custom-select-visual")) { e.preventDefault(); isOpen() ? close() : open(); }
+    }, true);
+    // 다른 데 누르면 닫기 (📌 면 그대로)
+    document.addEventListener("pointerdown", e => {
+        if (!isOpen() || pinned() || !e.isTrusted || e.target.closest?.("#custom-journal-popup, #custom-select-visual")) return;
+        close();
+    }, true);
+    addEventListener("resize", () => place());
+
+    const inject = () => {
+        document.getElementById("custom-journal-toggle")?.remove();         // 예전 📘 빠른 저널 단추 (▼ 로 합침)
+        const v = document.getElementById("custom-select-visual");
+        if (v && (v.dataset.cjHook !== String(btnVisible.journal) || recWatched !== sel())) { v.dataset.cjHook = String(btnVisible.journal); hookVisual(); }
+    };
+    const setEnabled = on => { if (!on) close(); inject(); };
+    return { inject, setEnabled, place, open, close };
 })();
 
 addCss(`
-        #custom-journal-popup { position:fixed; width:190px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 4px 12px rgba(0,0,0,0.18); z-index:10002; display:none; flex-direction:column; overflow:hidden; font-family:sans-serif; color:var(--aio-ink-2); }
+        /* 말하는 사람 고르기 (quickJournal): 채팅 판 왼쪽 끝에 붙어 아래에서 위로 · 목록 ↔ 크게 보기 */
+        #custom-journal-popup { position:fixed; z-index:10006; display:none; flex-direction:column; width:264px; border:1px solid var(--aio-line-3); border-right:0; border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); box-shadow:-6px 0 18px rgba(0,0,0,0.22); color:var(--aio-ink-2); font:12px/1.4 sans-serif; overflow:hidden; box-sizing:border-box; }
         /* Roll20(Bootstrap)의 .show { display:block !important } 보다 앞서도록 !important */
         #custom-journal-popup.show { display:flex !important; }
-        .cj-header { display:flex; align-items:center; justify-content:space-between; padding:4px 8px; background:var(--aio-bg-3); border-bottom:1px solid var(--aio-line-2); font-size:11px; font-weight:bold; color:var(--aio-ink-3); flex-shrink:0; cursor:move; user-select:none; }
-        .cj-close-btn { background:none; border:none; cursor:pointer; font-size:13px; color:var(--aio-ink-5); padding:0 2px; line-height:1; }
-        .cj-close-btn:hover { color:var(--aio-ink-2); }
-        .cj-close-btn:focus-visible, .cj-zoom button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
-        .cj-search-input:focus { border-color:var(--aio-accent); }
-        .cj-zoom { display:flex; gap:2px; margin-left:auto; margin-right:6px; }
-        .cj-zoom button { width:20px; height:18px; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:12px; line-height:1; cursor:pointer; }
-        .cj-zoom button:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
-        .cj-item.cj-drag-over-left { box-shadow:inset 3px 0 0 var(--aio-accent) !important; }
-        .cj-item.cj-drag-over-right { box-shadow:inset -3px 0 0 var(--aio-accent) !important; }
-        .cj-search-container { padding:5px 6px; border-bottom:1px solid var(--aio-line-4); background:var(--aio-bg-2); flex-shrink:0; }
-        .cj-search-input { width:100%; box-sizing:border-box; padding:4px 6px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); outline:none; font-size:12px; }
-        /* 아이콘 격자: 이름은 마우스를 올리면 툴팁으로 */
-        .cj-list-container { overflow-y:auto; flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(calc(var(--cj-size, 50px) + 4px), 1fr)); gap:4px; padding:6px; align-content:start; }
-        .cj-resize-handle { height:8px; cursor:se-resize; background:linear-gradient(135deg, transparent 40%, var(--aio-bg-5) 40%, var(--aio-bg-5) 50%, transparent 50%, transparent 60%, var(--aio-bg-5) 60%, var(--aio-bg-5) 70%, transparent 70%); background-size:8px 8px; background-position:bottom right; background-repeat:no-repeat; flex-shrink:0; }
-        .cj-item { display:flex; align-items:center; justify-content:center; aspect-ratio:1; padding:2px; border-radius:var(--aio-r-lg); cursor:pointer; transition:background-color 0.1s ease; user-select:none; }
-        .cj-item:hover { background-color:var(--aio-accent-bg); }
-        .cj-item.cj-selected { background-color:var(--aio-accent-soft); box-shadow:inset 0 0 0 2px var(--aio-accent); }
-        .cj-avatar { width:var(--cj-size, 50px); height:var(--cj-size, 50px); min-width:var(--cj-size, 50px); border-radius:var(--aio-r-lg); object-fit:cover; background-color:var(--aio-bg-3); pointer-events:none; }
-        .cj-avatar.cj-initial { display:flex; justify-content:center; align-items:center; font-size:calc(var(--cj-size, 50px) * 0.32); font-weight:700; color:var(--aio-ink-4); }
+        #custom-journal-popup [hidden] { display:none !important; }
+        #custom-journal-popup * { box-sizing:border-box; }
+        #custom-journal-popup .cj-hd { display:flex; align-items:center; gap:2px; flex-shrink:0; height:30px; padding:0 4px 0 6px; border-bottom:1px solid var(--aio-line-4); }
+        #custom-journal-popup .cj-q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 4px 0 0 !important; padding:0 8px !important; border:0 !important; border-radius:11px !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:11px !important; outline:none; }
+        #custom-journal-popup .cj-q:focus-visible { box-shadow:0 0 0 2px var(--aio-accent-mid) !important; }
+        #custom-journal-popup :is(.cj-hd, .cj-ft) button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:11px; line-height:22px; cursor:pointer; box-shadow:none; }
+        #custom-journal-popup :is(.cj-hd, .cj-ft) button:hover { background:var(--aio-bg-3); }
+        #custom-journal-popup .cj-hd button[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
+        #custom-journal-popup .cj-pin { filter:grayscale(1); opacity:0.5; } #custom-journal-popup .cj-pin[aria-pressed="true"] { filter:none; opacity:1; }
+        #custom-journal-popup button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        #custom-journal-popup .cj-recw { flex-shrink:0; padding:4px 8px 6px; border-bottom:1px solid var(--aio-line-4); }
+        #custom-journal-popup .cj-lb { margin-bottom:3px; color:var(--aio-ink-5); font-size:10px; font-weight:700; }
+        #custom-journal-popup .cj-rec { display:flex; gap:6px; }
+        #custom-journal-popup .cj-ri { width:38px; height:38px; margin:0; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; box-shadow:none; }
+        #custom-journal-popup .cj-av { flex:none; display:inline-flex; align-items:center; justify-content:center; object-fit:cover; background:var(--aio-bg-4); color:var(--aio-ink-4); font-weight:700; pointer-events:none; }
+        #custom-journal-popup .cj-ri .cj-av { width:38px; height:38px; border-radius:50%; font-size:14px; }
+        #custom-journal-popup .cj-ri:hover .cj-av { box-shadow:0 0 0 2px var(--aio-accent-mid); }
+        #custom-journal-popup .cj-ri.on .cj-av { box-shadow:0 0 0 2px var(--aio-accent); }
+        #custom-journal-popup .cj-list { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:3px 0; }
+        #custom-journal-popup .cj-item { display:flex; align-items:center; gap:7px; height:30px; padding:0 8px; cursor:pointer; user-select:none; }
+        #custom-journal-popup .cj-item:is(:hover, .hl) { background:var(--aio-bg-3); }
+        #custom-journal-popup .cj-item.cj-selected { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
+        #custom-journal-popup .cj-item .cj-av { width:24px; height:24px; border-radius:50%; font-size:11px; }
+        #custom-journal-popup .cj-nm { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        /* 크게 보기: 포트레이트 크게 + 그 밑에 이름 작게 (두 줄까지) */
+        #custom-journal-popup .cj-list.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(calc(var(--cj-size, 50px) + 10px), 1fr)); gap:6px 2px; padding:6px; align-content:start; }
+        #custom-journal-popup .cj-list.grid .cj-item { flex-direction:column; gap:3px; height:auto; padding:4px 2px; border-radius:var(--aio-r); }
+        #custom-journal-popup .cj-list.grid .cj-av { width:var(--cj-size, 50px); height:var(--cj-size, 50px); border-radius:var(--aio-r-lg); font-size:calc(var(--cj-size, 50px) * 0.32); }
+        #custom-journal-popup .cj-list.grid .cj-item.cj-selected .cj-av { box-shadow:0 0 0 2px var(--aio-accent); }
+        #custom-journal-popup .cj-list.grid .cj-nm { flex:none; display:-webkit-box; max-width:100%; white-space:normal; font-size:10px; line-height:1.25; text-align:center; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+        #custom-journal-popup .cj-item.cj-dragging { opacity:0.5; }
+        #custom-journal-popup .cj-list:not(.grid) .cj-drop-before { box-shadow:inset 0 2px 0 var(--aio-accent); }
+        #custom-journal-popup .cj-list:not(.grid) .cj-drop-after { box-shadow:inset 0 -2px 0 var(--aio-accent); }
+        #custom-journal-popup .cj-list.grid .cj-drop-before { box-shadow:inset 3px 0 0 var(--aio-accent); }
+        #custom-journal-popup .cj-list.grid .cj-drop-after { box-shadow:inset -3px 0 0 var(--aio-accent); }
+        #custom-journal-popup .cj-none { padding:14px 8px; color:var(--aio-ink-4); font-size:11px; text-align:center; }
+        #custom-journal-popup .cj-ft { display:flex; align-items:center; justify-content:flex-end; gap:3px; flex-shrink:0; padding:2px 8px; border-top:1px solid var(--aio-line-4); color:var(--aio-ink-5); font-size:10.5px; }
         .ui-dialog.r20qp .r20qp-bar { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
         .ui-dialog.r20qp .r20qp-bar input { flex:1; min-width:0; height:28px !important; margin:0 !important; padding:0 8px !important; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:12px !important; box-sizing:border-box; }
         .ui-dialog.r20qp .r20qp-zoom { display:flex; gap:2px; }
@@ -7751,7 +7678,7 @@ addCss(`
 addFeature("roomImages", roomImages);    // @share-cut-line
 addFeature("queryPicker", queryPicker);
 addFeature("quickJournal", quickJournal);
-addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 빠른 저널 뷰어",
+addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 말하는 사람 고르기(입력칸 왼쪽 ▼ → 채팅 판 왼쪽에 최근 5명 + 목록 · ▦ 크게 보기 · 이름 · 초성 찾기 · 끌어서 순서)",
     members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
 
 // ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
@@ -9066,7 +8993,7 @@ const winMemory = (() => {
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
     // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
-    const HEADS = "#r20be > .r20be-head, #custom-journal-popup > .cj-header, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    const HEADS = "#r20be > .r20be-head, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
     document.addEventListener("dblclick", e => {
         if (!btnVisible.winmem) return;
         const head = e.target.closest?.(HEADS);
