@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.82.1
+// @version      1.83.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.82.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.83.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -10509,8 +10509,8 @@ const bulkEditor = (() => {
     });
 
     // ── 작업용 트리 ──
-    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images", "map"];
-    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null };
+    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images", "map", "links"];
+    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null, links: null };
     // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
     const VIEW = {
         icons: localStorage.getItem("r20be_icons") !== "0",
@@ -10660,6 +10660,7 @@ const bulkEditor = (() => {
     const buildTab = which => {
         if (which === "map") return buildMap();
         if (which === "images") return buildImages();
+        if (which === "links") return { ...flatTab("links", []), scan: null, gsel: "", fixes: new Map(), busy: false, prog: [0, 0], phase: "", lastSaved: null };
         if (which === "tables") return buildTables();
         if (which === "macros") return buildMacros();
         if (which === "decks") return buildDecks();
@@ -10723,8 +10724,8 @@ const bulkEditor = (() => {
     const toHtml = (n, k) => n.htmlMode[k] ? n.cur[k] : textToHtml(n.cur[k]);
     const nodeDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
     const isDirty = n => nodeDirty(n) || !!n.items?.some(itemDirty);       // 목록의 주황 점
-    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables, S.map].filter(Boolean);
-    const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + allNodes(t).reduce((c, n) =>
+    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables, S.map, S.links].filter(Boolean);
+    const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + (t.fixes?.size || 0) + allNodes(t).reduce((c, n) =>
         c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
     // 저장 안 한 변경이 있으면 새로고침 · 탭 닫기 전에 브라우저가 한 번 묻는다
     window.addEventListener("beforeunload", e => {
@@ -10859,6 +10860,7 @@ const bulkEditor = (() => {
     const rowEl = id => ui.tree.querySelector(`.r20be-row[data-id="${CSS.escape(id)}"]`);
     const renderTree = () => {
         if (cur().which === "images") return renderImgTree();
+        if (cur().which === "links") return renderLinkTree();
         if (cur().which === "map") cur().flags = mapFlags(cur());
         const t = cur(), rows = visibleRows(t), icons = iconMode(t);
         t.visible = rows.map(r => r.n.id);
@@ -10887,7 +10889,7 @@ const bulkEditor = (() => {
         ui.save.disabled = !c || saving;
         ui.revert.disabled = !c || saving;
     };
-    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (cur()?.which === "images" ? HINT_IMG : cur()?.which === "map" ? HINT_MAP : iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
+    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (cur()?.which === "images" ? HINT_IMG : cur()?.which === "links" ? HINT_LINK : cur()?.which === "map" ? HINT_MAP : iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
 
     const select = id => {
         cur().sel = id;
@@ -12152,6 +12154,312 @@ const bulkEditor = (() => {
     const imgAll = vis => { const own = FEAT.roomImages.ownerMap(vis); return vis.flatMap(({ g, its }) => its.filter(it => own.get(it) === g)); };
     const imgList = t => { const vis = imgGroups(t), x = vis.find(v => v.g.key === t.gsel); return x ? x.its : imgAll(vis); };
     const IMG_ICON = { page: "grid", char: "char", handout: "handout", table: "rtable", deck: "deck" };
+    // ── 링크 점검: 방 안의 그림 주소를 모두 열어 보고, 안 열리는 · 너무 큰 것을 쓰는 곳과 함께 보여준 뒤 새 주소로 바꾼다 ──
+    // 저장은 다른 탭 저장이 끝난 뒤 맨 마지막에 (그때의 Roll20 값에서 옛 주소만 바꾼다 → 다른 탭에서 고친 내용을 덮지 않음)
+    const HINT_LINK = "[점검 시작] → 왼쪽에서 원인을 고르고 새 주소를 넣은 뒤 저장 · 같은 주소를 쓰는 곳은 모두 함께 바뀜";
+    const LINK_BIG = 8 * 1024 * 1024;
+    const LINK_CAUSE = {
+        discord: ["만료된 Discord 첨부", "2024년부터 Discord 첨부 링크는 Discord 밖에서 열리지 않아요. 그림을 imgur 등에 다시 올리고 새 주소를 넣어 주세요."],
+        imgur: ["imgur에서 지워짐", "올린 사람이 지웠거나 imgur가 내렸어요. 다시 올려야 해요."],
+        r20: ["Roll20 라이브러리에서 지워짐", "라이브러리에서 지운 그림이에요. 다시 올린 뒤 라이브러리 주소를 넣어 주세요."],
+        addr: ["주소가 잘못됨", "주소 모양이 틀렸어요 (예: imgur.com 뒤에 / 가 빠짐). 고친 주소를 넣어 주세요."],
+        slow: ["응답 없음", "15초 안에 열리지 않았어요. 사이트가 느리거나 막혔을 수 있어요 — [다시 점검]으로 한 번 더 확인해 보세요."],
+        other: ["열리지 않음", "사이트 문제이거나 주소가 바뀌었어요. 새 탭에서 열어 확인해 보세요."],
+        big: ["너무 큼 (8MB 넘음)", "채팅 · 토큰에 띄울 때 느려져요. 크기를 줄이거나(움직이는 그림은 프레임 · 색 수 줄이기) 작은 파일로 바꿔 보세요."]
+    };
+    const LINK_BAD = ["discord", "imgur", "r20", "addr", "slow", "other"];
+    const linkRe = /https?:\/\/[^\s"'<>|}\])\\]+/gi;
+    const isImgLink = u => /\.(?:png|jpe?g|gif|webp|apng|avif|bmp|svg|webm|mp4)(?=$|[?#])/i.test(u) || /#[^#]*\.(?:png|jpe?g|gif|webp)$/i.test(u)
+        || /^https?:\/\/(?:i\.imgur\.com|files\.d20\.io\/images|s3\.amazonaws\.com\/files\.d20\.io|cdn\.discordapp\.com\/attachments|media\.discordapp\.net\/attachments)\//i.test(u);
+    const unesc = s => { try { return unescape(s); } catch (e) { return s; } };
+    const linksIn = s => [...new Set((String(s || "").match(linkRe) || []).map(u => u.replace(/&amp;/g, "&").replace(/[.,;:!?]+$/, "")).filter(isImgLink))];
+    // 매크로 글에서 주소가 ?{…} 몇 번째 선택지인지 · 그 선택지 이름
+    const optWhere = (txt, i) => {
+        const q = txt.lastIndexOf("?{", i);
+        if (q < 0 || txt.slice(q, i).includes("}")) return null;
+        const parts = txt.slice(q, i).split("|");
+        return parts.length < 2 ? null : { n: parts.length - 1, label: parts[parts.length - 1].split(",")[0].trim() };
+    };
+    const linkCause = (u, r) => {
+        let h = "";
+        try { h = new URL(u).hostname; } catch (e) { return "addr"; }
+        if (/\.(?:png|jpe?g|gif|webp)$/i.test(h) || /^imgur\.com./i.test(h)) return "addr";
+        if (r.st === "ok") return r.removed ? "imgur" : r.size > LINK_BIG ? "big" : "";
+        if (r.st === "slow") return "slow";
+        if (/(?:^|\.)discordapp\.(?:com|net)$/i.test(h)) return "discord";
+        if (/(?:^|\.)imgur\.com$/i.test(h)) return "imgur";
+        if (/files\.d20\.io$|s3\.amazonaws\.com$/i.test(h)) return "r20";
+        return "other";
+    };
+    // 그림 하나 열어 보기 (동영상은 앞부분만) · 열린 뒤 크기는 브라우저 기록 → 안 되면 CORS 를 여는 곳만 HEAD 로
+    let linkHead = true;
+    const linkSize = async u => {
+        const e = performance.getEntriesByName(u).pop();
+        if (e?.encodedBodySize) return e.encodedBodySize;
+        if (!linkHead || !/^https:\/\/(?:i\.imgur\.com|cdn\.discordapp\.com|media\.discordapp\.net|cdn\.jsdelivr\.net|raw\.githubusercontent\.com)\//i.test(u)) return 0;
+        const c = new AbortController(), tm = setTimeout(() => c.abort(), 5000);
+        try { const r = await fetch(u, { method: "HEAD", mode: "cors", credentials: "omit", signal: c.signal }); return +r.headers.get("content-length") || 0; }
+        catch (err) { if (err.name !== "AbortError") linkHead = false; return 0; }      // 막혀 있으면 이번 점검에서는 더 묻지 않는다
+        finally { clearTimeout(tm); }
+    };
+    const linkProbe = u => new Promise(ok => {
+        const src = r20img(u), vid = /\.(?:webm|mp4)(?=$|[?#])/i.test(src);
+        const m = vid ? document.createElement("video") : new Image();
+        let done = false;
+        const fin = r => {
+            if (done) return;
+            done = true; clearTimeout(tm);
+            m.onload = m.onerror = m.onloadedmetadata = null;
+            if (vid) { m.removeAttribute("src"); m.load(); } else m.removeAttribute("src");
+            ok(r);
+        };
+        const tm = setTimeout(() => fin({ st: "slow" }), 15000);
+        if (vid) { m.preload = "metadata"; m.muted = true; m.onloadedmetadata = () => fin({ st: "ok", w: m.videoWidth, h: m.videoHeight }); }
+        else { m.decoding = "async"; m.onload = () => fin({ st: "ok", w: m.naturalWidth, h: m.naturalHeight }); }
+        m.onerror = () => fin({ st: "bad" });
+        m.src = src;
+    }).then(async r => {
+        if (r.st !== "ok") return r;
+        r.removed = /imgur\.com\//i.test(u) && r.w === 161 && r.h === 81;      // imgur 의 '지워진 그림' 자리 그림
+        r.size = await linkSize(r20img(u));
+        return r;
+    });
+    const pool = async (list, n, fn) => {
+        let i = 0;
+        await Promise.all(Array.from({ length: Math.min(n, list.length) }, async () => { while (i < list.length) { const k = i++; await fn(list[k], k); } }));
+    };
+    // 방 안의 그림 주소 모으기 → Map(주소 → { url, uses:[{ where, name, ref }] }) · ref.lib = Roll20 라이브러리 그림만 받는 칸
+    const linkCollect = async (t, step) => {
+        const C = window.Campaign, map = new Map();
+        const add = (u, where, name, ref) => {
+            if (!u || !/^https?:\/\//i.test(u)) return;
+            let e = map.get(u);
+            if (!e) map.set(u, e = { url: u, st: "wait", cause: "", size: 0, uses: [] });
+            e.uses.push({ where, name, ref });
+        };
+        const inText = (s, where, name, ref) => linksIn(s).forEach(u => {
+            const w = ref.f === "action" ? optWhere(s, s.indexOf(u)) : null;
+            add(u, where + (w ? ` · ${w.n}번째 선택지` : ""), w?.label || name, ref);
+        });
+        const nm = m => m.get("name") || m.get("title") || "";
+        (macrosColl()?.models || []).forEach(m => inText(m.get("action"), `매크로 '${nm(m)}'`, nm(m), { m, type: "text", f: "action" }));
+        (C.characters?.models || []).forEach(c => (c.abilities?.models || []).forEach(m =>
+            inText(m.get("action"), `캐릭터 '${nm(c)}' 능력 '${nm(m)}'`, nm(m), { m, type: "text", f: "action" })));
+        (tablesColl()?.models || []).forEach(tb => (tb.tableitems?.models || []).forEach((m, k) =>
+            add(m.get("avatar"), `굴림표 '${nm(tb)}' · ${k + 1}번 항목`, nm(m) || nm(tb), { m, type: "attr", f: "avatar", lib: true })));
+        (decksColl()?.models || []).forEach(d => {
+            add(d.get("avatar"), `덱 '${nm(d)}' · 뒷면`, nm(d), { m: d, type: "attr", f: "avatar", lib: true });
+            (d.cards?.models || []).forEach(m => {
+                add(m.get("avatar"), `덱 '${nm(d)}' · 카드 '${nm(m)}'`, nm(m), { m, type: "attr", f: "avatar", lib: true });
+                add(m.get("card_back"), `덱 '${nm(d)}' · 카드 '${nm(m)}' 뒷면`, nm(m), { m, type: "attr", f: "card_back", lib: true });
+            });
+        });
+        (C.pages?.models || []).forEach(p => (p.thegraphics?.models || []).forEach(g => {
+            const w = `맵 '${nm(p)}' · ${nm(g) || "이름 없는 그림"}`;
+            add(g.get("imgsrc"), w, nm(g), { m: g, type: "attr", f: "imgsrc", lib: true });
+            String(g.get("sides") || "").split("|").filter(Boolean).forEach((s, k) => add(unesc(s), `${w} · ${k + 1}번 면`, nm(g), { m: g, type: "sides", f: "sides", lib: true }));
+        }));
+        // 핸드아웃 · 캐릭터: 그림 칸 + 글(본문 · GM 노트 · 기본 토큰) — 글은 Roll20 에서 하나씩 받아 온다
+        const docs = [];
+        (C.handouts?.models || []).forEach(m => {
+            add(m.get("avatar"), `핸드아웃 '${nm(m)}' · 그림`, nm(m), { m, type: "attr", f: "avatar", lib: true });
+            docs.push([m, "notes", `핸드아웃 '${nm(m)}' · 본문`], [m, "gmnotes", `핸드아웃 '${nm(m)}' · GM 노트`]);
+        });
+        (C.characters?.models || []).forEach(m => {
+            add(m.get("avatar"), `캐릭터 '${nm(m)}' · 그림`, nm(m), { m, type: "attr", f: "avatar", lib: true });
+            docs.push([m, "bio", `캐릭터 '${nm(m)}' · 소개`], [m, "gmnotes", `캐릭터 '${nm(m)}' · GM 노트`], [m, "defaulttoken", `캐릭터 '${nm(m)}' · 기본 토큰`]);
+        });
+        let read = 0;
+        await pool(docs, 4, async ([m, f, where]) => {
+            if (t.stop) return;
+            const raw = await getBlob(m, f).catch(() => "");
+            const s = f === "defaulttoken" ? raw + " " + unesc(raw) : decodeBlob(raw).html;
+            linksIn(s).forEach(u => add(u, where, nm(m), { m, type: "blob", f, lib: f === "defaulttoken" }));
+            step(++read, docs.length);
+        });
+        return map;
+    };
+    const linkScan = async t => {
+        if (t.busy) { t.stop = true; return; }
+        t.busy = true; t.stop = false; linkHead = true;
+        try { performance.setResourceTimingBufferSize?.(5000); } catch (e) { /* 없음 */ }
+        const t0 = Date.now(), redraw = () => { if (cur() === t) { renderTree(); renderPane(); } };
+        t.phase = "자료 읽는 중"; t.prog = [0, 1]; redraw();
+        let tick = 0;
+        const map = await linkCollect(t, (i, n) => { t.prog = [i, n]; if (++tick % 10 === 0) redraw(); });
+        t.scan = { map, at: new Date(), ms: 0 };
+        const list = [...map.values()];
+        t.phase = "그림 여는 중"; t.prog = [0, list.length]; redraw();
+        let done = 0;
+        await pool(list, 6, async e => {
+            if (t.stop) return;
+            const r = await linkProbe(e.url);
+            Object.assign(e, { st: r.st, size: r.size || 0, cause: linkCause(e.url, r) });
+            t.prog = [++done, list.length];
+            if (done % 6 === 0 || done === list.length) redraw();
+        });
+        t.scan.ms = Date.now() - t0;
+        t.busy = false; t.phase = t.stop ? "멈춤" : "";
+        if (!t.gsel) t.gsel = list.some(e => LINK_BAD.includes(e.cause)) ? "bad" : list.some(e => e.cause === "big") ? "big" : "ok";
+        redraw();
+        const bad = list.filter(e => LINK_BAD.includes(e.cause)).length;
+        setStatus(t.stop ? "점검을 멈췄습니다 — 확인한 것까지만 보여요" : `그림 주소 ${list.length}개 확인 · 안 열림 ${bad}개`, bad ? "err" : "ok");
+    };
+    const linkGroups = t => {
+        const list = t.scan ? [...t.scan.map.values()] : [];
+        const by = k => list.filter(e => e.cause === k);
+        return { list, bad: list.filter(e => LINK_BAD.includes(e.cause)), big: by("big"), ok: list.filter(e => e.st === "ok" && !e.cause), wait: list.filter(e => e.st === "wait"),
+            causes: LINK_BAD.map(k => ({ k, its: by(k) })).filter(x => x.its.length) };
+    };
+    const linkRows = t => {
+        const G = linkGroups(t), q = t.q.trim().toLowerCase();
+        const its = t.gsel === "ok" ? G.ok : t.gsel === "bad" ? G.bad : t.gsel === "wait" ? G.wait : G.list.filter(e => e.cause === t.gsel);
+        return !q ? its : its.filter(e => [e.url, ...e.uses.flatMap(u => [u.where, u.name])].some(s => String(s).toLowerCase().includes(q)));
+    };
+    const renderLinkTree = () => {
+        const t = cur(), G = linkGroups(t);
+        const row = (key, name, n, cls = "") => `<div class="r20be-row${t.gsel === key ? " sel" : ""}${cls}" data-g="${esc(key)}" role="treeitem" aria-selected="${t.gsel === key}">`
+            + `<button type="button" class="r20be-nm"><span>${esc(name)}</span></button><span class="r20be-meta">${n}</span></div>`;
+        t.visible = [];
+        ui.tree.classList.remove("r20be-icons");
+        ui.tree.innerHTML = !t.scan ? '<p class="r20be-empty">아직 점검하지 않았어요</p>'
+            : row("bad", "안 열림 전체", G.bad.length, G.bad.length ? " r20be-lk-badrow" : "")
+            + G.causes.map(c => row(c.k, LINK_CAUSE[c.k][0], c.its.length, " r20be-lk-sub")).join("")
+            + (G.big.length ? row("big", LINK_CAUSE.big[0], G.big.length, " r20be-lk-bigrow") : "")
+            + row("ok", "정상", G.ok.length) + (G.wait.length ? row("wait", "아직 확인 안 함", G.wait.length) : "");
+        updateBar();
+    };
+    // 새 주소 칸: 넣자마자 열어 보고 ✓ / ⚠ (라이브러리 칸인데 바깥 주소면 경고)
+    const linkFixCheck = async (e, val, mark) => {
+        const lib = e.uses.some(u => u.ref.lib) && !/^https?:\/\/(?:files\.d20\.io|s3\.amazonaws\.com\/files\.d20\.io)\//i.test(val);
+        mark.textContent = "…"; mark.className = "r20be-lk-mk";
+        const r = await linkProbe(val);
+        const c = linkCause(val, r);
+        mark.textContent = c && c !== "big" ? "⚠ 안 열림" : lib ? "⚠ 라이브러리 아님" : "✓";
+        mark.className = "r20be-lk-mk " + (c && c !== "big" ? "bad" : lib ? "warn" : "ok");
+        mark.title = c && c !== "big" ? LINK_CAUSE[c][0] : lib ? "토큰 · 카드 · 굴림표 · 캐릭터 그림 칸은 Roll20 라이브러리 그림(files.d20.io)만 쓸 수 있어요" : "열림";
+    };
+    const linkPane = t => {
+        const G = linkGroups(t), rows = linkRows(t);
+        const wrap = el("div", { class: "r20be-pane-in r20be-lk" });
+        const pct = t.busy ? Math.round(100 * t.prog[0] / Math.max(1, t.prog[1])) : 100;
+        const when = t.scan?.at ? `${t.scan.at.getHours()}:${String(t.scan.at.getMinutes()).padStart(2, "0")}` : "";
+        wrap.append(el("div", { class: "r20be-lk-top" },
+            el("button", { type: "button", class: t.busy ? "r20be-sec" : t.scan ? "r20be-sec" : "r20be-pri", onclick: () => linkScan(t) }, t.busy ? "■ 멈추기" : t.scan ? "↻ 다시 점검" : "점검 시작"),
+            el("div", { class: "r20be-lk-bar", role: "progressbar", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100" }, el("i", { style: `width:${t.scan || t.busy ? pct : 0}%` })),
+            el("span", { class: "r20be-note" }, t.busy ? `${t.phase} ${t.prog[0]}/${t.prog[1]}`
+                : t.scan ? `그림 주소 ${G.list.length}개 · ${Math.round(t.scan.ms / 1000)}초 · ${when}${t.phase ? " · " + t.phase : ""}` : "매크로 · 굴림표 · 덱 · 핸드아웃 · 캐릭터 · 맵의 그림 주소를 이 브라우저에서 열어 봐요")));
+        if (t.lastSaved?.length) wrap.append(el("div", { class: "r20be-lk-done" }, `주소 ${t.lastSaved.length}개를 바꿔 저장했어요`,
+            el("button", { type: "button", class: "r20be-sec", onclick: () => {
+                t.lastSaved.forEach(([o, n]) => t.fixes.set(n, o));
+                t.lastSaved = null;
+                save();
+            } }, "되돌리기")));
+        if (!t.scan) {
+            wrap.append(el("p", { class: "r20be-empty" }, "[점검 시작]을 누르면 방 안의 그림 주소를 모두 열어 보고, 안 열리는 것 · 너무 큰 것을 어디서 쓰는지와 함께 보여줘요. 수백 개면 1~2분 걸려요."));
+            return wrap;
+        }
+        const stat = (k, cls, n, label) => el("button", { type: "button", class: "r20be-lk-st " + cls + (t.gsel === k ? " on" : ""), "aria-pressed": String(t.gsel === k),
+            onclick: () => { t.gsel = k; renderTree(); renderPane(); } }, el("b", {}, String(n)), el("span", {}, label));
+        wrap.append(el("div", { class: "r20be-lk-stats" },
+            stat("bad", "bad", G.bad.length, "안 열림 — 채팅 · 토큰에서도 안 보여요"),
+            stat("big", "big", G.big.length, "너무 큼 (8MB 넘음) — 채팅이 느려져요"),
+            stat("ok", "ok", G.ok.length, "정상")));
+        const cz = LINK_CAUSE[t.gsel];
+        if (cz) wrap.append(el("p", { class: "r20be-lk-why" }, el("b", {}, cz[0]), " — ", cz[1]));
+        if (!rows.length) { wrap.append(el("p", { class: "r20be-empty" }, t.q ? "검색 결과가 없습니다" : t.gsel === "ok" ? "정상인 그림이 없어요" : "문제 있는 그림 주소가 없어요 👍")); return wrap; }
+        const short = u => u.replace(/^https?:\/\//, "").replace(/^(.{0,22}).*(\/[^/]{0,24})$/, (m, a, b) => m.length > 48 ? a + "…" + b : m);
+        const tbl = el("div", { class: "r20be-lk-tbl", role: "table", "aria-label": "그림 주소" },
+            el("div", { class: "r20be-lk-h", role: "row" }, ...["그림", "이름 · 주소", "쓰는 곳", "새 주소"].map(s => el("span", { role: "columnheader" }, s))));
+        const MAX = 300;
+        rows.slice(0, MAX).forEach(e => {
+            const fix = t.fixes.get(e.url) || "";
+            const mark = el("span", { class: "r20be-lk-mk", "aria-live": "polite" });
+            const inp = el("input", { class: "r20be-in r20be-mini", value: fix, placeholder: "새 주소 붙여넣기", "aria-label": `${e.uses[0]?.name || "그림"} 새 주소` });
+            const r = el("div", { class: "r20be-lk-r" + (fix ? " fixed" : ""), role: "row" });
+            const setFix = v => {
+                v = v.trim();
+                if (v && !/^https?:\/\/\S+$/i.test(v)) { mark.textContent = "⚠ 주소 모양이 아님"; mark.className = "r20be-lk-mk bad"; return; }
+                if (v && v !== e.url) t.fixes.set(e.url, v); else t.fixes.delete(e.url);
+                r.classList.toggle("fixed", t.fixes.has(e.url));
+                updateBar();
+                if (t.fixes.has(e.url)) linkFixCheck(e, v, mark); else mark.textContent = "";
+            };
+            inp.addEventListener("change", () => setFix(inp.value));
+            inp.addEventListener("keydown", ev => { if (ev.key === "Enter") setFix(inp.value); });
+            const pic = e.st === "ok" && !LINK_BAD.includes(e.cause) ? el("span", { class: "r20be-lk-th" }, el("img", { src: r20img(e.url), alt: "", loading: "lazy" }))
+                : el("span", { class: "r20be-lk-th none" }, e.st === "wait" ? "확인 전" : e.cause === "imgur" ? "지워진 그림" : "그림 안 열림");
+            const uses = e.uses.slice(0, 3).map(u => el("div", { title: u.where }, u.where));
+            if (e.uses.length > 3) uses.push(el("div", { class: "r20be-note" }, `외 ${e.uses.length - 3}곳`));
+            r.append(pic,
+                el("div", { class: "r20be-lk-nm" }, el("b", {}, e.uses[0]?.name || "(이름 없음)"),
+                    el("a", { href: r20img(e.url), target: "_blank", rel: "noopener noreferrer", title: e.url }, short(e.url)),
+                    e.size ? el("small", {}, `${(e.size / 1048576).toFixed(1)}MB`) : null),
+                el("div", { class: "r20be-lk-use" }, ...uses),
+                el("div", { class: "r20be-lk-fix" }, inp, mark,
+                    fix ? el("button", { type: "button", class: "r20be-xs", "aria-label": "새 주소 지우기", title: "새 주소 지우기", onclick: () => { inp.value = ""; setFix(""); } }, "↺") : null));
+            tbl.append(r);
+            if (fix) linkFixCheck(e, fix, mark);
+        });
+        wrap.append(tbl);
+        if (rows.length > MAX) wrap.append(el("p", { class: "r20be-note" }, `앞 ${MAX}개만 보여요 · 찾기로 좁혀 주세요`));
+        // 여러 줄 한꺼번에: 줄마다 새 주소 하나, 위 목록 순서대로 (빈 줄은 건너뜀)
+        if (t.gsel !== "ok" && rows.length > 1) {
+            const ta = el("textarea", { class: "r20be-in", rows: "3", "aria-label": "새 주소 여러 줄", placeholder: "줄마다 새 주소 하나 — 위 목록 순서대로 (빈 줄은 건너뜀)" });
+            wrap.append(el("div", { class: "r20be-lk-bulk" },
+                el("div", {}, el("b", {}, `${Math.min(rows.length, MAX)}개 한꺼번에`), el("div", { class: "r20be-note" }, "줄마다 새 주소 하나")),
+                ta,
+                el("button", { type: "button", class: "r20be-sec", onclick: () => {
+                    const L = ta.value.split("\n").map(s => s.trim());
+                    let n = 0;
+                    rows.slice(0, MAX).forEach((e, k) => { if (/^https?:\/\/\S+$/i.test(L[k] || "")) { t.fixes.set(e.url, L[k]); n++; } });
+                    renderPane(); updateBar();
+                    setStatus(`새 주소 ${n}개를 넣었습니다 (저장해야 Roll20에 반영)`, "ok");
+                } }, "모두 넣기")));
+        }
+        return wrap;
+    };
+    // 저장: 같은 칸(모델 · 칸)은 한 번만 읽고 한 번만 쓴다 — 글(blob)을 여러 번 쓰면 앞엣것이 사라질 수 있어서
+    const linkSwap = (s, P, html) => P.reduce((x, [o, n]) => {
+        x = x.split(o).join(n);
+        if (html) x = x.split(o.replace(/&/g, "&amp;")).join(n.replace(/&/g, "&amp;"));
+        return x.split(escape(o)).join(escape(n));
+    }, String(s || ""));
+    const saveLinks = async (t, attempt) => {
+        const P0 = [...t.fixes].filter(([o, n]) => n && n !== o && t.scan?.map.has(o));
+        const byKey = new Map();
+        P0.forEach(([o, n]) => t.scan.map.get(o).uses.forEach(u => {
+            const r = u.ref, k = (r.m.cid || r.m.id) + "|" + r.type + "|" + r.f;
+            if (!byKey.has(k)) byKey.set(k, { r, label: u.where, P: [] });
+            byKey.get(k).P.push([o, n]);
+        }));
+        const failed = new Set();
+        for (const { r, label, P } of byKey.values()) {
+            let ok = false;
+            await attempt("링크 · " + label, async () => {
+                if (r.type === "sides") r.m.save({ sides: String(r.m.get("sides") || "").split("|").map(s => { const hit = P.find(([o]) => o === unesc(s)); return hit ? escape(hit[1]) : s; }).join("|") });
+                else if (r.type === "blob") {
+                    const raw = await getBlob(r.m, r.f);
+                    if (r.f === "defaulttoken") { const out = linkSwap(raw, P); if (out !== raw) r.m.updateBlobs({ defaulttoken: out }); }
+                    else { const d = decodeBlob(raw), out = linkSwap(d.html, P, true); if (out !== d.html) r.m.updateBlobs({ [r.f]: encodeBlob(out, d.enc) }); }
+                } else r.m.save({ [r.f]: linkSwap(r.m.get(r.f), P) });
+                ok = true;
+            });
+            if (!ok) P.forEach(([o]) => failed.add(o));
+        }
+        // 점검 결과도 새 주소로 옮기고 다시 열어 본다
+        const done = P0.filter(([o]) => !failed.has(o)), fresh = [];
+        done.forEach(([o, n]) => {
+            const e = t.scan.map.get(o);
+            t.scan.map.delete(o); t.fixes.delete(o);
+            const into = t.scan.map.get(n);
+            if (into) into.uses.push(...e.uses);
+            else { t.scan.map.set(n, Object.assign(e, { url: n, st: "wait", cause: "", size: 0 })); fresh.push(t.scan.map.get(n)); }
+        });
+        t.lastSaved = done;
+        pool(fresh, 6, async e => { Object.assign(e, await linkProbe(e.url).then(r => ({ st: r.st, size: r.size || 0, cause: linkCause(e.url, r) }))); })
+            .then(() => { if (cur() === t) { renderTree(); renderPane(); } });
+    };
     const renderImgTree = () => {
         const t = cur(), vis = imgGroups(t);
         if (t.gsel && !vis.some(v => v.g.key === t.gsel)) t.gsel = "";
@@ -12432,6 +12740,7 @@ const bulkEditor = (() => {
         noteOff();
         ui.pane.textContent = "";
         if (t.which === "images") { ui.pane.append(imagePane(t)); return; }
+        if (t.which === "links") { ui.pane.append(linkPane(t)); return; }
         if (t.which === "map") { ui.pane.append(mapPane(t)); return; }
         const checked = allNodes(t).filter(n => t.checked.has(n.id));
         const n = t.sel && find(t, t.sel);
@@ -12900,6 +13209,7 @@ const bulkEditor = (() => {
             try { await fn(); } catch (e) { console.warn("[일괄 편집기] 저장 실패:", label, e); errs.push(label); }
         };
         for (const t of builtTabs()) {
+            if (t.which === "links") continue;
             if (t.which === "tables") { await saveTables(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "decks") { await saveDecks(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "macros") { await saveMacros(t, attempt); continue; }
@@ -12920,6 +13230,7 @@ const bulkEditor = (() => {
                 if (t.sel === old) t.sel = n.id;
             }
         }
+        if (S.links?.fixes.size) await saveLinks(S.links, attempt);     // 다른 탭이 고친 뒤의 값에서 주소만 바꾼다
         saving = false;
         // 실패한 것이 있으면 작업 내용을 남겨 다시 저장할 수 있게 한다
         if (errs.length) {
@@ -12933,8 +13244,10 @@ const bulkEditor = (() => {
 
     // ── 창 ──
     const reload = () => {
-        const keep = TABS.map(k => S[k] && { k, sel: S[k].sel, collapsed: S[k].collapsed, filter: S[k].filter, q: S[k].q, ctab: S[k].ctab });
+        const links = S.links;      // 링크 점검 결과는 남긴다 (다시 점검하려면 1~2분)
+        const keep = TABS.filter(k => k !== "links").map(k => S[k] && { k, sel: S[k].sel, collapsed: S[k].collapsed, filter: S[k].filter, q: S[k].q, ctab: S[k].ctab });
         TABS.forEach(k => { S[k] = null; });
+        S.links = links;
         keep.forEach(o => {
             if (!o) return;
             const t = S[o.k] = buildTab(o.k);
@@ -12945,6 +13258,7 @@ const bulkEditor = (() => {
     };
     const revert = () => {
         if (dirtyCount() && !confirm("저장 안 한 변경을 모두 버리고 Roll20의 지금 상태로 되돌릴까요?")) return;
+        S.links?.fixes.clear();
         reload();
         setStatus("변경을 모두 되돌렸습니다", "ok");
     };
@@ -12957,10 +13271,11 @@ const bulkEditor = (() => {
         ui.segD.classList.toggle("on", S.tab === "decks");
         ui.segI.classList.toggle("on", S.tab === "images");
         ui.segP.classList.toggle("on", S.tab === "map");
+        ui.segL.classList.toggle("on", S.tab === "links");
         if (t.which === "map") t.flags = mapFlags(t);
         ui.search.value = t.q;
-        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색", map: "그림 이름 검색" }[t.which] || "이름 검색";
-        ui.newBtn.hidden = t.which === "images" || t.which === "map";
+        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색", map: "그림 이름 검색", links: "이름 · 주소 · 쓰는 곳 검색" }[t.which] || "이름 검색";
+        ui.newBtn.hidden = t.which === "images" || t.which === "map" || t.which === "links";
         drawPagesBtn();
         ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱" }[t.which] || "새로 만들기";
         const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
@@ -13045,7 +13360,7 @@ const bulkEditor = (() => {
         const tr = ui.tree;
         ui.root.addEventListener("error", onImgError, true);
         tr.addEventListener("click", e => {
-            if (cur().which === "images") {
+            if (cur().which === "images" || cur().which === "links") {
                 const r = e.target.closest(".r20be-row[data-g]");
                 if (!r) return;
                 const t = cur();
@@ -13234,15 +13549,16 @@ const bulkEditor = (() => {
         ui.segD = el("button", { type: "button", onclick: () => switchTab("decks") }, "덱");
         ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");
         ui.segP = el("button", { type: "button", title: "지금 페이지에 올라간 그림 정리", onclick: () => switchTab("map") }, "맵");     // 그림 묶음이 없으면 탭도 없다
+        ui.segL = el("button", { type: "button", title: "안 열리는 · 너무 큰 그림 주소 찾아 고치기", onclick: () => switchTab("links") }, "링크 점검");
         const head = el("div", { class: "r20be-head" },
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segL),
             el("span", { class: "r20be-flex" }),
             aioZoom.control("r20be-zm r20be-tz"),
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
         ui.search = el("input", { class: "r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
-            oninput: debounce(() => { cur().q = ui.search.value; renderTree(); if (cur().which === "images") renderPane(); }, 150) });
+            oninput: debounce(() => { cur().q = ui.search.value; renderTree(); if (cur().which === "images" || cur().which === "links") renderPane(); }, 150) });
         ui.chips = el("div", { class: "r20be-chips" });
         ui.newLabel = el("span", {}, "새로 만들기");
         ui.newBtn = el("button", { type: "button", class: "r20be-sec", "aria-haspopup": "true", onclick: toggleMenu }, ico("plus"), ui.newLabel);
@@ -13630,6 +13946,45 @@ addCss(`
         #r20be .r20be-card .r20be-thumb { position:relative; }
         #r20be .r20be-thumb .r20be-back { position:absolute; right:4px; bottom:4px; width:32%; height:auto; aspect-ratio:1; object-fit:cover; border:2px solid #fff; border-radius:var(--aio-r-sm); background:var(--aio-bg-5); box-shadow:0 1px 3px rgba(0,0,0,0.3); }
         #r20be .r20be-tbar.idle { border-color:var(--aio-line-4); background:var(--aio-bg-2); }
+        /* 링크 점검 */
+        #r20be .r20be-lk { display:flex; flex-direction:column; gap:10px; }
+        #r20be .r20be-lk-top { display:flex; align-items:center; gap:10px; }
+        #r20be .r20be-lk-bar { flex:1; height:6px; border-radius:3px; background:var(--aio-line-4); overflow:hidden; }
+        #r20be .r20be-lk-bar i { display:block; height:100%; background:var(--aio-ok); transition:width .2s; }
+        #r20be .r20be-lk-done { display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:var(--aio-r); background:var(--aio-ok-bg); color:var(--aio-ok); font-size:12px; font-weight:700; }
+        #r20be .r20be-lk-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+        #r20be .r20be-lk-st { display:flex; flex-direction:column; align-items:flex-start; gap:2px; margin:0; padding:8px 10px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r-lg); background:var(--aio-bg); color:var(--aio-ink-3); font-size:11px; text-align:left; cursor:pointer; }
+        #r20be .r20be-lk-st b { font-size:20px; line-height:1.1; color:var(--aio-ink); }
+        #r20be .r20be-lk-st.bad { background:var(--aio-bad-bg); } #r20be .r20be-lk-st.bad b { color:var(--aio-bad); }
+        #r20be .r20be-lk-st.big { background:var(--aio-warn-bg); } #r20be .r20be-lk-st.big b { color:var(--aio-warn); }
+        #r20be .r20be-lk-st.ok b { color:var(--aio-ok); }
+        #r20be .r20be-lk-st.on { box-shadow:inset 0 0 0 2px var(--aio-accent); }
+        #r20be .r20be-lk-st:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+        #r20be .r20be-lk-why { margin:0; color:var(--aio-ink-3); font-size:12px; }
+        #r20be .r20be-lk-tbl { display:flex; flex-direction:column; border-top:1px solid var(--aio-line-3); }
+        #r20be :is(.r20be-lk-h, .r20be-lk-r) { display:grid; grid-template-columns:64px minmax(110px, .8fr) minmax(160px, 1.5fr) minmax(190px, 1.1fr); gap:10px; align-items:center; padding:6px 4px; border-bottom:1px solid var(--aio-line-4); }
+        #r20be .r20be-lk-h { padding-top:4px; padding-bottom:4px; color:var(--aio-ink-4); font-size:10.5px; }
+        #r20be .r20be-lk-r.fixed { background:var(--aio-ok-bg); }
+        #r20be .r20be-lk-th { display:flex; align-items:center; justify-content:center; width:64px; height:36px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); overflow:hidden; }
+        #r20be .r20be-lk-th img { width:100%; height:100%; object-fit:contain; }
+        #r20be .r20be-lk-th.none { border:1px dashed var(--aio-line); background:var(--aio-bg-2); color:var(--aio-bad); font-size:10px; line-height:1.15; text-align:center; }
+        #r20be .r20be-lk-nm { display:flex; flex-direction:column; min-width:0; font-size:12px; }
+        #r20be .r20be-lk-nm :is(b, a) { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20be .r20be-lk-nm a { color:var(--aio-ink-4); font-size:10.5px; text-decoration:none; }
+        #r20be .r20be-lk-nm a:hover { color:var(--aio-accent); text-decoration:underline; }
+        #r20be .r20be-lk-nm small { color:var(--aio-warn); font-size:10.5px; font-weight:700; }
+        #r20be .r20be-lk-use { min-width:0; color:var(--aio-ink-3); font-size:11px; line-height:1.4; }
+        #r20be .r20be-lk-use > div { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        #r20be .r20be-lk-fix { display:flex; align-items:center; gap:4px; min-width:0; }
+        #r20be .r20be-lk-fix input { flex:1; min-width:0; }
+        #r20be .r20be-lk-mk { flex-shrink:0; font-size:10.5px; font-weight:700; white-space:nowrap; }
+        #r20be .r20be-lk-mk.ok { color:var(--aio-ok); } #r20be .r20be-lk-mk.warn { color:var(--aio-warn); } #r20be .r20be-lk-mk.bad { color:var(--aio-bad); }
+        #r20be .r20be-lk-bulk { display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border:1px dashed var(--aio-accent-soft); border-radius:var(--aio-r-lg); background:var(--aio-bg-2); font-size:12px; }
+        #r20be .r20be-lk-bulk > div:first-child { flex:0 0 120px; }
+        #r20be .r20be-lk-bulk textarea { flex:1; min-height:52px; font-size:11px; }
+        #r20be .r20be-lk-badrow .r20be-meta { color:var(--aio-bad); font-weight:700; }
+        #r20be .r20be-lk-bigrow .r20be-meta { color:var(--aio-warn); font-weight:700; }
+        #r20be .r20be-lk-sub .r20be-nm { padding-left:14px; }
         #r20be .r20be-tgrid.r20be-imgs { grid-template-columns:repeat(auto-fill, minmax(var(--be-icon, 84px), 1fr)); gap:6px; }
         #r20be .r20be-imgs .r20be-card { gap:3px; padding:4px; }
         #r20be .r20be-ithumb { background:var(--aio-bg-3); }
