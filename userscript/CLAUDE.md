@@ -88,12 +88,13 @@
 
 ## 6. 검증 · 배포
 
-- `node --check` → 테스트 묶음 전부 (checktest의 ✗3은 의도된 것).
+- `node --check` → `bash tests/run.sh` (테스트 묶음 전부 · 이름을 주면 그것만). checktest의 bad=3은 의도된 것.
+- 새 기능 · 고친 버그마다 `tests/`에 테스트를 더하고 `run.sh` 목록에 넣는다.
 - 화면이 바뀌면 Playwright 스크린샷으로 직접 확인한다.
 - 실제 Roll20에서 못 해 본 것은 그렇다고 말한다.
 - 버전: `@version`과 `SCRIPT_VER`를 같이 올린다. 기능 추가 = 가운데 자리, 고침 = 끝자리.
 - 파일이 1MB가 넘어 Claude 앱 미리보기 · 내려받기가 잘린다 → 사용자에게는 **zip**으로 준다.
-- 테스트는 아직 세션 임시 폴더에만 있다. CSS 정리 전에 `userscript/tests/`로 옮긴다.
+- 테스트는 Playwright(실행 환경에 깔린 것) + 정적 서버 `tests/serve.js`(127.0.0.1:8766). jQuery · Summernote 등은 `tests/package.json`의 npm 패키지.
 
 ## 7. 지켜야 할 것
 

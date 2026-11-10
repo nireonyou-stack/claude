@@ -1,0 +1,14 @@
+{
+  "name": "roll20-allinone-tests",
+  "private": true,
+  "description": "올인원 유저스크립트 회귀 테스트 (Playwright 는 실행 환경에 깔린 것을 쓴다)",
+  "scripts": {
+    "test": "bash run.sh"
+  },
+  "devDependencies": {
+    "bootstrap": "3.3.7",
+    "jquery": "1.12.4",
+    "jquery-ui-dist": "1.12.1",
+    "summernote": "0.8.9"
+  }
+}
