@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.86.0
+// @version      1.87.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.86.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.87.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -509,9 +509,19 @@ function applyCocofoliaLayout() {
         zText.dataset.tip = "올인원이 띄우는 창 전체 — 일괄 편집기 · 말하는 사람 고르기 · 설정 · 이모지 · 시트 촬영 · 말풍선 …";
         zText.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "글자 크기" }));
         zRow.append(zText, aioZoom.control("cs-seg"));
-        settingsPopup.append(zRow, switchRow("Roll20 채팅 글자도 같이", "채팅 기록 · 입력칸도 같은 배율로", aioZoom.chat(), on => aioZoom.chat(on)), sep());
-        byPlace("main").forEach(b => settingsPopup.append(...bundleRows(b)));
-        settingsPopup.appendChild(sep());
+        // 쓰임새별 묶음 (UX 원칙 4) — 줄들은 .cs-blk 로 감싸 찾기에서 한 덩어리로 보이고 숨는다 (display:contents 라 모양은 그대로)
+        const blk = (...rows) => { const d = document.createElement("div"); d.className = "cs-blk"; d.append(...rows); return d; };
+        const gh = (name, hint) => { const d = document.createElement("div"); d.className = "cs-gh"; d.innerHTML = `<b>${escAttr(name)}</b><span>${escAttr(hint)}</span>`; return d; };
+        const csFind = document.createElement("div");
+        csFind.className = "cs-search";
+        csFind.innerHTML = '<input type="search" placeholder="설정 찾기 — 이름 · 설명" aria-label="설정 찾기" autocomplete="off" spellcheck="false"><p class="cs-none" hidden>찾는 설정이 없어요</p>';
+        settingsPopup.append(csFind);
+        [["play", "세션 진행", "플레이 중에 쓰는 것"], ["prep", "준비", "세션 전 · 방 정리"], ["view", "화면", "보기 · 크기 · 자리"]].forEach(([k, name, hint]) => {
+            settingsPopup.append(gh(name, hint));
+            byPlace("main").filter(b => (b.group || "view") === k).forEach(b => settingsPopup.append(blk(...bundleRows(b))));
+            if (k === "view") settingsPopup.append(blk(zRow), blk(switchRow("Roll20 채팅 글자도 같이", "채팅 기록 · 입력칸도 같은 배율로", aioZoom.chat(), on => aioZoom.chat(on))));
+        });
+        settingsPopup.appendChild(gh("채팅 입력칸", "입력칸 옆 단추"));
         settingsPopup.appendChild(switchRow("desc", "", btnVisible.desc, on => {
             btnVisible.desc = on;
             localStorage.setItem("r20_show_desc", String(on));
@@ -551,8 +561,27 @@ function applyCocofoliaLayout() {
         paintSeg();
         sadamRow.append(sadamName, seg);
         settingsPopup.appendChild(sadamRow);
-        byPlace("chat").forEach(b => settingsPopup.append(...bundleRows(b)));
+        byPlace("chat").forEach(b => settingsPopup.append(blk(...bundleRows(b))));
         settingsPopup.appendChild(sep());
+        // 찾기: 줄 이름 · 설명(말풍선 글) · 고르기 단추 글에 들어 있으면 보이고, 아니면 숨김 (설정 밖 내용은 찾는 동안 숨김)
+        const csQ = csFind.querySelector("input");
+        const csFilter = () => {
+            const q = csQ.value.replace(/\s+/g, "").toLowerCase();
+            const has = el => !q || (el.textContent + " " + [...el.querySelectorAll("[data-tip]")].map(x => x.dataset.tip).join(" ") + (el.dataset?.tip || "")).replace(/\s+/g, "").toLowerCase().includes(q);
+            let head = null, any = false;
+            const close = () => { if (head) head.hidden = !!q && !any; };
+            [...settingsPopup.children].forEach(c => {
+                if (c === csFind) return;
+                if (c.classList.contains("cs-gh")) { close(); head = c; any = false; return; }
+                const ok = c.matches(".cs-blk, .cs-row") ? has(c) : !q;
+                c.hidden = !ok;
+                if (ok && q) any = true;
+            });
+            close();
+            csFind.querySelector(".cs-none").hidden = !q || [...settingsPopup.children].some(c => c.matches(".cs-blk, .cs-row") && !c.hidden);
+        };
+        csQ.addEventListener("input", csFilter);
+        csQ.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape" && csQ.value) { e.preventDefault(); csQ.value = ""; csFilter(); } });
 
         // 커스텀 버튼 섹션
         const csCustomHeader = document.createElement("div");
@@ -1002,7 +1031,7 @@ document.addEventListener("mouseout", e => { if (e.target.matches?.("video.r20-a
 // 묶음(구역)마다 자기 CSS · 모듈 · 설정 줄을 스스로 등록한다. 묶음끼리는 FEAT.이름?.함수() 로만 부르므로
 // 구역 하나를 통째로 지워도 나머지는 그대로 돈다. 화면이 바뀌면 FEAT 의 inject 를 하나씩 따로(try) 돌린다
 const FEAT = {};            // 이름 → 모듈 { inject, setEnabled, … }
-const BUNDLES = [];         // 설정 창 줄 { place: "main"|"chat", order, label, sub, members: [[btnVisible 키, 모듈 이름]], extra(row) }
+const BUNDLES = [];         // 설정 창 줄 { place: "main"|"chat", group: "play"|"prep"|"view"(쓰임새 — UX 원칙 4), order, label, sub, members: [[btnVisible 키, 모듈 이름]], extra(row) }
 const CSS_PARTS = [];
 const addFeature = (name, mod) => (FEAT[name] = mod);
 const addBundle = def => BUNDLES.push(def);
@@ -1263,6 +1292,15 @@ const CORE_CSS = `
         #textchat-input.layout-applied-v11 { border-top:0 !important; }
         #textchat-input.layout-applied-v11 button:focus-visible { outline:2px solid var(--aio-accent) !important; outline-offset:1px; }
         #textchat-input.layout-applied-v11 #chatSendBtn { height:auto !important; min-height:0 !important; margin:0 !important; padding:1px 10px !important; font-size:var(--aio-fs-md) !important; line-height:1.5 !important; }
+        #custom-settings-popup .cs-search { position:sticky; top:0; z-index:2; padding:6px 8px; border-bottom:1px solid var(--aio-line-3); background:var(--aio-bg); flex-shrink:0; }
+        #custom-settings-popup .cs-search input { width:100% !important; height:26px !important; margin:0 !important; padding:0 8px !important; border:1px solid var(--aio-line) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; font-size:var(--aio-fs-md) !important; box-sizing:border-box; }
+        #custom-settings-popup .cs-none { margin:6px 2px 0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+        #custom-settings-popup .cs-none[hidden] { display:none; }
+        #custom-settings-popup .cs-gh { display:flex; align-items:baseline; gap:6px; padding:8px 10px 3px; color:var(--aio-ink-2); font-size:var(--aio-fs-sm); }
+        #custom-settings-popup .cs-gh b { font-size:var(--aio-fs-md); }
+        #custom-settings-popup .cs-gh span { color:var(--aio-ink-5); font-size:var(--aio-fs-xs); }
+        #custom-settings-popup .cs-blk { display:contents; }
+        #custom-settings-popup > [hidden] { display:none !important; }
         .cs-header { padding:5px 8px; background:var(--aio-bg-3); border-bottom:1px solid var(--aio-line-2); font-size:var(--aio-fs-sm); font-weight:bold; color:var(--aio-ink-3); flex-shrink:0; }
         .cs-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid var(--aio-line-4); }
         .cs-row.cs-rd { padding:0 10px 6px; }
@@ -2141,7 +2179,7 @@ addCss(`
 addFeature("bgmPreview", bgmPreview);
 addFeature("jukeboxRow", jukeboxRow);
 addFeature("jbBackup", jbBackup);
-addBundle({ place: "main", order: 1, label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
+addBundle({ place: "main", order: 1, group: "view", label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"], ["jbrow", "jbBackup"]] });
 
 // ───────── 주크박스 서랍: ♪ 탭을 눌러도 탭을 바꾸지 않고, 주크박스 칸을 채팅 판 왼쪽에 펼친다 ─────────
@@ -2335,7 +2373,7 @@ const jbDrawer = (() => {
     return { setEnabled, leftEdge, halfTop, dockBottom, isOpen: () => on, open, close, show };
 })();
 addFeature("jbDrawer", jbDrawer);
-addBundle({ place: "main", order: 1.05, label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그 · 🎧 나만 미리듣기 · 곡 이름 = 모두에게 재생 · Enter 재생 · Shift+Enter 미리듣기) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
+addBundle({ place: "main", order: 1.05, group: "play", label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그 · 🎧 나만 미리듣기 · 곡 이름 = 모두에게 재생 · Enter 재생 · Shift+Enter 미리듣기) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
     members: [["jbdrawer", "jbDrawer"]] });
 addCss(`
         /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
@@ -2458,7 +2496,7 @@ const jbMini = (() => {
     return { inject, setEnabled };
 })();
 addFeature("jbMini", jbMini);
-addBundle({ place: "main", order: 1.06, label: "주크박스 미니 재생 줄 (GM · 채팅 맨 위)", sub: "지금 나오는 곡을 채팅 판 맨 위 한 줄에 — ■ 정지 · 페이드 · 볼륨 막대 · 곡 이름을 누르면 서랍에서 그 곡 · ▾ 서랍 열기 · 곡이 없으면 줄도 없어요",
+addBundle({ place: "main", order: 1.06, group: "play", label: "주크박스 미니 재생 줄 (GM · 채팅 맨 위)", sub: "지금 나오는 곡을 채팅 판 맨 위 한 줄에 — ■ 정지 · 페이드 · 볼륨 막대 · 곡 이름을 누르면 서랍에서 그 곡 · ▾ 서랍 열기 · 곡이 없으면 줄도 없어요",
     members: [["jbmini", "jbMini"]] });
 addCss(`
         /* 미니 재생 줄: 채팅(스크롤되는 #textchat) 맨 위에 붙어 있음 */
@@ -3264,7 +3302,7 @@ const homeExport = (() => {
     return { inject, setEnabled, rows, send, watch: ".ui-dialog" };
 })();
 addFeature("homeExport", homeExport);
-addBundle({ place: "main", order: 6.1, label: "홈페이지로 보내기 (캐릭터 시트 🏠)", sub: "캐릭터 시트 창 머리줄 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(관리자만) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
+addBundle({ place: "main", order: 6.1, group: "prep", label: "홈페이지로 보내기 (캐릭터 시트 🏠)", sub: "캐릭터 시트 창 머리줄 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(관리자만) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
     members: [["home", "homeExport"]], extra: () => homeExport.rows() });
 addCss(`
         .ui-dialog-titlebar .r20home { float:left; width:26px; height:24px; margin:9px 0 0 2px; padding:0; border:1px solid transparent; border-radius:var(--aio-r-sm); background:none; font-size:var(--aio-fs-lg); line-height:22px; cursor:pointer; box-shadow:none; }
@@ -5023,7 +5061,7 @@ addFeature("chatCapture", chatCapture);
 addFeature("sheetShot", sheetShot);
 addFeature("mapShot", mapShot);
 addFeature("logBackup", logBackup);
-addBundle({ place: "main", order: 6, label: "대화 캡처 · 시트 촬영 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "시트 촬영 단추는 캐릭터 창 제목 옆 · 로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
+addBundle({ place: "main", order: 6, group: "prep", label: "대화 캡처 · 시트 촬영 · 맵(촬영 · 맞추기 · 코코포리아 가져오기) · 로그 백업", sub: "시트 촬영 단추는 캐릭터 창 제목 옆 · 로그 백업 단추는 채팅 아카이브 페이지 오른쪽 아래에",
     members: [["capture", "chatCapture"], ["sheetshot", "sheetShot"], ["mapshot", "mapShot"], ["logbak", "logBackup"]] });
 
 // ══════════ 묶음 3 · 토큰 · 클릭 메뉴 · 화면 간소화 ══════════
@@ -6574,7 +6612,7 @@ const portraits = (() => {
     return { inject, setEnabled, modeRow };
 })();
 addFeature("portraits", portraits);
-addBundle({ place: "main", order: 2.1, label: "포트레이트 (자리 · 크기 · 누르면 설정 · 권한)", sub: "내 화면에서만 — 포트레이트 묶음을 왼쪽 아래 · 왼쪽 위로 · 크기 · 가로/세로 · 포트레이트 · 이름 숨기기 (카드 패도 따라감) · 내 포트레이트를 누르면 설정, 다른 플레이어 포트레이트를 누르면 그 사람이 조종 · 볼 수 있는 시트와 핸드아웃",
+addBundle({ place: "main", order: 2.1, group: "view", label: "포트레이트 (자리 · 크기 · 누르면 설정 · 권한)", sub: "내 화면에서만 — 포트레이트 묶음을 왼쪽 아래 · 왼쪽 위로 · 크기 · 가로/세로 · 포트레이트 · 이름 숨기기 (카드 패도 따라감) · 내 포트레이트를 누르면 설정, 다른 플레이어 포트레이트를 누르면 그 사람이 조종 · 볼 수 있는 시트와 핸드아웃",
     members: [["portrait", "portraits"]], extra: () => [portraits.modeRow()] });
 addCss(`
         /* 포트레이트 (body.r20pz-*) — 크기는 사람마다 zoom, 위쪽은 Roll20 #playerzone 정렬을 위로 (묶음 · 매크로 줄은 제자리) */
@@ -7108,7 +7146,7 @@ addFeature("screenUI", screenUI);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
 addFeature("tokenSet", tokenSet);
-addBundle({ place: "main", order: 2, label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄 (덱 · 매크로는 오른쪽 판 왼쪽 끝 / 원래 자리) · 왼쪽 도구 줄 가늘게",
+addBundle({ place: "main", order: 2, group: "view", label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄 (덱 · 매크로는 오른쪽 판 왼쪽 끝 / 원래 자리) · 왼쪽 도구 줄 가늘게",
     members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"], ["tokset", "tokenSet"]],
     extra: () => [edgeDock.modeRow(), leftBar.modeRow()] });
 
@@ -8125,7 +8163,7 @@ addCss(`
 addFeature("roomImages", roomImages);    // @share-cut-line
 addFeature("queryPicker", queryPicker);
 addFeature("quickJournal", quickJournal);
-addBundle({ place: "main", order: 3, label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 말하는 사람 고르기(입력칸 왼쪽 ▼ → 채팅 판 왼쪽에 최근 5명 + 목록 · ▦ 크게 보기 · 이름 · 초성 찾기 · 끌어서 순서)",
+addBundle({ place: "main", order: 3, group: "play", label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 말하는 사람 고르기(입력칸 왼쪽 ▼ → 채팅 판 왼쪽에 최근 5명 + 목록 · ▦ 크게 보기 · 이름 · 초성 찾기 · 끌어서 순서)",
     members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
 
 // ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
@@ -9609,10 +9647,10 @@ addCss(`
 
 addFeature("quickFind", quickFind);
 addFeature("winMemory", winMemory);
-addBundle({ place: "main", order: 3.1, label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
+addBundle({ place: "main", order: 3.1, group: "play", label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
-addBundle({ place: "main", order: 3.2, label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
+addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
 
@@ -10404,7 +10442,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃 본문은 65% 크기) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃 본문은 65% 크기) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -14183,7 +14221,7 @@ addCss(`
         .r20be-mini:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
 `);
 addFeature("bulkEditor", bulkEditor);
-addBundle({ place: "main", order: 4, label: "저널 · BGM · 매크로 일괄 편집기", sub: "덱 · 굴림표 · 이미지도 — 굴림표 항목 · 덱 카드 순서 바꾸기 · 매크로 선택지(?{…})는 표로: 앞뒤 붙이기 · 찾아 바꾸기 · 그림 주소 확인 · 미리보기",
+addBundle({ place: "main", order: 4, group: "prep", label: "저널 · BGM · 매크로 일괄 편집기", sub: "덱 · 굴림표 · 이미지도 — 굴림표 항목 · 덱 카드 순서 바꾸기 · 매크로 선택지(?{…})는 표로: 앞뒤 붙이기 · 찾아 바꾸기 · 그림 주소 확인 · 미리보기",
     members: [["bulk", "bulkEditor"]],
     extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
 
@@ -14512,7 +14550,7 @@ addCss(`
 `);
 addFeature("autofill", autofill);
 // 자동완성 줄: 이름 옆에 데이터 상태(개수 · 불러오는 중 · 실패), 아래 칸에 데이터 주소
-addBundle({ place: "main", order: 5, label: "기본시트 데이터 자동완성", sub: "",
+addBundle({ place: "main", order: 5, group: "prep", label: "기본시트 데이터 자동완성", sub: "",
     members: [["autofill", "autofill"]],
     extra: row => {
         const name = row.querySelector(".cs-name");
