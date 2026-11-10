@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.83.1
+// @version      1.84.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.83.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.84.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1017,6 +1017,76 @@ const aioErr = (where, e, quiet) => {
     if (!quiet) console.warn(`[올인원] ${where} 오류`, e);
     aioErrHook?.();
 };
+// ───────── 공용 알림 (UX 원칙 2): 저장 · 복사 · 실패를 같은 자리 · 같은 모양으로 ─────────
+// aioToast(글, { kind:"ok"|"info"|"err"|"busy", id, undo:fn, act:[{ label, fn }], ms, prog:[n, 전체] }) → { set(글, 옵션), close() }
+// 맵 아래 가운데(채팅 판 왼쪽까지) · 최대 3개 · 같은 id 는 그 자리에서 바꿈 · ok/info 는 5초 뒤 사라짐(마우스를 올리면 멈춤) · err/busy 는 닫을 때까지
+const aioToast = (() => {
+    const MAX = 3, ICON = { ok: "✓", info: "ℹ", err: "⚠", busy: "⏳" };
+    let box = null;
+    const byId = new Map();
+    const host = () => {
+        if (!box?.isConnected) {
+            box = document.createElement("div");
+            box.id = "aio-toasts";
+            document.body.appendChild(box);
+        }
+        // 채팅 판(#rightsidebar)을 가리지 않게 그 왼쪽까지를 가운데로
+        const r = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        box.style.right = (r && r.width > 0 && r.left > 0 && r.left < window.innerWidth ? window.innerWidth - r.left : 0) + "px";
+        return box;
+    };
+    const close = t => {
+        clearTimeout(t._tm);
+        if (t._id) byId.delete(t._id);
+        t.remove();
+    };
+    const arm = (t, ms) => {
+        clearTimeout(t._tm);
+        if (ms > 0) t._tm = setTimeout(() => close(t), ms);
+    };
+    const set = (t, msg, o = {}) => {
+        const kind = o.kind || "info", acts = [...(o.undo ? [{ label: "되돌리기", fn: o.undo }] : []), ...(o.act || [])];
+        t.className = "aio-t " + kind;
+        t.setAttribute("role", kind === "err" ? "alert" : "status");
+        t.textContent = "";
+        t.append(Object.assign(document.createElement("i"), { textContent: ICON[kind] || "", ariaHidden: "true" }),
+            Object.assign(document.createElement("span"), { className: "m", textContent: msg }));
+        if (o.prog) {
+            const pb = document.createElement("span"), bar = document.createElement("i");
+            pb.className = "pb"; bar.style.width = Math.round(100 * o.prog[0] / Math.max(1, o.prog[1])) + "%";
+            pb.appendChild(bar); t.appendChild(pb);
+        }
+        acts.forEach(a => {
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "a"; b.textContent = a.label;
+            b.onclick = () => { try { a.fn(); } catch (e) { aioErr("알림 단추", e); } if (!a.keep) close(t); };
+            t.appendChild(b);
+        });
+        const x = document.createElement("button");
+        x.type = "button"; x.className = "x"; x.textContent = "✕"; x.setAttribute("aria-label", "알림 닫기");
+        x.onclick = () => close(t);
+        t.appendChild(x);
+        t._ms = o.ms ?? (kind === "ok" || kind === "info" ? (acts.length ? 8000 : 5000) : 0);
+        arm(t, t._ms);
+    };
+    const show = (msg, o = {}) => {
+        const b = host();
+        let t = o.id && byId.get(o.id);
+        if (!t?.isConnected) {
+            t = document.createElement("div");
+            t._id = o.id;
+            if (o.id) byId.set(o.id, t);
+            t.addEventListener("mouseenter", () => clearTimeout(t._tm));
+            t.addEventListener("mouseleave", () => arm(t, t._ms ? 2500 : 0));
+            b.appendChild(t);
+            // 넘치면 오래된 것부터 — 실패 · 진행 중 알림은 맨 나중에
+            while (b.childElementCount > MAX) close([...b.children].find(x => !/\b(?:err|busy)\b/.test(x.className) && x !== t) || b.firstElementChild);
+        }
+        set(t, String(msg || ""), o);
+        return { set: (m, o2) => set(t, String(m || ""), o2), close: () => close(t) };
+    };
+    return show;
+})();
 // 이 스크립트 파일 주소 (오류 스택에 이 주소가 있으면 올인원 오류) — 오류가 났을 때 처음 한 번만 알아낸다
 // (불러올 때 스택을 만들면 스크립트 전체를 다시 읽어 40ms 가 든다 · 이벤트 처리 안에서는 작은 함수만)
 let aioSrc = null;
@@ -1035,7 +1105,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, .r20jbb-toast, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
+const AIO_ZOOMED = "#aio-toasts, #custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -1090,7 +1160,21 @@ const zpx = v => v / aioZoom.get() + "px";
 
 const CORE_CSS = `
         /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
-        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-alt:#8a3d9e; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
+        :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#767676; --aio-ink-5:#999; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-tip-bad:rgba(92,20,20,0.96); --aio-alt:#8a3d9e; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
+        /* 공용 알림 (aioToast) — 맵 아래 가운데, 위로 쌓임 */
+        #aio-toasts { position:fixed; left:0; bottom:16px; z-index:100050; display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; }
+        .aio-t { display:flex; align-items:center; gap:10px; min-width:260px; max-width:min(560px, 90vw); padding:7px 8px 7px 12px; border-radius:var(--aio-r-lg); background:var(--aio-tip); color:var(--aio-ink-inv); font-size:var(--aio-fs-md); line-height:1.4; box-shadow:0 6px 18px rgba(0,0,0,0.35); pointer-events:auto; animation:aio-t-in .16s ease-out; }
+        .aio-t.err { background:var(--aio-tip-bad); }
+        .aio-t > i { flex-shrink:0; font-style:normal; }
+        .aio-t .m { flex:1; min-width:0; overflow-wrap:anywhere; white-space:pre-line; }
+        .aio-t .pb { flex-shrink:0; width:90px; height:4px; border-radius:2px; background:rgba(255,255,255,0.2); overflow:hidden; }
+        .aio-t .pb i { display:block; height:100%; background:var(--aio-ok-bg); }
+        .aio-t button { flex-shrink:0; height:24px; margin:0; padding:0 6px; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-accent-mid); font-size:var(--aio-fs-md); font-weight:700; cursor:pointer; }
+        .aio-t button.x { color:rgba(255,255,255,0.6); font-weight:400; }
+        .aio-t button:hover { background:rgba(255,255,255,0.12); }
+        .aio-t button:focus-visible { outline:2px solid var(--aio-accent-mid); outline-offset:1px; }
+        @keyframes aio-t-in { from { opacity:0; transform:translateY(6px); } }
+        @media (prefers-reduced-motion: reduce) { .aio-t { animation:none; } }
         /* 묶음 고르기 드롭다운 (grpDrop) */
         .aio-gd { position:relative; flex-shrink:0; }
         .aio-gd-btn { display:flex; align-items:center; gap:6px; max-width:260px; height:28px; margin:0; padding:0 8px 0 3px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink); font-size:var(--aio-fs-md); line-height:1; cursor:pointer; }
@@ -1964,26 +2048,17 @@ const jbBackup = (() => {
         return true;
     };
     const fmt = s => { const d = new Date(s.at); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-    const closeToast = () => { toast?.remove(); toast = null; };
+    const closeToast = () => { toast?.close(); toast = null; };
     const warn = (good, st) => {
         closeToast();
-        toast = document.createElement("div");
-        toast.className = "r20jbb-toast";
-        toast.setAttribute("role", "alert");
-        toast.innerHTML = `<b>주크박스 폴더에서 곡이 한꺼번에 빠졌어요</b><span>폴더 안 곡 ${good.inF.toLocaleString()} → ${st.inF.toLocaleString()} · ${fmt(good)} 백업으로 되돌릴 수 있어요</span>`
-            + `<div><button type="button" data-a="restore">되돌리기</button><button type="button" data-a="close">괜찮아요</button></div>`;
-        toast.addEventListener("click", async e => {
-            const a = e.target.closest("button")?.dataset.a;
-            if (a === "close") return closeToast();
-            if (a === "restore") {
-                const b = e.target.closest("button");
-                b.disabled = true; b.textContent = "되돌리는 중…";
-                const ok = await restore(good);
-                toast.querySelector("span").textContent = ok ? "되돌렸어요. 주크박스 폴더를 확인해 주세요." : "되돌리지 못했어요.";
-                toast.querySelector("div").innerHTML = '<button type="button" data-a="close">닫기</button>';
-            }
-        });
-        document.body.appendChild(toast);
+        toast = aioToast(`주크박스 폴더에서 곡이 한꺼번에 빠졌어요 — 폴더 안 곡 ${good.inF.toLocaleString()} → ${st.inF.toLocaleString()} · ${fmt(good)} 백업으로 되돌릴 수 있어요`, {
+            kind: "err", id: "r20jbb", act: [
+                { label: "되돌리기", keep: true, fn: async () => {
+                    toast?.set("주크박스 폴더를 되돌리는 중…", { kind: "busy" });
+                    const ok = await restore(good);
+                    toast?.set(ok ? "주크박스 폴더를 되돌렸어요. 폴더를 확인해 주세요." : "주크박스 폴더를 되돌리지 못했어요.", { kind: ok ? "ok" : "err" });
+                } },
+                { label: "괜찮아요", fn: () => { toast = null; } }] });
     };
     const list = async () => { try { return (await read()).snaps; } catch (e) { return []; } };
     // 게임이 다 뜬 뒤(GM · 주크박스 곡) 한 번 저장하고, 그 뒤로는 폴더 구조가 바뀔 때마다(3초 모아서)
@@ -2000,12 +2075,7 @@ const jbBackup = (() => {
     return { inject, setEnabled, list, restore, fmt };
 })();
 addCss(`
-        .r20jbb-toast { position:fixed; right:16px; bottom:16px; z-index:10010; display:flex; flex-direction:column; gap:6px; width:min(340px, calc((100vw - 32px) / var(--aio-z, 1))); padding:12px 14px;
             border:1px solid #e3b3a8; border-left:4px solid var(--aio-bad); border-radius:var(--aio-r); background:var(--aio-bg); box-shadow:0 6px 18px rgba(0,0,0,0.2); color:var(--aio-ink-2); font:12px/1.5 sans-serif; }
-        .r20jbb-toast b { font-size:var(--aio-fs-lg); color:var(--aio-bad); }
-        .r20jbb-toast div { display:flex; gap:6px; justify-content:flex-end; }
-        .r20jbb-toast button { height:26px; margin:0; padding:0 10px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font:12px sans-serif; cursor:pointer; }
-        .r20jbb-toast button[data-a="restore"] { border-color:var(--aio-accent); background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
         #r20be .r20be-bk { position:absolute; top:34px; right:10px; z-index:3; display:flex; flex-direction:column; width:min(360px, calc((100vw - 40px) / var(--aio-z, 1))); max-height:calc(60vh / var(--aio-z, 1)); overflow-y:auto; padding:6px 0;
             background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:0 4px 12px rgba(0,0,0,0.15); font-size:var(--aio-fs-md); }
         #r20be .r20be-bk[hidden] { display:none; }
@@ -2199,7 +2269,7 @@ const jbDrawer = (() => {
     // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정)과 올인원 주크박스 말풍선 · 미니 재생 줄은 빼고
     document.addEventListener("pointerdown", e => {
         if (!on || pinned() || !e.isTrusted) return;        // 스크립트가 보낸 누르기(⛶ 화면 맞춤이 배율 메뉴를 닫을 때 등)는 무시
-        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-res, #r20-jbd-grip, #r20-jbd-hgrip, #r20-jbm, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jb-menu, .r20jbb-toast")) return;      // body 의 r20jb- 꼬리표는 안 봄
+        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-res, #r20-jbd-grip, #r20-jbd-hgrip, #r20-jbm, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jb-menu, #aio-toasts")) return;      // body 의 r20jb- 꼬리표는 안 봄
         close();
     }, true);
     document.addEventListener("keydown", e => {
@@ -5625,7 +5695,7 @@ const tokenMenu = (() => {
         if (!r) return;
         const { gs, unsure, undoZ } = r;
         if (gs.length === 1) console.warn("[토큰 메뉴] 하나만 찾음 —", r.diag());
-        if (unsure || gs.length < 2) { undoZ(); alert(unsure ? NOT_SURE(gs.length) : gs.length ? "토큰을 두 개 이상 골라 주세요.\n(두 개 넘게 골랐다면: 위치 고정된 것과 안 된 것이 섞여 있으면 하나만 잡힐 수 있어요 — '위치 고정'을 같게 맞춘 뒤 다시 해 주세요)" : NOT_FOUND); return; }
+        if (unsure || gs.length < 2) { undoZ(); aioToast(unsure ? NOT_SURE(gs.length) : gs.length ? "토큰을 두 개 이상 골라 주세요.\n(두 개 넘게 골랐다면: 위치 고정된 것과 안 된 것이 섞여 있으면 하나만 잡힐 수 있어요 — '위치 고정'을 같게 맞춘 뒤 다시 해 주세요)" : NOT_FOUND, { kind: "info", ms: 8000 }); return; }
         // 면 순서: 위 → 아래 줄, 줄 안에서는 왼쪽 → 오른쪽 (윗변이 토큰 높이의 반 안쪽이면 같은 줄)
         const top = g => +g.get("top") - +g.get("height") / 2, left = g => +g.get("left") - +g.get("width") / 2;
         const tol = Math.min(...gs.map(g => +g.get("height") || 70)) / 2;
@@ -5645,7 +5715,7 @@ const tokenMenu = (() => {
         const r = await pickSel(menu);
         if (!r) return;
         r.undoZ();
-        if (r.unsure || !r.gs.length) { alert(r.unsure ? NOT_SURE(r.gs.length) : NOT_FOUND); return; }
+        if (r.unsure || !r.gs.length) { aioToast(r.unsure ? NOT_SURE(r.gs.length) : NOT_FOUND, { kind: "info", ms: 8000 }); return; }
         const pg = window.Campaign?.activePage?.();
         if (!pg) return;
         const n = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
@@ -5667,10 +5737,10 @@ const tokenMenu = (() => {
         const r = await pickSel(menu);
         if (!r) return;
         r.undoZ();                  // 겹침 순서는 바로 되돌린다
-        if (r.unsure || !r.gs.length) { alert(r.unsure ? NOT_SURE(r.gs.length) : NOT_FOUND); return; }
-        if (r.gs.length > 1) { alert("면 순서는 토큰 하나씩 바꿀 수 있어요 — 여러 면 토큰 하나만 골라 주세요."); return; }
+        if (r.unsure || !r.gs.length) { aioToast(r.unsure ? NOT_SURE(r.gs.length) : NOT_FOUND, { kind: "info", ms: 8000 }); return; }
+        if (r.gs.length > 1) { aioToast("면 순서는 토큰 하나씩 바꿀 수 있어요 — 여러 면 토큰 하나만 골라 주세요.", { kind: "info", ms: 8000 }); return; }
         const g = r.gs[0], sides = sidesOf(g);
-        if (sides.length < 2) { alert("여러 면 토큰이 아니에요."); return; }
+        if (sides.length < 2) { aioToast("여러 면 토큰이 아니에요.", { kind: "info", ms: 8000 }); return; }
         const cur = Math.min(sides.length - 1, Math.max(0, parseInt(g.get("currentSide"), 10) || 0));
         sideOrder.open({ title: "면 순서 바꾸기", sub: `${g.get("name") || "토큰"} · 면 ${sides.length}개`, items: sides.map(src => ({ src })), cur,
             onSave: order => {
@@ -9831,7 +9901,7 @@ const scenNav = (() => {
             if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
             if (a === "half") { ls(HALF, half() ? "" : "1"); return place(); }
             if (a === "dock") { ls(DOCK, docked() ? "" : "1"); b.setAttribute("aria-pressed", String(docked())); $(".pin").hidden = docked(); return place(); }
-            if (a === "warn") return alert("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"));
+            if (a === "warn") return aioToast("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"), { kind: "info", ms: 8000 });
             if (a === "put" || a === "copy") {
                 const t = picked;           // 고를 때 잡아 둔 글 (그사이 다른 곳을 눌러도)
                 $(".fl").hidden = true;
@@ -10889,7 +10959,12 @@ const bulkEditor = (() => {
         ui.save.disabled = !c || saving;
         ui.revert.disabled = !c || saving;
     };
-    const setStatus = (msg, kind) => { ui.foot.textContent = msg || (cur()?.which === "images" ? HINT_IMG : cur()?.which === "links" ? HINT_LINK : cur()?.which === "map" ? HINT_MAP : iconMode(cur()) ? HINT_ICON : HINT); ui.foot.className = "r20be-foot" + (kind ? " " + kind : ""); };
+    // 알림은 공용 알림(aioToast)으로 · 창 아래 줄은 지금 탭의 도움말만
+    const setStatus = (msg, kind, extra) => {
+        ui.foot.textContent = (cur()?.which === "images" ? HINT_IMG : cur()?.which === "links" ? HINT_LINK : cur()?.which === "map" ? HINT_MAP : iconMode(cur()) ? HINT_ICON : HINT);
+        ui.foot.className = "r20be-foot";
+        if (msg) aioToast(msg, { kind: kind || (/중…$/.test(msg) ? "busy" : "info"), id: "r20be", ...extra });
+    };
 
     const select = id => {
         cur().sel = id;
@@ -10981,7 +11056,7 @@ const bulkEditor = (() => {
             callbacks: {
                 onChange: html => { if (note !== me) return; me.dirty = false; setField(n, k, html); refreshRow(n); },
                 // 파일을 넣으면 Summernote 는 그림을 글 속에 통째로(base64) 박는다 → 주소로만
-                onImageUpload: () => alert("그림 파일은 넣을 수 없어요. Roll20 처럼 그림 주소(URL)로 넣어 주세요.")
+                onImageUpload: () => aioToast("그림 파일은 넣을 수 없어요. Roll20 처럼 그림 주소(URL)로 넣어 주세요.", { kind: "info", ms: 8000 })
             }
         });
         const ed = host.nextElementSibling;
@@ -12339,6 +12414,13 @@ const bulkEditor = (() => {
         mark.className = "r20be-lk-mk " + (c && c !== "big" ? "bad" : lib ? "warn" : "ok");
         mark.title = c && c !== "big" ? LINK_CAUSE[c][0] : lib ? "토큰 · 카드 · 굴림표 · 캐릭터 그림 칸은 Roll20 라이브러리 그림(files.d20.io)만 쓸 수 있어요" : "열림";
     };
+    // 방금 저장한 주소 바꾸기를 되돌린다 (새 주소 → 옛 주소로 다시 저장)
+    const linkUndo = t => {
+        if (!t?.lastSaved?.length) return;
+        t.lastSaved.forEach(([o, n]) => t.fixes.set(n, o));
+        t.lastSaved = null;
+        save();
+    };
     const linkPane = t => {
         const G = linkGroups(t), rows = linkRows(t);
         const wrap = el("div", { class: "r20be-pane-in r20be-lk" });
@@ -12350,11 +12432,7 @@ const bulkEditor = (() => {
             el("span", { class: "r20be-note" }, t.busy ? `${t.phase} ${t.prog[0]}/${t.prog[1]}`
                 : t.scan ? `그림 주소 ${G.list.length}개 · ${Math.round(t.scan.ms / 1000)}초 · ${when}${t.phase ? " · " + t.phase : ""}` : "매크로 · 굴림표 · 덱 · 핸드아웃 · 캐릭터 · 맵의 그림 주소를 이 브라우저에서 열어 봐요")));
         if (t.lastSaved?.length) wrap.append(el("div", { class: "r20be-lk-done" }, `주소 ${t.lastSaved.length}개를 바꿔 저장했어요`,
-            el("button", { type: "button", class: "r20be-sec", onclick: () => {
-                t.lastSaved.forEach(([o, n]) => t.fixes.set(n, o));
-                t.lastSaved = null;
-                save();
-            } }, "되돌리기")));
+            el("button", { type: "button", class: "r20be-sec", onclick: () => linkUndo(t) }, "되돌리기")));
         if (!t.scan) {
             wrap.append(el("p", { class: "r20be-empty" }, "[점검 시작]을 누르면 방 안의 그림 주소를 모두 열어 보고, 안 열리는 것 · 너무 큰 것을 어디서 쓰는지와 함께 보여줘요. 수백 개면 1~2분 걸려요."));
             return wrap;
@@ -13204,7 +13282,7 @@ const bulkEditor = (() => {
         if (dels.length && !confirm(`${dels.length}개 항목을 Roll20에서 삭제합니다. 되돌릴 수 없습니다.\n\n`
             + dels.slice(0, 10).map(name => "· " + name).join("\n") + (dels.length > 10 ? "\n…" : "") + "\n\n계속할까요?")) return;
         saving = true; updateBar(); setStatus("저장 중…");
-        const total = dirtyCount(), errs = [];
+        const total = dirtyCount(), errs = [], onlyLinks = (S.links?.fixes.size || 0) === total;
         const attempt = async (label, fn) => {
             try { await fn(); } catch (e) { console.warn("[일괄 편집기] 저장 실패:", label, e); errs.push(label); }
         };
@@ -13238,7 +13316,7 @@ const bulkEditor = (() => {
             setStatus(`${errs.length}건 저장 실패: ${errs.slice(0, 3).join(", ")}${errs.length > 3 ? " 외" : ""} (콘솔 확인 후 다시 저장)`, "err");
         } else {
             reload();
-            setStatus(`변경 ${total}건을 Roll20에 저장했습니다`, "ok");
+            setStatus(`변경 ${total}건을 Roll20에 저장했습니다`, "ok", onlyLinks && S.links?.lastSaved?.length ? { undo: () => linkUndo(S.links) } : undefined);
         }
     };
 
@@ -13292,7 +13370,7 @@ const bulkEditor = (() => {
         ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
         if (t.which !== "bgm") ui.bk.hidden = true;
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
-        if (ui.foot.className === "r20be-foot") setStatus();      // 안내문만 보기 방식에 맞춘다 (알림 문구는 그대로)
+        setStatus();      // 도움말을 지금 탭에 맞춘다
         renderTree(); renderPane();
     };
     const switchTab = tab => {
@@ -13609,8 +13687,8 @@ const bulkEditor = (() => {
 
     // id 를 주면 그 항목을 골라 둔다 (빠른 찾기 Shift+Enter) — 접힌 폴더는 펼친다
     const open = (tab, id) => {
-        if (!isGM()) { alert("일괄 편집기는 이 방의 GM 만 쓸 수 있어요."); return; }
-        if (!window.Campaign?.handouts) { alert("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요."); return; }
+        if (!isGM()) { aioToast("일괄 편집기는 이 방의 GM 만 쓸 수 있어요.", { kind: "info", ms: 8000 }); return; }
+        if (!window.Campaign?.handouts) { aioToast("Roll20 데이터를 아직 불러오는 중입니다. 잠시 후 다시 열어 주세요.", { kind: "info", ms: 8000 }); return; }
         ensureUi();
         if (!dirtyCount()) TABS.forEach(k => { S[k] = null; });     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
         ui.root.classList.add("r20be-show");

@@ -53,7 +53,7 @@
 
 - 기능 하나 = FEAT 모듈 (`inject` · `setEnabled` · `watch`). 묶음은 `addBundle`.
 - 새 창은 `AIO_ZOOMED`에 넣는다 (글자 크기 확대가 먹게).
-- 공용 함수를 먼저 쓴다: `el` · `escAttr` · `copyText` · `r20img` · `sizedUrl` · `grpDrop` · `tblHead` · `tblSections` · `aioErr` · `btnVisible`.
+- 공용 함수를 먼저 쓴다: `aioToast`(알림) · `el` · `escAttr` · `copyText` · `r20img` · `sizedUrl` · `grpDrop` · `tblHead` · `tblSections` · `aioErr` · `btnVisible`.
 - 이름 앞머리: 기능별 `r20xx-`, 공용 부품은 `aio-`.
 - 저장 키: `localStorage` `r20_<기능>_<항목>`. 읽기 · 쓰기는 try/catch.
 - 방 데이터(핸드아웃 · 매크로 · 굴림표)에 쓸 때는 저장 버튼을 거치고, 저장 전에는 되돌릴 수 있게.
