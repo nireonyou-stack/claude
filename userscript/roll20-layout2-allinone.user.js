@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.79.0
+// @version      1.79.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.79.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.79.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -258,7 +258,15 @@ function applyCocofoliaLayout() {
         visualSelect.appendChild(speakingAsSelect);
 
         const nameInput = document.createElement("input");
-        nameInput.type = "text";
+        // 글(text) 칸이면 Chrome 이 아이디 칸으로 보고 저장된 계정 목록을 띄운다 → 찾기(search) 칸 + 자동완성 끔 (비밀번호 관리자 확장도)
+        nameInput.type = "search";
+        nameInput.autocomplete = "off";
+        nameInput.spellcheck = false;
+        nameInput.name = "r20-as-name";
+        ["data-lpignore", "data-1p-ignore", "data-bwignore"].forEach(a => nameInput.setAttribute(a, "true"));
+        nameInput.setAttribute("data-form-type", "other");
+        nameInput.setAttribute("aria-label", "말하는 이름 (비우면 고른 캐릭터 이름)");
+        nameInput.addEventListener("keydown", e => { if (e.key === "Escape") e.preventDefault(); });      // 찾기 칸처럼 Esc 로 지워지지 않게
         nameInput.id = "custom-speaker-name";
         nameInput.style.cssText = "flex-grow: 1; min-width: 0; border: none; border-left: 1px solid #ccc; padding: 0 10px; font-size: 13px; outline: none; box-sizing: border-box; background: transparent; height: 100%; line-height: normal;";
 
@@ -7553,6 +7561,8 @@ const quickJournal = (() => {
 
 addCss(`
         /* 말하는 사람 고르기 (quickJournal): 채팅 판 왼쪽 끝에 붙어 아래에서 위로 · 목록 ↔ 크게 보기 */
+        #custom-speaker-name { -webkit-appearance:none; appearance:none; }
+        #custom-speaker-name::-webkit-search-cancel-button, #custom-speaker-name::-webkit-search-decoration { -webkit-appearance:none; display:none; }
         #custom-journal-popup { position:fixed; z-index:10006; display:none; flex-direction:column; width:264px; border:1px solid var(--aio-line-3); border-right:0; border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); box-shadow:-6px 0 18px rgba(0,0,0,0.22); color:var(--aio-ink-2); font:12px/1.4 sans-serif; overflow:hidden; box-sizing:border-box; }
         /* Roll20(Bootstrap)의 .show { display:block !important } 보다 앞서도록 !important */
         #custom-journal-popup.show { display:flex !important; }
