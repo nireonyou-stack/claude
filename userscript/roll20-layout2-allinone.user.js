@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.80.0
+// @version      1.80.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.80.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.80.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7253,8 +7253,10 @@ const queryPicker = (() => {
     const imgurId = v => /^[A-Za-z0-9]{5,8}$/.test(v) && /[A-Za-z]/.test(v) && !/^[A-Z]?[a-z]+$|^[A-Z]+$/.test(v);
     const imgOf = v => /^https?:\/\/\S+$/i.test(v) ? v : imgurId(v) ? `https://i.imgur.com/${v}.png` : "";
     const labelOf = o => o.textContent.trim();
-    // '—————' 같은 항목은 묶음 구분선으로
-    const isDivider = o => !imgOf(o.value) && /^[\s—–\-─━=_~·.]{3,}$/.test(o.textContent);
+    // '—————' 같은 항목은 묶음 구분선으로 (가로 막대 ― · 전각 － 등도)
+    const DASHES = "\\s—–\\-─━=_~·.―‒⸺⸻－ー";
+    const isDivider = o => !imgOf(o.value) && new RegExp(`^[${DASHES}]{3,}$`).test(o.textContent);
+    const trimDash = t => t.replace(new RegExp(`^[${DASHES}]+|[${DASHES}]+$`, "g"), "");
     // imgur 는 작은 썸네일(m: 320px)로 받아 수십 장도 가볍게
     const thumbOf = url => {
         const m = url.match(/^https?:\/\/(?:i\.)?imgur\.com\/([A-Za-z0-9]{5,10})(\.[A-Za-z]+)?$/);
@@ -7287,8 +7289,8 @@ const queryPicker = (() => {
             pic.alt = ""; pic.loading = "lazy"; pic.draggable = false;
             const thumb = thumbOf(url);
             let retried = thumb === url;
-            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 이름 칸으로
-            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = url; } else pic.replaceWith(textPic(o)); });
+            // 썸네일이 안 되면 원본으로 한 번 더, 그래도 안 되면 그 칸은 숨김 (위 목록에서는 고를 수 있음)
+            pic.addEventListener("error", () => { if (!retried) { retried = true; pic.src = url; } else { b.dataset.broken = "1"; b.hidden = true; b.closest(".r20qp-grid")?._secs?.(); } });
             pic.src = thumb;
         } else pic = textPic(o);
         const lb = document.createElement("span");
@@ -7310,11 +7312,22 @@ const queryPicker = (() => {
         let sec = null;
         const newSec = () => { sec = document.createElement("div"); sec.className = "r20qp-sec"; grid.appendChild(sec); };
         newSec();
+        // 그림 없는 줄(묶음 이름 · 장면닫기 같은 글)은 칸 대신 그 묶음의 작은 제목 — 고르기는 위 목록에서
         [...sel.options].forEach((o, i) => {
             if (isDivider(o)) { if (sec.childElementCount) newSec(); return; }
+            if (!imgOf(o.value)) {
+                // 묶음 제목으로 쓰는 것: 구분선 바로 뒤(· 맨 앞) 또는 '네온————' 처럼 줄표가 붙은 줄 — 묶음 중간의 글 줄은 그냥 숨김
+                const t = trimDash(labelOf(o)), head = !sec.querySelector(".r20qp-tile") || t !== labelOf(o);
+                if (!head || !t) return;
+                if (sec.querySelector(".r20qp-tile")) newSec();
+                sec.appendChild(Object.assign(document.createElement("div"), { className: "r20qp-cap", textContent: t }));
+                return;
+            }
             sec.appendChild(tile(o, i));
         });
-        if (!sec.childElementCount) sec.remove();
+        // 그림 칸이 없는 묶음은 감춘다 (찾는 중 · 그림이 안 불러와져 숨긴 칸 포함)
+        grid._secs = () => grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.querySelectorAll(".r20qp-tile")].some(b => !b.hidden); });
+        grid.querySelectorAll(".r20qp-sec").forEach(s => { if (!s.querySelector(".r20qp-tile")) s.remove(); });
         (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
 
         grid.addEventListener("click", e => {
@@ -7328,8 +7341,8 @@ const queryPicker = (() => {
         q.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키·Enter 제출 막기
         q.addEventListener("input", () => {
             const v = q.value.replace(/\s+/g, "").toLowerCase();
-            grid.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = !!v && !b.title.replace(/\s+/g, "").toLowerCase().includes(v); });
-            grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.children].some(b => !b.hidden); });
+            grid.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = b.dataset.broken === "1" || (!!v && !b.title.replace(/\s+/g, "").toLowerCase().includes(v)); });
+            grid._secs();
             grid.classList.toggle("searching", !!v);
         });
         box.querySelectorAll(".r20qp-zoom button").forEach(b => b.addEventListener("click", () => {
@@ -7680,6 +7693,8 @@ addCss(`
         .ui-dialog.r20qp .r20qp-tile:hover { background:var(--aio-accent-bg); }
         .ui-dialog.r20qp .r20qp-tile.on { background:var(--aio-accent-bg); box-shadow:inset 0 0 0 2px var(--aio-accent); }
         .ui-dialog.r20qp .r20qp-tile[hidden], .ui-dialog.r20qp .r20qp-sec[hidden] { display:none !important; }
+        .ui-dialog.r20qp .r20qp-cap { grid-column:1 / -1; padding:2px 2px 0; color:var(--aio-ink-3); font-size:11px; font-weight:700; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .ui-dialog.r20qp .r20qp-grid.searching .r20qp-cap { display:none; }
         .ui-dialog.r20qp .r20qp-img { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:16/9; padding:4px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:11px; text-align:center; overflow:hidden; box-sizing:border-box; object-fit:contain; pointer-events:none; }
         .ui-dialog.r20qp .ui-dialog-content > p { display:flex; align-items:center; gap:6px; margin:0 0 2px !important; font-size:12px !important; color:var(--aio-ink-3); }
         .ui-dialog.r20qp .ui-dialog-content > p select { width:auto !important; max-width:220px; height:24px !important; margin:0 !important; padding:0 4px !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r-sm) !important; background:var(--aio-bg) !important; box-shadow:none !important; color:var(--aio-ink-3) !important; font-size:11px !important; }
