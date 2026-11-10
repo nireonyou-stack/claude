@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.84.0
+// @version      1.85.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.84.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.85.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1087,6 +1087,44 @@ const aioToast = (() => {
     };
     return show;
 })();
+// ───────── 공용 창 틀 (UX 원칙 1): 머리줄 순서 ⠿ 끌기 · 제목 · (창마다 동작) · 자리 · 📌 · ✕ ─────────
+// 자리 고르기: aioDockSeg([["dock","붙임"],["half","½"],["float","떠 있기"]], 지금, 고르면) → 요소 (.set(값) 으로 다시 칠함) — 창마다 되는 것만 넘긴다
+const aioDockSeg = (modes, cur, onPick) => {
+    const g = document.createElement("span");
+    g.className = "aio-dock";
+    g.setAttribute("role", "group");
+    g.setAttribute("aria-label", "창 자리");
+    const TIP = { dock: "화면 가장자리에 붙이기", half: "붙이고 반 높이로", float: "떠 있는 창으로 (끌어서 옮기기)" };
+    modes.forEach(([v, label]) => {
+        const b = document.createElement("button");
+        b.type = "button"; b.dataset.v = v; b.textContent = label; b.title = TIP[v] || label;
+        b.onclick = e => { e.stopPropagation(); g.set(v); onPick(v); };
+        g.appendChild(b);
+    });
+    g.set = v => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+    g.set(cur);
+    return g;
+};
+// 끌어 옮기기: head 를 누르고 끌면 win(position:fixed) 이 따라온다 · 단추 · 입력칸 위에서는 안 함 · 다 끌면 onEnd(left, top) (배율 나눈 값)
+const aioDrag = (win, head, onEnd) => {
+    head.addEventListener("pointerdown", e => {
+        if (e.button !== 0 || e.target.closest("button, input, select, textarea, a, label, [contenteditable]")) return;
+        const z = aioZoom.get(), r = win.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
+        let moved = false;
+        const mv = ev => {
+            const dx = ev.clientX - sx, dy = ev.clientY - sy;
+            if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+            moved = true;
+            win.style.left = Math.max(0, Math.min(innerWidth - 60, r.left + dx)) / z + "px";
+            win.style.top = Math.max(0, Math.min(innerHeight - 30, r.top + dy)) / z + "px";
+        };
+        const up = () => {
+            removeEventListener("pointermove", mv); removeEventListener("pointerup", up);
+            if (moved) onEnd?.(parseFloat(win.style.left), parseFloat(win.style.top));
+        };
+        addEventListener("pointermove", mv); addEventListener("pointerup", up);
+    });
+};
 // 이 스크립트 파일 주소 (오류 스택에 이 주소가 있으면 올인원 오류) — 오류가 났을 때 처음 한 번만 알아낸다
 // (불러올 때 스택을 만들면 스크립트 전체를 다시 읽어 40ms 가 든다 · 이벤트 처리 안에서는 작은 함수만)
 let aioSrc = null;
@@ -1175,6 +1213,14 @@ const CORE_CSS = `
         .aio-t button:focus-visible { outline:2px solid var(--aio-accent-mid); outline-offset:1px; }
         @keyframes aio-t-in { from { opacity:0; transform:translateY(6px); } }
         @media (prefers-reduced-motion: reduce) { .aio-t { animation:none; } }
+        /* 공용 창 틀 — ⠿ 끌기 손잡이 · 자리 고르기 (aioDockSeg) */
+        .aio-drag { flex:none; width:14px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; cursor:move; user-select:none; touch-action:none; }
+        .aio-dock { display:inline-flex; flex:none; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
+        .aio-dock button { height:20px; margin:0; padding:0 6px; border:0; border-radius:0; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-4); font-size:var(--aio-fs-xs); line-height:20px; white-space:nowrap; cursor:pointer; }
+        .aio-dock button + button { border-left:1px solid var(--aio-line-2); }
+        .aio-dock button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+        .aio-dock button[aria-pressed="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
+        .aio-dock button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:-2px; }
         /* 묶음 고르기 드롭다운 (grpDrop) */
         .aio-gd { position:relative; flex-shrink:0; }
         .aio-gd-btn { display:flex; align-items:center; gap:6px; max-width:260px; height:28px; margin:0; padding:0 8px 0 3px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink); font-size:var(--aio-fs-md); line-height:1; cursor:pointer; }
@@ -7746,7 +7792,7 @@ const quickJournal = (() => {
         if (!isOpen()) return;
         const z = aioZoom.get(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
         pop.classList.toggle("float", !docked());
-        pop.querySelector("[data-a='dock']").setAttribute("aria-pressed", String(docked()));
+        dkSeg?.set(docked() ? "dock" : "float");
         if (!docked()) {
             const g = geo(), Wv = innerWidth / z, Hv = innerHeight / z;
             const w = Math.min(Math.max(200, g?.w || W), Wv - 8), h = Math.min(Math.max(160, g?.h || 360), Hv - 8);
@@ -7761,6 +7807,7 @@ const quickJournal = (() => {
         Object.assign(pop.style, { right: (innerWidth - edge) / z + "px", bottom: bottom / z + "px", left: "auto", top: "auto", width: dockW() + "px", height: dh > 0 ? Math.min(dh, room / z) + "px" : "", maxHeight: room / z + "px" });
     };
     // 붙이기 ↔ 띄우기: 처음 띄울 땐 지금 자리 · 크기 그대로
+    let dkSeg = null;       // 창 자리 고르기 (붙임 · 떠 있기)
     const toggleDock = () => {
         const z = aioZoom.get();
         if (docked()) {
@@ -7834,21 +7881,23 @@ const quickJournal = (() => {
         pop.id = "custom-journal-popup";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "말하는 사람 고르기");
-        pop.innerHTML = '<div class="cj-hd"><span class="cj-mv" title="끌어서 옮기기" aria-hidden="true">⠿</span><input type="search" class="cj-q" placeholder="찾기 — 이름 · 초성" aria-label="말하는 사람 찾기 — ↑↓ Enter" autocomplete="off" spellcheck="false">'
-            + '<button type="button" data-a="view" title="크게 보기 ↔ 목록" aria-label="크게 보기" aria-pressed="false">▦</button>'
-            + '<button type="button" data-a="dock" class="cj-dk" title="채팅 옆에 붙이기 ↔ 띄우기" aria-label="채팅 옆에 붙이기" aria-pressed="true">⇥</button>'
+        // 공용 창 틀 순서: ⠿ · 제목 · 보기 · (빈칸) · 자리 · 📌 · ✕ — 찾기 칸은 그 아래 줄
+        pop.innerHTML = '<div class="cj-hd"><span class="cj-mv aio-drag" title="끌어서 옮기기" aria-hidden="true">⠿</span><b class="cj-tt">🗣 말하는 이</b>'
+            + '<button type="button" data-a="view" title="크게 보기 ↔ 목록" aria-label="크게 보기" aria-pressed="false">▦</button><span class="cj-sp"></span><span class="dkw"></span>'
             + '<button type="button" data-a="pin" class="cj-pin" title="고른 뒤에도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" aria-label="닫기" title="닫기 (Esc)">✕</button></div>'
+            + '<div class="cj-qrow"><input type="search" class="cj-q" placeholder="찾기 — 이름 · 초성" aria-label="말하는 사람 찾기 — ↑↓ Enter" autocomplete="off" spellcheck="false"></div>'
             + '<div class="cj-recw" hidden><div class="cj-lb">최근</div><div class="cj-rec"></div></div>'
             + '<div class="cj-list" role="listbox" aria-label="말하는 사람"></div>'
             + '<div class="cj-ft" hidden>아이콘 <button type="button" data-a="sz" data-d="-10" aria-label="아이콘 작게">−</button><button type="button" data-a="sz" data-d="10" aria-label="아이콘 크게">+</button></div>'
             + '<div class="cj-gw" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div><div class="cj-gh" role="separator" aria-orientation="horizontal" aria-label="창 높이" title="끌어서 높이 · 두 번 누르면 기본"></div>';
+        dkSeg = aioDockSeg([["dock", "붙임"], ["float", "떠 있기"]], docked() ? "dock" : "float", v => { if ((v === "dock") !== docked()) toggleDock(); });
+        pop.querySelector(".dkw").replaceWith(dkSeg);
         pop.addEventListener("click", e => {
             const b = e.target.closest("button");
             if (!b) return;
             const a = b.dataset.a;
             if (b.classList.contains("cj-ri")) return pick(b.dataset.v);
             if (a === "x") return close();
-            if (a === "dock") return toggleDock();
             if (a === "view") { ls(VIEW, grid() ? "list" : "grid"); return draw(); }
             if (a === "pin") { ls(PIN, String(!pinned())); return draw(); }
             if (a === "sz") { ls(SIZE, String(Math.max(30, Math.min(120, size() + +b.dataset.d)))); return draw(); }
@@ -7933,11 +7982,16 @@ addCss(`
         #custom-journal-popup [hidden] { display:none !important; }
         #custom-journal-popup * { box-sizing:border-box; }
         #custom-journal-popup .cj-hd { display:flex; align-items:center; gap:2px; flex-shrink:0; height:30px; padding:0 4px 0 6px; border-bottom:1px solid var(--aio-line-4); }
+        #custom-journal-popup .cj-tt { margin:0 4px 0 2px; color:var(--aio-ink-2); font-size:var(--aio-fs-md); white-space:nowrap; }
+        #custom-journal-popup .cj-sp { flex:1; }
+        #custom-journal-popup .cj-hd .aio-dock { margin-right:2px; }
+        #custom-journal-popup .cj-qrow { display:flex; flex-shrink:0; padding:4px 6px; border-bottom:1px solid var(--aio-line-4); }
+        #custom-journal-popup .cj-qrow .cj-q { margin:0 !important; }
         #custom-journal-popup .cj-q { flex:1; min-width:0; width:auto !important; height:22px !important; margin:0 4px 0 0 !important; padding:0 8px !important; border:0 !important; border-radius:11px !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:var(--aio-fs-sm) !important; outline:none; }
         #custom-journal-popup .cj-q:focus-visible { box-shadow:0 0 0 2px var(--aio-accent-mid) !important; }
-        #custom-journal-popup :is(.cj-hd, .cj-ft) button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
-        #custom-journal-popup :is(.cj-hd, .cj-ft) button:hover { background:var(--aio-bg-3); }
-        #custom-journal-popup .cj-hd button[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
+        #custom-journal-popup :is(.cj-hd, .cj-ft) > button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
+        #custom-journal-popup :is(.cj-hd, .cj-ft) > button:hover { background:var(--aio-bg-3); }
+        #custom-journal-popup .cj-hd > button[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
         #custom-journal-popup .cj-pin { filter:grayscale(1); opacity:0.5; } #custom-journal-popup .cj-pin[aria-pressed="true"] { filter:none; opacity:1; }
         #custom-journal-popup button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         #custom-journal-popup .cj-recw { flex-shrink:0; padding:4px 8px 6px; border-bottom:1px solid var(--aio-line-4); }
@@ -9764,6 +9818,7 @@ const scenNav = (() => {
     const pinned = () => ls(PIN) === "true";
     const tocOn = () => ls(TOCK) !== "off";
     const docked = () => ls(DOCK) === "1";
+    let dkSeg = null;       // 창 자리 고르기 (붙임 · ½ · 떠 있기)
     const half = () => ls(HALF) === "1";
     const dhFrac = () => Math.max(0.2, Math.min(0.95, parseFloat(ls(DH)) || 0.5));
     const tocW = () => Math.max(70, Math.min(420, parseFloat(ls(TW)) || TOC_W));
@@ -9777,8 +9832,7 @@ const scenNav = (() => {
         win.style.setProperty("--sn-tw", tocW() + "px");
         win.classList.toggle("dock", docked());
         win.classList.toggle("half", docked() && half());
-        $(".hf").hidden = !docked();
-        $(".hf").setAttribute("aria-pressed", String(docked() && half()));
+        dkSeg?.set(docked() ? (half() ? "half" : "dock") : "float");
         if (docked()) {
             // 높이는 % (화면 기준) — 글자 크기(배율)를 바꿔도 위아래 끝이 그대로
             const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
@@ -9835,12 +9889,11 @@ const scenNav = (() => {
         win.setAttribute("aria-label", "시나리오");
         win.tabIndex = -1;
         win.hidden = true;
-        win.innerHTML = '<div class="hd"><button type="button" data-a="toc" class="ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
+        win.innerHTML = '<div class="hd"><span class="aio-drag" aria-hidden="true" title="끌어서 옮기기">⠿</span><button type="button" data-a="toc" class="ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
             + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
             + '<button type="button" data-a="cfg" class="ib cfgb" hidden aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
             + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
-            + '<button type="button" data-a="half" class="ib hf" hidden title="반쪽 높이 ↔ 전체 높이" aria-label="반쪽 높이" aria-pressed="false">½</button>'
-            + '<button type="button" data-a="dock" class="ib dk" title="왼쪽 끝에 붙이기 ↔ 띄우기" aria-label="왼쪽 끝에 붙이기" aria-pressed="false">⇤</button>'
+            + '<span class="dkw"></span>'
             + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
             + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
@@ -9855,6 +9908,12 @@ const scenNav = (() => {
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>'
             + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>'
             + '<div class="hg" role="separator" aria-orientation="horizontal" aria-label="창 높이" title="끌어서 높이 · 두 번 누르면 반쪽"></div>';
+        dkSeg = aioDockSeg([["dock", "붙임"], ["half", "½"], ["float", "떠 있기"]], "dock", v => {
+            ls(DOCK, v === "float" ? "" : "1"); ls(HALF, v === "half" ? "1" : "");
+            $(".pin").hidden = docked();
+            place();
+        });
+        win.querySelector(".dkw").replaceWith(dkSeg);
         win.addEventListener("keydown", e => {
             e.stopPropagation();
             if (e.target.matches(".lc input")) return;          // 장면 이름 고치는 중
@@ -9899,8 +9958,6 @@ const scenNav = (() => {
                 return keep();
             }
             if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
-            if (a === "half") { ls(HALF, half() ? "" : "1"); return place(); }
-            if (a === "dock") { ls(DOCK, docked() ? "" : "1"); b.setAttribute("aria-pressed", String(docked())); $(".pin").hidden = docked(); return place(); }
             if (a === "warn") return aioToast("플레이어에게 공개된 핸드아웃:\n" + (cur?.items || []).filter(it => it.m && shared(it.m)).map(it => "· " + it.m.get("name")).join("\n"), { kind: "info", ms: 8000 });
             if (a === "put" || a === "copy") {
                 const t = picked;           // 고를 때 잡아 둔 글 (그사이 다른 곳을 눌러도)
@@ -10302,7 +10359,6 @@ const scenNav = (() => {
         win.classList.toggle("notoc", !tocOn());
         $(".tg").setAttribute("aria-pressed", String(tocOn()));
         $(".pin").setAttribute("aria-pressed", String(pinned()));
-        $(".dk").setAttribute("aria-pressed", String(docked()));
         $(".pin").hidden = docked();
         place();
         if (!permSub && isGM() && window.Campaign?.handouts?.on) {
@@ -10370,8 +10426,7 @@ addCss(`
         #r20-sn.dock .eg { display:block; }
         #r20-sn.dock .hd { cursor:default; }
         #r20-sn.dock.half { border-bottom-width:1px; border-bottom-right-radius:var(--aio-r-lg); }
-        #r20-sn :is(.dk, .hf)[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
-        #r20-sn .hf { font-weight:700; }
+        #r20-sn.dock .hd .aio-drag { display:none; }
         #r20-sn .tr { height:22px; padding:0 4px 0 4px; border-radius:var(--aio-r-sm); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-2); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; }
         #r20-sn .tr.h { padding-left:12px; }
         #r20-sn .tr.h1 { font-weight:600; }
@@ -13628,13 +13683,21 @@ const bulkEditor = (() => {
         ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");
         ui.segP = el("button", { type: "button", title: "지금 페이지에 올라간 그림 정리", onclick: () => switchTab("map") }, "맵");     // 그림 묶음이 없으면 탭도 없다
         ui.segL = el("button", { type: "button", title: "안 열리는 · 너무 큰 그림 주소 찾아 고치기", onclick: () => switchTab("links") }, "링크 점검");
+        // 공용 창 틀: ⠿ 끌기(머리줄 끌기는 bindPanel) · 제목 · 탭 · Aa(글자 크기) · ✕ — 떠 있는 창만 되므로 자리 고르기 · 📌 은 없음
+        const zmWrap = el("span", { class: "r20be-aa" });
+        const aaBtn = el("button", { type: "button", class: "r20be-ib r20be-aab", title: "글자 크기", "aria-label": "글자 크기", "aria-expanded": "false",
+            onclick: () => { const on = !zmWrap.classList.contains("open"); zmWrap.classList.toggle("open", on); aaBtn.setAttribute("aria-expanded", String(on)); } }, "Aa");
+        zmWrap.append(aaBtn, aioZoom.control("r20be-zm r20be-tz"));
+        document.addEventListener("mousedown", e => { if (zmWrap.classList.contains("open") && !zmWrap.contains(e.target)) { zmWrap.classList.remove("open"); aaBtn.setAttribute("aria-expanded", "false"); } }, true);
         const head = el("div", { class: "r20be-head" },
+            el("span", { class: "aio-drag", "aria-hidden": "true", title: "끌어서 옮기기" }, "⠿"),
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
             el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segL),
             el("span", { class: "r20be-flex" }),
-            aioZoom.control("r20be-zm r20be-tz"),
+            zmWrap,
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
+        // 머리줄을 끌면 창이 옮겨지고 자리를 기억 (다음에 열 때 그 자리)
         ui.search = el("input", { class: "r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
             oninput: debounce(() => { cur().q = ui.search.value; renderTree(); if (cur().which === "images" || cur().which === "links") renderPane(); }, 150) });
         ui.chips = el("div", { class: "r20be-chips" });
@@ -13736,6 +13799,12 @@ addCss(`
         #r20be button:focus-visible, #r20be input:focus-visible, #r20be select:focus-visible, #r20be textarea:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         #r20be .r20be-head { display:flex; align-items:center; gap:10px; height:36px; padding:0 6px 0 10px; background:var(--aio-bg-3); border-bottom:1px solid var(--aio-line-2); cursor:move; user-select:none; flex-shrink:0; }
         #r20be .r20be-head strong { font-size:var(--aio-fs-md); color:var(--aio-ink-3); }
+        #r20be .r20be-head { cursor:default; }
+        #r20be .r20be-head .aio-drag { margin-right:-4px; }
+        #r20be .r20be-aa { position:relative; display:flex; }
+        #r20be .r20be-aab { width:auto; padding:0 6px; font-size:var(--aio-fs-md); font-weight:700; }
+        #r20be .r20be-aa > .aio-zm { display:none; position:absolute; top:calc(100% + 4px); right:0; z-index:6; padding:4px; border:1px solid var(--aio-line); border-radius:var(--aio-r); background:var(--aio-bg); box-shadow:0 4px 12px rgba(0,0,0,0.18); }
+        #r20be .r20be-aa.open > .aio-zm { display:flex; }
         #r20be .r20be-ver { margin-left:-6px; color:var(--aio-ink-5); font-size:var(--aio-fs-xs); }
         #r20be .r20be-seg { display:flex; gap:2px; padding:2px; background:var(--aio-bg-4); border-radius:var(--aio-r-sm); }
         #r20be .r20be-seg button { border:0; background:transparent; height:24px; padding:0 12px; font-size:var(--aio-fs-md); font-weight:700; color:var(--aio-ink-3); border-radius:var(--aio-r-sm); cursor:pointer; }

@@ -44,10 +44,10 @@ const mock = () => {
   await p.screenshot({ path: OUT + 'editor150.png' });
   // 머리줄에서 100% 로: 왼쪽 위 자리 유지
   const before = await rect('#r20be');
-  await p.click('#r20be .aio-zv'); await p.waitForTimeout(200);
+  await p.$eval('#r20be .r20be-aa', e => e.classList.contains('open') || e.querySelector('.r20be-aab').click()); await p.click('#r20be .aio-zv'); await p.waitForTimeout(200);
   console.log('editor 150→100:', before, '→', await rect('#r20be'), '| settings label:', await p.$eval('#custom-settings-popup .aio-zv', e => e.textContent));
   // 끌기: 화면에서 끈 만큼만 움직이는지 (200%)
-  await p.click('#r20be .aio-zv'); for (let i = 0; i < 10; i++) await p.click('#r20be .aio-zm [data-d="1"]');
+  await p.$eval('#r20be .r20be-aa', e => e.classList.contains('open') || e.querySelector('.r20be-aab').click()); await p.click('#r20be .aio-zv'); for (let i = 0; i < 10; i++) await p.click('#r20be .aio-zm [data-d="1"]');
   await p.waitForTimeout(200);
   const r0 = await p.$eval('#r20be .r20be-head strong', e => { const r = e.getBoundingClientRect(); return { x: r.left + 5, y: r.top + 5 }; });
   const a = await rect('#r20be');
