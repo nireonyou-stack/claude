@@ -27,6 +27,7 @@ def resolve(css, tok):
     css = re.sub(r':root \{[^}]*\}', '', css)            # 변수 정의 줄은 견주지 않는다
     for _ in range(3):                                    # 변수 안의 변수까지
         css = re.sub(r'var\((--aio-[\w-]+)\)', lambda m: tok.get(m.group(1), m.group(0)), css)
+    css = re.sub(r'calc\((-?\d+) \+ (\d+)\)', lambda m: str(int(m.group(1)) + int(m.group(2))), css)   # z-index: calc(층 + n)
     return re.sub(r'\s+', ' ', css).strip()
 
 
