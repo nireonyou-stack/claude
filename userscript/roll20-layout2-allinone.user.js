@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.80.3
+// @version      1.81.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.80.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.81.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7248,6 +7248,7 @@ const roomImages = (() => {
 // 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
 const queryPicker = (() => {
     let size = Math.max(80, Math.min(260, parseInt(localStorage.getItem("r20_qp_size"), 10) || 140));
+    const GRP_KEY = "r20_qp_grp";      // 질문(앞 글 + 항목 수) → 마지막에 고른 묶음 이름
     // 값 → 그림 주소: 전체 주소이거나, imgur 그림 ID 만 고르는 꼴(https://imgur.com/?{…|이름,oTmvLxD|…}.png)
     // ID 판별: 5~8자 영문·숫자 섞임 — 'Attack' 같은 보통 낱말·숫자만은 뺀다
     const imgurId = v => /^[A-Za-z0-9]{5,8}$/.test(v) && /[A-Za-z]/.test(v) && !/^[A-Z]?[a-z]+$|^[A-Z]+$/.test(v);
@@ -7314,8 +7315,8 @@ const queryPicker = (() => {
         box.className = "r20qp-box";
         box.innerHTML = '<div class="r20qp-bar"><input type="search" placeholder="이름으로 찾기" aria-label="이름으로 찾기">'
             + '<span class="r20qp-zoom"><button type="button" data-d="-1" aria-label="썸네일 작게">−</button><button type="button" data-d="1" aria-label="썸네일 크게">+</button></span></div>'
-            + '<div class="r20qp-grid"></div>';
-        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input");
+            + '<div class="r20qp-grps" role="group" aria-label="묶음만 보기" hidden></div><div class="r20qp-grid"></div>';
+        const grid = box.querySelector(".r20qp-grid"), q = box.querySelector("input"), grps = box.querySelector(".r20qp-grps");
         let sec = null;
         const newSec = () => { sec = document.createElement("div"); sec.className = "r20qp-sec"; grid.appendChild(sec); };
         newSec();
@@ -7333,8 +7334,32 @@ const queryPicker = (() => {
             sec.appendChild(tile(o, i));
         });
         // 그림 칸이 없는 묶음은 감춘다 (찾는 중 · 그림이 안 불러와져 숨긴 칸 포함)
-        grid._secs = () => grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.querySelectorAll(".r20qp-tile")].some(b => !b.hidden); });
+        grid._secs = () => {
+            grid.querySelectorAll(".r20qp-sec").forEach(s => { s.hidden = ![...s.querySelectorAll(".r20qp-tile")].some(b => !b.hidden); });
+            // 그림이 하나도 안 불러와진 묶음은 칩도 숨김
+            grps.querySelectorAll("button[data-g]").forEach(b => { const s = secs[+b.dataset.g]; if (s) b.hidden = ![...s.querySelectorAll(".r20qp-tile")].some(t => t.dataset.broken !== "1"); });
+        };
         grid.querySelectorAll(".r20qp-sec").forEach(s => { if (!s.querySelector(".r20qp-tile")) s.remove(); });
+        // 묶음만 보기: 전체 + 묶음마다 칩 하나 (제목 없는 묶음은 '묶음 n') · 고른 묶음은 이 질문마다 기억
+        const secs = [...grid.querySelectorAll(".r20qp-sec")];
+        const names = secs.map((s, k) => s.querySelector(".r20qp-cap")?.textContent || `묶음 ${k + 1}`);
+        const p = sel.closest("p"), memKey = ([...(p?.childNodes || [])].filter(x => x.nodeType === 3).map(x => x.textContent).join("").trim() || "?") + "#" + sel.options.length;
+        let mem = {};
+        try { mem = JSON.parse(localStorage.getItem(GRP_KEY) || "{}") || {}; } catch (e) {}
+        let grp = names.indexOf(mem[memKey]);
+        const setGrp = k => {
+            grp = k;
+            if (k < 0) delete mem[memKey]; else mem[memKey] = names[k];
+            const ks = Object.keys(mem);
+            if (ks.length > 60) delete mem[ks[0]];      // 오래된 것부터 버림
+            try { localStorage.setItem(GRP_KEY, JSON.stringify(mem)); } catch (e) {}
+            apply();
+        };
+        if (secs.length > 1) {
+            grps.hidden = false;
+            grps.innerHTML = '<button type="button" data-g="-1">전체</button>' + names.map((t, k) => `<button type="button" data-g="${k}">${escAttr(t)}</button>`).join("");
+            grps.addEventListener("click", e => { const b = e.target.closest("button[data-g]"); if (b) setGrp(+b.dataset.g); });
+        }
         (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
 
         grid.addEventListener("click", e => {
@@ -7346,22 +7371,28 @@ const queryPicker = (() => {
         grid.addEventListener("dblclick", e => { if (e.target.closest(".r20qp-tile")) choose(dlg); });
         sel.addEventListener("change", () => mark(dlg, sel));
         q.addEventListener("keydown", e => e.stopPropagation());       // Roll20 단축키·Enter 제출 막기
-        q.addEventListener("input", () => {
+        // 찾기 + 묶음 고르기를 함께 적용 — 고른 묶음 안에서만 찾는다
+        function apply() {
             const v = q.value.replace(/\s+/g, "").toLowerCase();
             const has = t => t.replace(/\s+/g, "").toLowerCase().includes(v);
             // 묶음 제목에 찾는 글이 있으면 그 묶음은 통째로
-            grid.querySelectorAll(".r20qp-sec").forEach(s => {
+            secs.forEach((s, k) => {
+                const out = grp >= 0 && k !== grp;
                 const cap = s.querySelector(".r20qp-cap"), whole = !!v && !!cap && has(cap.textContent);
-                s.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = b.dataset.broken === "1" || (!!v && !whole && !has(b.title)); });
+                s.querySelectorAll(".r20qp-tile").forEach(b => { b.hidden = out || b.dataset.broken === "1" || (!!v && !whole && !has(b.title)); });
             });
             grid._secs();
             grid.classList.toggle("searching", !!v);
-        });
+            grid.classList.toggle("one", grp >= 0);
+            grps.querySelectorAll("button").forEach(b => { const on = +b.dataset.g === grp; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+        }
+        q.addEventListener("input", apply);
         box.querySelectorAll(".r20qp-zoom button").forEach(b => b.addEventListener("click", () => {
             size = Math.max(80, Math.min(260, size + Number(b.dataset.d) * 30));
             localStorage.setItem("r20_qp_size", size);
             dlg.style.setProperty("--qp-size", size + "px");
         }));
+        apply();
         mark(dlg, sel);
         // 창을 키워서 화면 가운데로
         const w = Math.min(720, window.innerWidth - 40);
@@ -7697,10 +7728,15 @@ addCss(`
         .ui-dialog.r20qp .r20qp-zoom { display:flex; gap:2px; }
         .ui-dialog.r20qp .r20qp-zoom button { width:26px; height:26px; margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); font-size:14px; line-height:1; cursor:pointer; }
         .ui-dialog.r20qp .r20qp-zoom button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+        .ui-dialog.r20qp .r20qp-grps { display:flex; flex-wrap:wrap; gap:3px; margin:-2px 0 6px; max-height:52px; overflow-y:auto; }
+        .ui-dialog.r20qp .r20qp-grps[hidden], .ui-dialog.r20qp .r20qp-grps button[hidden] { display:none; }
+        .ui-dialog.r20qp .r20qp-grps button { max-width:180px; height:22px; margin:0; padding:0 8px; border:1px solid var(--aio-line); border-radius:11px; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:11px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        .ui-dialog.r20qp .r20qp-grps button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+        .ui-dialog.r20qp .r20qp-grps button.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent); font-weight:700; }
         .ui-dialog.r20qp .r20qp-grid { max-height:min(55vh, 480px); overflow-y:auto; padding:2px; }
         .ui-dialog.r20qp .r20qp-sec { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--qp-size, 140px), 1fr)); gap:4px; }
         .ui-dialog.r20qp .r20qp-sec + .r20qp-sec { margin-top:8px; padding-top:8px; border-top:1px solid var(--aio-line-2); }
-        .ui-dialog.r20qp .r20qp-grid.searching .r20qp-sec + .r20qp-sec { margin-top:4px; padding-top:0; border-top:0; }
+        .ui-dialog.r20qp .r20qp-grid:is(.searching, .one) .r20qp-sec + .r20qp-sec { margin-top:4px; padding-top:0; border-top:0; }
         .ui-dialog.r20qp .r20qp-tile { display:flex; flex-direction:column; gap:4px; min-width:0; height:auto; margin:0; padding:4px; border:0; border-radius:var(--aio-r); background:transparent; box-shadow:none; color:var(--aio-ink); text-align:left; cursor:pointer; }
         .ui-dialog.r20qp .r20qp-tile:hover { background:var(--aio-accent-bg); }
         .ui-dialog.r20qp .r20qp-tile.on { background:var(--aio-accent-bg); box-shadow:inset 0 0 0 2px var(--aio-accent); }
