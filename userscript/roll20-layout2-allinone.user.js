@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.89.2
+// @version      1.89.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.89.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1257,6 +1257,9 @@ const CORE_CSS = `
         :is(.ui-dialog, #imagedialog, #r20be, .vtt-page-card-menu, body) .aio-pm > button { width:var(--aio-h); height:var(--aio-h); margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-xl); line-height:1; cursor:pointer; }
         :is(.ui-dialog, #imagedialog, #r20be, .vtt-page-card-menu, body) .aio-pm.sm > button { width:var(--aio-h-sm); height:var(--aio-h-sm); font-size:var(--aio-fs-lg); }
         :is(.ui-dialog, #imagedialog, #r20be, .vtt-page-card-menu, body) .aio-pm > button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+        /* 공용 부품: 머리줄 아이콘 단추 (📌 · ✕ 등) — 22px · 테두리 없음 · 누른 상태는 강조색 옅게 */
+        :is(#r20-sn, #r20-qf, #r20-logbak, #r20-ccf, #r20-fit) .aio-ib { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:1; cursor:pointer; }
+        :is(#r20-sn, #r20-qf, #r20-logbak, #r20-ccf, #r20-fit) .aio-ib:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         /* 공용 창 틀 — ⠿ 끌기 손잡이 · 자리 고르기 (aioDockSeg) */
         .aio-drag { flex:none; width:14px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; cursor:move; user-select:none; touch-action:none; }
         :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd { cursor:move; justify-content:flex-start !important; gap:6px; }
@@ -3568,7 +3571,7 @@ const logBackup = (() => {
         pop.id = "r20-logbak";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "로그 백업");
-        pop.innerHTML = '<div class="hd"><b>📜 로그 백업</b><span class="st"></span><button type="button" class="x" aria-label="닫기">✕</button></div>'
+        pop.innerHTML = '<div class="hd"><b>📜 로그 백업</b><span class="st"></span><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><div class="rg"><span>범위</span><button type="button" data-k="a">▶ 시작 찍기</button><button type="button" data-k="b">끝 찍기 ■</button><button type="button" data-k="all">전체</button></div>'
             + '<div class="hint" aria-live="polite"></div>'
             + '<button type="button" class="sw" role="switch"><i aria-hidden="true"></i>귓속말 · GM 굴림 빼기</button>'
@@ -3637,7 +3640,6 @@ const LB_CSS = `
         #r20-logbak button:focus-visible { outline:2px solid #8a3d9e; outline-offset:1px; }
         #r20-logbak button[aria-pressed=true] { background:#8a3d9e; border-color:#8a3d9e; color:#fff; }
         #r20-logbak button:disabled { opacity:.7; cursor:default; }
-        #r20-logbak .x { padding:0 6px; }
         #r20-logbak .bd { display:flex; flex-direction:column; gap:6px; padding:6px 8px 8px; overflow-y:auto; }
         #r20-logbak .rg { display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
         #r20-logbak .rg span, #r20-logbak .lbl { color:#888; font-size:11px; }
@@ -4622,7 +4624,7 @@ const ccfImport = (() => {
         pop.id = "r20-ccf";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "코코포리아 맵 가져오기");
-        pop.innerHTML = '<div class="hd"><b>코코포리아 맵 가져오기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
+        pop.innerHTML = '<div class="hd"><b>코코포리아 맵 가져오기</b><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><div class="rg"><button type="button" data-k="pick">ZIP · webm 고르기</button><span class="fn"></span>'
             + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
             + '<div class="rg pw" hidden><input type="password" placeholder="ZIP 암호" aria-label="ZIP 암호" autocomplete="off"><button type="button" data-k="pw">열기</button></div>'
@@ -4924,7 +4926,7 @@ const mapFit = (() => {
         pop.id = "r20-fit";
         pop.setAttribute("role", "dialog");
         pop.setAttribute("aria-label", "맵 맞추기");
-        pop.innerHTML = '<div class="hd"><b>맵 맞추기</b><button type="button" class="x" aria-label="닫기">✕</button></div>'
+        pop.innerHTML = '<div class="hd"><b>맵 맞추기</b><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><span class="lb">방식</span><div class="rg mode"></div>'
             + '<div class="rrow"><span class="lb">맵 비율 <small>1% 안쪽으로</small></span><div class="rg ratio"></div></div>'
             + '<span class="lb">여백 (칸) <small>가장 좁은 쪽</small></span><div class="rg margin"></div>'
@@ -4978,7 +4980,6 @@ addCss(`
         #r20-fit button:disabled { opacity:.5; cursor:default; }
         #r20-fit button:focus-visible, #r20-fit input:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         #r20-fit button[aria-pressed=true], #r20-fit .pri { background:var(--aio-accent); border-color:var(--aio-accent); color:var(--aio-ink-inv); }
-        #r20-fit .x { padding:0 6px; }
         #r20-fit .margin input { width:52px; height:22px; margin:0; padding:0 5px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:var(--aio-fs-sm); }
         #r20-fit .grid { display:flex; flex-direction:column; gap:3px; padding:5px 7px; border-radius:var(--aio-r-sm); background:var(--aio-warn-bg); color:var(--aio-warn-ink); font-size:var(--aio-fs-sm); }
         #r20-fit .grid:empty { display:none; }
@@ -5018,7 +5019,6 @@ addCss(`
         #r20-ccf button { height:22px; margin:0; padding:0 9px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font:700 11px/20px sans-serif; cursor:pointer; }
         #r20-ccf button:disabled { opacity:.6; cursor:default; }
         #r20-ccf button[aria-pressed=true], #r20-ccf .pri { background:var(--aio-accent); border-color:var(--aio-accent); color:var(--aio-ink-inv); }
-        #r20-ccf .x { padding:0 6px; }
         #r20-ccf .scn { margin:0; flex-wrap:nowrap; font-weight:400; }
         #r20-ccf .scn[hidden] { display:none; }
         #r20-ccf select { flex:1; min-width:0; height:24px; margin:0; padding:0 4px; font-size:var(--aio-fs-md); }
@@ -9175,8 +9175,8 @@ const quickFind = (() => {
         // 머리줄 = 검색칸 (접어도 검색칸은 남는다) · 📌 동안엔 왼쪽 ⋮⋮ 로 옮기고 두 번 눌러 접기
         root.innerHTML = '<div class="qf-box" role="dialog" aria-label="빠른 찾기">'
             + '<div class="qf-head"><span class="qf-grip aio-drag" title="끌어서 옮기기 · 두 번 눌러 접기" aria-hidden="true">⠿</span><b class="qf-tt">🔍 빠른 찾기</b><span class="qf-sp"></span><span class="dkw"></span>'
-            + '<button type="button" class="qf-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
-            + '<button type="button" class="qf-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
+            + '<button type="button" class="qf-ib aio-ib qf-pin" aria-label="이 자리에 고정" aria-pressed="false">📌</button>'
+            + '<button type="button" class="qf-ib aio-ib qf-x" aria-label="닫기" title="닫기">✕</button></div>'
             + '<div class="qf-qrow">'
             + '<input type="search" class="qf-in" role="combobox" aria-expanded="true" aria-controls="r20-qf-list" aria-autocomplete="list" aria-label="빠른 찾기 — 이름 · 초성 · #태그 · > 로 시작하면 명령" placeholder="찾기 — 이름 · 초성 · #태그 · > 명령" autocomplete="off" spellcheck="false">'
             + '</div>'
@@ -9583,7 +9583,6 @@ addCss(`
         #r20-qf .qf-qrow .qf-in { flex:1; min-width:0; }
         #r20-qf:is(.pin, .dock) .qf-grip { display:block; }
         #r20-qf.dock .qf-grip { cursor:default; }
-        #r20-qf .qf-ib { width:21px; height:21px; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
         #r20-qf .qf-ib:hover { background:var(--aio-bg-3); }
         #r20-qf .qf-pin { font-size:var(--aio-fs-xs); filter:grayscale(1); opacity:0.5; }
         #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
@@ -9979,12 +9978,12 @@ const scenNav = (() => {
         win.setAttribute("aria-label", "시나리오");
         win.tabIndex = -1;
         win.hidden = true;
-        win.innerHTML = '<div class="hd"><span class="aio-drag" aria-hidden="true" title="끌어서 옮기기">⠿</span><button type="button" data-a="toc" class="ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
-            + '<button type="button" data-a="warn" class="ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
-            + '<button type="button" data-a="cfg" class="ib cfgb" hidden aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
-            + '<button type="button" data-a="pick" class="ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
+        win.innerHTML = '<div class="hd"><span class="aio-drag" aria-hidden="true" title="끌어서 옮기기">⠿</span><button type="button" data-a="toc" class="ib aio-ib tg" title="목차 접기 · 펴기" aria-label="목차">☰</button><b class="nm">시나리오</b><span class="mt"></span>'
+            + '<button type="button" data-a="warn" class="ib aio-ib warn" hidden title="플레이어에게 공개된 핸드아웃이 있어요">⚠</button>'
+            + '<button type="button" data-a="cfg" class="ib aio-ib cfgb" hidden aria-pressed="false" title="장면 매크로 연결" aria-label="장면 매크로 연결">⚙</button>'
+            + '<button type="button" data-a="pick" class="ib aio-ib" title="시나리오(저널 폴더) 고르기" aria-label="시나리오 고르기">📁</button>'
             + '<span class="dkw"></span>'
-            + '<button type="button" data-a="pin" class="ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib" aria-label="닫기">✕</button></div>'
+            + '<button type="button" data-a="pin" class="ib aio-ib pin" title="이 자리 · 크기 기억" aria-pressed="false">📌</button><button type="button" data-a="x" class="ib aio-ib" aria-label="닫기">✕</button></div>'
             + '<div class="pk" hidden><input type="search" class="pq" placeholder="폴더 찾기 — 이름 · 초성" aria-label="폴더 찾기" spellcheck="false" autocomplete="off"><div class="pl" role="listbox" aria-label="시나리오 폴더"></div></div>'
             + '<div class="cfg" hidden><label>열기 매크로<select data-k="a" aria-label="장면 열기 매크로"></select></label><label>닫기 매크로<select data-k="b" aria-label="장면 닫기 매크로"></select></label>'
             + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
