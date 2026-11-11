@@ -8,7 +8,7 @@ mkdir -p out
 node serve.js > out/serve.log 2>&1 & SRV=$!
 trap 'kill $SRV 2>/dev/null' EXIT
 for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:8766/blank.html && break; sleep 0.2; done
-ALL="navtest checktest mactest scenetest findtest qftest qftest2 docktest docktest2 docktest-pl fittest3 realzoom jtest sorttest zoomui fvtest notetest parttest maptest unloadtest settest libtest fadetest2 jbdtest jbdtest2 jbmenutest edgetest betoggle aftest pztest hometest edgenavtest jbpvtest spktest qetest qptest tbltest lnktest toasttest a11ytest settest2 qfcmdtest dragtest lnkdeltest"
+ALL="navtest checktest mactest scenetest findtest qftest qftest2 docktest docktest2 docktest-pl fittest3 realzoom jtest sorttest zoomui fvtest notetest parttest maptest unloadtest settest libtest fadetest2 jbdtest jbdtest2 jbmenutest edgetest betoggle aftest pztest hometest edgenavtest jbpvtest spktest qetest qptest tbltest lnktest toasttest a11ytest settest2 qfcmdtest dragtest lnkdeltest mscntest"
 for t in ${@:-$ALL}; do
   timeout 180 node $t.js > out/$t.txt 2>&1
   ok=$(grep -c "errors: \[\]" out/$t.txt); bad=$(grep -cE "✗|TimeoutError|Error:|errors: \[.+\]" out/$t.txt)

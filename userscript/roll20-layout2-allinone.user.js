@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.92.0
+// @version      1.93.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.92.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.93.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1158,7 +1158,7 @@ const aioDragFrom = (win, e, onEnd) => {
 };
 const aioDrag = (win, head, onEnd) => head.addEventListener("pointerdown", e => aioDragFrom(win, e, onEnd));
 // 작은 창들(로그 백업 · 코코포리아 맵 가져오기 · 맵 맞추기)은 머리줄을 끌어 옮긴다 — ⠿ 는 CSS 로
-const AIO_DRAG_HEADS = "#r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd";
+const AIO_DRAG_HEADS = "#r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-mscn > .hd";
 document.addEventListener("pointerdown", e => { const h = e.target.closest?.(AIO_DRAG_HEADS); if (h) aioDragFrom(h.parentElement, e); });
 // 이 스크립트 파일 주소 (오류 스택에 이 주소가 있으면 올인원 오류) — 오류가 났을 때 처음 한 번만 알아낸다
 // (불러올 때 스택을 만들면 스크립트 전체를 다시 읽어 40ms 가 든다 · 이벤트 처리 안에서는 작은 함수만)
@@ -1178,7 +1178,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#aio-toasts, #custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
+const AIO_ZOOMED = "#aio-toasts, #custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -1278,13 +1278,13 @@ const CORE_CSS = `
         .aio-chip:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         .aio-chip:is(.on, [aria-pressed="true"]) { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
         /* 공용 부품: 머리줄 아이콘 단추 (📌 · ✕ 등) — 22px · 테두리 없음 · 누른 상태는 강조색 옅게 */
-        :is(#r20-sn, #r20-qf, #r20-logbak, #r20-ccf, #r20-fit) {
+        :is(#r20-sn, #r20-qf, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn) {
             & .aio-ib { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:1; cursor:pointer; }
             & .aio-ib:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         }
         /* 공용 창 틀 — ⠿ 끌기 손잡이 · 자리 고르기 (aioDockSeg) */
         .aio-drag { flex:none; width:14px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; cursor:move; user-select:none; touch-action:none; }
-        :is(#r20-logbak, #r20-ccf, #r20-fit) {
+        :is(#r20-logbak, #r20-ccf, #r20-fit, #r20-mscn) {
             & > .hd { cursor:move; justify-content:flex-start !important; gap:6px; }
             & > .hd > .x { margin-left:auto; }
             & > .hd::before { content:"⠿"; flex:none; width:14px; margin-right:2px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; }
@@ -1328,7 +1328,7 @@ const CORE_CSS = `
         .aio-zm .aio-zv { min-width:44px; font-variant-numeric:tabular-nums; }
         .aio-zm button:disabled { opacity:0.4; cursor:default; }
         /* 올인원이 만든 창 안의 체크 상자 · 라디오 · 슬라이더도 강조색 (Roll20 것은 그대로) */
-        :is(#custom-settings-popup, #cs-side-panel, #custom-journal-popup, #r20be, #r20ss, #r20ss-bar, #r20-ccf, #r20-fit, #r20-emoji, #imagedialog .r20ri, .r20ts, .r20so-dlg) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color:var(--aio-accent); }
+        :is(#custom-settings-popup, #cs-side-panel, #custom-journal-popup, #r20be, #r20ss, #r20ss-bar, #r20-ccf, #r20-fit, #r20-mscn, #r20-emoji, #imagedialog .r20ri, .r20ts, .r20so-dlg) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color:var(--aio-accent); }
         #custom-settings-popup { position:fixed; width:300px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-md); z-index:var(--aio-z-win); display:none; flex-direction:column; font-family:sans-serif; font-size:var(--aio-fs-md); color:var(--aio-ink-2); overflow-y:auto; max-height:calc(70vh / var(--aio-z, 1)); }
         #custom-settings-popup.show { display:flex !important; }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
@@ -3769,6 +3769,7 @@ const mapShot = (() => {
         pgset: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
         cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><path d="M8 13l2.5-2.5L13 13l2-2 3 3"/>',
         fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
+        scn: '<rect x="3" y="7" width="14" height="12" rx="1"/><path d="M7 4h13a1 1 0 0 1 1 1v10"/><path d="m3 16 4-4 3 3 2-2 5 5"/>',
         load: '<path class="spin" d="M21 12a9 9 0 1 1-6.2-8.6"/>',
         ok: '<path d="M20 6 9 17l-5-5"/>',
         warn: '<path d="M20 6 9 17l-5-5"/><circle cx="19" cy="19" r="2" fill="currentColor"/>',
@@ -4012,6 +4013,7 @@ const mapShot = (() => {
             + '<div class="tray" id="r20-maptray" role="group" aria-label="맵 도구"><button type="button" class="shot"></button>'
             + `<button type="button" class="imp" title="코코포리아 맵 가져오기" aria-label="코코포리아 맵 가져오기">${svg("up")}</button>`
             + `<button type="button" class="fit" title="맵 맞추기" aria-label="맵 맞추기">${svg("fit")}</button>`
+            + `<button type="button" class="scn" title="맵 장면 — 이 페이지의 맵 · 토큰을 저장한 배치로 통째로 바꾸기" aria-label="맵 장면">${svg("scn")}</button>`
             + `<button type="button" class="pgset" title="페이지 설정" aria-label="페이지 설정">${svg("pgset")}</button></div>`;
         b.addEventListener("click", e => {
             const k = e.target.closest("button")?.className;
@@ -4019,8 +4021,9 @@ const mapShot = (() => {
             e.preventDefault(); e.stopPropagation();
             if (k === "main") setOpen(!b.classList.contains("open"));
             else if (k === "shot") shoot();
-            else if (k === "imp") { mapFit.close(); ccfImport.toggle(b); }
-            else if (k === "fit") { ccfImport.close(); mapFit.toggle(b); }
+            else if (k === "imp") { mapFit.close(); mapScenes.close(); ccfImport.toggle(b); }
+            else if (k === "fit") { ccfImport.close(); mapScenes.close(); mapFit.toggle(b); }
+            else if (k === "scn") { ccfImport.close(); mapFit.close(); mapScenes.toggle(b); }
             else if (k === "pgset") pageSettings(e.target.closest("button"));
         });
         document.body.appendChild(b);
@@ -4036,6 +4039,7 @@ const mapShot = (() => {
         box()?.remove();
         ccfImport.close();
         mapFit.close();
+        mapScenes.close();
     };
     return { inject, setEnabled };
 })();
@@ -5044,6 +5048,246 @@ const mapFit = (() => {
     window.addEventListener("resize", () => isOpen() && place());
     return { toggle, close };
 })();
+// ───────── 맵 장면 (GM): 한 페이지 안에서 맵 그림 · 토큰을 저장해 둔 배치로 통째로 바꾼다 (코코포리아 장면 전환처럼) — 맵 단추 밑 ─────────
+// 저장: 고른 층의 그림 · 선 · 글자를 속성 그대로 글(JSON)로 → GM 전용 핸드아웃 '맵 장면'의 GM 메모 (페이지마다 · 방 복사 때 같이 감)
+// 전환: 지금 모습을 찍어 두고(되돌리기) → 장면에 담긴 층의 것을 지우고 → 저장한 것을 같은 겹침 순서로 다시 만든다 (Roll20 이 모두에게 보냄)
+// 플레이어 말(플레이어가 움직일 수 있는 토큰)은 기본으로 빼 두어 장면이 바뀌어도 제자리 · 다시 만든 토큰은 새 토큰이라 턴 순서 · 토큰 ID 매크로는 끊긴다
+// (모든 장면을 한 페이지에 숨겨 두는 방식은 GM 화면에 장면이 다 겹쳐 보여서 쓰지 않는다)
+const mapScenes = (() => {
+    const NAME = "맵 장면", LEAVE_KEY = "r20_mscn_leave";
+    const COLL = { g: "thegraphics", p: "thepaths", t: "thetexts" };
+    const LAYERS = { map: ["map", "foreground"], objects: ["objects"], gmlayer: ["gmlayer"], walls: ["walls"] };
+    const PAGE_KEYS = ["width", "height", "snapping_increment", "showgrid", "grid_type", "gridcolor", "grid_opacity", "background_color", "scale_number", "scale_units", "diagonaltype"];
+    const DROP = new Set(["id", "_id", "page_id", "_pageid", "lastmove", "_lastmove"]);       // 새로 만들 때 Roll20 이 정하는 것
+    let pop = null, anchor = null, data = null, dataVer = null, loading = null, acts = null, seen = "", tick = 0;
+    const $ = s => pop.querySelector(s);
+    const isOpen = () => !!pop && !pop.hidden;
+    const page = () => window.Campaign?.activePage?.() || null;
+    const leave = () => localStorage.getItem(LEAVE_KEY) === "true";
+    const handout = () => (window.Campaign?.handouts?.models || []).find(m => m.get("name") === NAME);
+    const getBlob = (m, f) => new Promise(ok => {
+        const t = setTimeout(() => ok(""), 8000);
+        try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
+    });
+    const unesc = v => { try { return unescape(String(v || "")); } catch (e) { return String(v || ""); } };
+    // 데이터: { v, pages: { 페이지 id: { cur: 지금 장면 id, list: [장면] } } } — 다른 GM 이 바꿨으면(GM 메모 버전이 다르면) 다시 읽는다
+    const load = () => {
+        const m = handout(), ver = m ? String(m.get("gmnotes") ?? "") : "";
+        if (data && ver === dataVer) return Promise.resolve();
+        if (!m) { data = data || { v: 1, pages: {} }; dataVer = ver; return Promise.resolve(); }
+        return loading || (loading = getBlob(m, "gmnotes").then(raw => {
+            let d = null;
+            try { d = JSON.parse(unesc(raw) || "{}"); } catch (e) { /* 데이터가 아니면 빈 목록 */ }
+            data = d?.pages ? d : { v: 1, pages: {} }; dataVer = ver;
+        }).finally(() => { loading = null; }));
+    };
+    const summary = () => '<p><b>맵 장면</b> — 올인원 맵 도구의 \'맵 장면\'이 쓰는 핸드아웃이에요. GM 메모 칸(데이터)은 지우지 마세요.</p>'
+        + Object.entries(data.pages).filter(([, p]) => p.list.length)
+            .map(([id, p]) => `<p><b>${escAttr(window.Campaign?.pages?.get(id)?.get("name") || "(지운 페이지)")}</b> — ${p.list.map(s => escAttr(s.name)).join(" · ")}</p>`).join("");
+    const store = () => {
+        let m = handout();
+        try {
+            if (!m) m = window.Campaign.handouts.create({ name: NAME, inplayerjournals: "", archived: false });
+            m.updateBlobs({ gmnotes: escape(JSON.stringify(data)), notes: escape(summary()) });
+            m.save({});
+            dataVer = String(m.get("gmnotes") ?? "");
+            return true;
+        } catch (e) { aioErr("맵 장면 저장", e); aioToast("맵 장면을 저장하지 못했어요", { kind: "err", id: "mscn" }); return false; }
+    };
+    const P = pg => (data.pages[pg.id] ||= { cur: null, list: [] });
+    // 플레이어 말: 조종하는 사람(토큰 또는 연결된 캐릭터)에 나 말고 누가 있거나 '모두'
+    const others = s => String(s || "").split(",").some(x => (x = x.trim()) && x !== window.currentPlayer?.id);
+    const isPC = m => others(m.get("controlledby")) || others(window.Campaign?.characters?.get(m.get("represents"))?.get("controlledby"));
+    // 고른 층의 그림 · 선 · 글자를 겹침 순서대로
+    const objsOf = (pg, layers, keepPC) => {
+        const z = new Map(String(pg.get("zorder") || "").split(",").map((id, i) => [id, i])), ls = new Set(layers.flatMap(k => LAYERS[k] || []));
+        const out = [];
+        Object.entries(COLL).forEach(([k, c]) => (pg[c]?.models || []).forEach(m => {
+            if (ls.has(m.get("layer")) && !(keepPC && k === "g" && isPC(m))) out.push({ k, m });
+        }));
+        return out.sort((a, b) => (z.get(a.m.id) ?? 1e9) - (z.get(b.m.id) ?? 1e9));
+    };
+    const pack = ({ k, m }) => {
+        const a = {};
+        Object.entries(m.attributes || {}).forEach(([key, v]) => { if (!DROP.has(key) && v != null) a[key] = v; });
+        return { k, a };
+    };
+    const isMap = o => LAYERS.map.includes(o.a.layer);
+    const thumbOf = objs => {
+        const g = objs.filter(o => o.k === "g" && o.a.imgsrc).sort((x, y) => (isMap(y) - isMap(x)) || (y.a.width * y.a.height - x.a.width * x.a.height))[0];
+        return g ? sizedUrl(r20img(g.a.imgsrc), "thumb") : "";
+    };
+    // 장면 한 장 찍기 (set = 무엇을 담을지: layers · keepPC · withPage)
+    const shot = (pg, set) => {
+        const objs = objsOf(pg, set.layers, set.keepPC).map(pack);
+        return { objs, page: set.withPage ? Object.fromEntries(PAGE_KEYS.filter(k => pg.get(k) != null).map(k => [k, pg.get(k)])) : null,
+            thumb: thumbOf(objs), n: { map: objs.filter(isMap).length, tok: objs.filter(o => o.a.layer === "objects").length, etc: objs.filter(o => !isMap(o) && o.a.layer !== "objects").length }, at: Date.now() };
+    };
+    // 장면 놓기: 담긴 층의 것을 지우고(뺀 플레이어 말은 그대로) 저장한 것을 차례로 만든다
+    const apply = (pg, sc) => {
+        let bad = 0;
+        objsOf(pg, sc.layers, sc.keepPC).forEach(({ m }) => { try { m.destroy(); } catch (e) { bad++; aioErr("맵 장면 지우기", e, true); } });
+        sc.objs.forEach(o => { try { pg[COLL[o.k]].create({ ...o.a, page_id: pg.id }); } catch (e) { bad++; aioErr("맵 장면 놓기", e, true); } });
+        if (sc.page) try { pg.save(sc.page); } catch (e) { bad++; aioErr("맵 장면 페이지", e, true); }
+        return bad;
+    };
+    const go = async id => {
+        const pg = page();
+        if (!pg || !isGM()) return;
+        await load();
+        const p = P(pg), sc = p.list.find(s => s.id === id);
+        if (!sc) return;
+        const prev = p.list.find(s => s.id === p.cur);
+        if (prev && prev !== sc && leave()) Object.assign(prev, shot(pg, prev));       // 떠날 때 저장: 하던 배치를 그 장면에
+        const before = { layers: sc.layers, keepPC: sc.keepPC, withPage: sc.withPage, ...shot(pg, sc) }, was = p.cur;
+        const bad = apply(pg, sc);
+        p.cur = sc.id; store(); acts = null; draw();
+        const kept = sc.keepPC && sc.layers.includes("objects") ? objsOf(pg, ["objects"], false).filter(o => o.k === "g" && isPC(o.m)).length : 0;
+        aioToast(`'${sc.name}' 장면으로 바꿨어요 · ${sc.objs.length}개 놓음${kept ? ` · 플레이어 말 ${kept}개 그대로` : ""}${bad ? ` · ${bad}개 실패 (콘솔 확인)` : ""}`, {
+            kind: bad ? "err" : "ok", id: "mscn",
+            undo: () => { apply(pg, before); P(pg).cur = was; store(); draw(); aioToast("바꾸기 전으로 되돌렸어요", { kind: "ok", id: "mscn" }); } });
+    };
+    // ── 판 ──
+    const meta = s => [s.n?.map ? `맵 ${s.n.map}` : "", s.layers.includes("objects") ? `토큰 ${s.n?.tok || 0}` : "", s.n?.etc ? `그 밖 ${s.n.etc}` : "",
+        s.page?.width ? `${s.page.width}×${s.page.height}` : ""].filter(Boolean).join(" · ");
+    const draw = () => {
+        if (!isOpen()) return;
+        const pg = page(), ls = $(".ls");
+        seen = pg?.id || "";
+        $(".pg").textContent = pg ? "· " + (pg.get("name") || "이름 없는 페이지") : "";
+        $(".leave").checked = leave();
+        if (!pg) { ls.innerHTML = '<p class="msg">페이지를 찾지 못했어요</p>'; return; }
+        if (!data) { ls.innerHTML = '<p class="msg">읽는 중…</p>'; return; }
+        const p = P(pg);
+        ls.innerHTML = p.list.length ? p.list.map(s => `<div class="card${s.id === p.cur ? " now" : ""}" role="listitem">`
+            + `<button type="button" class="go" data-id="${escAttr(s.id)}"${s.id === p.cur ? ' aria-current="true"' : ""} title="이 장면으로 바꾸기">`
+            + `<i class="th"${s.thumb ? ` style="background-image:url('${escAttr(s.thumb)}')"` : ""}></i><span class="t"><b>${escAttr(s.name)}</b><small>${escAttr(meta(s))}</small></span>`
+            + `${s.id === p.cur ? "<em>지금</em>" : ""}</button>`
+            + `<button type="button" class="more aio-ib" data-id="${escAttr(s.id)}" aria-label="${escAttr(s.name)} 장면 메뉴" aria-expanded="${acts === s.id}">⋯</button>`
+            + (acts === s.id ? '<div class="acts" role="group" aria-label="장면 메뉴">' + [["ren", "이름"], ["over", "지금 화면으로 덮어쓰기"], ["dup", "복제"], ["up", "↑"], ["down", "↓"], ["del", "지우기"]]
+                .map(([a, t]) => `<button type="button" class="aio-btn sm${a === "del" ? " del" : ""}" data-a="${a}"${a === "up" ? ' aria-label="위로"' : a === "down" ? ' aria-label="아래로"' : ""}>${t}</button>`).join("") + "</div>" : "")
+            + "</div>").join("")
+            : '<p class="msg">아직 장면이 없어요 — 페이지를 꾸민 뒤 [＋ 지금 화면을 장면으로 저장]</p>';
+    };
+    // 저장 칸: 층마다 몇 개인지 보여 주고 고르게
+    const showForm = () => {
+        const pg = page();
+        if (!pg || !data) return;
+        const n = k => objsOf(pg, [k], false).length, pcs = objsOf(pg, ["objects"], false).filter(o => o.k === "g" && isPC(o.m)).length;
+        const chk = (k, label, on) => `<label><input type="checkbox" name="L" value="${k}"${on ? " checked" : ""}> ${label}<span>${n(k)}개</span></label>`;
+        const f = $(".fm");
+        f.innerHTML = `<input type="text" class="nm" value="${escAttr("장면 " + (P(pg).list.length + 1))}" aria-label="장면 이름" maxlength="60">`
+            + chk("map", "맵 층 (배경 그림)", true) + chk("objects", "토큰 층", true)
+            + `<label class="sub"><input type="checkbox" name="keepPC" checked> 플레이어 말은 빼기 — 장면이 바뀌어도 그대로<span>${pcs}개</span></label>`
+            + chk("gmlayer", "GM 층", false) + chk("walls", "벽 · 조명 선", false)
+            + `<label><input type="checkbox" name="withPage" checked> 페이지 크기 · 격자<span>${escAttr(pg.get("width"))}×${escAttr(pg.get("height"))}</span></label>`
+            + '<p class="hint">고른 층은 장면을 바꿀 때 통째로 갈아 끼워져요. 플레이어 말 = 플레이어가 움직일 수 있는 토큰.</p>'
+            + '<div class="row"><button type="button" class="aio-btn cancel">취소</button><button type="submit" class="aio-btn pri">저장</button></div>';
+        f.hidden = false; $(".add").hidden = true;
+        f.querySelector(".nm").select();
+    };
+    const hideForm = () => { $(".fm").hidden = true; $(".fm").textContent = ""; $(".add").hidden = false; };
+    const addScene = f => {
+        const pg = page();
+        if (!pg) return;
+        const layers = [...f.querySelectorAll('[name="L"]:checked')].map(x => x.value);
+        if (!layers.length) { aioToast("담을 층을 하나 이상 골라 주세요", { kind: "info", id: "mscn" }); return; }
+        const set = { layers, keepPC: f.querySelector('[name="keepPC"]').checked, withPage: f.querySelector('[name="withPage"]').checked };
+        const sc = { id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: f.querySelector(".nm").value.trim() || "이름 없는 장면", ...set, ...shot(pg, set) };
+        const p = P(pg);
+        p.list.push(sc); p.cur = sc.id;
+        if (store()) aioToast(`'${sc.name}' 장면을 저장했어요 · ${sc.objs.length}개`, { kind: "ok", id: "mscn" });
+        hideForm(); draw();
+    };
+    const act = (a, id) => {
+        const pg = page(), p = pg && P(pg), i = p ? p.list.findIndex(s => s.id === id) : -1, sc = p?.list[i];
+        if (!sc) return;
+        if (a === "ren") { const v = prompt("장면 이름", sc.name); if (v == null || !v.trim()) return; sc.name = v.trim().slice(0, 60); }
+        else if (a === "over") { if (!confirm(`'${sc.name}' 장면을 지금 화면으로 덮어쓸까요?`)) return; Object.assign(sc, shot(pg, sc)); p.cur = sc.id; }
+        else if (a === "dup") { const c = JSON.parse(JSON.stringify(sc)); c.id = "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); c.name = sc.name + " 사본"; p.list.splice(i + 1, 0, c); }
+        else if (a === "up" || a === "down") { const j = a === "up" ? i - 1 : i + 1; if (j < 0 || j >= p.list.length) return; [p.list[i], p.list[j]] = [p.list[j], p.list[i]]; }
+        else if (a === "del") { if (!confirm(`'${sc.name}' 장면을 지울까요? (맵에 놓인 것은 그대로예요)`)) return; p.list.splice(i, 1); if (p.cur === id) p.cur = null; acts = null; }
+        store(); draw();
+        pop.querySelector(`.more[data-id="${CSS.escape(id)}"]`)?.focus();
+    };
+    const build = () => {
+        pop = document.createElement("div");
+        pop.id = "r20-mscn";
+        pop.hidden = true;
+        pop.setAttribute("role", "dialog");
+        pop.setAttribute("aria-label", NAME);
+        pop.innerHTML = '<div class="hd"><b>맵 장면</b><span class="pg"></span><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>'
+            + '<div class="bd"><button type="button" class="aio-btn pri add">＋ 지금 화면을 장면으로 저장</button><form class="fm" hidden></form>'
+            + '<div class="ls" role="list" aria-label="장면"></div></div>'
+            + '<label class="ft" title="켜면 다른 장면으로 갈 때 지금 배치(NPC 자리 · HP 등)를 떠나는 장면에 저장 — 꺼 두면 늘 처음 저장한 그대로"><input type="checkbox" class="leave"> 떠날 때 지금 배치를 그 장면에 저장</label>';
+        pop.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.classList.contains("x")) return close();
+            if (b.classList.contains("add")) return showForm();
+            if (b.classList.contains("cancel")) return hideForm();
+            if (b.classList.contains("go")) return go(b.dataset.id);
+            if (b.classList.contains("more")) { acts = acts === b.dataset.id ? null : b.dataset.id; draw(); pop.querySelector(`.more[data-id="${CSS.escape(b.dataset.id)}"]`)?.focus(); return; }
+            if (b.dataset.a) return act(b.dataset.a, acts);
+        });
+        $(".fm").addEventListener("submit", e => { e.preventDefault(); addScene(e.target); });
+        $(".leave").addEventListener("change", e => { localStorage.setItem(LEAVE_KEY, String(e.target.checked)); });
+        document.body.appendChild(pop);
+    };
+    const place = () => {
+        if (!pop || !anchor?.isConnected) return;
+        const r = anchor.getBoundingClientRect();
+        Object.assign(pop.style, { top: zpx(Math.round(r.top)), right: zpx(Math.round(innerWidth - r.left + 8)) });
+    };
+    const open = at => {
+        if (!isGM()) return;
+        anchor = at;
+        if (!pop) build();
+        pop.hidden = false; place(); hideForm(); draw();
+        load().then(draw);
+        clearInterval(tick);
+        tick = setInterval(() => { if (!isOpen()) return clearInterval(tick); if ((page()?.id || "") !== seen) { acts = null; hideForm(); draw(); } }, 1500);      // GM 이 다른 페이지로 가면
+    };
+    const close = () => { if (pop) pop.hidden = true; clearInterval(tick); };
+    const toggle = at => (isOpen() ? close() : open(at));
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
+    window.addEventListener("resize", () => isOpen() && place());
+    return { toggle, close };
+})();
+addCss(`
+        /* 맵 장면 판 (맵 단추 밑) — 가져오기 판과 같은 틀 */
+        #r20-mscn { position:fixed; z-index:calc(var(--aio-z-win) + 3); display:flex; flex-direction:column; width:300px; max-width:calc((100vw - 32px) / var(--aio-z, 1)); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:var(--aio-shadow-lg); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
+        #r20-mscn[hidden] { display:none; }
+        #r20-mscn {
+            & .hd { display:flex; align-items:center; padding:6px 8px; border-bottom:1px solid var(--aio-line-4); }
+            & .hd .pg { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-5); font-size:var(--aio-fs-sm); }
+            & .bd { display:flex; flex-direction:column; gap:6px; min-height:0; padding:6px 8px 8px; overflow-y:auto; }
+            & .fm { display:flex; flex-direction:column; gap:2px; padding:8px; border:1px solid var(--aio-line-3); border-radius:var(--aio-r); background:var(--aio-bg-2); }
+            & .fm[hidden], & .add[hidden] { display:none; }
+            & .fm .nm { height:var(--aio-h); margin:0 0 4px; padding:0 8px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:var(--aio-fs-md); }
+            & .fm label { display:flex; align-items:center; gap:6px; margin:0; font-weight:400; }
+            & .fm label.sub { padding-left:20px; color:var(--aio-ink-3); }
+            & .fm label span { margin-left:auto; color:var(--aio-ink-5); font-size:var(--aio-fs-sm); white-space:nowrap; }
+            & .fm input[type=checkbox] { margin:0; }
+            & .fm .hint { margin:4px 0 0; color:var(--aio-ink-5); font-size:var(--aio-fs-sm); }
+            & .fm .row { display:flex; justify-content:flex-end; gap:6px; margin-top:6px; }
+            & .ls { display:flex; flex-direction:column; gap:4px; }
+            & .msg { margin:6px 2px; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+            & .card { display:flex; flex-wrap:wrap; align-items:center; gap:2px; padding:3px; border:1px solid transparent; border-radius:var(--aio-r); }
+            & .card:hover { background:var(--aio-bg-3); }
+            & .card.now { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
+            & .go { position:relative; display:flex; flex:1; align-items:center; gap:8px; min-width:0; margin:0; padding:0; border:0; background:none; box-shadow:none; color:inherit; text-align:left; cursor:pointer; }
+            & .th { flex:none; width:72px; height:42px; border-radius:var(--aio-r-sm); background:var(--aio-bg-4) center / cover no-repeat; }
+            & .t { display:flex; flex-direction:column; min-width:0; }
+            & .t b { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:var(--aio-fs-md); }
+            & .t small { color:var(--aio-ink-5); font-size:var(--aio-fs-sm); }
+            & .go em { position:absolute; top:0; right:2px; color:var(--aio-accent); font-size:var(--aio-fs-xs); font-style:normal; font-weight:700; }
+            & .acts { display:flex; flex-wrap:wrap; gap:4px; width:100%; padding:4px 0 2px 80px; }
+            & .acts .del { color:var(--aio-bad); }
+            & .ft { display:flex; align-items:center; gap:6px; margin:0; padding:6px 8px; border-top:1px solid var(--aio-line-4); color:var(--aio-ink-3); font-size:var(--aio-fs-sm); font-weight:400; }
+            & .ft input { margin:0; }
+        }
+`);
 addCss(`
         /* 맵 맞추기 판 (맵 단추 밑) — 가져오기 판과 같은 모양 */
         #r20-fit { position:fixed; z-index:calc(var(--aio-z-win) + 3); display:flex; flex-direction:column; width:330px; max-width:calc((100vw - 32px) / var(--aio-z, 1)); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:var(--aio-shadow-lg); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
@@ -9686,7 +9930,7 @@ const winMemory = (() => {
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
     // 올인원 창 + 시트 · 핸드아웃 말고 Roll20 창(덱 선택창 등). 시트 · 핸드아웃은 Roll20 이 원래 해 주므로 건드리지 않는다
-    const HEADS = "#r20be > .r20be-head, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
+    const HEADS = "#r20be > .r20be-head, #r20-logbak > .hd, #r20-ccf > .hd, #r20-fit > .hd, #r20-mscn > .hd, #r20-sn > .hd, #r20-qf:is(.pin, .dock) .qf-box > .qf-head, .ui-dialog > .ui-dialog-titlebar";
     document.addEventListener("dblclick", e => {
         if (!btnVisible.winmem) return;
         const head = e.target.closest?.(HEADS);
@@ -9864,8 +10108,8 @@ addCss(`
         }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
         /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
-        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .qf-qrow, .ui-dialog-titlebar) { display:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
+        :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-header, .hd, .qf-head, .qf-qrow, .ui-dialog-titlebar) { display:none !important; }
 `);
 
 addFeature("quickFind", quickFind);
