@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.89.5
+// @version      1.89.6
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.89.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.6";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -14963,7 +14963,8 @@ if (!oldAddonStyle || !oldAddonStyle.dataset.aio) {
     const style = oldAddonStyle || document.createElement("style");
     style.id = "r20-addon-style";
     style.dataset.aio = "1";
-    style.textContent = [CORE_CSS, ...CSS_PARTS].join("\n");
+    // 넣을 때만 주석 · 줄 앞 공백 · 빈 줄을 걷어 읽어 들이는 양을 줄인다 (스크립트 안 원본 글은 그대로 — 고치기 쉽게)
+    style.textContent = [CORE_CSS, ...CSS_PARTS].join("\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]+/gm, "").replace(/\n{2,}/g, "\n");
     document.head.appendChild(style);
 }
 // 한 기능이 오류를 내도 나머지는 계속 붙도록 하나씩 따로 돌린다
