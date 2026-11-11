@@ -10,10 +10,10 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
     document.body.innerHTML = '<div id="journal"><div class="content"></div></div><div id="jukebox"><div class="content"></div></div>';
     const M = (id, a) => ({ id, attributes: a, get: k => a[k], set: (k, v) => { if (typeof k === 'object') Object.assign(a, k); else a[k] = v; }, save: function (o) { if (o) Object.assign(a, o); } });
     const coll = arr => ({ models: arr, get: id => arr.find(x => x.id === id), on() {}, create: o => { const m = M('new' + arr.length, o); arr.push(m); return m; }, forEach: f => arr.forEach(f) });
-    const tr = [['t1', 'Kokia - Remember The Kiss'], ['t2', 'ASCA - KOE'], ['t3', '바다의 유령'], ['t4', 'Kokia - 10 Years'], ['t5', 'kokia - 2 Days']]
+    const tr = [['t1', 'Kokia - Remember The Kiss'], ['t2', 'ASCA - KOE'], ['t3', '바다의 유령'], ['t4', 'Kokia - 10 Years'], ['t5', 'kokia - 2 Days'], ['t6', '🏮 Untold Scandal OST'], ['t7', 'Bill Charlap']]
       .map(([id, title]) => M(id, { title, volume: 30, loop: true, source: 'My Audio', track_id: id, tags: '' }));
     window.Jukebox = { playlist: coll(tr) };
-    let folder = JSON.stringify([{ n: '이별, 카타르시스', i: ['t1', 't3', 't2', 't4', 't5'], id: 'pl1', s: 's' }]);
+    let folder = JSON.stringify([{ n: '이별, 카타르시스', i: ['t6', 't1', 't3', 't2', 't4', 't5', 't7'], id: 'pl1', s: 's' }]);
     window.Campaign = { get: k => k === 'jukeboxfolder' ? folder : k === 'journalfolder' ? '[]' : null, save: o => { if (o.jukeboxfolder) { folder = o.jukeboxfolder; window.__saved = o.jukeboxfolder; } }, on() {},
       handouts: coll([]), characters: coll([]), rollabletables: coll([]), decks: coll([]), pages: coll([]) };
     window.is_gm = true;

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.89.6
+// @version      1.89.7
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.89.6";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.7";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -11390,13 +11390,14 @@ const bulkEditor = (() => {
             n.isNew || !FEAT.bgmPreview ? null : pvBlock(n));
     };
 
-    // 플레이리스트 곡 정렬: 숫자 → 알파벳 → 가나다 (대소문자 무시, 숫자는 크기순). 자리가 바뀐 곡만 옮김 표시 — 저장해야 반영
+    // 플레이리스트 곡 정렬: Roll20 의 '알파벳순 정렬'과 같은 순서 — 대소문자만 무시하고 글자 코드 순
+    //   (숫자도 글자처럼 '10' 이 '2' 앞 · 영어 → 한글 · 이모지로 시작하는 이름은 맨 뒤). 자리가 바뀐 곡만 옮김 표시 — 저장해야 반영
     //   태그순: 첫 태그끼리 묶고 그 안은 이름순, 태그 없는 곡은 맨 뒤
-    const byName = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
-    const nameCmp = (a, b) => byName.compare(a.cur.name || "", b.cur.name || "");
+    const r20Cmp = (x, y) => { x = String(x || "").toLowerCase(); y = String(y || "").toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; };
+    const nameCmp = (a, b) => r20Cmp(a.cur.name, b.cur.name);
     const tagCmp = (a, b) => {
         const x = tagList(a.cur.tags)[0], y = tagList(b.cur.tags)[0];
-        return x && y ? byName.compare(x, y) || nameCmp(a, b) : x ? -1 : y ? 1 : nameCmp(a, b);
+        return x && y ? r20Cmp(x, y) || nameCmp(a, b) : x ? -1 : y ? 1 : nameCmp(a, b);
     };
     const folderFirst = (a, b) => (b.kids ? 1 : 0) - (a.kids ? 1 : 0) || nameCmp(a, b);      // 저널 폴더: 하위 폴더 먼저, 그다음 항목
     const sortKids = (t, n, cmp) => {
@@ -11513,9 +11514,9 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-btns" }, el("button", { type: "button", class: "r20be-sec", disabled: !n.kids.length,
                 onclick: () => { t.checked = new Set(n.kids.map(k => k.id)); t.collapsed.delete(n.id); renderTree(); renderPane(); } },
                 "안의 항목 모두 선택 → 한꺼번에 바꾸기"),
-                (t.which === "bgm" ? [["곡 이름순 정렬", nameCmp, "숫자 → 알파벳 → 가나다 순 (저장해야 반영)", "이미 이름순이에요"],
+                (t.which === "bgm" ? [["곡 이름순 정렬", nameCmp, "Roll20 알파벳순 정렬과 같은 순서 (저장해야 반영)", "이미 이름순이에요"],
                     ["곡 태그순 정렬", tagCmp, "첫 태그끼리 묶고 그 안은 이름순, 태그 없는 곡은 맨 뒤 (저장해야 반영)", "이미 태그순이에요"]]
-                    : t.which === "journal" ? [["이름순 정렬", folderFirst, "바로 안의 하위 폴더 먼저, 그다음 항목 — 숫자 → 알파벳 → 가나다 순 (저장해야 반영)", "이미 이름순이에요"]] : []).map(([label, cmp, tip, same]) =>
+                    : t.which === "journal" ? [["이름순 정렬", folderFirst, "바로 안의 하위 폴더 먼저, 그다음 항목 — Roll20 알파벳순 정렬과 같은 순서 (저장해야 반영)", "이미 이름순이에요"]] : []).map(([label, cmp, tip, same]) =>
                     el("button", { type: "button", class: "r20be-sec", disabled: n.kids.length < 2, title: tip,
                         onclick: e => {
                             if (!sortKids(t, n, cmp)) { const b = e.currentTarget; b.textContent = same; setTimeout(() => { b.textContent = label; }, 1500); return; }
