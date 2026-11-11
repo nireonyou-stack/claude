@@ -76,10 +76,10 @@ const NOTES = {
   await p.click('#r20-sn .aio-dock [data-v="dock"]'); await p.waitForTimeout(200);
   const pz = () => p.$eval('#playerzone', e => Math.round(e.getBoundingClientRect().left));
   console.log('« 단추:', await R('.collapse-toggle'), '| 머리줄 왼쪽 여백:', await p.$eval('#r20-sn .hd', h => h.style.paddingLeft), '| ☰ 위치:', await R('#r20-sn .hd .tg'));
-  console.log('붙임:', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.textContent), '| 📌 숨김:', await p.$eval('#r20-sn .pin', b => b.hidden), '| playerzone left:', await pz());
+  console.log('붙임:', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')), '| 📌 숨김:', await p.$eval('#r20-sn .pin', b => b.hidden), '| playerzone left:', await pz());
   // ½ 반쪽 · 아래 끝 끌기 · 두 번 → 반쪽
   await p.click('#r20-sn .aio-dock [data-v="half"]'); await p.waitForTimeout(100);
-  console.log('½ →', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.textContent));
+  console.log('½ →', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')));
   let g = await p.$eval('#r20-sn .hg', e => e.getBoundingClientRect().toJSON());
   await p.mouse.move(400, g.y + 3); await p.mouse.down(); await p.mouse.move(400, g.y + 103, { steps: 4 }); await p.mouse.up(); await p.waitForTimeout(100);
   console.log('아래 끝 +100 →', await R('#r20-sn'), '| 저장:', await p.evaluate(() => localStorage.getItem('r20_sn_dh')));

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.89.4
+// @version      1.89.5
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.89.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.89.5";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1117,16 +1117,19 @@ const aioToast = (() => {
     return show;
 })();
 // ───────── 공용 창 틀 (UX 원칙 1): 머리줄 순서 ⠿ 끌기 · 제목 · (창마다 동작) · 자리 · 📌 · ✕ ─────────
-// 자리 고르기: aioDockSeg([["dock","붙임"],["half","½"],["float","떠 있기"]], 지금, 고르면) → 요소 (.set(값) 으로 다시 칠함) — 창마다 되는 것만 넘긴다
-const aioDockSeg = (modes, cur, onPick) => {
+// 자리 고르기: aioDockSeg([["dock","붙임"],["half","½"],["float","떠 있기"]], 지금, 고르면, 붙는 쪽) → 요소 (.set(값) 으로 다시 칠함) — 창마다 되는 것만 넘긴다
+// 보이는 것은 아이콘 한 글자(◧/◨ 붙임 · ½ · ❐ 떠 있기), 말은 툴팁과 읽어 주기에만
+const aioDockSeg = (modes, cur, onPick, side = "right") => {
     const g = document.createElement("span");
     g.className = "aio-dock";
     g.setAttribute("role", "group");
     g.setAttribute("aria-label", "창 자리");
-    const TIP = { dock: "화면 가장자리에 붙이기", half: "붙이고 반 높이로", float: "떠 있는 창으로 (끌어서 옮기기)" };
+    const TIP = { dock: "붙임 — 화면 가장자리에 붙이기", half: "½ — 붙이고 반 높이로", float: "떠 있기 — 떠 있는 창으로 (끌어서 옮기기)" };
+    const ICON = { dock: side === "left" ? "◧" : "◨", half: "½", float: "❐" };
     modes.forEach(([v, label]) => {
         const b = document.createElement("button");
-        b.type = "button"; b.dataset.v = v; b.textContent = label; b.title = TIP[v] || label;
+        b.type = "button"; b.dataset.v = v; b.textContent = ICON[v] || label; b.title = TIP[v] || label;
+        b.setAttribute("aria-label", label);
         b.onclick = e => { e.stopPropagation(); g.set(v); onPick(v); };
         g.appendChild(b);
     });
@@ -1265,11 +1268,10 @@ const CORE_CSS = `
         :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd { cursor:move; justify-content:flex-start !important; gap:6px; }
         :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd > .x { margin-left:auto; }
         :is(#r20-logbak, #r20-ccf, #r20-fit) > .hd::before { content:"⠿"; flex:none; width:14px; margin-right:2px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; }
-        .aio-dock { display:inline-flex; flex:none; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
-        .aio-dock button { height:20px; margin:0; padding:0 6px; border:0; border-radius:0; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-4); font-size:var(--aio-fs-xs); line-height:20px; white-space:nowrap; cursor:pointer; }
-        .aio-dock button + button { border-left:1px solid var(--aio-line-2); }
+        .aio-dock { display:inline-flex; flex:none; gap:1px; }
+        .aio-dock button { width:20px; height:20px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-5); font-size:var(--aio-fs-md); line-height:20px; text-align:center; cursor:pointer; }
         .aio-dock button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
-        .aio-dock button[aria-pressed="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
+        .aio-dock button[aria-pressed="true"] { background:var(--aio-bg-3); color:var(--aio-ink-2); }
         .aio-dock button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:-2px; }
         /* 묶음 고르기 드롭다운 (grpDrop) */
         .aio-gd { position:relative; flex-shrink:0; }
@@ -1972,9 +1974,9 @@ addCss(`
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action] { width:14px !important; height:26px !important; margin:0 0 0 2px !important; padding:0 !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > button[data-action]::before, body.r20jb-on #journalfolderroot li.dd-folder > button[data-action]::before { top:0 !important; left:0 !important; width:100% !important; text-align:center; font-size:var(--aio-fs-md) !important; line-height:26px !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-list { margin-top:0 !important; margin-bottom:0 !important; }
-        /* 재생목록 안 곡: 재생목록 제목 글자가 시작하는 자리부터 (--r20jb-ind 는 jukeboxRow 가 실제 위치를 재서 넣는다) */
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:0 !important; padding-left:calc(var(--r20jb-ind, 18px) - 3px) !important; border-left:0 !important; }
-        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 4px 0 1px !important; }
+        /* 재생목록 안 곡: 들여쓰지 않음 — 양옆 여백 없이 곡 이름을 넓게 (예전엔 --r20jb-ind 만큼 들여씀) */
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > ol.dd-list { margin-left:0 !important; padding-left:0 !important; border-left:0 !important; }
+        body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content { display:flex !important; align-items:center !important; gap:2px; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 !important; }
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .folder-title { flex:1 1 auto; min-width:0; float:none !important; width:auto !important; margin:0 !important; padding:0 !important; text-indent:0 !important; overflow:hidden; white-space:nowrap !important; text-overflow:clip; font-size:var(--aio-fs-md) !important; font-weight:700 !important; line-height:26px !important; }
         /* 재생목록 줄의 재생 · 섞기 · 내보내기 단추는 빼고 제목을 끝까지 (재생은 곡 줄에서) */
         body.r20jb-on #jukeboxfolderroot li.dd-folder > .dd-content .playlistcontrols { display:none !important; }
@@ -1993,7 +1995,7 @@ addCss(`
         body.r20jb-on #jukebox li.jukeboxitem > .dd-handle { position:absolute !important; left:0 !important; top:0 !important; bottom:0 !important; width:0 !important; opacity:0 !important; pointer-events:none !important; height:auto !important; margin:0 !important; padding:0 !important; border:0 !important; background:none !important; transform:none !important; overflow:hidden !important; text-indent:0 !important; font-size:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:grab; }
         body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::before { display:none !important; content:"" !important; position:static !important; display:block !important; margin:0 !important; font-size:9px !important; line-height:1 !important; color:var(--aio-ink-5) !important; opacity:0; }
         body.r20jb-on #jukebox li.jukeboxitem > .dd-handle::after { display:none !important; }
-        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { -webkit-user-select:none; user-select:none; display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 2px 0 0 !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
+        body.r20jb-on #jukebox li.jukeboxitem > .dd-content { -webkit-user-select:none; user-select:none; display:flex !important; align-items:center !important; gap:0; float:none !important; position:relative !important; left:auto !important; width:auto !important; height:auto !important; min-height:26px !important; margin:0 !important; padding:0 !important; border:0 !important; border-bottom:1px solid rgba(128,128,128,0.12) !important; background:none; }
         body.r20jb-on #jukebox li.jukeboxitem.r20jb-lift > .dd-content { background:color-mix(in srgb, var(--aio-accent) 10%, transparent) !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol { display:contents !important; }
         body.r20jb-on #jukebox li.jukeboxitem .playbackcontrol > * { float:none !important; position:static !important; margin:0 !important; flex-shrink:0; }
@@ -2397,9 +2399,8 @@ addBundle({ place: "main", order: 1.05, group: "play", label: "주크박스 서�
 addCss(`
         /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
         body.r20jbd-open #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 62px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:var(--aio-z-win) !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; scrollbar-width:thin; }
-        body.r20jbd-open #jukebox#jukebox { padding-left:2px !important; padding-right:2px !important; }
+        body.r20jbd-open #jukebox#jukebox { padding-left:0 !important; padding-right:0 !important; }
         body.r20jbd-open #jukebox :is(#jukeboxfolderroot, #jukeboxfolderroot > .dd-list) { margin-left:0 !important; margin-right:0 !important; padding-left:0 !important; padding-right:0 !important; list-style:none !important; }
-        body.r20jb-on.r20jbd-open #jukeboxfolderroot li.dd-folder > ol.dd-list { padding-left:calc(var(--r20jb-ind, 18px) - 10px) !important; }
         #r20-jbd-hd, #r20-jbd-grip, #r20-jbd-hgrip { display:none; }
         body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:calc(var(--aio-z-win) + 1); display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:62px; padding:4px 4px 4px 8px; flex-wrap:wrap; align-content:space-between; row-gap:4px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
         body.r20jbd-half #r20-jbd-hd { border-top:1px solid var(--aio-line-3); box-shadow:-6px -4px 14px rgba(0,0,0,0.16); }
@@ -2410,7 +2411,7 @@ addCss(`
         body.r20jbd-open #r20-jbd-hd .sp { flex:1; }
         body.r20jbd-open #r20-jbd-hd .aio-dock { margin-right:2px; }
         body.r20jbd-open #r20-jbd-hd .q { order:9; flex:1 0 100% !important; margin:0 !important; }
-        body.r20jbd-open #r20-jbd-hd .pin { filter:grayscale(1); opacity:0.5; } body.r20jbd-open #r20-jbd-hd .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
+        body.r20jbd-open #r20-jbd-hd .pin { filter:grayscale(1); opacity:0.5; } body.r20jbd-open #r20-jbd-hd .pin[aria-pressed="true"] { filter:none; opacity:1; }
         body.r20jbd-open #r20-jbd-grip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:var(--jbd-t, 0px); bottom:0; right:calc(var(--jbd-r, 300px) + var(--jbd-w, 300px) - 3px); width:6px; cursor:ew-resize; }
         body.r20jbd-half #r20-jbd-hgrip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:calc(var(--jbd-t, 0px) - 3px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:6px; cursor:ns-resize; }
         #r20-jbd-res { position:fixed; z-index:calc(var(--aio-z-win) + 3); top:calc(var(--jbd-t, 0px) + 62px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); max-height:236px; overflow-y:auto; padding:3px; border:1px solid var(--aio-line-3); border-top:0; background:var(--aio-bg); box-shadow:var(--aio-shadow-md); color:var(--aio-ink-2); font:12px/1.4 sans-serif; box-sizing:border-box; }
@@ -8047,7 +8048,7 @@ addCss(`
         #custom-journal-popup .cj-q:focus-visible { box-shadow:0 0 0 2px var(--aio-accent-mid) !important; }
         #custom-journal-popup :is(.cj-hd, .cj-ft) > button { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
         #custom-journal-popup :is(.cj-hd, .cj-ft) > button:hover { background:var(--aio-bg-3); }
-        #custom-journal-popup .cj-hd > button[aria-pressed="true"] { background:var(--aio-accent-bg); color:var(--aio-accent-dark); }
+        #custom-journal-popup .cj-hd > button[aria-pressed="true"] { background:var(--aio-bg-3); color:var(--aio-ink-2); }
         #custom-journal-popup .cj-pin { filter:grayscale(1); opacity:0.5; } #custom-journal-popup .cj-pin[aria-pressed="true"] { filter:none; opacity:1; }
         #custom-journal-popup button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         #custom-journal-popup .cj-recw { flex-shrink:0; padding:4px 8px 6px; border-bottom:1px solid var(--aio-line-4); }
@@ -9585,7 +9586,7 @@ addCss(`
         #r20-qf.dock .qf-grip { cursor:default; }
         #r20-qf .qf-ib:hover { background:var(--aio-bg-3); }
         #r20-qf .qf-pin { font-size:var(--aio-fs-xs); filter:grayscale(1); opacity:0.5; }
-        #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
+        #r20-qf .qf-pin[aria-pressed="true"] { filter:none; opacity:1; }
         #r20-qf .qf-in { flex:1 1 120px; min-width:0; width:auto !important; height:22px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; color:var(--aio-ink-2); font-size:var(--aio-fs-sm) !important; outline:none; }
         #r20-qf .qf-cats { display:flex; flex-wrap:wrap; flex-shrink:0; gap:2px 6px; padding:5px 6px; border-bottom:1px solid var(--aio-line-4); color:var(--aio-ink-3); font-size:var(--aio-fs-sm); user-select:none; }
         #r20-qf .qf-cats label { display:inline-flex; align-items:center; gap:1px; margin:0; font:inherit; color:inherit; white-space:nowrap; cursor:pointer; }
@@ -10001,7 +10002,7 @@ const scenNav = (() => {
             ls(DOCK, v === "float" ? "" : "1"); ls(HALF, v === "half" ? "1" : "");
             $(".pin").hidden = docked();
             place();
-        });
+        }, "left");
         win.querySelector(".dkw").replaceWith(dkSeg);
         win.addEventListener("keydown", e => {
             e.stopPropagation();
@@ -10502,7 +10503,7 @@ addCss(`
         #r20-sn .ib { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
         #r20-sn .ib:hover { background:var(--aio-bg-3); }
         #r20-sn .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
-        #r20-sn .pin { filter:grayscale(1); opacity:0.5; } #r20-sn .pin[aria-pressed="true"] { filter:none; opacity:1; background:var(--aio-accent-bg); }
+        #r20-sn .pin { filter:grayscale(1); opacity:0.5; } #r20-sn .pin[aria-pressed="true"] { filter:none; opacity:1; }
         #r20-sn .warn { color:var(--aio-warn); }
         #r20-sn .sp { display:flex; flex:1; min-height:0; }
         #r20-sn .toc { flex:0 0 var(--sn-tw, 112px); overflow-y:auto; overscroll-behavior:contain; padding:3px 2px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }

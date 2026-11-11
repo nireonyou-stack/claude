@@ -36,7 +36,7 @@ const SHOT = process.env.SHOT;
   await p.click('#r20-qfbtn'); await p.waitForTimeout(100);
   console.log('따로 띄움:', await geo('#r20-qf .qf-box'), '| 🔍 단추:', await geo('#r20-qfbtn'));
   await p.click('#r20-qf .aio-dock [data-v="dock"]'); await p.waitForTimeout(150);
-  console.log('▶ 붙임:', await geo('#r20-qf .qf-box'), '| 자리:', await p.$eval('#r20-qf .aio-dock [aria-pressed="true"]', b => b.textContent), '| 📌 보임:', await p.$eval('#r20-qf .qf-pin', b => getComputedStyle(b).display));
+  console.log('▶ 붙임:', await geo('#r20-qf .qf-box'), '| 자리:', await p.$eval('#r20-qf .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')), '| 📌 보임:', await p.$eval('#r20-qf .qf-pin', b => getComputedStyle(b).display));
   await p.fill('#r20-qf .qf-in', '마'); await p.waitForTimeout(80); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
   console.log('Enter →', (await p.evaluate(() => window.__log.splice(0))).join(','), '| 열려 있음:', await isOpen());
   await p.mouse.click(100, 600); await p.waitForTimeout(50); console.log('창 밖 눌러도 열려 있음:', await isOpen());
@@ -49,7 +49,7 @@ const SHOT = process.env.SHOT;
   console.log('다시 열기(붙은 채):', await geo('#r20-qf .qf-box'));
   // ◀ 떼기 → 따로 · 📌 → 그 자리
   await p.click('#r20-qf .aio-dock [data-v="float"]'); await p.waitForTimeout(100);
-  console.log('◀ 뗌:', await geo('#r20-qf .qf-box'), '| 자리:', await p.$eval('#r20-qf .aio-dock [aria-pressed="true"]', b => b.textContent));
+  console.log('◀ 뗌:', await geo('#r20-qf .qf-box'), '| 자리:', await p.$eval('#r20-qf .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')));
   await p.click('#r20-qf .qf-pin'); await p.waitForTimeout(100);
   const g = await (await p.$('#r20-qf .qf-grip')).boundingBox();
   await p.mouse.move(g.x + 5, g.y + 8); await p.mouse.down(); await p.mouse.move(g.x - 300, g.y + 150, { steps: 5 }); await p.mouse.up(); await p.waitForTimeout(80);
