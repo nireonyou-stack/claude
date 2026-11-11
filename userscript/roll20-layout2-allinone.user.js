@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.91.0
+// @version      1.92.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.91.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.92.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -11055,7 +11055,7 @@ const bulkEditor = (() => {
     const buildTab = which => {
         if (which === "map") return buildMap();
         if (which === "images") return buildImages();
-        if (which === "links") return { ...flatTab("links", []), scan: null, gsel: "", fixes: new Map(), busy: false, prog: [0, 0], phase: "", lastSaved: null };
+        if (which === "links") return { ...flatTab("links", []), scan: null, gsel: "", fixes: new Map(), dels: new Set(), busy: false, prog: [0, 0], phase: "", lastSaved: null, lastDel: null };
         if (which === "tables") return buildTables();
         if (which === "macros") return buildMacros();
         if (which === "decks") return buildDecks();
@@ -11120,7 +11120,7 @@ const bulkEditor = (() => {
     const nodeDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
     const isDirty = n => nodeDirty(n) || !!n.items?.some(itemDirty);       // 목록의 주황 점
     const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables, S.map, S.links].filter(Boolean);
-    const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + (t.fixes?.size || 0) + allNodes(t).reduce((c, n) =>
+    const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + (t.fixes?.size || 0) + (t.dels?.size || 0) + allNodes(t).reduce((c, n) =>
         c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
     // 저장 안 한 변경이 있으면 새로고침 · 탭 닫기 전에 브라우저가 한 번 묻는다
     window.addEventListener("beforeunload", e => {
@@ -12557,7 +12557,7 @@ const bulkEditor = (() => {
     const IMG_ICON = { page: "grid", char: "char", handout: "handout", table: "rtable", deck: "deck" };
     // ── 링크 점검: 방 안의 그림 주소를 모두 열어 보고, 안 열리는 · 너무 큰 것을 쓰는 곳과 함께 보여준 뒤 새 주소로 바꾼다 ──
     // 저장은 다른 탭 저장이 끝난 뒤 맨 마지막에 (그때의 Roll20 값에서 옛 주소만 바꾼다 → 다른 탭에서 고친 내용을 덮지 않음)
-    const HINT_LINK = "[점검 시작] → 왼쪽에서 원인을 고르고 새 주소를 넣은 뒤 저장 · 같은 주소를 쓰는 곳은 모두 함께 바뀜";
+    const HINT_LINK = "[점검 시작] → 왼쪽에서 원인을 고르고 새 주소를 넣거나 🗑 로 지울 것을 표시한 뒤 저장 · 같은 주소를 쓰는 곳은 모두 함께";
     const LINK_BIG = 8 * 1024 * 1024;
     const LINK_CAUSE = {
         discord: ["만료된 Discord 첨부", "2024년부터 Discord 첨부 링크는 Discord 밖에서 열리지 않아요. 그림을 imgur 등에 다시 올리고 새 주소를 넣어 주세요."],
@@ -12647,7 +12647,7 @@ const bulkEditor = (() => {
         (C.characters?.models || []).forEach(c => (c.abilities?.models || []).forEach(m =>
             inText(m.get("action"), `캐릭터 '${nm(c)}' 능력 '${nm(m)}'`, nm(m), { m, type: "text", f: "action" })));
         (tablesColl()?.models || []).forEach(tb => (tb.tableitems?.models || []).forEach((m, k) =>
-            add(m.get("avatar"), `굴림표 '${nm(tb)}' · ${k + 1}번 항목`, nm(m) || nm(tb), { m, type: "attr", f: "avatar", lib: true })));
+            add(m.get("avatar"), `굴림표 '${nm(tb)}' · ${k + 1}번 항목`, nm(m) || nm(tb), { m, type: "attr", f: "avatar", lib: true, kind: "item" })));
         (decksColl()?.models || []).forEach(d => {
             add(d.get("avatar"), `덱 '${nm(d)}' · 뒷면`, nm(d), { m: d, type: "attr", f: "avatar", lib: true });
             (d.cards?.models || []).forEach(m => {
@@ -12657,8 +12657,8 @@ const bulkEditor = (() => {
         });
         (C.pages?.models || []).forEach(p => (p.thegraphics?.models || []).forEach(g => {
             const w = `맵 '${nm(p)}' · ${nm(g) || "이름 없는 그림"}`;
-            add(g.get("imgsrc"), w, nm(g), { m: g, type: "attr", f: "imgsrc", lib: true });
-            String(g.get("sides") || "").split("|").filter(Boolean).forEach((s, k) => add(unesc(s), `${w} · ${k + 1}번 면`, nm(g), { m: g, type: "sides", f: "sides", lib: true }));
+            add(g.get("imgsrc"), w, nm(g), { m: g, type: "attr", f: "imgsrc", lib: true, kind: "gfx", base: w });
+            String(g.get("sides") || "").split("|").filter(Boolean).forEach((s, k) => add(unesc(s), `${w} · ${k + 1}번 면`, nm(g), { m: g, type: "sides", f: "sides", lib: true, base: w }));
         }));
         // 핸드아웃 · 캐릭터: 그림 칸 + 글(본문 · GM 노트 · 기본 토큰) — 글은 Roll20 에서 하나씩 받아 온다
         const docs = [];
@@ -12741,11 +12741,17 @@ const bulkEditor = (() => {
         mark.title = c && c !== "big" ? LINK_CAUSE[c][0] : lib ? "토큰 · 카드 · 굴림표 · 캐릭터 그림 칸은 Roll20 라이브러리 그림(files.d20.io)만 쓸 수 있어요" : "열림";
     };
     // 방금 저장한 주소 바꾸기를 되돌린다 (새 주소 → 옛 주소로 다시 저장)
-    const linkUndo = t => {
-        if (!t?.lastSaved?.length) return;
-        t.lastSaved.forEach(([o, n]) => t.fixes.set(n, o));
-        t.lastSaved = null;
-        save();
+    const linkUndo = async t => {
+        const D = t?.lastDel;
+        if (D) {
+            t.lastDel = null;
+            for (const x of D.undo) try { if (x.attrs) x.m.save(x.attrs); else x.m.updateBlobs({ [x.f]: x.raw }); } catch (e) { console.warn("[일괄 편집기] 되돌리기 실패:", e); }
+            D.entries.forEach(e => t.scan.map.set(e.url, e));
+        }
+        const nFix = t?.lastSaved?.length || 0;
+        if (nFix) { t.lastSaved.forEach(([o, n]) => t.fixes.set(n, o)); t.lastSaved = null; if (!await save() || !D) return; }
+        else if (D) reload();
+        if (D) setStatus((nFix ? `바꾼 주소 ${nFix}개 · 지운 주소 ${D.urls.length}개를 되돌렸어요` : `지운 주소 ${D.urls.length}개를 되살렸어요`) + (D.lost ? ` · 지운 굴림표 항목 · 토큰 ${D.lost}개는 되돌릴 수 없어요` : ""), D.lost ? "info" : "ok");
     };
     const linkPane = t => {
         const G = linkGroups(t), rows = linkRows(t);
@@ -12757,7 +12763,10 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-lk-bar", role: "progressbar", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100" }, el("i", { style: `width:${t.scan || t.busy ? pct : 0}%` })),
             el("span", { class: "r20be-note" }, t.busy ? `${t.phase} ${t.prog[0]}/${t.prog[1]}`
                 : t.scan ? `그림 주소 ${G.list.length}개 · ${Math.round(t.scan.ms / 1000)}초 · ${when}${t.phase ? " · " + t.phase : ""}` : "매크로 · 굴림표 · 덱 · 핸드아웃 · 캐릭터 · 맵의 그림 주소를 이 브라우저에서 열어 봐요")));
-        if (t.lastSaved?.length) wrap.append(el("div", { class: "r20be-lk-done" }, `주소 ${t.lastSaved.length}개를 바꿔 저장했어요`,
+        const nFix = t.lastSaved?.length || 0, nDel = t.lastDel?.urls.length || 0;
+        if (nFix || nDel) wrap.append(el("div", { class: "r20be-lk-done" },
+            (nFix && nDel ? `주소 ${nFix}개를 바꾸고 ${nDel}개를 지웠어요` : nFix ? `주소 ${nFix}개를 바꿔 저장했어요` : `주소 ${nDel}개를 지웠어요`)
+                + (t.lastDel?.lost ? ` · 지운 굴림표 항목 · 토큰 ${t.lastDel.lost}개는 되돌릴 수 없어요` : ""),
             el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => linkUndo(t) }, "되돌리기")));
         if (!t.scan) {
             wrap.append(el("p", { class: "r20be-empty" }, "[점검 시작]을 누르면 방 안의 그림 주소를 모두 열어 보고, 안 열리는 것 · 너무 큰 것을 어디서 쓰는지와 함께 보여줘요. 수백 개면 1~2분 걸려요."));
@@ -12780,12 +12789,17 @@ const bulkEditor = (() => {
             const fix = t.fixes.get(e.url) || "";
             const mark = el("span", { class: "r20be-lk-mk", "aria-live": "polite" });
             const inp = el("input", { class: "r20be-in r20be-mini", value: fix, placeholder: "새 주소 붙여넣기", "aria-label": `${e.uses[0]?.name || "그림"} 새 주소` });
-            const r = el("div", { class: "r20be-lk-r" + (fix ? " fixed" : ""), role: "row" });
+            const del = t.dels.has(e.url), canDel = LINK_BAD.includes(e.cause) || e.cause === "big";
+            const r = el("div", { class: "r20be-lk-r" + (fix ? " fixed" : "") + (del ? " gone" : ""), role: "row" });
+            const delBtn = canDel && !del ? el("button", { type: "button", class: "aio-btn sm r20be-xs r20be-lk-del", "aria-label": `${e.uses[0]?.name || "그림"} 주소 지우기`, hidden: !!fix,
+                title: "쓰는 곳에서 이 주소를 지우기 (저장할 때) — 선택지 · 글 속 그림은 빼고, 굴림표 항목 · 맵 그림은 통째로", onclick: () => setDel(true) }, "🗑") : null;
+            const setDel = on => { const y = ui.pane.scrollTop; if (on) { t.dels.add(e.url); t.fixes.delete(e.url); } else t.dels.delete(e.url); renderPane(); ui.pane.scrollTop = y; updateBar(); };
             const setFix = v => {
                 v = v.trim();
                 if (v && !/^https?:\/\/\S+$/i.test(v)) { mark.textContent = "⚠ 주소 모양이 아님"; mark.className = "r20be-lk-mk bad"; return; }
                 if (v && v !== e.url) t.fixes.set(e.url, v); else t.fixes.delete(e.url);
                 r.classList.toggle("fixed", t.fixes.has(e.url));
+                if (delBtn) delBtn.hidden = t.fixes.has(e.url);      // 새 주소를 넣으면 지우기는 숨김 (칸이 좁아지지 않게)
                 updateBar();
                 if (t.fixes.has(e.url)) linkFixCheck(e, v, mark); else mark.textContent = "";
             };
@@ -12795,13 +12809,17 @@ const bulkEditor = (() => {
                 : el("span", { class: "r20be-lk-th none" }, e.st === "wait" ? "확인 전" : e.cause === "imgur" ? "지워진 그림" : "그림 안 열림");
             const uses = e.uses.slice(0, 3).map(u => el("div", { title: u.where }, u.where));
             if (e.uses.length > 3) uses.push(el("div", { class: "r20be-note" }, `외 ${e.uses.length - 3}곳`));
+            if (del) uses.push(el("div", { class: "r20be-lk-after" }, "→ " + linkDelSay(t, e)));
             r.append(pic,
                 el("div", { class: "r20be-lk-nm" }, el("b", {}, e.uses[0]?.name || "(이름 없음)"),
                     el("a", { href: r20img(e.url), target: "_blank", rel: "noopener noreferrer", title: e.url }, short(e.url)),
                     e.size ? el("small", {}, `${(e.size / 1048576).toFixed(1)}MB`) : null),
                 el("div", { class: "r20be-lk-use" }, ...uses),
-                el("div", { class: "r20be-lk-fix" }, inp, mark,
-                    fix ? el("button", { type: "button", class: "aio-btn sm r20be-xs", "aria-label": "새 주소 지우기", title: "새 주소 지우기", onclick: () => { inp.value = ""; setFix(""); } }, "↺") : null));
+                del ? el("div", { class: "r20be-lk-fix" }, el("span", { class: "r20be-lk-gone" }, "저장하면 지워요"),
+                    el("button", { type: "button", class: "aio-btn sm", onclick: () => setDel(false) }, "되살리기"))
+                : el("div", { class: "r20be-lk-fix" }, inp, mark,
+                    fix ? el("button", { type: "button", class: "aio-btn sm r20be-xs", "aria-label": "새 주소 지우기", title: "새 주소 지우기", onclick: () => { inp.value = ""; setFix(""); } }, "↺") : null,
+                    delBtn));
             tbl.append(r);
             if (fix) linkFixCheck(e, fix, mark);
         });
@@ -12813,13 +12831,23 @@ const bulkEditor = (() => {
             wrap.append(el("div", { class: "r20be-lk-bulk" },
                 el("div", {}, el("b", {}, `${Math.min(rows.length, MAX)}개 한꺼번에`), el("div", { class: "r20be-note" }, "줄마다 새 주소 하나")),
                 ta,
-                el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => {
-                    const L = ta.value.split("\n").map(s => s.trim());
-                    let n = 0;
-                    rows.slice(0, MAX).forEach((e, k) => { if (/^https?:\/\/\S+$/i.test(L[k] || "")) { t.fixes.set(e.url, L[k]); n++; } });
-                    renderPane(); updateBar();
-                    setStatus(`새 주소 ${n}개를 넣었습니다 (저장해야 Roll20에 반영)`, "ok");
-                } }, "모두 넣기")));
+                el("div", { class: "r20be-lk-bulk-act" },
+                    el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => {
+                        const L = ta.value.split("\n").map(s => s.trim());
+                        let n = 0;
+                        rows.slice(0, MAX).forEach((e, k) => { if (/^https?:\/\/\S+$/i.test(L[k] || "")) { t.fixes.set(e.url, L[k]); t.dels.delete(e.url); n++; } });
+                        renderPane(); updateBar();
+                        setStatus(`새 주소 ${n}개를 넣었습니다 (저장해야 Roll20에 반영)`, "ok");
+                    } }, "모두 넣기"),
+                    // 안 열리는 것만 한꺼번에 지우기 표시 (너무 큰 것은 줄마다 🗑)
+                    t.gsel === "bad" || LINK_BAD.includes(t.gsel) ? (() => {
+                        const its = rows.slice(0, MAX), all = its.every(e => t.dels.has(e.url));
+                        return el("button", { type: "button", class: "aio-btn r20be-sec r20be-lk-del", onclick: () => {
+                            its.forEach(e => { if (all) t.dels.delete(e.url); else { t.dels.add(e.url); t.fixes.delete(e.url); } });
+                            renderPane(); updateBar();
+                            if (!all) setStatus(`${its.length}개를 지우기로 표시했어요 — 저장해야 Roll20에서 지워져요`, "info");
+                        } }, all ? "지우기 표시 풀기" : `🗑 ${its.length}개 모두 지우기`);
+                    })() : null)));
         }
         return wrap;
     };
@@ -12829,28 +12857,126 @@ const bulkEditor = (() => {
         if (html) x = x.split(o.replace(/&/g, "&amp;")).join(n.replace(/&/g, "&amp;"));
         return x.split(escape(o)).join(escape(n));
     }, String(s || ""));
+    // ── 지우기: 깨진 주소를 쓰는 곳에서 뺀다 ──
+    // 매크로 · 능력 선택지 안이면 그 선택지(|이름,주소)째 (남는 선택지가 없으면 주소만) · 글은 <img> 째(링크면 글자만 남김) · 그림 칸은 비움
+    // 굴림표 항목은 통째로 · 맵 그림은 남는 면이 있으면 그 면으로, 없으면 통째로 (둘 다 되돌릴 수 없어 저장 때 한 번 묻는다) · 기본 토큰은 그대로
+    const LINK_KEEP_DT = (x) => x.ref.type === "blob" && x.ref.f === "defaulttoken";
+    const dropOpt = (s, u) => {
+        s = String(s || "");
+        for (const f of new Set([u, u.replace(/&/g, "&amp;"), escape(u)])) {
+            for (let i = s.indexOf(f), n = 0; i >= 0 && n < 50; i = s.indexOf(f), n++) {
+                const w = optWhere(s, i);
+                if (w) {
+                    const q = s.lastIndexOf("?{", i), a = s.lastIndexOf("|", i);
+                    let z = i + f.length;
+                    while (z < s.length && s[z] !== "|" && s[z] !== "}") z++;
+                    if (z < s.length && (s.slice(q, a).split("|").length > 1 || s[z] === "|")) { s = s.slice(0, a) + s.slice(z); continue; }
+                }
+                s = s.slice(0, i) + s.slice(i + f.length);
+            }
+        }
+        return s;
+    };
+    const dropInHtml = (h, u) => {
+        for (const f of new Set([u, u.replace(/&/g, "&amp;")])) {
+            const q = f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            h = h.replace(new RegExp(`<img\\b[^>]*?\\bsrc\\s*=\\s*["']?${q}["']?[^>]*>`, "gi"), "")
+                .replace(new RegExp(`<a\\b[^>]*?\\bhref\\s*=\\s*["']?${q}["']?[^>]*>([\\s\\S]*?)</a>`, "gi"), "$1")
+                .split(f).join("");
+        }
+        return h;
+    };
+    // 통째로 지울 모델 → 확인 창에 쓸 이름
+    const linkDoomed = (t, D) => {
+        const out = new Map(), gfx = new Map();
+        D.forEach(u => t.scan?.map.get(u)?.uses.forEach(x => {
+            if (x.ref.kind === "item") out.set(x.ref.m, x.where);
+            if (x.ref.base) { if (!gfx.has(x.ref.m)) gfx.set(x.ref.m, { gone: new Set(), where: x.ref.base }); gfx.get(x.ref.m).gone.add(u); }
+        }));
+        gfx.forEach(({ gone, where }, m) => {
+            if (!gone.has(m.get("imgsrc"))) return;     // 지금 얼굴은 멀쩡 → 면만 뺀다
+            if (!String(m.get("sides") || "").split("|").some(x => x && !gone.has(unesc(x)))) out.set(m, where);
+        });
+        return out;
+    };
+    // 줄 아래 '지우면 이렇게 돼요' 한 줄
+    const linkDelSay = (t, e) => {
+        const doom = linkDoomed(t, [e.url]);
+        return [...new Set(e.uses.map(x => {
+            const r = x.ref;
+            if (doom.has(r.m)) return r.kind === "item" ? "굴림표 항목 지움" : "토큰 · 그림 지움";
+            if (r.base) return r.type === "sides" ? "그 면만 뺌" : "남는 면으로 바꿈";
+            if (r.type === "text") return /번째 선택지$/.test(x.where) ? "선택지째 뺌" : "주소만 뺌";
+            if (LINK_KEEP_DT(x)) return "기본 토큰은 그대로 (캐릭터 창에서 다시 지정)";
+            if (r.type === "blob") return "글에서 그림 뺌";
+            return "그림 칸 비움";
+        }))].join(" · ");
+    };
     const saveLinks = async (t, attempt) => {
         const P0 = [...t.fixes].filter(([o, n]) => n && n !== o && t.scan?.map.has(o));
-        const byKey = new Map();
-        P0.forEach(([o, n]) => t.scan.map.get(o).uses.forEach(u => {
-            const r = u.ref, k = (r.m.cid || r.m.id) + "|" + r.type + "|" + r.f;
-            if (!byKey.has(k)) byKey.set(k, { r, label: u.where, P: [] });
-            byKey.get(k).P.push([o, n]);
+        const D0 = [...t.dels].filter(u => t.scan?.map.has(u) && !t.fixes.has(u));
+        const doomed = linkDoomed(t, D0), undo = [];
+        const byKey = new Map(), gfx = new Map();
+        const slot = x => {
+            const r = x.ref, k = (r.m.cid || r.m.id) + "|" + r.type + "|" + r.f;
+            if (!byKey.has(k)) byKey.set(k, { r, label: x.where, P: [], D: [] });
+            return byKey.get(k);
+        };
+        P0.forEach(([o, n]) => t.scan.map.get(o).uses.forEach(x => { if (!doomed.has(x.ref.m)) slot(x).P.push([o, n]); }));
+        D0.forEach(u => t.scan.map.get(u).uses.forEach(x => {
+            if (doomed.has(x.ref.m) || LINK_KEEP_DT(x)) return;
+            if (x.ref.base) { if (!gfx.has(x.ref.m)) gfx.set(x.ref.m, { label: x.ref.base, gone: new Set() }); gfx.get(x.ref.m).gone.add(u); }
+            else slot(x).D.push(u);
         }));
         const failed = new Set();
-        for (const { r, label, P } of byKey.values()) {
+        for (const { r, label, P, D } of byKey.values()) {
             let ok = false;
             await attempt("링크 · " + label, async () => {
                 if (r.type === "sides") r.m.save({ sides: String(r.m.get("sides") || "").split("|").map(s => { const hit = P.find(([o]) => o === unesc(s)); return hit ? escape(hit[1]) : s; }).join("|") });
                 else if (r.type === "blob") {
                     const raw = await getBlob(r.m, r.f);
                     if (r.f === "defaulttoken") { const out = linkSwap(raw, P); if (out !== raw) r.m.updateBlobs({ defaulttoken: out }); }
-                    else { const d = decodeBlob(raw), out = linkSwap(d.html, P, true); if (out !== d.html) r.m.updateBlobs({ [r.f]: encodeBlob(out, d.enc) }); }
-                } else r.m.save({ [r.f]: linkSwap(r.m.get(r.f), P) });
+                    else {
+                        const d = decodeBlob(raw), out = D.reduce(dropInHtml, linkSwap(d.html, P, true));
+                        if (out !== d.html) { if (D.length) undo.push({ m: r.m, f: r.f, raw }); r.m.updateBlobs({ [r.f]: encodeBlob(out, d.enc) }); }
+                    }
+                } else if (D.length && r.type === "attr") { undo.push({ m: r.m, attrs: { [r.f]: r.m.get(r.f) } }); r.m.save({ [r.f]: "" }); }
+                else {
+                    const before = r.m.get(r.f);
+                    if (D.length) undo.push({ m: r.m, attrs: { [r.f]: before } });
+                    r.m.save({ [r.f]: D.reduce(dropOpt, linkSwap(before, P)) });
+                }
                 ok = true;
             });
-            if (!ok) P.forEach(([o]) => failed.add(o));
+            if (!ok) [...P.map(([o]) => o), ...D].forEach(o => failed.add(o));
         }
+        // 맵 그림: 깨진 면을 빼고, 지금 얼굴이 깨졌으면 남는 면으로 (새 주소로 바꾼 면은 위에서 이미 바뀜)
+        for (const [m, { label, gone }] of gfx) {
+            let ok = false;
+            await attempt("링크 · " + label, () => {
+                const sides = String(m.get("sides") || "").split("|").filter(Boolean), keep = sides.filter(x => !gone.has(unesc(x)));
+                const o = {};
+                if (keep.length !== sides.length) { const c = keep.indexOf(sides[+m.get("currentSide") || 0]); o.sides = keep.join("|"); o.currentSide = Math.max(0, c); }
+                if (gone.has(m.get("imgsrc")) && keep.length) { const k = keep[Math.max(0, keep.indexOf(sides[+m.get("currentSide") || 0]))]; try { o.imgsrc = decodeURIComponent(k); } catch (e) { o.imgsrc = unesc(k); } }
+                if (Object.keys(o).length) { undo.push({ m, attrs: Object.fromEntries(Object.keys(o).map(k => [k, m.get(k)])) }); m.save(o); }
+                ok = true;
+            });
+            if (!ok) gone.forEach(u => failed.add(u));
+        }
+        for (const [m, label] of doomed) {
+            let ok = false;
+            await attempt("링크 · " + label, () => { m.destroy(); ok = true; });
+            if (!ok) D0.forEach(u => { if (t.scan.map.get(u).uses.some(x => x.ref.m === m)) failed.add(u); });
+        }
+        // 지운 주소는 점검 목록에서 빼 두고(되돌리면 되살림) · 통째로 지운 곳의 쓰임은 되살리지 않는다
+        const gone = D0.filter(u => !failed.has(u));
+        t.lastDel = gone.length ? { urls: gone, undo, lost: doomed.size,
+            entries: gone.map(u => { const e = t.scan.map.get(u); return { ...e, uses: e.uses.filter(x => !doomed.has(x.ref.m)) }; }).filter(e => e.uses.length) } : null;
+        gone.forEach(u => {      // 기본 토큰에만 남은 주소는 목록에 남긴다
+            const e = t.scan.map.get(u), keep = e.uses.filter(LINK_KEEP_DT);
+            if (keep.length) e.uses = keep; else t.scan.map.delete(u);
+            t.dels.delete(u);
+        });
         // 점검 결과도 새 주소로 옮기고 다시 열어 본다
         const done = P0.filter(([o]) => !failed.has(o)), fresh = [];
         done.forEach(([o, n]) => {
@@ -13604,11 +13730,12 @@ const bulkEditor = (() => {
         if (!isGM()) { setStatus("GM 만 저장할 수 있어요", "err"); return; }
         const dels = builtTabs().flatMap(t => allNodes(t).flatMap(n => [
             ...(n.deleted && !n.isNew ? [n.cur.name || (n.kind === "gfx" ? "(이름 없는 그림)" : "")] : []),
-            ...(n.items || []).filter(it => it.deleted && !it.isNew).map(it => `${n.cur.name} · ${it.cur.name || "항목"}`)]));
+            ...(n.items || []).filter(it => it.deleted && !it.isNew).map(it => `${n.cur.name} · ${it.cur.name || "항목"}`)]))
+            .concat(S.links?.dels.size ? [...linkDoomed(S.links, [...S.links.dels].filter(u => !S.links.fixes.has(u))).values()] : []);     // 링크 점검: 통째로 지울 굴림표 항목 · 맵 그림
         if (dels.length && !confirm(`${dels.length}개 항목을 Roll20에서 삭제합니다. 되돌릴 수 없습니다.\n\n`
             + dels.slice(0, 10).map(name => "· " + name).join("\n") + (dels.length > 10 ? "\n…" : "") + "\n\n계속할까요?")) return;
         saving = true; updateBar(); setStatus("저장 중…");
-        const total = dirtyCount(), errs = [], onlyLinks = (S.links?.fixes.size || 0) === total;
+        const total = dirtyCount(), errs = [], onlyLinks = (S.links?.fixes.size || 0) + (S.links?.dels.size || 0) === total;
         const attempt = async (label, fn) => {
             try { await fn(); } catch (e) { console.warn("[일괄 편집기] 저장 실패:", label, e); errs.push(label); }
         };
@@ -13634,7 +13761,7 @@ const bulkEditor = (() => {
                 if (t.sel === old) t.sel = n.id;
             }
         }
-        if (S.links?.fixes.size) await saveLinks(S.links, attempt);     // 다른 탭이 고친 뒤의 값에서 주소만 바꾼다
+        if (S.links?.fixes.size || S.links?.dels.size) await saveLinks(S.links, attempt);     // 다른 탭이 고친 뒤의 값에서 주소만 바꾸고 지운다
         saving = false;
         // 실패한 것이 있으면 작업 내용을 남겨 다시 저장할 수 있게 한다
         if (errs.length) {
@@ -13642,8 +13769,9 @@ const bulkEditor = (() => {
             setStatus(`${errs.length}건 저장 실패: ${errs.slice(0, 3).join(", ")}${errs.length > 3 ? " 외" : ""} (콘솔 확인 후 다시 저장)`, "err");
         } else {
             reload();
-            setStatus(`변경 ${total}건을 Roll20에 저장했습니다`, "ok", onlyLinks && S.links?.lastSaved?.length ? { undo: () => linkUndo(S.links) } : undefined);
+            setStatus(`변경 ${total}건을 Roll20에 저장했습니다`, "ok", onlyLinks && (S.links?.lastSaved?.length || S.links?.lastDel) ? { undo: () => linkUndo(S.links) } : undefined);
         }
+        return !errs.length;
     };
 
     // ── 창 ──
@@ -13662,7 +13790,7 @@ const bulkEditor = (() => {
     };
     const revert = () => {
         if (dirtyCount() && !confirm("저장 안 한 변경을 모두 버리고 Roll20의 지금 상태로 되돌릴까요?")) return;
-        S.links?.fixes.clear();
+        S.links?.fixes.clear(); S.links?.dels.clear();
         reload();
         setStatus("변경을 모두 되돌렸습니다", "ok");
     };
@@ -14409,6 +14537,12 @@ addCss(`
             & .r20be-lk-bulk { display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border:1px dashed var(--aio-accent-soft); border-radius:var(--aio-r-lg); background:var(--aio-bg-2); font-size:var(--aio-fs-md); }
             & .r20be-lk-bulk > div:first-child { flex:0 0 120px; }
             & .r20be-lk-bulk textarea { flex:1; min-height:52px; font-size:var(--aio-fs-sm); }
+            & .r20be-lk-bulk-act { display:flex; flex-direction:column; gap:6px; }
+            & .r20be-lk-del { color:var(--aio-bad); }
+            & .r20be-lk-r.gone { background:var(--aio-bad-bg); }
+            & .r20be-lk-r.gone .r20be-lk-nm a { text-decoration:line-through; }
+            & .r20be-lk-use > .r20be-lk-after { color:var(--aio-bad); font-weight:700; white-space:normal; }
+            & .r20be-lk-gone { flex:1; color:var(--aio-bad); font-size:var(--aio-fs-sm); font-weight:700; }
             & .r20be-lk-badrow .r20be-meta { color:var(--aio-bad); font-weight:700; }
             & .r20be-lk-bigrow .r20be-meta { color:var(--aio-warn); font-weight:700; }
             & .r20be-lk-sub .r20be-nm { padding-left:14px; }
