@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.93.0
+// @version      1.94.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.93.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.94.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -4379,10 +4379,10 @@ const ccfImport = (() => {
         catch (e) { console.warn("[코코포리아 가져오기] 오류:", e); prog("멈췄어요 — 오류: " + (e?.message || e)); }
         finally { busy = false; paint(); refresh(); }
     };
-    const runRoom = async (pg, sc, L) => {
-        // apng → webm 은 Roll20 에 올리기 전에 한꺼번에 (이미 올려 둔 건 건너뜀, 못 바꾸면 멈춘 그림으로)
+    // 올리기 준비: apng → webm 은 Roll20 에 올리기 전에 한꺼번에 (이미 올려 둔 건 건너뜀, 못 바꾸면 멈춘 그림으로)
+    const prepSrcs = async imgs => {
         const srcs = new Map();
-        for (const n of new Set(L.items.map(t => t.img))) srcs.set(n, await sourceOf(n));
+        for (const n of imgs) srcs.set(n, await sourceOf(n));
         const redo = await dropDead([...srcs.values()].map(s => s.key));        // 안 열리는 옛 주소는 새로 올린다
         const todo = [...srcs].filter(([, s]) => s.conv && !upMap[s.key]);
         let k = 0, conved = 0, convFail = 0;
@@ -4400,6 +4400,10 @@ const ccfImport = (() => {
                 srcs.set(n, await plainSrc(n));
             }
         }
+        return { srcs, redo, conved, convFail };
+    };
+    const runRoom = async (pg, sc, L) => {
+        const { srcs, redo, conved, convFail } = await prepSrcs(new Set(L.items.map(t => t.img)));
         if (!stop) pg.save({ width: L.pw, height: L.ph, snapping_increment: cell / 70, showgrid: !!grid, ...(L.color ? { background_color: L.color } : {}) });
         const urls = new Map(), fail = new Set();
         let up = 0, reused = 0, placed = 0, i = 0;
@@ -4443,6 +4447,72 @@ const ccfImport = (() => {
     // 끄면 테이블에 생긴 그림을 지워 라이브러리에만 남긴다. 이름이 흔해서 기억 열쇠는 내용 해시 (같은 그림은 어느 ZIP 에서 와도 한 번만)
     const hashOf = async b => [...new Uint8Array(await crypto.subtle.digest("SHA-256", await b.arrayBuffer()))].slice(0, 16)
         .map(v => v.toString(16).padStart(2, "0")).join("");
+    // ── 장면 전부 → 맵 장면: 코코포리아처럼 장면마다 배경 · 필드 · 마커만 바뀌고 스크린 패널은 그대로 ──
+    // 장면 것은 맵 층에(맵 장면이 맵 층만 갈아 끼움), 패널은 토큰 · GM 층에 한 번만. 패널이 장면마다 같은 자리에 오게
+    // 모든 장면 · 패널을 덮는 왼쪽 위를 같은 원점으로, 페이지 크기도 모두를 덮게 (배경 그림은 그 페이지 가득)
+    let pan = localStorage.getItem("r20_ccf_pan") !== "false";
+    const sceneList = () => scenes.filter(c => c.grp === "장면");
+    const runScenes = async () => {
+        const pg = page(), list = sceneList();
+        if (!pg?.thegraphics || !list.length) return prog("지금 페이지를 못 찾았어요");
+        busy = true; stop = false; paint();
+        $(".warn").textContent = "가져오는 동안 Roll20 에서 다른 페이지로 옮기지 마세요";
+        try { await runScenesAll(pg, list); }
+        catch (e) { console.warn("[코코포리아 장면 가져오기] 오류:", e); prog("멈췄어요 — 오류: " + (e?.message || e)); }
+        finally { busy = false; paint(); }
+    };
+    const runScenesAll = async (pg, list) => {
+        const per = [];
+        for (const sc of list) {
+            const L = await layout({ ...sc, backgroundUrl: "", items: {} });       // 필드 · 마커만
+            const bg = has(sc.backgroundUrl) ? await look(sc.backgroundUrl) : { blank: true };
+            per.push({ sc, items: L.items, bg, color: bg.color || sc.backgroundColor || "" });
+        }
+        const panels = pan ? (await layout({ items: list[0].items })).items : [];
+        const all = [...per.flatMap(x => x.items), ...panels];
+        const x0 = all.length ? Math.floor(Math.min(...all.map(t => t.x))) : 0, y0 = all.length ? Math.floor(Math.min(...all.map(t => t.y))) : 0;
+        const pw = all.length ? Math.ceil((Math.max(...all.map(t => t.x + t.w)) - x0) * cell / 70) : 25;
+        const ph = all.length ? Math.ceil((Math.max(...all.map(t => t.y + t.h)) - y0) * cell / 70) : 25;
+        per.forEach(x => { if (!x.bg.blank && !x.bg.color) x.items.unshift({ img: x.sc.backgroundUrl, x: x0, y: y0, w: pw * 70 / cell, h: ph * 70 / cell, lock: true, base: true }); });
+        const Lg = { x0, y0, pw, ph };
+        const mapWas = pg.thegraphics.models.filter(g => ["map", "foreground"].includes(g.get("layer"))).length;
+        const { srcs, redo, conved, convFail } = await prepSrcs(new Set([...per.flatMap(x => x.items), ...panels].map(t => t.img)));
+        // 그림마다 한 번씩 올리고(Roll20 이 떨어뜨린 그림은 주소만 받고 지운다) 주소를 모은다
+        const urls = new Map(), fail = new Set();
+        let up = 0, reused = 0, i = 0;
+        for (const [n, s] of srcs) {
+            if (stop) break;
+            let src = upMap[s.key] || null;
+            if (src) reused++;
+            else {
+                prog(`그림 올리는 중 ${++i}/${srcs.size}`);
+                const g = await dropUpload(pg, s.file);
+                s.file = null; blobs.delete(n);
+                if (g) { src = g.get("imgsrc"); upMap[s.key] = src; saveUp(); up++; try { g.destroy(); } catch (e) { /* 지우기 실패는 그대로 둠 */ } }
+                else console.warn("[코코포리아 장면 가져오기] 못 올림:", n);
+            }
+            if (src) urls.set(n, src); else fail.add(n);
+        }
+        if (stop) return prog("멈췄어요 — 맵 장면은 만들지 않았어요");
+        pg.save({ width: pw, height: ph, snapping_increment: cell / 70, showgrid: !!grid });
+        let placed = 0;
+        panels.forEach(t => {
+            const src = urls.get(t.img);
+            if (!src) return;
+            try { pg.thegraphics.create({ imgsrc: src, page_id: pg.id, ...attrsOf(t, Lg), layer: t.gm ? "gmlayer" : "objects", controlledby: t.lock ? "" : "all" }); placed++; }
+            catch (e) { console.warn("[코코포리아 장면 가져오기] 패널 놓기 실패:", e); }
+        });
+        const made = await mapScenes.addScenes(pg, per.map(x => ({
+            name: x.sc.name, layers: ["map"], keepPC: true, withPage: true,
+            page: { width: pw, height: ph, background_color: x.color || "#ffffff" },
+            objs: x.items.filter(t => urls.has(t.img)).map(t => ({ k: "g", a: { imgsrc: urls.get(t.img), ...attrsOf(t, Lg), layer: "map", controlledby: "" } }))
+        })));
+        prog(`맵 장면 ${made.length}개를 만들었어요` + (pan ? ` · 스크린 패널 ${placed}개 놓음` : "") + ` · 새로 올린 그림 ${up} · 다시 쓴 그림 ${reused}`
+            + (redo ? ` (옛 주소가 안 열려 다시 올린 그림 ${redo})` : "") + (conved ? ` · webm 으로 바꾼 그림 ${conved}` : "") + (convFail ? ` · 못 바꿔 멈춘 그림으로 ${convFail}` : "")
+            + (fail.size ? ` · 못 올린 그림 ${fail.size}개 (콘솔에 목록)` : ""));
+        if (fail.size) console.warn("[코코포리아 장면 가져오기] 못 올린 그림:", [...fail]);
+        if (made.length) { const at = anchor; close(); mapScenes.open(at, mapWas ? null : made[0]); }        // 맵 층이 비어 있었으면 첫 장면을 바로 놓는다
+    };
     const runPack = async () => {
         const pg = page();
         if (!pg?.thegraphics) return prog("지금 페이지를 못 찾았어요");
@@ -4654,6 +4724,10 @@ const ccfImport = (() => {
         if (pwRow.hidden === !!pending) { pwRow.hidden = !pending; if (pending) pwRow.querySelector("input").focus(); }
         const s = $("select");
         $(".scn").hidden = !zip || !!pack;
+        const nsc = pack ? 0 : sceneList().length;
+        $(".scs").hidden = !nsc;
+        $(".all").textContent = `장면 ${nsc}개 → 맵 장면으로`;
+        $(".pan").setAttribute("aria-checked", String(pan));
         if (pack) return refreshPack();
         $(".lay").hidden = true;
         let html = "", grp = "";
@@ -4695,7 +4769,7 @@ const ccfImport = (() => {
         const go = $(".pri");
         go.textContent = busy ? "멈추기" : pack ? (lay ? "올리고 늘어놓기" : "라이브러리에 올리기") : "가져오기";
         go.disabled = !busy && !scenes[sel] && !pack;
-        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button").forEach(el => { el.disabled = busy; });
+        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button, .all").forEach(el => { el.disabled = busy; });
     };
     const place = () => {
         if (!pop || !anchor?.isConnected) return;
@@ -4717,6 +4791,8 @@ const ccfImport = (() => {
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
             + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
             + '<div class="pg"></div><div class="warn"></div></div>'
+            + '<div class="scs" hidden><button type="button" class="all" title="코코포리아처럼: 장면을 바꾸면 배경 · 필드 · 마커만 바뀌고 스크린 패널은 그대로 — 맵 도구의 \'맵 장면\' 카드로"></button>'
+            + '<button type="button" class="sw pan" role="switch"><i aria-hidden="true"></i>스크린 패널도 지금 페이지에 놓기 (한 번만)</button></div>'
             + '<div class="go"><button type="button" class="pri">가져오기</button><span class="prog" aria-live="polite"></span></div></div>';
         const inp = $("input[type=file]");
         $(".pw input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); tryPw(); } });
@@ -4731,6 +4807,8 @@ const ccfImport = (() => {
             if (b.dataset.cell) { cell = +b.dataset.cell; localStorage.setItem("r20_ccf_cell", String(cell)); return refresh(); }
             if (b.classList.contains("conv")) { conv = !conv; localStorage.setItem("r20_ccf_conv", String(conv)); return refresh(); }
             if (b.classList.contains("lay")) { lay = !lay; localStorage.setItem("r20_ccf_lay", String(lay)); return refresh(); }
+            if (b.classList.contains("pan")) { pan = !pan; localStorage.setItem("r20_ccf_pan", String(pan)); return refresh(); }
+            if (b.classList.contains("all")) return busy || runScenes();
             if (b.classList.contains("grid")) { grid = !grid; return refresh(); }
             if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else if (pack) runPack(); else run(); }
         });
@@ -5250,9 +5328,21 @@ const mapScenes = (() => {
     };
     const close = () => { if (pop) pop.hidden = true; clearInterval(tick); };
     const toggle = at => (isOpen() ? close() : open(at));
+    // 코코포리아 장면 가져오기에서: 다 만든 장면을 이 페이지 목록 끝에 (썸네일 · 개수는 여기서)
+    const addScenes = async (pg, list) => {
+        await load();
+        const p = P(pg), ids = [];
+        list.forEach(x => {
+            const sc = { id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...x, thumb: thumbOf(x.objs), at: Date.now(),
+                n: { map: x.objs.filter(isMap).length, tok: x.objs.filter(o => o.a.layer === "objects").length, etc: x.objs.filter(o => !isMap(o) && o.a.layer !== "objects").length } };
+            p.list.push(sc); ids.push(sc.id);
+        });
+        if (ids.length) store();
+        return ids;
+    };
     document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
     window.addEventListener("resize", () => isOpen() && place());
-    return { toggle, close };
+    return { toggle, close, addScenes, open: (at, first) => { open(at); if (first) go(first); } };
 })();
 addCss(`
         /* 맵 장면 판 (맵 단추 밑) — 가져오기 판과 같은 틀 */
@@ -5355,6 +5445,9 @@ addCss(`
             & .sw { display:flex; align-items:center; gap:6px; margin-left:auto; padding:0; border:0; background:none; font-weight:400; }
             & .conv, & .lay { align-self:flex-start; margin-left:0; }
             & .conv[hidden], & .lay[hidden] { display:none; }
+            & .scs { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:6px 0; border-top:1px solid var(--aio-line-4); border-bottom:1px solid var(--aio-line-4); }
+            & .scs[hidden] { display:none; }
+            & .scs .pan { margin-left:0; }
             & .sw i { position:relative; width:26px; height:14px; border-radius:var(--aio-r); background:var(--aio-bg-5); }
             & .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
             & .sw[aria-checked=true] i { background:var(--aio-accent); }
