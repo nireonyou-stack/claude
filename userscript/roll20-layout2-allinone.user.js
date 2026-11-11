@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.94.0
+// @version      1.95.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.94.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.95.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5223,7 +5223,7 @@ const mapScenes = (() => {
         const kept = sc.keepPC && sc.layers.includes("objects") ? objsOf(pg, ["objects"], false).filter(o => o.k === "g" && isPC(o.m)).length : 0;
         aioToast(`'${sc.name}' 장면으로 바꿨어요 · ${sc.objs.length}개 놓음${kept ? ` · 플레이어 말 ${kept}개 그대로` : ""}${bad ? ` · ${bad}개 실패 (콘솔 확인)` : ""}`, {
             kind: bad ? "err" : "ok", id: "mscn",
-            undo: () => { apply(pg, before); P(pg).cur = was; store(); draw(); aioToast("바꾸기 전으로 되돌렸어요", { kind: "ok", id: "mscn" }); } });
+            undo: () => { apply(pg, before); P(pg).cur = was; store(); draw(); setTimeout(() => aioToast("바꾸기 전으로 되돌렸어요", { kind: "ok", id: "mscn" }), 0); } });
     };
     // ── 판 ──
     const meta = s => [s.n?.map ? `맵 ${s.n.map}` : "", s.layers.includes("objects") ? `토큰 ${s.n?.tok || 0}` : "", s.n?.etc ? `그 밖 ${s.n.etc}` : "",
@@ -11501,7 +11501,7 @@ const bulkEditor = (() => {
     const meta = n => {
         if (n.kids) return `${n.kids.length}개`;
         if (n.kind === "gfx") return `${Math.round(n.cur.width)}×${Math.round(n.cur.height)}`;
-        if (n.kind === "rtable") return `${n.items.filter(it => !it.deleted).length}개`;
+        if (n.kind === "rtable") { const k = tlCount(n.model?.get("name")); return `${n.items.filter(it => !it.deleted).length}개${k ? ` · 🎯${k}` : ""}`; }
         if (n.kind === "deck") return `${n.items.filter(it => !it.deleted).length}장`;
         if (n.kind === "macro") return n.cur.token ? "토큰" : "";
         if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}${tagList(n.cur.tags).map(x => " #" + x).join("")}`;
@@ -11676,6 +11676,7 @@ const bulkEditor = (() => {
             : n.isNew ? el("span", { class: "r20be-tag new" }, n.dupOf ? "복제 예정" : "새 항목") : null,
         el("span", { class: "r20be-flex" }),
         !n.kids && n.kind !== "rtable" && n.kind !== "deck" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
+        n.kind === "rtable" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: "맵 토큰을 누르면 이 표를 굴리게 연결", "aria-haspopup": "dialog", onclick: () => tlOpen(n) }, "🎯 토큰에 연결") : null,
         (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => dupMany([n], false) }, "복제") : null,
         (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: "복제본이 목록 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
             onclick: () => dupMany([n], true) }, "복제 후 원본 삭제") : null,
@@ -12143,6 +12144,95 @@ const bulkEditor = (() => {
     };
 
     // 굴림표 편집칸: 항목 카드 격자 + 고른 항목 일괄 바꾸기 + 줄 단위로 항목 추가
+    // ── 굴림표 → 토큰 연결: 맵 토큰을 누르면(토큰 액션) 이 표를 굴린다 ──
+    // Roll20 토큰 액션은 캐릭터 단위(같은 캐릭터 토큰은 액션도 같음) → 공용 캐릭터 '🎲 굴림표' 하나에 능력 둘
+    // ('🎲 굴리기' /roll · '🤫 몰래 굴리기' /gmroll)을 두고, 굴릴 표 이름은 누른 토큰의 막대 3 값에서 읽는다: 1t[@{selected|bar3}]
+    // 저장 단추와 따로 바로 적용 · 알림의 [되돌리기]로 토큰의 연결 · 막대 3을 앞 값으로
+    const TL_CHAR = "🎲 굴림표";
+    const TL_ACTS = [["🎲 굴리기", "/roll 1t[@{selected|bar3}]"], ["🤫 몰래 굴리기", "/gmroll 1t[@{selected|bar3}]"]];
+    const tlChar = () => (window.Campaign?.characters?.models || []).find(m => m.get("name") === TL_CHAR);
+    // 표 이름 → 연결된 토큰 수 (읽어 둔 모든 페이지 · 목록을 그리는 동안 한 번만 센다)
+    let tlMap = null, tlAt = 0;
+    const tlCount = name => {
+        if (!name) return 0;
+        if (!tlMap || Date.now() - tlAt > 1000) {
+            tlMap = new Map(); tlAt = Date.now();
+            const c = tlChar();
+            if (c) (window.Campaign?.pages?.models || []).forEach(p => (p.thegraphics?.models || []).forEach(g => {
+                if (g.get("represents") === c.id) tlMap.set(g.get("bar3_value"), (tlMap.get(g.get("bar3_value")) || 0) + 1);
+            }));
+        }
+        return tlMap.get(name) || 0;
+    };
+    // 공용 캐릭터와 능력 둘을 갖춘다 (있으면 그대로 · 시트를 연 적 없으면 능력 목록부터 읽는다)
+    const tlEnsure = async players => {
+        let c = tlChar(), made = false;
+        if (!c) { c = window.Campaign.characters.create({ name: TL_CHAR, inplayerjournals: "", controlledby: players ? "all" : "", archived: false }); made = true; }
+        else if ((c.get("controlledby") === "all") !== players) c.save({ controlledby: players ? "all" : "" });
+        const ab = c?.abilities;
+        if (!ab?.create) throw new Error("캐릭터 능력을 만들 수 없어요");
+        if (!made && typeof ab.fetch === "function") { try { ab.fetch(ab); } catch (e) { /* 이미 읽음 */ } await sleep(600); }
+        TL_ACTS.forEach(([name, action]) => {
+            const a = ab.models.find(m => m.get("name") === name);
+            if (!a) ab.create({ name, action, istokenaction: true });
+            else if (a.get("action") !== action || !a.get("istokenaction")) a.save({ action, istokenaction: true });
+        });
+        return c;
+    };
+    const tlOpen = n => {
+        const name = n.model?.get("name") || n.cur.name;
+        if (!ui.tl.hidden && ui.tl.dataset.id === n.id) { ui.tl.hidden = true; return; }
+        ui.bk.hidden = true;
+        ui.tl.dataset.id = n.id; ui.tl.textContent = "";
+        const pg = window.Campaign?.activePage?.(), c = tlChar();
+        const close = el("button", { type: "button", class: "aio-ib x", "aria-label": "닫기", onclick: () => { ui.tl.hidden = true; } }, "✕");
+        ui.tl.append(el("div", { class: "hd" }, el("b", {}, `'${name}'를 토큰에 연결`), close),
+            el("p", {}, `지금 페이지 '${pg?.get("name") || "?"}' · 토큰 층 — 연결한 토큰을 누르면 클릭 메뉴(또는 위쪽 토큰 액션 줄)에 '🎲 굴리기' · '🤫 몰래 굴리기'`));
+        if (/\s/.test(name)) ui.tl.append(el("p", { class: "warn" }, "표 이름에 띄어쓰기가 있어 Roll20 굴림(1t[…])이 안 될 수 있어요 — 이름에서 띄어쓰기를 빼고 저장한 뒤 연결해 주세요."));
+        const toks = (pg?.thegraphics?.models || []).filter(g => g.get("layer") === "objects" && g.get("imgsrc"));
+        if (!toks.length) { ui.tl.append(el("p", {}, "이 페이지의 토큰 층에 토큰이 없어요.")); ui.tl.hidden = false; return; }
+        const stOf = g => {
+            const rep = g.get("represents");
+            if (!rep) return { k: "none", t: g.get("bar3_value") ? `연결 안 됨 · 막대 3 '${g.get("bar3_value")}' 덮어씀` : "연결 안 됨" };
+            if (c && rep === c.id) return g.get("bar3_value") === name ? { k: "this", t: "✓ 이 표" } : { k: "other", t: `${g.get("bar3_value") || "(표 이름 없음)"}` };
+            return { k: "char", t: `캐릭터 '${window.Campaign.characters.get(rep)?.get("name") || "?"}'의 말 — 못 바꿈` };
+        };
+        const rows = toks.map(g => {
+            const st = stOf(g), cb = el("input", { type: "checkbox", checked: st.k === "this", disabled: st.k === "char", "aria-label": g.get("name") || "이름 없는 토큰" });
+            const row = el("label", { class: "row tl-" + st.k }, cb, el("img", { src: r20img(sizedUrl(g.get("imgsrc"), "thumb")), alt: "", loading: "lazy" }),
+                el("span", {}, g.get("name") || "(이름 없음)"), el("small", {}, st.t));
+            cb.addEventListener("change", sum);
+            return { g, st, cb, row };
+        });
+        const q = el("input", { class: "r20be-in r20be-mini", placeholder: "토큰 이름 찾기", "aria-label": "토큰 이름 찾기",
+            oninput: e => { const v = e.target.value.trim().toLowerCase(); rows.forEach(r => { r.row.hidden = !!v && !String(r.g.get("name") || "").toLowerCase().includes(v); }); } });
+        const pl = el("input", { type: "checkbox", checked: c ? c.get("controlledby") === "all" : true });
+        const note = el("span", { class: "r20be-note" });
+        function sum() { const on = rows.filter(r => r.cb.checked).length, was = rows.filter(r => r.st.k === "this").length; note.textContent = `고른 ${on}개 · 이미 연결 ${was}개`; }
+        const go = el("button", { type: "button", class: "aio-btn pri", onclick: async () => {
+            const ch = rows.filter(r => !r.cb.disabled && r.cb.checked !== (r.st.k === "this"));
+            if (!ch.length && (c ? c.get("controlledby") === "all" : true) === pl.checked) { ui.tl.hidden = true; return; }
+            go.disabled = true;
+            let ch2;
+            try { ch2 = await tlEnsure(pl.checked); }
+            catch (e) { aioErr("굴림표 연결", e, true); go.disabled = false; setStatus("연결하지 못했어요 — " + (e?.message || e), "err"); return; }
+            const KEYS = ["represents", "bar3_value", "showplayers_bar3"];
+            const back = ch.map(r => ({ g: r.g, a: Object.fromEntries(KEYS.filter(k => r.g.get(k) !== undefined).map(k => [k, r.g.get(k)])) }));
+            ch.forEach(r => r.g.save(r.cb.checked ? { represents: ch2.id, bar3_value: name, showplayers_bar3: false } : { represents: "", bar3_value: "" }));
+            const on = ch.filter(r => r.cb.checked).length, off = ch.length - on;
+            ui.tl.hidden = true; tlMap = null; renderTree();
+            setStatus(`'${name}' — 토큰 ${on}개 연결${off ? ` · ${off}개 풀기` : ""}${pl.checked ? " · 플레이어도 누를 수 있어요" : ""}`, "ok", ch.length ? { undo: () => {
+                back.forEach(b => b.g.save({ represents: "", bar3_value: "", ...b.a })); tlMap = null; renderTree();
+                setTimeout(() => setStatus("토큰 연결을 되돌렸어요", "ok"), 0);       // 누른 알림이 닫힌 뒤에
+            } } : undefined);
+        } }, "연결");
+        ui.tl.append(q, el("div", { class: "list" }, ...rows.map(r => r.row)),
+            el("label", { class: "pl" }, pl, "플레이어도 누를 수 있게", el("small", {}, " — 대신 이 토큰들을 옮길 수도 있어요 (모든 굴림표 토큰에 적용)")),
+            el("div", { class: "ft" }, note, el("span", { class: "r20be-flex" }), el("button", { type: "button", class: "aio-btn", onclick: () => { ui.tl.hidden = true; } }, "취소"), go));
+        sum();
+        ui.tl.hidden = false;
+        q.focus();
+    };
     const tablePane = n => {
         const t = cur(), tb = t.tbulk;
         const live = () => n.items.filter(it => !it.deleted);
@@ -14160,6 +14250,7 @@ const bulkEditor = (() => {
         ui.fold.hidden = !(t.which === "journal" || t.which === "bgm" || t.which === "map") || isFlat(t);
         ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
         if (t.which !== "bgm") ui.bk.hidden = true;
+        if (t.which !== "tables") ui.tl.hidden = true;
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         setStatus();      // 도움말을 지금 탭에 맞춘다
         renderTree(); renderPane();
@@ -14461,6 +14552,7 @@ const bulkEditor = (() => {
             el("button", { type: "button", title: "폴더 전부 접기", onclick: () => foldAll(true) }, "전체 닫기"));
         // 주크박스 백업 목록 (BGM 탭 · 자동 백업 묶음이 켜져 있을 때)
         ui.bk = el("div", { class: "r20be-bk", hidden: true, role: "dialog", "aria-label": "주크박스 백업" });
+        ui.tl = el("div", { class: "r20be-tlink", hidden: true, role: "dialog", "aria-label": "굴림표를 토큰에 연결" });
         ui.bkBtn = el("button", { type: "button", class: "aio-btn r20be-sec", hidden: true, title: "주크박스 폴더 구조 백업 — 고른 시점으로 되돌리기", onclick: () => toggleBackups() }, "백업");
         ui.pagesBtn = el("button", { type: "button", class: "aio-btn r20be-sec", hidden: true, onclick: () => FEAT.roomImages?.loadPages() });
         // 페이지를 읽는 동안 묶음 목록을 늘리고, 다 읽으면 격자도 새로
@@ -14475,7 +14567,7 @@ const bulkEditor = (() => {
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
@@ -14880,6 +14972,31 @@ addCss(`
             & .r20be-lk-r.gone .r20be-lk-nm a { text-decoration:line-through; }
             & .r20be-lk-use > .r20be-lk-after { color:var(--aio-bad); font-weight:700; white-space:normal; }
             & .r20be-lk-gone { flex:1; color:var(--aio-bad); font-size:var(--aio-fs-sm); font-weight:700; }
+            /* 굴림표 → 토큰 연결 칸 (백업 칸과 같은 자리) — .r20be-tl 은 폴더 보기 카드라 다른 이름 */
+            & .r20be-tlink { position:absolute; top:34px; right:10px; z-index:3; display:flex; flex-direction:column; align-items:stretch; gap:6px; width:min(420px, calc((100vw - 40px) / var(--aio-z, 1))); max-height:calc(60vh / var(--aio-z, 1));
+                padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-md); font-size:var(--aio-fs-md); }
+            & .r20be-tlink[hidden] { display:none; }
+            & .r20be-tlink {
+                & .hd { display:flex; align-items:center; gap:6px; }
+                & .hd b { flex:1; font-size:var(--aio-fs-lg); }
+                & .hd .x { flex:none; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-5); cursor:pointer; }
+                & .hd .x:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+                & p { margin:0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+                & p.warn { color:var(--aio-warn); }
+                & .list { display:flex; flex-direction:column; max-height:calc(36vh / var(--aio-z, 1)); overflow-y:auto; border-top:1px solid var(--aio-line-4); }
+                & .row { display:grid; grid-template-columns:16px 32px 1fr auto; gap:8px; align-items:center; margin:0; padding:4px 2px; border-bottom:1px solid var(--aio-line-4); font-weight:400; cursor:pointer; }
+                & .row[hidden] { display:none; }
+                & .row input { margin:0; }
+                & .row img { width:32px; height:32px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); object-fit:contain; }
+                & .row span { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+                & .row small { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); white-space:nowrap; }
+                & .tl-this small { color:var(--aio-ok); font-weight:700; }
+                & .tl-char { cursor:default; opacity:.65; }
+                & .tl-char small { color:var(--aio-warn); }
+                & .pl { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0; font-weight:400; }
+                & .pl small { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+                & .ft { display:flex; align-items:center; gap:6px; }
+            }
             & .r20be-lk-badrow .r20be-meta { color:var(--aio-bad); font-weight:700; }
             & .r20be-lk-bigrow .r20be-meta { color:var(--aio-warn); font-weight:700; }
             & .r20be-lk-sub .r20be-nm { padding-left:14px; }
