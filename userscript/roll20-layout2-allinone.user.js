@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.95.0
+// @version      1.96.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.95.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.96.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -11503,7 +11503,7 @@ const bulkEditor = (() => {
         if (n.kind === "gfx") return `${Math.round(n.cur.width)}×${Math.round(n.cur.height)}`;
         if (n.kind === "rtable") { const k = tlCount(n.model?.get("name")); return `${n.items.filter(it => !it.deleted).length}개${k ? ` · 🎯${k}` : ""}`; }
         if (n.kind === "deck") return `${n.items.filter(it => !it.deleted).length}장`;
-        if (n.kind === "macro") return n.cur.token ? "토큰" : "";
+        if (n.kind === "macro") { const k = tlCountMac(n.model?.get("name")); return [n.cur.token ? "토큰" : "", k ? `🎯${k}` : ""].filter(Boolean).join(" · "); }
         if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}${tagList(n.cur.tags).map(x => " #" + x).join("")}`;
         const s = n.cur.share;
         return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM");
@@ -11676,7 +11676,8 @@ const bulkEditor = (() => {
             : n.isNew ? el("span", { class: "r20be-tag new" }, n.dupOf ? "복제 예정" : "새 항목") : null,
         el("span", { class: "r20be-flex" }),
         !n.kids && n.kind !== "rtable" && n.kind !== "deck" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
-        n.kind === "rtable" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: "맵 토큰을 누르면 이 표를 굴리게 연결", "aria-haspopup": "dialog", onclick: () => tlOpen(n) }, "🎯 토큰에 연결") : null,
+        (n.kind === "rtable" || n.kind === "macro") && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: n.kind === "macro" ? "맵 토큰을 누르면 이 매크로를 실행하게 연결" : "맵 토큰을 누르면 이 표를 굴리게 연결",
+            "aria-haspopup": "dialog", onclick: () => tlOpen(n) }, "🎯 토큰에 연결") : null,
         (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => dupMany([n], false) }, "복제") : null,
         (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: "복제본이 목록 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
             onclick: () => dupMany([n], true) }, "복제 후 원본 삭제") : null,
@@ -12144,58 +12145,92 @@ const bulkEditor = (() => {
     };
 
     // 굴림표 편집칸: 항목 카드 격자 + 고른 항목 일괄 바꾸기 + 줄 단위로 항목 추가
-    // ── 굴림표 → 토큰 연결: 맵 토큰을 누르면(토큰 액션) 이 표를 굴린다 ──
-    // Roll20 토큰 액션은 캐릭터 단위(같은 캐릭터 토큰은 액션도 같음) → 공용 캐릭터 '🎲 굴림표' 하나에 능력 둘
-    // ('🎲 굴리기' /roll · '🤫 몰래 굴리기' /gmroll)을 두고, 굴릴 표 이름은 누른 토큰의 막대 3 값에서 읽는다: 1t[@{selected|bar3}]
+    // ── 굴림표 · 매크로 → 토큰 연결: 맵 토큰을 누르면(토큰 액션) 이 표를 굴리거나 이 매크로를 실행한다 ──
+    // Roll20 토큰 액션은 캐릭터 단위(같은 캐릭터 토큰은 액션도 같음)
+    // · 굴림표: 공용 캐릭터 '🎲 굴림표' 하나에 능력 둘('🎲 굴리기' /roll · '🤫 몰래 굴리기' /gmroll) — 굴릴 표 이름은 누른 토큰의 막대 3: 1t[@{selected|bar3}]
+    // · 매크로: 매크로마다 캐릭터 '🎬 이름' 하나 (Roll20 은 #매크로를 @{…}보다 먼저 풀어 막대 값으로 매크로를 못 고른다)
+    //   능력 = '#이름'(부르기 · 매크로를 고치면 따라감) 또는 매크로 내용 복사(공유 없이 늘 실행 · 바뀌면 [연결]로 맞춤)
     // 저장 단추와 따로 바로 적용 · 알림의 [되돌리기]로 토큰의 연결 · 막대 3을 앞 값으로
-    const TL_CHAR = "🎲 굴림표";
+    const TL_CHAR = "🎲 굴림표", TL_MAC = "🎬 ", TL_MODE_KEY = "r20be_tl_mode";
     const TL_ACTS = [["🎲 굴리기", "/roll 1t[@{selected|bar3}]"], ["🤫 몰래 굴리기", "/gmroll 1t[@{selected|bar3}]"]];
-    const tlChar = () => (window.Campaign?.characters?.models || []).find(m => m.get("name") === TL_CHAR);
-    // 표 이름 → 연결된 토큰 수 (읽어 둔 모든 페이지 · 목록을 그리는 동안 한 번만 센다)
-    let tlMap = null, tlAt = 0;
-    const tlCount = name => {
-        if (!name) return 0;
-        if (!tlMap || Date.now() - tlAt > 1000) {
-            tlMap = new Map(); tlAt = Date.now();
-            const c = tlChar();
-            if (c) (window.Campaign?.pages?.models || []).forEach(p => (p.thegraphics?.models || []).forEach(g => {
-                if (g.get("represents") === c.id) tlMap.set(g.get("bar3_value"), (tlMap.get(g.get("bar3_value")) || 0) + 1);
-            }));
-        }
-        return tlMap.get(name) || 0;
+    const chars = () => window.Campaign?.characters?.models || [];
+    const tlChar = () => chars().find(m => m.get("name") === TL_CHAR);
+    const tlMacChar = name => chars().find(m => m.get("name") === TL_MAC + name);
+    const tlOurs = c => !!c && (c.get("name") === TL_CHAR || String(c.get("name") || "").startsWith(TL_MAC));
+    // 연결된 토큰 수 (읽어 둔 모든 페이지 · 목록을 그리는 동안 한 번만 센다): 표 이름별 · 캐릭터별
+    let tlByTable = null, tlByChar = null, tlAt = 0;
+    const tlCounts = () => {
+        if (tlByTable && Date.now() - tlAt < 1000) return;
+        tlByTable = new Map(); tlByChar = new Map(); tlAt = Date.now();
+        const tc = tlChar()?.id;
+        (window.Campaign?.pages?.models || []).forEach(p => (p.thegraphics?.models || []).forEach(g => {
+            const r = g.get("represents");
+            if (!r) return;
+            tlByChar.set(r, (tlByChar.get(r) || 0) + 1);
+            if (r === tc) tlByTable.set(g.get("bar3_value"), (tlByTable.get(g.get("bar3_value")) || 0) + 1);
+        }));
     };
-    // 공용 캐릭터와 능력 둘을 갖춘다 (있으면 그대로 · 시트를 연 적 없으면 능력 목록부터 읽는다)
-    const tlEnsure = async players => {
-        let c = tlChar(), made = false;
-        if (!c) { c = window.Campaign.characters.create({ name: TL_CHAR, inplayerjournals: "", controlledby: players ? "all" : "", archived: false }); made = true; }
+    const tlCount = name => { if (!name) return 0; tlCounts(); return tlByTable.get(name) || 0; };
+    const tlCountMac = name => { const c = name && tlMacChar(name); if (!c) return 0; tlCounts(); return tlByChar.get(c.id) || 0; };
+    // 캐릭터와 토큰 액션 능력을 갖춘다 (있으면 그대로 · 시트를 연 적 없으면 능력 목록부터 읽는다)
+    const tlEnsure = async (name, acts, players) => {
+        let c = chars().find(m => m.get("name") === name), made = false;
+        if (!c) { c = window.Campaign.characters.create({ name, inplayerjournals: "", controlledby: players ? "all" : "", archived: false }); made = true; }
         else if ((c.get("controlledby") === "all") !== players) c.save({ controlledby: players ? "all" : "" });
         const ab = c?.abilities;
         if (!ab?.create) throw new Error("캐릭터 능력을 만들 수 없어요");
         if (!made && typeof ab.fetch === "function") { try { ab.fetch(ab); } catch (e) { /* 이미 읽음 */ } await sleep(600); }
-        TL_ACTS.forEach(([name, action]) => {
-            const a = ab.models.find(m => m.get("name") === name);
-            if (!a) ab.create({ name, action, istokenaction: true });
-            else if (a.get("action") !== action || !a.get("istokenaction")) a.save({ action, istokenaction: true });
+        acts.forEach(([an, action], i) => {
+            const a = ab.models.find(m => m.get("name") === an) || (acts.length === 1 && i === 0 ? ab.models.find(m => m.get("istokenaction")) : null);
+            if (!a) ab.create({ name: an, action, istokenaction: true });
+            else if (a.get("name") !== an || a.get("action") !== action || !a.get("istokenaction")) a.save({ name: an, action, istokenaction: true });
         });
         return c;
     };
+    const tlTimer = () => { tlByTable = null; };
     const tlOpen = n => {
-        const name = n.model?.get("name") || n.cur.name;
+        const isT = n.kind === "rtable", name = n.model?.get("name") || n.cur.name;
         if (!ui.tl.hidden && ui.tl.dataset.id === n.id) { ui.tl.hidden = true; return; }
         ui.bk.hidden = true;
         ui.tl.dataset.id = n.id; ui.tl.textContent = "";
-        const pg = window.Campaign?.activePage?.(), c = tlChar();
-        const close = el("button", { type: "button", class: "aio-ib x", "aria-label": "닫기", onclick: () => { ui.tl.hidden = true; } }, "✕");
-        ui.tl.append(el("div", { class: "hd" }, el("b", {}, `'${name}'를 토큰에 연결`), close),
-            el("p", {}, `지금 페이지 '${pg?.get("name") || "?"}' · 토큰 층 — 연결한 토큰을 누르면 클릭 메뉴(또는 위쪽 토큰 액션 줄)에 '🎲 굴리기' · '🤫 몰래 굴리기'`));
-        if (/\s/.test(name)) ui.tl.append(el("p", { class: "warn" }, "표 이름에 띄어쓰기가 있어 Roll20 굴림(1t[…])이 안 될 수 있어요 — 이름에서 띄어쓰기를 빼고 저장한 뒤 연결해 주세요."));
+        const pg = window.Campaign?.activePage?.(), tc = tlChar(), mc = isT ? null : tlMacChar(name);
+        const target = isT ? tc : mc;
+        ui.tl.append(el("div", { class: "hd" }, el("b", {}, `'${name}' ${isT ? "굴림표" : "매크로"}를 토큰에 연결`),
+                el("button", { type: "button", class: "x", "aria-label": "닫기", onclick: () => { ui.tl.hidden = true; } }, "✕")),
+            el("p", {}, `지금 페이지 '${pg?.get("name") || "?"}' · 토큰 층 — 연결한 토큰을 누르면 클릭 메뉴(또는 위쪽 토큰 액션 줄)에 `
+                + (isT ? "'🎲 굴리기' · '🤫 몰래 굴리기'" : `'${name}'`)));
+        if (isT && /\s/.test(name)) ui.tl.append(el("p", { class: "warn" }, "표 이름에 띄어쓰기가 있어 Roll20 굴림(1t[…])이 안 될 수 있어요 — 이름에서 띄어쓰기를 빼고 저장한 뒤 연결해 주세요."));
+        // 매크로: 부르기(#) · 내용 복사 고르기 + 토큰 쪽 내용이 지금 매크로와 다르면 알림
+        let mode = localStorage.getItem(TL_MODE_KEY) === "copy" ? "copy" : "call", stale = null;
+        const actFor = () => mode === "call" ? "#" + name : String(n.model?.get("action") || "");
+        if (!isT) {
+            const ab = mc?.abilities?.models?.find(m => m.get("istokenaction"));
+            if (ab) mode = ab.get("action") === "#" + name ? "call" : "copy";
+            const radio = (v, label, sub) => el("label", {}, el("input", { type: "radio", name: "r20be-tlmode", value: v, checked: mode === v,
+                onchange: () => { mode = v; localStorage.setItem(TL_MODE_KEY, v); checkStale(); } }), el("b", {}, label), el("small", {}, sub));
+            ui.tl.append(el("div", { class: "mode", role: "radiogroup", "aria-label": "토큰에서 매크로를 어떻게" },
+                radio("call", `#${name} 부르기`, "매크로를 고치면 따라가요 · 플레이어도 쓰면 매크로를 플레이어에게 공유해요"),
+                radio("copy", "내용 복사", "공유 없이 늘 실행 · 매크로를 고치면 [연결]을 한 번 더")));
+            stale = el("p", { class: "warn", hidden: true });
+            ui.tl.append(stale);
+            if (n.changed?.size) ui.tl.append(el("p", { class: "warn" }, "이 매크로에 저장 안 한 고침이 있어요 — 내용 복사는 저장한 내용으로 해요."));
+        }
+        function checkStale() {
+            if (!stale) return;
+            const ab = mc?.abilities?.models?.find(m => m.get("istokenaction"));
+            stale.hidden = !ab || ab.get("action") === actFor();
+            stale.textContent = "토큰 쪽 매크로가 지금 내용과 달라요 — [연결]을 누르면 맞춰져요";
+        }
+        checkStale();
         const toks = (pg?.thegraphics?.models || []).filter(g => g.get("layer") === "objects" && g.get("imgsrc"));
         if (!toks.length) { ui.tl.append(el("p", {}, "이 페이지의 토큰 층에 토큰이 없어요.")); ui.tl.hidden = false; return; }
+        const isThis = g => !!target && g.get("represents") === target.id && (!isT || g.get("bar3_value") === name);
         const stOf = g => {
-            const rep = g.get("represents");
-            if (!rep) return { k: "none", t: g.get("bar3_value") ? `연결 안 됨 · 막대 3 '${g.get("bar3_value")}' 덮어씀` : "연결 안 됨" };
-            if (c && rep === c.id) return g.get("bar3_value") === name ? { k: "this", t: "✓ 이 표" } : { k: "other", t: `${g.get("bar3_value") || "(표 이름 없음)"}` };
-            return { k: "char", t: `캐릭터 '${window.Campaign.characters.get(rep)?.get("name") || "?"}'의 말 — 못 바꿈` };
+            const rep = g.get("represents"), c = rep && window.Campaign.characters.get(rep);
+            if (isThis(g)) return { k: "this", t: "✓ 연결됨" };
+            if (!rep) return { k: "none", t: isT && g.get("bar3_value") ? `연결 안 됨 · 막대 3 '${g.get("bar3_value")}' 덮어씀` : "연결 안 됨" };
+            if (c && tlOurs(c)) return { k: "other", t: c === tc ? `굴림표 '${g.get("bar3_value") || "?"}' → 바뀜` : `매크로 '${c.get("name").slice(TL_MAC.length)}' → 바뀜` };
+            return { k: "char", t: `캐릭터 '${c?.get("name") || "?"}'의 말 — 못 바꿈` };
         };
         const rows = toks.map(g => {
             const st = stOf(g), cb = el("input", { type: "checkbox", checked: st.k === "this", disabled: st.k === "char", "aria-label": g.get("name") || "이름 없는 토큰" });
@@ -12206,28 +12241,41 @@ const bulkEditor = (() => {
         });
         const q = el("input", { class: "r20be-in r20be-mini", placeholder: "토큰 이름 찾기", "aria-label": "토큰 이름 찾기",
             oninput: e => { const v = e.target.value.trim().toLowerCase(); rows.forEach(r => { r.row.hidden = !!v && !String(r.g.get("name") || "").toLowerCase().includes(v); }); } });
-        const pl = el("input", { type: "checkbox", checked: c ? c.get("controlledby") === "all" : true });
+        const pl = el("input", { type: "checkbox", checked: target ? target.get("controlledby") === "all" : true });
         const note = el("span", { class: "r20be-note" });
-        function sum() { const on = rows.filter(r => r.cb.checked).length, was = rows.filter(r => r.st.k === "this").length; note.textContent = `고른 ${on}개 · 이미 연결 ${was}개`; }
+        function sum() { note.textContent = `고른 ${rows.filter(r => r.cb.checked).length}개 · 이미 연결 ${rows.filter(r => r.st.k === "this").length}개`; }
         const go = el("button", { type: "button", class: "aio-btn pri", onclick: async () => {
             const ch = rows.filter(r => !r.cb.disabled && r.cb.checked !== (r.st.k === "this"));
-            if (!ch.length && (c ? c.get("controlledby") === "all" : true) === pl.checked) { ui.tl.hidden = true; return; }
+            const wantLinks = rows.some(r => r.cb.checked);
+            const same = (target ? target.get("controlledby") === "all" : true) === pl.checked;
+            if (!ch.length && same && (isT || !stale || stale.hidden)) { ui.tl.hidden = true; return; }
             go.disabled = true;
-            let ch2;
-            try { ch2 = await tlEnsure(pl.checked); }
-            catch (e) { aioErr("굴림표 연결", e, true); go.disabled = false; setStatus("연결하지 못했어요 — " + (e?.message || e), "err"); return; }
-            const KEYS = ["represents", "bar3_value", "showplayers_bar3"];
+            let c, shared = false;
+            try {
+                if (isT) c = await tlEnsure(TL_CHAR, TL_ACTS, pl.checked);
+                else if (wantLinks || target) {
+                    c = await tlEnsure(TL_MAC + name, [[name, actFor()]], pl.checked);
+                    // 부르기 + 플레이어: Roll20 은 누른 사람이 볼 수 있는 매크로만 부른다 → 모두에게 공유 (매크로 막대에는 안 나타남)
+                    if (mode === "call" && pl.checked && n.model && !String(n.model.get("visibleto") || "").split(",").includes("all")) {
+                        n.model.save({ visibleto: "all" }); n.cur.share = n.orig.share = "all"; shared = true;
+                    }
+                }
+            } catch (e) { aioErr("토큰 연결", e, true); go.disabled = false; setStatus("연결하지 못했어요 — " + (e?.message || e), "err"); return; }
+            const KEYS = ["represents", "bar3_value", "showplayers_bar3"], was = tc?.id;
             const back = ch.map(r => ({ g: r.g, a: Object.fromEntries(KEYS.filter(k => r.g.get(k) !== undefined).map(k => [k, r.g.get(k)])) }));
-            ch.forEach(r => r.g.save(r.cb.checked ? { represents: ch2.id, bar3_value: name, showplayers_bar3: false } : { represents: "", bar3_value: "" }));
+            ch.forEach(r => r.g.save(!r.cb.checked ? { represents: "", ...(isT || r.g.get("represents") === was ? { bar3_value: "" } : {}) }
+                : isT ? { represents: c.id, bar3_value: name, showplayers_bar3: false }
+                : { represents: c.id, ...(r.g.get("represents") === was ? { bar3_value: "" } : {}) }));
             const on = ch.filter(r => r.cb.checked).length, off = ch.length - on;
-            ui.tl.hidden = true; tlMap = null; renderTree();
-            setStatus(`'${name}' — 토큰 ${on}개 연결${off ? ` · ${off}개 풀기` : ""}${pl.checked ? " · 플레이어도 누를 수 있어요" : ""}`, "ok", ch.length ? { undo: () => {
-                back.forEach(b => b.g.save({ represents: "", bar3_value: "", ...b.a })); tlMap = null; renderTree();
-                setTimeout(() => setStatus("토큰 연결을 되돌렸어요", "ok"), 0);       // 누른 알림이 닫힌 뒤에
-            } } : undefined);
+            ui.tl.hidden = true; tlTimer(); renderTree();
+            setStatus(`'${name}' — ${ch.length ? `토큰 ${on}개 연결${off ? ` · ${off}개 풀기` : ""}` : "토큰 쪽 내용을 맞췄어요"}${pl.checked ? " · 플레이어도 누를 수 있어요" : ""}${shared ? " · 매크로를 플레이어에게 공유했어요" : ""}`,
+                "ok", ch.length ? { undo: () => {
+                    back.forEach(b => b.g.save({ represents: "", bar3_value: "", ...b.a })); tlTimer(); renderTree();
+                    setTimeout(() => setStatus("토큰 연결을 되돌렸어요", "ok"), 0);       // 누른 알림이 닫힌 뒤에
+                } } : undefined);
         } }, "연결");
         ui.tl.append(q, el("div", { class: "list" }, ...rows.map(r => r.row)),
-            el("label", { class: "pl" }, pl, "플레이어도 누를 수 있게", el("small", {}, " — 대신 이 토큰들을 옮길 수도 있어요 (모든 굴림표 토큰에 적용)")),
+            el("label", { class: "pl" }, pl, "플레이어도 누를 수 있게", el("small", {}, ` — 대신 이 토큰들을 옮길 수도 있어요${isT ? " (모든 굴림표 토큰에 적용)" : ""}`)),
             el("div", { class: "ft" }, note, el("span", { class: "r20be-flex" }), el("button", { type: "button", class: "aio-btn", onclick: () => { ui.tl.hidden = true; } }, "취소"), go));
         sum();
         ui.tl.hidden = false;
@@ -14250,7 +14298,7 @@ const bulkEditor = (() => {
         ui.fold.hidden = !(t.which === "journal" || t.which === "bgm" || t.which === "map") || isFlat(t);
         ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
         if (t.which !== "bgm") ui.bk.hidden = true;
-        if (t.which !== "tables") ui.tl.hidden = true;
+        if (t.which !== "tables" && t.which !== "macros") ui.tl.hidden = true;
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         setStatus();      // 도움말을 지금 탭에 맞춘다
         renderTree(); renderPane();
@@ -14994,6 +15042,11 @@ addCss(`
                 & .tl-char { cursor:default; opacity:.65; }
                 & .tl-char small { color:var(--aio-warn); }
                 & .pl { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0; font-weight:400; }
+                & .mode { display:flex; flex-direction:column; gap:2px; padding:4px 6px; border-radius:var(--aio-r); background:var(--aio-bg-2); }
+                & .mode label { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 6px; margin:0; font-weight:400; cursor:pointer; }
+                & .mode small { flex-basis:100%; padding-left:20px; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+                & .mode input { margin:0; }
+                & p.warn[hidden] { display:none; }
                 & .pl small { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
                 & .ft { display:flex; align-items:center; gap:6px; }
             }
