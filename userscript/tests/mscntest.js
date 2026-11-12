@@ -23,7 +23,7 @@ const SHOT = process.env.SHOT;
     const G = a => M({ layer: 'objects', controlledby: '', represents: '', width: 70, height: 70, left: 35, top: 35, ...a });
     const gs = [G({ id: 'bgA', name: '입구 맵', layer: 'map', imgsrc: L('A'), width: 1400, height: 1050, left: 700, top: 525 }),
       G({ id: 'pc1', name: '하루카', imgsrc: L('P1'), controlledby: 'p2' }), G({ id: 'pc2', name: '렌', imgsrc: L('P2'), represents: 'c2' }),
-      G({ id: 'npc1', name: '경비원', imgsrc: L('N1'), left: 400, top: 200, bar1_value: '7' }), G({ id: 'gm1', name: 'GM 메모', imgsrc: L('G1'), layer: 'gmlayer' })];
+      G({ id: 'npc1', name: '경비원', imgsrc: L('N1'), left: 400, top: 200, bar1_value: '7' }), G({ id: 'pan1', name: '패널', imgsrc: L('PN'), controlledby: 'all' }), G({ id: 'gm1', name: 'GM 메모', imgsrc: L('G1'), layer: 'gmlayer' })];
     pg.attributes.zorder = gs.map(g => g.id).join(',');
     pg.thegraphics = coll(gs, pg); pg.thepaths = coll([M({ id: 'w1', layer: 'walls', path: '[]' })], pg); pg.thetexts = coll([], pg);
     const hs = []; const handouts = coll(hs); const hc = handouts.create;

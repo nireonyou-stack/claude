@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.96.0
+// @version      1.97.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.96.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.97.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5173,9 +5173,16 @@ const mapScenes = (() => {
         } catch (e) { aioErr("맵 장면 저장", e); aioToast("맵 장면을 저장하지 못했어요", { kind: "err", id: "mscn" }); return false; }
     };
     const P = pg => (data.pages[pg.id] ||= { cur: null, list: [] });
-    // 플레이어 말: 조종하는 사람(토큰 또는 연결된 캐릭터)에 나 말고 누가 있거나 '모두'
-    const others = s => String(s || "").split(",").some(x => (x = x.trim()) && x !== window.currentPlayer?.id);
-    const isPC = m => others(m.get("controlledby")) || others(window.Campaign?.characters?.get(m.get("represents"))?.get("controlledby"));
+    // 플레이어 말: 캐릭터에 연결된 토큰은 그 캐릭터(또는 토큰)를 나 말고 누가 조종하면('모두' 포함) · 캐릭터 없는 토큰은 특정 플레이어에게 준 것만.
+    // '모두'만 있는 캐릭터 없는 토큰(코코포리아 가져오기의 패널 등)과 올인원 연결용 캐릭터(🎲 굴림표 · 🎬 매크로)의 토큰은 장면 소품이라 같이 바뀐다
+    const others = (s, all = true) => String(s || "").split(",").some(x => (x = x.trim()) && x !== window.currentPlayer?.id && (all || x !== "all"));
+    const isPC = m => {
+        const c = window.Campaign?.characters?.get(m.get("represents"));
+        if (!c) return others(m.get("controlledby"), false);
+        const nm = String(c.get("name") || "");
+        if (nm === "🎲 굴림표" || nm.startsWith("🎬 ")) return false;
+        return others(c.get("controlledby")) || others(m.get("controlledby"));
+    };
     // 고른 층의 그림 · 선 · 글자를 겹침 순서대로
     const objsOf = (pg, layers, keepPC) => {
         const z = new Map(String(pg.get("zorder") || "").split(",").map((id, i) => [id, i])), ls = new Set(layers.flatMap(k => LAYERS[k] || []));
@@ -6039,7 +6046,8 @@ const tokenMenu = (() => {
     const hoverR20 = menu => menu.querySelectorAll(":scope > button").forEach(b => {
         if (ours(b) || b.dataset.r20tmHov || !b.querySelector(":scope > .submenu-button-outer .submenu-button-icon")) return;
         b.dataset.r20tmHov = "1";
-        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnLook(b), 300); }, () => { if (isOpen(b)) toggleR20(b); });
+        const adv = ADV_RE.test(label(b));
+        hoverKeep(b, () => { if (!isOpen(b)) toggleR20(b); setTimeout(() => learnLook(b), 300); if (adv) { advAdd(b); setTimeout(() => advAdd(b), 60); } }, () => { if (isOpen(b)) toggleR20(b); });
     });
     const arrange = menu => {
         if (!findIn(menu, "레이어 변경") && !findIn(menu, "삭제")) return;      // 빈 맵 메뉴 등은 그대로
@@ -6271,6 +6279,47 @@ const tokenMenu = (() => {
         if (!dx && !dy) return;
         r.gs.forEach(g => g.save({ left: n(g, "left") + dx, top: n(g, "top") + dy }));
     };
+    // ── 고급 변환 안 '맵 크기로 늘리기' · '비율 유지하며 맵에 맞추기' (GM): 고른 그림을 하나씩 페이지 한가운데에 ──
+    // (맵 도구의 '맵 맞추기'는 반대로 페이지를 내용에 맞춘다) · 90° · 270° 로 돌아간 그림은 가로 · 세로를 바꿔서 맞춘다 · 알림에 되돌리기
+    const ADV_RE = /^(고급 변환|Advanced)$/i;
+    const ADV_ACTS = [["fitPageFill", "맵 크기로 늘리기"], ["fitPageFit", "비율 유지하며 맵에 맞추기"]];
+    const advAdd = b => {
+        const sb = subOf(b), tpl = sb?.querySelector(":scope > button:not([data-r20tm-act])");
+        if (!sb || !tpl || !isGM() || sb.querySelector(":scope > button[data-r20tm-act^='fitPage']")) return;
+        ADV_ACTS.forEach(([a, t]) => {
+            const x = tpl.cloneNode(true);
+            x.querySelector(":scope > .submenu")?.remove();
+            x.querySelector(":scope > .submenu-button-outer .submenu-button-icon")?.remove();
+            const lb = labelEl(x);
+            if (lb) lb.textContent = t; else x.textContent = t;
+            x.classList.remove("disabled", "r20tm-hide");
+            x.removeAttribute("data-r20tm-hide");
+            x.title = a === "fitPageFill" ? "고른 그림을 지금 페이지 가로 · 세로 크기 그대로 늘려 한가운데에" : "고른 그림을 비율 그대로 페이지 안에 꽉 차게 한가운데에";
+            x.dataset.r20tmAct = a;
+            sb.appendChild(x);
+        });
+    };
+    const topMenu = m => { while (m?.parentElement?.closest(".context-menu")) m = m.parentElement.closest(".context-menu"); return m; };
+    const fitPageSel = async (menu, mode) => {
+        const r = await pickSel(topMenu(menu));
+        if (!r) return;
+        r.undoZ();
+        if (r.unsure || !r.gs.length) { aioToast(r.unsure ? NOT_SURE(r.gs.length) : NOT_FOUND, { kind: "info", ms: 8000 }); return; }
+        const pg = window.Campaign?.activePage?.();
+        if (!pg) return;
+        const n = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
+        const PW = n(pg, "width", 25) * 70, PH = n(pg, "height", 25) * 70;
+        const before = r.gs.map(g => [g, Object.fromEntries(["left", "top", "width", "height"].map(k => [k, g.get(k)]))]);
+        r.gs.forEach(g => {
+            const turned = Math.abs(((n(g, "rotation") % 180) + 180) % 180 - 90) < 1;
+            const W = turned ? PH : PW, H = turned ? PW : PH, ratio = n(g, "width", 70) / Math.max(1, n(g, "height", 70));
+            let w = W, h = H;
+            if (mode === "fit") { if (W / H > ratio) w = H * ratio; else h = W / ratio; }
+            g.save({ width: Math.round(w), height: Math.round(h), left: Math.round(PW / 2), top: Math.round(PH / 2) });
+        });
+        aioToast(`${r.gs.length > 1 ? r.gs.length + "개를 " : ""}${mode === "fit" ? "비율 유지하며 맵에 맞췄어요" : "맵 크기로 늘렸어요"} · ${PW / 70}×${PH / 70}칸`,
+            { kind: "ok", undo: () => before.forEach(([g, a]) => g.save(a)) });
+    };
     const reorderSel = async menu => {
         const r = await pickSel(menu);
         if (!r) return;
@@ -6290,7 +6339,8 @@ const tokenMenu = (() => {
     };
     // 동작 셋 — 메뉴 단추를 누를 때와 왼클릭 메뉴(tokenActs, 숨긴 우클릭 메뉴로)가 같이 쓴다
     const runAct = (menu, a) => a === "roll" ? mergeRoll(menu) : a === "order" ? reorderSel(menu)
-        : /^center/.test(a) ? centerSel(menu, a === "centerX" ? "x" : a === "centerY" ? "y" : "xy") : null;
+        : /^center/.test(a) ? centerSel(menu, a === "centerX" ? "x" : a === "centerY" ? "y" : "xy")
+        : a === "fitPageFill" || a === "fitPageFit" ? fitPageSel(menu, a === "fitPageFit" ? "fit" : "fill") : null;
     const runPath = async (menu, path) => {
         const [parent, child] = path.split(">"), orig = findIn(menu, parent);
         if (!orig) return;
@@ -12188,6 +12238,33 @@ const bulkEditor = (() => {
         return c;
     };
     const tlTimer = () => { tlByTable = null; };
+    // 저장 전에: 이름을 바꾼 굴림표 · 매크로 [모델, 옛 이름, 새 이름] → 저장 뒤에 연결을 따라 바꾼다
+    const tlRenames = () => [S.tables, S.macros].filter(Boolean).flatMap(t => allNodes(t))
+        .filter(n => (n.kind === "rtable" || n.kind === "macro") && n.model && !n.isNew && !n.deleted && n.changed.has("name"))
+        .map(n => ({ kind: n.kind, m: n.model, from: n.model.get("name"), to: n.cur.name })).filter(r => r.from && r.to && r.from !== r.to);
+    const tlFollow = async (renames, attempt) => {
+        const done = renames.filter(r => r.m.get("name") === r.to);       // 저장된 것만
+        if (!done.length) return;
+        tlTimer();
+        const tc = tlChar(), gs = (window.Campaign?.pages?.models || []).flatMap(p => p.thegraphics?.models || []);
+        for (const r of done) {
+            if (r.kind === "rtable") {
+                if (!tc) continue;
+                const hit = gs.filter(g => g.get("represents") === tc.id && g.get("bar3_value") === r.from);
+                if (hit.length) await attempt(`토큰 연결 · ${r.to}`, async () => hit.forEach(g => g.save({ bar3_value: r.to })));
+                continue;
+            }
+            const c = tlMacChar(r.from);
+            if (!c) continue;
+            if (tlMacChar(r.to)) { console.warn("[토큰 연결] 같은 이름 캐릭터가 이미 있어 옛 연결을 그대로 둠:", TL_MAC + r.to); continue; }
+            await attempt(`토큰 연결 · ${r.to}`, async () => {
+                c.save({ name: TL_MAC + r.to });
+                const ab = c.abilities;
+                if (ab && typeof ab.fetch === "function" && !ab.models.length) { try { ab.fetch(ab); } catch (e) { /* 이미 읽음 */ } await sleep(600); }
+                (ab?.models || []).filter(a => a.get("istokenaction")).forEach(a => a.save({ name: r.to, ...(a.get("action") === "#" + r.from ? { action: "#" + r.to } : {}) }));
+            });
+        }
+    };
     const tlOpen = n => {
         const isT = n.kind === "rtable", name = n.model?.get("name") || n.cur.name;
         if (!ui.tl.hidden && ui.tl.dataset.id === n.id) { ui.tl.hidden = true; return; }
@@ -14210,6 +14287,7 @@ const bulkEditor = (() => {
         if (dels.length && !confirm(`${dels.length}개 항목을 Roll20에서 삭제합니다. 되돌릴 수 없습니다.\n\n`
             + dels.slice(0, 10).map(name => "· " + name).join("\n") + (dels.length > 10 ? "\n…" : "") + "\n\n계속할까요?")) return;
         saving = true; updateBar(); setStatus("저장 중…");
+        const renames = tlRenames();
         const total = dirtyCount(), errs = [], onlyLinks = (S.links?.fixes.size || 0) + (S.links?.dels.size || 0) === total;
         const attempt = async (label, fn) => {
             try { await fn(); } catch (e) { console.warn("[일괄 편집기] 저장 실패:", label, e); errs.push(label); }
@@ -14237,6 +14315,7 @@ const bulkEditor = (() => {
             }
         }
         if (S.links?.fixes.size || S.links?.dels.size) await saveLinks(S.links, attempt);     // 다른 탭이 고친 뒤의 값에서 주소만 바꾸고 지운다
+        await tlFollow(renames, attempt);       // 이름을 바꾼 굴림표 · 매크로에 연결된 토큰 · 캐릭터
         saving = false;
         // 실패한 것이 있으면 작업 내용을 남겨 다시 저장할 수 있게 한다
         if (errs.length) {

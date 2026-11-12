@@ -78,5 +78,13 @@ const SHOT = process.env.SHOT;
   console.log('복사로 바꿈 →', await p.$eval('#r20be .r20be-tlink p.warn:not([hidden])', e => e.textContent).catch(() => '(경고 없음)'));
   await p.click('#r20be .r20be-tlink .ft .pri'); await p.waitForTimeout(900);
   console.log('복사 연결 →', await mst(), '| 알림:', await p.$eval('#aio-toasts .aio-t:last-child .m', e => e.textContent));
+  // 이름 바꾸고 저장 → 연결이 따라감: 매크로 '장면1' → '장면A' (캐릭터 · 능력 이름) · 굴림표 '단서표' → '단서표2' (토큰 막대 3)
+  await p.fill('#r20be .r20be-pane input.r20be-in >> nth=0', '장면A'); await p.dispatchEvent('#r20be .r20be-pane input.r20be-in >> nth=0', 'input');
+  await p.evaluate(() => [...document.querySelectorAll('#r20be .r20be-seg button')].find(b => b.textContent.trim() === '굴림표')?.click()); await p.waitForTimeout(200);
+  await p.click('#r20be .r20be-row[data-id="t1"] [data-act="pick"]').catch(() => p.click('#r20be .r20be-row[data-id="t1"]')); await p.waitForTimeout(200);
+  await p.fill('#r20be .r20be-pane input.r20be-in >> nth=0', '단서표2'); await p.dispatchEvent('#r20be .r20be-pane input.r20be-in >> nth=0', 'input');
+  await p.click('#r20be button:has-text("저장")'); await p.waitForTimeout(1500);
+  console.log('이름 바꾸고 저장 →', await p.evaluate(() => { const g = Campaign.activePage().thegraphics; const mc = Campaign.characters.models.find(m => m.get('name').startsWith('🎬'));
+    return `표 이름=${Campaign.rollabletables.get('t1').get('name')} · 상자 막대3=${g.get('g1').get('bar3_value')} · 매크로=${currentPlayer.macros.models[0].get('name')} · 캐릭터=${mc?.get('name')} · 능력=${mc?.abilities.models.map(a => a.get('name') + ':' + a.get('action')).join(';')}`; }));
   console.log('errors:', errs); await b.close();
 })();
