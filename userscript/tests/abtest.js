@@ -11,6 +11,8 @@ const SHOT = process.env.SHOT;
   await p.goto('http://127.0.0.1:8766/blank.html');
   await p.evaluate(() => {
     localStorage.clear();
+    // Roll20 에 실린 Bootstrap 의 .row (가짜 칸 · 음수 여백) — 줄 배치가 밀리지 않는지 본다
+    document.head.insertAdjacentHTML('beforeend', '<style>.row:before,.row:after{content:" ";display:table}.row:after{clear:both}.row{margin-left:-15px;margin-right:-15px}</style>');
     const row = (b, n, ch) => `<div class="mrow" style="display:flex;gap:4px;margin:3px 0"><input name="attr_${b}Name" value="${n}" style="width:150px"><input name="attr_${b}Types" value="소환" style="width:50px"><input name="attr_${b}Cost" value="2" style="width:30px"><input name="attr_${b}Charge" value="${ch}" style="width:30px"><input name="attr_${b}Effect" value="정령을 소환한다" style="width:200px"></div>`;
     document.body.innerHTML = '<div class="ui-dialog" style="position:fixed;left:40px;top:60px;width:560px;padding:10px;background:#fff;border:1px solid #999"><div class="characterdialog" data-characterid="c1"><b>장서</b>'
       + row('Magic_01_', '긴급소환', 3) + row('Magic_02_', '화염', 0)
@@ -40,6 +42,7 @@ const SHOT = process.env.SHOT;
   console.log('창:', await p.$eval('#r20-abt .hd b', e => e.textContent), '·', await p.$eval('#r20-abt p', e => e.textContent));
   console.log('토큰:', await rows());
   console.log('창이 시트 창보다 위:', await p.$eval('#r20-abt', e => +getComputedStyle(e).zIndex > 50000), '| 자리:', await p.$eval('#r20-abt .row i', e => e.textContent));
+  console.log('줄 한 줄에:', await p.$eval('#r20-abt .row', r => { const a = r.querySelector('input').getBoundingClientRect(), z = r.querySelector('.im').getBoundingClientRect(), b = r.getBoundingClientRect(); return Math.abs((a.top + a.bottom) / 2 - (z.top + z.bottom) / 2) < 6 && b.height < 60 && a.left - b.left < 12; }));
   console.log('막대:', await p.$eval('#r20-abt .bar', e => [...e.options].map(o => (o.selected ? '▶' : '') + o.textContent).join(' / ')), '| 단추:', await p.$eval('#r20-abt .go', e => e.textContent));
   if (SHOT) await p.screenshot({ path: SHOT + '/abt.png', clip: { x: 0, y: 0, width: 1060, height: 420 } });
   await p.click('#r20-abt .go'); await p.waitForTimeout(150);
