@@ -56,6 +56,11 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.waitForFunction(() => !document.querySelector('#r20-ccf .scs')?.hidden, null, { timeout: 10000 });
   console.log('장면 줄:', await p.$eval('#r20-ccf .scs', e => e.innerText.replace(/\s+/g, ' ')), '| 패널 스위치:', await p.$eval('#r20-ccf .pan', e => e.getAttribute('aria-checked')));
   if (SHOT) await p.screenshot({ path: SHOT + '/ccfscn.png', clip: await p.$eval('#r20-ccf', e => { const r = e.getBoundingClientRect(); return { x: r.x - 4, y: r.y - 4, width: r.width + 40, height: r.height + 8 }; }) });
+  // 장면 고르기: 없음 → 단추 꺼짐 · 모두 → 다시 2개
+  await p.click('#r20-ccf [data-pk=none]');
+  console.log('없음:', await p.$eval('#r20-ccf .all', e => e.textContent + (e.disabled ? ' (꺼짐)' : '')), '|', await p.$eval('#r20-ccf .pkn', e => e.textContent));
+  await p.click('#r20-ccf [data-pk=all]');
+  console.log('모두:', await p.$eval('#r20-ccf .all', e => e.textContent + (e.disabled ? ' (꺼짐)' : '')), '| 목록:', await p.$$eval('#r20-ccf .pkl label', ls => ls.map(l => (l.querySelector('input').checked ? '☑' : '☐') + l.innerText.trim()).join(' ')));
   await p.click('#r20-ccf .all');
   await p.waitForFunction(() => document.querySelector('#r20-mscn') && !document.querySelector('#r20-mscn').hidden && document.querySelectorAll('#r20-mscn .card').length, null, { timeout: 20000 }).catch(() => {});
   await p.waitForTimeout(400);
@@ -73,5 +78,11 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.click('#r20-maptray .imp'); await p.waitForTimeout(300);
   await p.click('#r20-ccf .pri'); await p.waitForFunction(() => /다 놓았어요/.test(document.querySelector('#r20-ccf .prog')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
   console.log('장면 하나 가져오기:', await p.$eval('#r20-ccf .prog', e => e.textContent), '| 새로 올림:', await p.evaluate(() => __w.filter(x => x.startsWith('up:')).length));
+  // 고른 장면만: 입구를 빼고 누르면 지하실 하나만 더 생긴다
+  await p.click('#r20-ccf .pkl label:nth-child(1) input');
+  console.log('입구 뺌:', await p.$eval('#r20-ccf .all', e => e.textContent));
+  await p.click('#r20-ccf .all');
+  await p.waitForFunction(() => document.querySelectorAll('#r20-mscn .card').length === 3, null, { timeout: 20000 }).catch(() => {});
+  console.log('고른 장면만 뒤 카드:', await p.$$eval('#r20-mscn .card', cs => cs.map(c => c.querySelector('b').textContent).join(' / ')));
   console.log('errors:', errs); await b.close();
 })();

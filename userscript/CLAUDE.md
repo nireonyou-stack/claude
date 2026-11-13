@@ -74,6 +74,8 @@
 - 기능 하나 = FEAT 모듈 (`inject` · `setEnabled` · `watch`). 묶음은 `addBundle`.
 - 새 창은 `AIO_ZOOMED`에 넣는다 (글자 크기 확대가 먹게).
 - 공용 함수를 먼저 쓴다: `aioToast`(알림) · `el` · `escAttr` · `copyText` · `r20img` · `sizedUrl` · `grpDrop` · `tblHead` · `tblSections` · `aioErr` · `btnVisible`.
+  - 캐릭터 시트 값: `aioAttrs.load(캐릭터)` (시트를 연 적 없는 캐릭터는 속성이 비어 있다 → 받아 온 뒤에 읽는다) · `aioAttrs.find(캐릭터, 이름)`.
+  - 채팅에 대신 올리기: `chatPost(글)` (쓰던 글 · 한글 조합을 지킨다) · 값은 `chatPost.safe(값)` 으로 풀어서 넣는다.
 - 이름 앞머리: 기능별 `r20xx-`, 공용 부품은 `aio-`.
 - 저장 키: `localStorage` `r20_<기능>_<항목>`. 읽기 · 쓰기는 try/catch.
 - 방 데이터(핸드아웃 · 매크로 · 굴림표)에 쓸 때는 저장 버튼을 거치고, 저장 전에는 되돌릴 수 있게.

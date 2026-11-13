@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.98.0
+// @version      1.99.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.98.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.99.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1170,6 +1170,60 @@ const aioSrcOf = () => {
 };
 window.addEventListener("error", e => { const st = e.error?.stack || "", src = (st || e.filename) && aioSrcOf(); if (src && (st.includes(src) || e.filename === src)) aioErr("잡히지 않은", e.error || e.message, true); });
 window.addEventListener("unhandledrejection", e => { const st = e.reason?.stack || "", src = st && aioSrcOf(); if (src && st.includes(src)) aioErr("잡히지 않은(약속)", e.reason, true); });
+// 캐릭터 속성 읽기: Roll20 은 시트 창을 열기 전에는 그 캐릭터의 속성을 받아 오지 않는다 → 필요한 캐릭터만 직접 연결해 받는다
+// (실제 방에서 확인: new BackboneFirebase(c.attribs) 로 0 → 249개). 연결은 캐릭터마다 한 번만 건다
+const aioAttrs = (() => {
+    const going = new Map();        // 캐릭터 id → 받는 중인 Promise
+    const load = c => {
+        if (!c?.attribs) return Promise.resolve(false);
+        if (c.attribs.models.length) return Promise.resolve(true);
+        if (going.has(c.id)) return going.get(c.id);
+        const p = new Promise(ok => {
+            if (!c.attribs._aioAsked) {
+                c.attribs._aioAsked = true;
+                try {
+                    const BF = window.BackboneFirebase;
+                    if (typeof BF === "function" && !c.attribs.backboneFirebase) c.attribs.backboneFirebase = new BF(c.attribs);
+                    else c.attribs.fetch?.(c.attribs);
+                } catch (e) { aioErr("캐릭터 속성 읽기", e); }
+            }
+            // 다 왔다는 신호가 없어, 개수가 0.3초 동안 그대로면 끝난 것으로 본다 (속성이 하나도 없는 캐릭터는 4초 뒤 그만 기다림)
+            let was = -1, same = 0;
+            const t0 = Date.now(), iv = setInterval(() => {
+                const n = c.attribs.models.length;
+                same = n && n === was ? same + 1 : 0; was = n;
+                if (same >= 2 || Date.now() - t0 > (n ? 15000 : 4000)) { clearInterval(iv); going.delete(c.id); ok(n > 0); }
+            }, 150);
+        });
+        going.set(c.id, p);
+        return p;
+    };
+    // 이름으로 찾기 (Roll20 처럼 대소문자 안 가림)
+    const find = (c, name) => { const k = String(name).toLowerCase(); return c?.attribs?.models.find(a => String(a.get("name")).toLowerCase() === k) || null; };
+    return { load, find };
+})();
+// 채팅에 대신 올리기 (입력칸에 넣고 보내기 단추를 누른다): 쓰던 글은 돌려놓고, 한글을 조합하는 중이면 끝날 때까지 기다린다
+const chatPost = (() => {
+    const q = [];
+    let composing = false, timer = 0;
+    document.addEventListener("compositionstart", e => { if (e.target.closest?.("#textchat-input")) composing = true; }, true);
+    document.addEventListener("compositionend", () => { composing = false; }, true);
+    const step = () => {
+        timer = 0;
+        const ta = document.querySelector("#textchat-input textarea"), send = document.getElementById("chatSendBtn");
+        if (!ta || !send) { q.length = 0; return; }
+        if (composing) { timer = setTimeout(step, 300); return; }
+        const keep = ta.value, a = ta.selectionStart, z = ta.selectionEnd, msg = q.shift();
+        ta.value = msg;
+        send.click();       // 단추 click 은 desc · 사담 머리말을 붙이지 않는다
+        if (!ta.value || ta.value === msg) { ta.value = keep; if (keep) { try { ta.setSelectionRange(a, z); } catch (e) { /* 자리만 못 돌림 */ } } }
+        if (q.length) timer = setTimeout(step, 80);
+    };
+    // Roll20 이 굴림 · 속성 · 매크로로 읽을 글자를 풀어 쓴다 (값에 [[1d6]] 이나 #이름 이 들어 있어도 글자 그대로 보이게)
+    const safe = (s, max = 60) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, max).replace(/[@#%\[\]{}*&]/g, ch => `&#${ch.charCodeAt(0)};`);
+    const post = text => { q.push(text); if (!timer) timer = setTimeout(step, 0); };
+    return Object.assign(post, { safe });
+})();
 // 기능이 watch(선택자)를 주면 그 요소가 새로 생기거나 그 안이 바뀐 때만 inject 를 부른다 (매번 문서 전체를 훑지 않게).
 // instant 도 주면 그 요소가 새로 생긴 순간 바로 부른다(기다리지 않고). 문서 전체 감시자는 시작 쪽 하나만 둔다
 // all: 다음 번엔 전부 (처음 · 설정을 바꾼 뒤)
@@ -4452,8 +4506,10 @@ const ccfImport = (() => {
     // 모든 장면 · 패널을 덮는 왼쪽 위를 같은 원점으로, 페이지 크기도 모두를 덮게 (배경 그림은 그 페이지 가득)
     let pan = localStorage.getItem("r20_ccf_pan") !== "false";
     const sceneList = () => scenes.filter(c => c.grp === "장면");
+    const skipSc = new Set();        // 맵 장면으로 만들지 않을 장면 (기본: 전부 만든다)
+    const pickedScenes = () => sceneList().filter(c => !skipSc.has(c));
     const runScenes = async () => {
-        const pg = page(), list = sceneList();
+        const pg = page(), list = pickedScenes();
         if (!pg?.thegraphics || !list.length) return prog("지금 페이지를 못 찾았어요");
         busy = true; stop = false; paint();
         $(".warn").textContent = "가져오는 동안 Roll20 에서 다른 페이지로 옮기지 마세요";
@@ -4726,7 +4782,7 @@ const ccfImport = (() => {
         $(".scn").hidden = !zip || !!pack;
         const nsc = pack ? 0 : sceneList().length;
         $(".scs").hidden = !nsc;
-        $(".all").textContent = `장면 ${nsc}개 → 맵 장면으로`;
+        paintPick();
         $(".pan").setAttribute("aria-checked", String(pan));
         if (pack) return refreshPack();
         $(".lay").hidden = true;
@@ -4764,12 +4820,26 @@ const ccfImport = (() => {
         $(".warn").textContent = n ? `지금 페이지에 그림이 ${n}개 있어요 — 그 위에 겹쳐 놓여요` : "";
         drawPreview(sc, L);
     };
+    // 맵 장면으로 만들 장면 고르기: ZIP 이 바뀌었을 때만 목록을 다시 짓는다 (스크롤 자리 유지)
+    const paintPick = () => {
+        const list = pack ? [] : sceneList(), box = $(".pkl");
+        if (box._for !== scenes) {
+            box._for = scenes; skipSc.clear();
+            box.innerHTML = list.map((c, i) => `<label><input type="checkbox" data-i="${i}" checked><span>${escAttr(c.name)}</span></label>`).join("");
+        }
+        box.querySelectorAll("input").forEach(c => { c.checked = !skipSc.has(list[+c.dataset.i]); });
+        const n = list.length - skipSc.size;
+        $(".pkn").textContent = `${n}/${list.length}`;
+        $(".all").textContent = n === list.length ? `장면 ${n}개 → 맵 장면으로` : `고른 장면 ${n}개 → 맵 장면으로`;
+        $(".all").disabled = busy || !n;
+    };
     const paint = () => {
         if (!pop) return;
         const go = $(".pri");
         go.textContent = busy ? "멈추기" : pack ? (lay ? "올리고 늘어놓기" : "라이브러리에 올리기") : "가져오기";
         go.disabled = !busy && !scenes[sel] && !pack;
-        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button, .all").forEach(el => { el.disabled = busy; });
+        pop.querySelectorAll("[data-cell], select, .sw, [data-k=pick], .pw input, .pw button, .all, .pkh button, .pkl input").forEach(el => { el.disabled = busy; });
+        if (!busy && !pickedScenes().length) $(".all").disabled = true;
     };
     const place = () => {
         if (!pop || !anchor?.isConnected) return;
@@ -4791,13 +4861,21 @@ const ccfImport = (() => {
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
             + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
             + '<div class="pg"></div><div class="warn"></div></div>'
-            + '<div class="scs" hidden><button type="button" class="all" title="코코포리아처럼: 장면을 바꾸면 배경 · 필드 · 마커만 바뀌고 스크린 패널은 그대로 — 맵 도구의 \'맵 장면\' 카드로"></button>'
+            + '<div class="scs" hidden><div class="pkh"><span>맵 장면으로 만들 장면 <b class="pkn"></b></span><button type="button" data-pk="all">모두</button><button type="button" data-pk="none">없음</button></div>'
+            + '<div class="pkl" role="group" aria-label="맵 장면으로 만들 장면"></div>'
+            + '<button type="button" class="all" title="코코포리아처럼: 장면을 바꾸면 배경 · 필드 · 마커만 바뀌고 스크린 패널은 그대로 — 맵 도구의 \'맵 장면\' 카드로"></button>'
             + '<button type="button" class="sw pan" role="switch"><i aria-hidden="true"></i>스크린 패널도 지금 페이지에 놓기 (한 번만)</button></div>'
             + '<div class="go"><button type="button" class="pri">가져오기</button><span class="prog" aria-live="polite"></span></div></div>';
         const inp = $("input[type=file]");
         $(".pw input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); tryPw(); } });
         inp.addEventListener("change", () => { addFiles([...inp.files]); inp.value = ""; });
         $("select").addEventListener("change", e => { sel = +e.target.value; grid = null; refresh(); });
+        $(".pkl").addEventListener("change", e => {
+            const c = e.target.closest("input"), sc = c && sceneList()[+c.dataset.i];
+            if (!sc) return;
+            if (c.checked) skipSc.delete(sc); else skipSc.add(sc);
+            paintPick();
+        });
         pop.addEventListener("click", e => {
             const b = e.target.closest("button");
             if (!b) return;
@@ -4808,6 +4886,7 @@ const ccfImport = (() => {
             if (b.classList.contains("conv")) { conv = !conv; localStorage.setItem("r20_ccf_conv", String(conv)); return refresh(); }
             if (b.classList.contains("lay")) { lay = !lay; localStorage.setItem("r20_ccf_lay", String(lay)); return refresh(); }
             if (b.classList.contains("pan")) { pan = !pan; localStorage.setItem("r20_ccf_pan", String(pan)); return refresh(); }
+            if (b.dataset.pk) { skipSc.clear(); if (b.dataset.pk === "none") sceneList().forEach(c => skipSc.add(c)); return paintPick(); }
             if (b.classList.contains("all")) return busy || runScenes();
             if (b.classList.contains("grid")) { grid = !grid; return refresh(); }
             if (b.classList.contains("pri")) { if (busy) { stop = true; prog("이번 그림까지 하고 멈춰요…"); } else if (pack) runPack(); else run(); }
@@ -5492,6 +5571,14 @@ addCss(`
             & .scs { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:6px 0; border-top:1px solid var(--aio-line-4); border-bottom:1px solid var(--aio-line-4); }
             & .scs[hidden] { display:none; }
             & .scs .pan { margin-left:0; }
+            & .pkh { display:flex; align-items:center; gap:4px; align-self:stretch; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+            & .pkh span { flex:1; }
+            & .pkh b { color:var(--aio-ink-2); }
+            & .pkl { display:flex; flex-direction:column; align-self:stretch; max-height:112px; overflow-y:auto; border:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); }
+            & .pkl label { display:flex; align-items:center; gap:6px; min-height:22px; margin:0; padding:0 6px; font-weight:400; font-size:var(--aio-fs-md); cursor:pointer; }
+            & .pkl label:hover { background:var(--aio-bg-2); }
+            & .pkl input { margin:0; flex:none; }
+            & .pkl span { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
             & .sw i { position:relative; width:26px; height:14px; border-radius:var(--aio-r); background:var(--aio-bg-5); }
             & .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
             & .sw[aria-checked=true] i { background:var(--aio-accent); }
@@ -9074,6 +9161,13 @@ const quickFind = (() => {
             on.forEach(m => m.save({ playing: false, softstop: false }));
             aioToast(on.length ? `${on.length}곡을 멈췄어요` : "나오는 곡이 없어요", { kind: "ok" });
         });
+        if (isGM() && FEAT.attrWatch) {
+            const w = FEAT.attrWatch.info();
+            add("🔔", w.on ? "값 변화 알림 끄기" : "값 변화 알림 켜기", `지켜보는 캐릭터 ${w.chars}명 · 알릴 값 ${w.rows}개 — 정하기는 일괄 편집기에서 캐릭터를 고르고 [🔔 값 알림]`, () => {
+                const on = FEAT.attrWatch.toggle();
+                aioToast(on ? "값 변화 알림을 켰어요" : "값 변화 알림을 껐어요", { kind: "ok" });
+            });
+        }
         add("⚙", "설정 열기", "올인원 설정", () => openSettings(""));
         BUNDLES.forEach(b => add("⚙", "설정 · " + b.label, b.sub || "", () => openSettings(b.label.replace(/\s*\(.*$/, "").split(" · ")[0])));
         return L;
@@ -11593,7 +11687,8 @@ const bulkEditor = (() => {
         if (n.kind === "macro") { const k = tlCountMac(n.model?.get("name")); return [n.cur.token ? "토큰" : "", k ? `🎯${k}` : ""].filter(Boolean).join(" · "); }
         if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}${tagList(n.cur.tags).map(x => " #" + x).join("")}`;
         const s = n.cur.share;
-        return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM");
+        return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM")
+            + (n.kind === "char" && FEAT.attrWatch?.has(n.id) ? " · 🔔" : "");
     };
     const visibleRows = t => {
         const q = t.q.trim().toLowerCase(), filtering = !!q || t.filter !== "all";
@@ -11757,6 +11852,13 @@ const bulkEditor = (() => {
         if (v && !opts.some(o => o.v === v)) opts.push({ v, label: `선택된 플레이어 ${v.split(",").filter(Boolean).length}명 (지금 설정)` });
         return opts;
     };
+    // 값 변화 알림 칸 (같은 캐릭터로 다시 누르면 닫힘)
+    const awOpen = n => {
+        if (!ui.aw.hidden && ui.aw.dataset.id === n.id) { ui.aw.hidden = true; return; }
+        ui.bk.hidden = true; ui.tl.hidden = true;
+        // 지켜보기를 바꾸면 왼쪽 줄의 🔔 · 이 단추 글자도 따라간다
+        FEAT.attrWatch.open(el, ui.aw, n.model, () => { refreshRow(n); const b = ui.pane.querySelector(".r20be-awbtn"); if (b) b.textContent = FEAT.attrWatch.has(n.id) ? "🔔 지켜보는 중" : "🔔 값 알림"; });
+    };
     const paneHead = n => el("div", { class: "r20be-ph" },
         el("strong", {}, KIND_NAME[n.kind]),
         n.deleted ? el("span", { class: "r20be-tag del" }, "삭제 예정")
@@ -11765,6 +11867,8 @@ const bulkEditor = (() => {
         !n.kids && n.kind !== "rtable" && n.kind !== "deck" && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => duplicate(n) }, "복제") : null,
         (n.kind === "rtable" || n.kind === "macro") && !n.isNew && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: n.kind === "macro" ? "맵 토큰을 누르면 이 매크로를 실행하게 연결" : "맵 토큰을 누르면 이 표를 굴리게 연결",
             "aria-haspopup": "dialog", onclick: () => tlOpen(n) }, "🎯 토큰에 연결") : null,
+        n.kind === "char" && n.model && !n.deleted && FEAT.attrWatch ? el("button", { type: "button", class: "aio-btn r20be-sec r20be-awbtn", title: "이 캐릭터의 시트 값이 바뀌면 채팅에 알리기 — 지켜볼 캐릭터 · 알릴 값 정하기",
+            "aria-haspopup": "dialog", onclick: () => awOpen(n) }, FEAT.attrWatch.has(n.id) ? "🔔 지켜보는 중" : "🔔 값 알림") : null,
         (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => dupMany([n], false) }, "복제") : null,
         (n.kind === "rtable" || n.kind === "deck") && !n.deleted ? el("button", { type: "button", class: "aio-btn r20be-sec", title: "복제본이 목록 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
             onclick: () => dupMany([n], true) }, "복제 후 원본 삭제") : null,
@@ -14415,6 +14519,7 @@ const bulkEditor = (() => {
         ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
         if (t.which !== "bgm") ui.bk.hidden = true;
         if (t.which !== "tables" && t.which !== "macros") ui.tl.hidden = true;
+        if (t.which !== "journal") ui.aw.hidden = true;
         [[ui.vList, !VIEW.icons], [ui.vGrid, VIEW.icons]].forEach(([b, on]) => { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
         setStatus();      // 도움말을 지금 탭에 맞춘다
         renderTree(); renderPane();
@@ -14717,6 +14822,7 @@ const bulkEditor = (() => {
         // 주크박스 백업 목록 (BGM 탭 · 자동 백업 묶음이 켜져 있을 때)
         ui.bk = el("div", { class: "r20be-bk", hidden: true, role: "dialog", "aria-label": "주크박스 백업" });
         ui.tl = el("div", { class: "r20be-tlink", hidden: true, role: "dialog", "aria-label": "굴림표를 토큰에 연결" });
+        ui.aw = el("div", { class: "r20be-tlink r20be-aw", hidden: true, role: "dialog", "aria-label": "값 변화 알림" });
         ui.bkBtn = el("button", { type: "button", class: "aio-btn r20be-sec", hidden: true, title: "주크박스 폴더 구조 백업 — 고른 시점으로 되돌리기", onclick: () => toggleBackups() }, "백업");
         ui.pagesBtn = el("button", { type: "button", class: "aio-btn r20be-sec", hidden: true, onclick: () => FEAT.roomImages?.loadPages() });
         // 페이지를 읽는 동안 묶음 목록을 늘리고, 다 읽으면 격자도 새로
@@ -14731,7 +14837,7 @@ const bulkEditor = (() => {
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl, ui.aw),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.foot);
         bindTree();
@@ -15221,6 +15327,226 @@ addFeature("bulkEditor", bulkEditor);
 addBundle({ place: "main", order: 4, group: "prep", label: "저널 · BGM · 매크로 일괄 편집기", sub: "덱 · 굴림표 · 이미지도 — 굴림표 항목 · 덱 카드 순서 바꾸기 · 매크로 선택지(?{…})는 표로: 앞뒤 붙이기 · 찾아 바꾸기 · 그림 주소 확인 · 미리보기",
     members: [["bulk", "bulkEditor"]],
     extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
+
+// @share-cut-start aw — 값 변화 알림 (배포판에서 뺌: 개인용)
+// ───────── 값 변화 알림: 지켜보는 캐릭터의 시트 값이 바뀌면 채팅에 올린다 (GM 브라우저로 방에 들어와 있는 동안만) ─────────
+// 생각은 YANGSALT(kibkibe) 님의 API 스크립트 attribute_tracker 에서 — Pro 없이 쓰도록 브라우저에서 돌게 새로 썼다
+//   https://github.com/kibkibe/roll20-api-scripts/tree/master/attribute_tracker
+// 설정은 이 브라우저에 방마다 (r20_aw_<방 번호>): { on, how, chars: [캐릭터 id], rows: [{ a: 속성 이름, l: 보일 이름 }] }
+//   a 의 *id* = 줄 번호 자리 (Magic_*id*_Charge · repeating_x_-*id*_y)
+//   l 에 *id* 가 있으면 그 이름의 속성 값을 보일 이름으로 쓴다 (띄우고 덧붙인 말은 뒤에 그대로: "Magic_*id*_Name 충전")
+// 캐릭터를 고르게 한 까닭: 속성은 캐릭터마다 따로 받아 와야 해서, 수백 명인 방에서 전부 지켜보면 브라우저가 무거워진다
+const attrWatch = (() => {
+    const key = () => "r20_aw_" + (window.campaign_id || "");
+    const HOW = [["as", "모두에게 — 캐릭터 이름으로"], ["desc", "모두에게 — 가운데 설명 줄로"], ["gm", "GM 에게만 (귓속말)"]];
+    // 마기카로기아 시트 예시 (속성 이름은 원작 스크립트의 check_list 에서)
+    const MAGI = [["Magic_*id*_Charge", "Magic_*id*_Name 충전"], ["repeating_acitems_-*id*_Magic_Charge", "repeating_acitems_-*id*_Magic_Name 충전"],
+        ["Magic_*id*_Cost", "Magic_*id*_Name 코스트"], ["repeating_acitems_-*id*_Magic_Cost", "repeating_acitems_-*id*_Magic_Name 코스트"],
+        ["relation_fate_*id*", "relation_name_*id* 운명"], ["atk", "공격력"], ["def", "방어력"], ["bas", "근원력"], ["mp", "마력"], ["temp_mp", "일시적 마력"]];
+    let cfg = null, started = false;
+    const chars = () => window.Campaign?.characters;
+    const read = () => {
+        if (cfg) return cfg;
+        let o = {};
+        try { o = JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch (e) { /* 깨진 설정은 새로 */ }
+        return (cfg = { on: o.on !== false, how: HOW.some(h => h[0] === o.how) ? o.how : "as", chars: Array.isArray(o.chars) ? o.chars : [],
+            rows: Array.isArray(o.rows) ? o.rows.filter(r => r && typeof r.a === "string") : [] });
+    };
+    const store = () => { try { localStorage.setItem(key(), JSON.stringify(cfg)); } catch (e) { /* 저장 못 함 */ } sync(); };
+    const lc = s => String(s ?? "").toLowerCase().trim();
+    // 이 속성을 알릴 줄 (없으면 null) · id = *id* 자리에 든 글자
+    const rowFor = name => {
+        const n = lc(name);
+        for (const r of cfg.rows) {
+            const a = lc(r.a), i = a.indexOf("*id*");
+            if (!a) continue;
+            if (a === n) return { r, id: "" };
+            if (i < 0) continue;
+            const pre = a.slice(0, i), suf = a.slice(i + 4);
+            if (n.length > pre.length + suf.length && n.startsWith(pre) && n.endsWith(suf)) return { r, id: String(name).trim().slice(pre.length, n.length - suf.length) };
+        }
+        return null;
+    };
+    const labelOf = (c, hit, name) => {
+        const l = String(hit.r.l || "").trim();
+        if (!l) return name;
+        if (!l.includes("*id*")) return l;
+        const [ref, ...rest] = l.split(/\s+/), v = aioAttrs.find(c, ref.replace("*id*", hit.id))?.get("current");
+        return [v != null && String(v).trim() !== "" ? String(v) : name, ...rest].join(" ");
+    };
+    // 0.5초 동안 모아 캐릭터마다 한 줄로 (같은 값이 연달아 바뀌면 처음 → 마지막만)
+    const wait = new Map();
+    const say = (c, k, label, old, val, isAdd) => {
+        let w = wait.get(c.id);
+        if (!w) { w = { c, parts: new Map(), adds: 0 }; wait.set(c.id, w); setTimeout(() => flush(c.id), 500); }
+        if (isAdd) w.adds++;
+        const was = w.parts.get(k);
+        w.parts.set(k, { label, old: was ? was.old : old, val, isAdd: was ? was.isAdd : isAdd });
+    };
+    const flush = id => {
+        const w = wait.get(id);
+        wait.delete(id);
+        if (!w || !cfg.on) return;
+        // 값이 한꺼번에 여럿 생기면 시트를 처음 받아 오는 중인 것 — 그 값들은 알리지 않는다
+        const parts = [...w.parts.values()].filter(p => (!p.isAdd || w.adds <= 5) && String(p.old ?? "") !== String(p.val ?? ""));
+        if (!parts.length) return;
+        const S = chatPost.safe, v = x => S(x) || "(빈칸)", name = String(w.c.get("name") || "이름 없음").replace(/\s+/g, " ").slice(0, 40);
+        const line = f => parts.slice(0, 8).map(f).join(" · ") + (parts.length > 8 ? ` 외 ${parts.length - 8}개` : "");
+        if (cfg.how === "desc") return chatPost(`/desc [ ${S(name)} ] ` + line(p => `${S(p.label)} : ${p.isAdd ? "" : v(p.old) + " → "}${v(p.val)}`));
+        const body = line(p => `**${S(p.label)}** ${p.isAdd ? "" : v(p.old) + " "}→ **${v(p.val)}**`);
+        chatPost(cfg.how === "gm" ? `/w gm **${S(name)}** · ${body}` : `/as "${name.replace(/"/g, "")}" ${body}`);
+    };
+    const bound = new Map();        // 캐릭터 id → { off }
+    const bind = c => {
+        const b = { off: () => { b.dead = true; } };
+        bound.set(c.id, b);
+        aioAttrs.load(c).then(() => {
+            if (b.dead) return;
+            const hit = (m, f, old, val, isAdd) => {
+                const nm = m.get("name"), h = rowFor(nm);
+                if (h && String(old ?? "") !== String(val ?? "")) say(c, m.id + f, labelOf(c, h, nm) + (f === "max" ? " 최대" : ""), old, val, isAdd);
+            };
+            const onCur = (m, v) => hit(m, "current", m.previous("current"), v), onMax = (m, v) => hit(m, "max", m.previous("max"), v);
+            const onAdd = m => { if (String(m.get("current") ?? "").trim() !== "") hit(m, "current", "", m.get("current"), true); };
+            c.attribs.on("change:current", onCur); c.attribs.on("change:max", onMax); c.attribs.on("add", onAdd);
+            b.off = () => { c.attribs.off("change:current", onCur); c.attribs.off("change:max", onMax); c.attribs.off("add", onAdd); };
+        });
+    };
+    const sync = () => {
+        if (!cfg || !started) return;
+        const want = new Set(cfg.on && cfg.rows.length ? cfg.chars : []);
+        for (const [id, b] of bound) if (!want.has(id)) { b.off(); bound.delete(id); }
+        want.forEach(id => { const c = !bound.has(id) && chars()?.get(id); if (c) bind(c); });
+    };
+    // 번호 · 줄 id 만 다른 값 전부로 넓히기: Magic_02_Charge → Magic_*id*_Charge · repeating_x_-Mabc…_y → repeating_x_-*id*_y
+    const widen = a => {
+        const m = a.match(/^(repeating_[^_]+_-)([-\w]{19})(_.+)$/i) || a.match(/^(.*?_)(\d+)(_.*)$/) || a.match(/^(.*?_)(\d+)()$/);
+        return m ? { pat: `${m[1]}*id*${m[3]}`, id: m[2] } : null;
+    };
+    // 일괄 편집기 안의 설정 칸 (el · host 는 일괄 편집기 것) — c: 거기서 고른 캐릭터
+    const open = (el, host, c, onChange) => {
+        read();
+        if (chars()?.models?.length && cfg.chars.some(id => !chars().get(id))) { cfg.chars = cfg.chars.filter(id => chars().get(id)); store(); }       // 지워진 캐릭터는 뺀다
+        const q0 = host.querySelector(".aw-q")?.value || "", top0 = host.scrollTop, ltop0 = host.querySelector(".aw-list")?.scrollTop || 0;
+        const redraw = () => { if (!host.hidden) open(el, host, c, onChange); };
+        const set = f => { f(); store(); redraw(); onChange?.(); };
+        const has = !!c && cfg.chars.includes(c.id), nm = c?.get("name") || "이름 없음";
+        const add = (to, ...kids) => to.append(...kids.filter(Boolean));       // append 는 null 을 글자로 넣는다
+        host.dataset.id = c?.id || "";
+        host.textContent = "";
+        add(host,
+            el("div", { class: "hd" }, el("b", {}, "🔔 값 변화 알림"),
+                el("button", { type: "button", class: "aw-sw", role: "switch", "aria-checked": String(cfg.on), "aria-label": "값 변화 알림", onclick: () => set(() => { cfg.on = !cfg.on; }) },
+                    el("i", { "aria-hidden": "true" }), cfg.on ? "켜짐" : "꺼짐"),
+                el("button", { type: "button", class: "x", "aria-label": "닫기", onclick: () => { host.hidden = true; } }, "✕")),
+            el("p", {}, "지켜보는 캐릭터의 시트 값이 바뀌면 채팅에 올려요 — 이 브라우저(GM)로 방에 들어와 있는 동안만."),
+            el("div", { class: "mode", role: "radiogroup", "aria-label": "알림을 누구에게 어떻게" },
+                ...HOW.map(([k, t]) => el("label", {}, el("input", { type: "radio", name: "r20aw-how", checked: cfg.how === k, onchange: () => set(() => { cfg.how = k; }) }), t))),
+            el("div", { class: "aw-sec" }, el("b", {}, `지켜볼 캐릭터 ${cfg.chars.length}명`),
+                c && !has ? el("button", { type: "button", class: "aio-btn sm pri", onclick: () => set(() => { cfg.chars.push(c.id); }) }, `+ '${nm}' 지켜보기`) : null),
+            cfg.chars.length ? el("div", { class: "aw-chips" }, ...cfg.chars.map(id => {
+                const n = chars()?.get(id)?.get("name") || "이름 없음";
+                return el("button", { type: "button", class: "aio-chip" + (id === c?.id ? " on" : ""), title: "누르면 그만 지켜봐요", "aria-label": `${n} 그만 지켜보기`,
+                    onclick: () => set(() => { cfg.chars = cfg.chars.filter(x => x !== id); }) }, n, " ✕");
+            })) : el("p", {}, "왼쪽 목록에서 캐릭터를 고르고 [🔔 값 알림]을 누르면 여기에 넣을 수 있어요."),
+            cfg.chars.length > 12 ? el("p", { class: "warn" }, "지켜보는 캐릭터가 많으면 브라우저가 무거워질 수 있어요 — 이번 세션에 나오는 캐릭터만 두세요.") : null);
+        // 알릴 값
+        const rowEl = (r, i) => {
+            const w = widen(r.a.trim());
+            const edit = (k, e) => { r[k] = e.target.value.trim(); store(); };        // 다시 그리지 않는다 (다음 칸으로 옮긴 포커스가 사라지지 않게)
+            return el("div", { class: "aw-row" },
+                el("input", { type: "text", class: "aw-in", value: r.a, placeholder: "속성 이름", "aria-label": "속성 이름", spellcheck: "false", onchange: e => edit("a", e) }),
+                el("input", { type: "text", class: "aw-in", value: r.l, placeholder: "채팅에 보일 이름", "aria-label": "채팅에 보일 이름", spellcheck: "false", onchange: e => edit("l", e) }),
+                w ? el("button", { type: "button", class: "aio-btn sm", title: `번호만 다른 값 전부로 넓히기 → ${w.pat}`, onclick: () => set(() => {
+                    // 보일 이름을 안 고쳤으면 같은 줄의 이름 칸(…_Name)을 찾아 그 값으로 보이게
+                    const ref = w.pat.replace(/_[^_*]+$/, "_Name");
+                    if ((!r.l || r.l === r.a) && ref !== w.pat && c && aioAttrs.find(c, ref.replace("*id*", w.id))) r.l = ref;
+                    r.a = w.pat;
+                }) }, "＊ 전부") : null,
+                el("button", { type: "button", class: "x", "aria-label": `${r.a || "빈 줄"} 지우기`, onclick: () => set(() => { cfg.rows.splice(i, 1); }) }, "✕"));
+        };
+        add(host,
+            el("div", { class: "aw-sec" }, el("b", {}, `알릴 값 ${cfg.rows.length}개`),
+                el("button", { type: "button", class: "aio-btn sm", onclick: () => { set(() => { cfg.rows.push({ a: "", l: "" }); }); host.querySelector(".aw-row:last-child input")?.focus(); } }, "+ 줄 추가"),
+                el("button", { type: "button", class: "aio-btn sm", title: "마기카로기아 시트의 장서 충전 · 코스트 · 운명 · 공격력 · 방어력 · 근원력 · 마력 · 일시적 마력",
+                    onclick: () => set(() => { MAGI.forEach(([a, l]) => { if (!cfg.rows.some(r => lc(r.a) === lc(a))) cfg.rows.push({ a, l }); }); }) }, "마기카로기아 예시")),
+            cfg.rows.length ? el("div", { class: "aw-rows" }, ...cfg.rows.map(rowEl)) : null,
+            el("p", {}, "*id* = 번호 · 줄마다 다른 자리 (Magic_*id*_Charge). 보일 이름에 *id* 가 든 속성 이름을 쓰면 그 값(예: 장서 이름)으로 보여요. 최대값이 바뀌면 '이름 최대'로 알려요."));
+        // 고른 캐릭터의 값에서 고르기
+        if (c) {
+            const q = el("input", { type: "search", class: "aw-q aw-in", value: q0, placeholder: "값 찾기 — 이름 · 지금 값", "aria-label": `${nm}의 값 찾기` });
+            const list = el("div", { class: "aw-list", role: "group", "aria-label": `${nm}의 값` }, el("p", {}, "값을 받아 오는 중…"));
+            const fill = () => {
+                const all = (c.attribs?.models || []).map(a => ({ n: String(a.get("name") || ""), v: String(a.get("current") ?? ""), x: String(a.get("max") ?? "") })).filter(a => a.n)
+                    .sort((a, b) => a.n.localeCompare(b.n, "en", { numeric: true }));
+                const k = lc(q.value), rows = all.filter(a => !k || lc(a.n).includes(k) || lc(a.v).includes(k));
+                list.textContent = "";
+                if (!all.length) return list.append(el("p", {}, "이 캐릭터에는 아직 적힌 값이 없어요 — 시트에 값을 적으면 여기에 나와요."));
+                add(list, ...rows.slice(0, 300).map(a => {
+                    const exact = cfg.rows.some(r => lc(r.a) === lc(a.n)), hit = !exact && rowFor(a.n);
+                    return el("label", { class: "aw-pick" },
+                        el("input", { type: "checkbox", checked: exact || !!hit, disabled: !!hit, onchange: e => set(() => {
+                            if (e.target.checked) cfg.rows.push({ a: a.n, l: a.n }); else cfg.rows = cfg.rows.filter(r => lc(r.a) !== lc(a.n));
+                        }) }),
+                        el("span", { title: a.n }, a.n), el("small", { title: hit ? `'${hit.r.a}' 줄에 들어 있어요` : null }, (hit ? "＊ " : "") + (a.v.length > 24 ? a.v.slice(0, 24) + "…" : a.v || "–") + (a.x ? ` / ${a.x}` : "")));
+                }), rows.length > 300 ? el("p", {}, `… ${rows.length - 300}개 더 — 찾기로 좁혀 보세요`) : null);
+                if (!rows.length) list.append(el("p", {}, "맞는 값이 없어요."));
+            };
+            q.addEventListener("input", fill);
+            host.append(el("div", { class: "aw-sec" }, el("b", {}, `'${nm}'의 값에서 고르기`), q), list);
+            const mine = c.id;
+            aioAttrs.load(c).then(() => { if (!host.hidden && host.dataset.id === mine && list.isConnected) { fill(); list.scrollTop = ltop0; host.scrollTop = top0; } });
+        }
+        host.append(el("div", { class: "ft" }, el("span", { class: "r20be-note" }, !cfg.on ? "꺼져 있어요" : !cfg.chars.length || !cfg.rows.length ? "캐릭터와 값을 하나 이상 넣으면 시작해요" : "바꾸면 바로 적용돼요"),
+            el("span", { class: "r20be-flex" }), el("button", { type: "button", class: "aio-btn", onclick: () => { host.hidden = true; } }, "닫기")));
+        host.hidden = false;
+        // 일괄 편집기 창 아래로 넘치지 않게 (창이 넘친 곳을 잘라서, 화면 높이만으로는 못 맞춘다)
+        const root = host.closest("#r20be"), rr = root?.getBoundingClientRect();
+        if (rr?.height) host.style.maxHeight = Math.max(220, (rr.bottom - host.getBoundingClientRect().top) / (rr.height / root.offsetHeight) - 10) + "px";
+        host.scrollTop = top0;
+    };
+    return {
+        open, has: id => !!read().on && cfg.chars.includes(id),
+        info: () => ({ on: read().on, chars: cfg.chars.length, rows: cfg.rows.length }),
+        toggle: () => { read().on = !cfg.on; store(); return cfg.on; },
+        inject() {
+            if (!isGM() || !chars()?.models?.length) return;
+            read();
+            started = true;
+            if (cfg.on && cfg.rows.length && bound.size < cfg.chars.length) sync();
+        }
+    };
+})();
+addCss(`
+        #r20be .r20be-tlink.r20be-aw { width:min(520px, calc((100vw - 40px) / var(--aio-z, 1))); max-height:calc(78vh / var(--aio-z, 1)); overflow-y:auto; }
+        #r20be .r20be-aw {
+            & .aw-sw { display:flex; align-items:center; gap:6px; flex:none; height:var(--aio-h-sm); margin:0; padding:0 4px; border:0; background:none; box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); cursor:pointer; }
+            & .aw-sw i { position:relative; width:26px; height:14px; border-radius:var(--aio-r); background:var(--aio-bg-5); }
+            & .aw-sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
+            & .aw-sw[aria-checked=true] i { background:var(--aio-accent); }
+            & .aw-sw[aria-checked=true] i::after { left:14px; }
+            & .aw-sec { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding-top:6px; border-top:1px solid var(--aio-line-4); }
+            & .aw-sec b { flex:1; min-width:120px; }
+            & .aw-chips { display:flex; flex-wrap:wrap; gap:4px; }
+            & .aw-rows { display:flex; flex-direction:column; flex:none; gap:4px; max-height:calc(22vh / var(--aio-z, 1)); overflow-y:auto; }
+            & .aw-row { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr) auto var(--aio-h-sm); gap:4px; align-items:center; }
+            & .aw-row .x { grid-column:4; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-5); cursor:pointer; }
+            & .aw-row .x:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+            & .aw-in { min-width:0; height:var(--aio-h-sm); margin:0; padding:0 6px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink); font-size:var(--aio-fs-md); box-shadow:none; }
+            & .aw-in:focus { outline:2px solid var(--aio-accent); outline-offset:-1px; border-color:var(--aio-accent); }
+            & .aw-q { flex:1 1 150px; }
+            & .aw-list { display:flex; flex-direction:column; flex:1 1 auto; min-height:68px; overflow-y:auto; border:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); }
+            & .aw-pick { flex:none; }
+            & .aw-list p { padding:6px; }
+            & .aw-pick { display:grid; grid-template-columns:16px minmax(0, 1fr) auto; gap:6px; align-items:center; min-height:22px; margin:0; padding:0 6px; font-weight:400; cursor:pointer; }
+            & .aw-pick:hover { background:var(--aio-bg-2); }
+            & .aw-pick input { margin:0; }
+            & .aw-pick span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            & .aw-pick small { max-width:180px; overflow:hidden; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); white-space:nowrap; text-overflow:ellipsis; }
+        }
+`);
+addFeature("attrWatch", attrWatch);
+// @share-cut-end aw
 
 // ══════════ 묶음 6 · 기본시트 데이터 자동완성 ══════════
 
