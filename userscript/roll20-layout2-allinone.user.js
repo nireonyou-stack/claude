@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.101.0
+// @version      1.101.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.101.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.101.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -16100,8 +16100,10 @@ const abTok = (() => {
         const pg = pgNow();
         if (!pg?.thegraphics) return aioToast("지금 페이지를 못 찾았어요", { kind: "err" });
         await aioAttrs.load(x.c);
-        const KEYS = ["represents", "name", "bar1_link", "bar1_value", "bar1_max", "showplayers_bar1", "playersedit_bar1"];
+        const KEYS = ["represents", "name", "bar1_link", "bar1_value", "bar1_max", "showplayers_bar1", "playersedit_bar1", "showname", "showplayers_name", "bar1_num_permission"];
         const bars = ["charge", "cost"].filter(k => autofill.FIELDS[x.sys]?.[k] && x.row.querySelector(`[name="attr_${x.base}${autofill.FIELDS[x.sys][k]}"]`));
+        // 막대 최대값: 최대값이 있어야 Roll20 이 막대를 그린다 (없으면 고를 때 숫자만). 시트에 최대값이 없으면 여기서 적은 값을 넣는다
+        let show = localStorage.getItem("r20_abt_show") !== "false", max = localStorage.getItem("r20_abt_max") ?? "10";
         let bar = localStorage.getItem("r20_abt_bar") === "none" ? "" : bars[0] || "", pl = localStorage.getItem("r20_abt_pl") !== "false", act = localStorage.getItem("r20_abt_act") !== "false";
         const ORD = { on: 0, same: 1, "": 2, other: 3 };
         const picked = new Map();       // 토큰 → 체크 (처음: 이미 연결된 것 · 이름이 같은 것)
@@ -16115,11 +16117,13 @@ const abTok = (() => {
             pop.innerHTML = `<div class="hd"><b>'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x" aria-label="닫기">✕</button></div>`
                 + `<p>${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층</p>`
                 + `<div class="list">` + (list.length ? list.map((t, i) => `<label class="row${t.st === "other" ? " off" : ""}"><input type="checkbox" data-i="${i}"${picked.get(t.g) ? " checked" : ""}${t.st === "other" ? " disabled" : ""}>`
-                    + `<img src="${escAttr(sizedUrl(t.g.get("imgsrc") || "", "thumb"))}" alt="" loading="lazy"><span>${escAttr(t.g.get("name") || "이름 없는 토큰")}</span>`
+                    + `<img src="${escAttr(sizedUrl(t.g.get("imgsrc") || "", "thumb"))}" alt="" loading="lazy"><span>${escAttr(t.g.get("name") || "이름 없는 토큰")}<i>${Math.floor((Number(t.g.get("left")) || 0) / 70) + 1}열 ${Math.floor((Number(t.g.get("top")) || 0) / 70) + 1}행</i></span>`
                     + `<small class="${t.st}">${{ on: "연결됨", same: "이름 같음", other: "다른 캐릭터에 연결됨" }[t.st] || (t.g.get("represents") ? "이 캐릭터의 다른 토큰" : "")}</small>`
                     + `<button type="button" class="im" data-i="${i}" title="이 토큰의 그림 바꾸기 (파일 고르기)" aria-label="${escAttr(t.g.get("name") || "토큰")} 그림 바꾸기">🖼</button></label>`).join("") : `<p>이 페이지의 토큰 층에 토큰이 없어요 — 아래 [+ 새 토큰]으로 만들 수 있어요.</p>`) + `</div>`
                 + (bars.length ? `<label class="opt">막대 1 <select class="bar"><option value="">(없음)</option>${bars.map(k => `<option value="${k}"${k === bar ? " selected" : ""}>${LABEL[k]} — 지금 ${escAttr(String(aioAttrs.find(x.c, attrName(x, k))?.get("current") ?? "빈칸"))}</option>`).join("")}</select></label>`
+                    + `<label class="opt">막대 최대값 <input type="number" class="max" min="0" value="${escAttr(max)}" aria-label="막대 최대값"> <small>— 비우면 막대 없이 숫자만 (토큰을 골랐을 때)</small></label>`
                     + `<label class="opt"><input type="checkbox" class="pl"${pl ? " checked" : ""}> 플레이어에게도 막대 보이기 · 고치기</label>` : "")
+                + `<label class="opt"><input type="checkbox" class="show"${show ? " checked" : ""}> 이름표 · 막대 숫자를 늘 보이게 <small>— 토큰 아래 이름 · 막대 위 숫자</small></label>`
                 + `<label class="opt"><input type="checkbox" class="act"${act ? " checked" : ""}> 토큰 액션 '${escAttr(ACT + x.nm)}' 만들기 <small>— 누르면 효과를 채팅에 (이 캐릭터의 토큰 전부에 보여요)</small></label>`
                 + `<div class="ft"><button type="button" class="aio-btn new" title="캐릭터 그림으로 새 토큰을 만들어요 — 캐릭터 그림을 못 쓰면 그림 파일을 고릅니다">+ 새 토큰</button><span></span>`
                 + `<button type="button" class="aio-btn no">취소</button><button type="button" class="aio-btn pri go">${n ? `토큰 ${n}개에 연결` : "연결 풀기"}</button></div>`;
@@ -16130,11 +16134,19 @@ const abTok = (() => {
             let on = 0, offN = 0;
             if (bar && !attr) { try { x.c.attribs.create({ name: attrName(x, bar), current: "0", max: "" }); } catch (e) { aioErr("어빌리티 토큰", e); } }
             const a = bar ? aioAttrs.find(x.c, attrName(x, bar)) : null;
+            if (a && max !== "" && String(a.get("max") ?? "") === "") a.save({ max });        // 시트에 최대값이 없을 때만 채운다
             pop._list.forEach(t => {
                 const want = !!picked.get(t.g) && t.st !== "other", was = t.st === "on";
                 if (!want && !was) return;
                 back.push([t.g, Object.fromEntries(KEYS.map(k => [k, t.g.get(k) ?? ""]))]);
-                if (want) { on++; t.g.save({ represents: x.c.id, name: x.nm, bar1_link: a?.id || "", ...(a ? { bar1_value: a.get("current") ?? "", bar1_max: a.get("max") ?? "", showplayers_bar1: pl, playersedit_bar1: pl } : {}) }); }
+                if (want) {
+                    on++;
+                    // 막대 숫자 보이기(숨김 · 편집자 · 모두)는 그 칸이 있는 토큰에만 (이름이 다른 옛 화면에서는 건드리지 않는다)
+                    const num = show && typeof t.g.get("bar1_num_permission") === "string" ? { bar1_num_permission: pl ? "everyone" : "editors" } : {};
+                    t.g.save({ represents: x.c.id, name: x.nm, bar1_link: a?.id || "",
+                        ...(a ? { bar1_value: a.get("current") ?? "", bar1_max: a.get("max") ?? "", showplayers_bar1: pl, playersedit_bar1: pl, ...num } : {}),
+                        ...(show ? { showname: true, showplayers_name: true } : {}) });
+                }
                 else { offN++; t.g.save({ represents: "", bar1_link: "" }); }
             });
             const hadAct = !!x.c.abilities?.models?.some(m => m.get("name") === ACT + x.nm);
@@ -16188,6 +16200,8 @@ const abTok = (() => {
             else if (t.classList.contains("bar")) { bar = t.value; localStorage.setItem("r20_abt_bar", bar || "none"); }
             else if (t.classList.contains("pl")) { pl = t.checked; localStorage.setItem("r20_abt_pl", String(pl)); }
             else if (t.classList.contains("act")) { act = t.checked; localStorage.setItem("r20_abt_act", String(act)); }
+            else if (t.classList.contains("show")) { show = t.checked; localStorage.setItem("r20_abt_show", String(show)); }
+            else if (t.classList.contains("max")) { max = t.value.trim(); localStorage.setItem("r20_abt_max", max); }
             const k = [...pop.querySelectorAll(".row input")].filter(i => i.checked).length;
             pop.querySelector(".go").textContent = k ? `토큰 ${k}개에 연결` : "연결 풀기";
         });
@@ -16206,7 +16220,7 @@ const abTok = (() => {
 addCss(`
         #r20-abt-chip { position:fixed; z-index:var(--aio-z-tip); width:18px; height:18px; margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:var(--aio-shadow-sm); font-size:var(--aio-fs-xs); line-height:16px; text-align:center; cursor:pointer; }
         #r20-abt-chip.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
-        #r20-abt { position:fixed; z-index:var(--aio-z-pop); display:flex; flex-direction:column; gap:6px; width:min(380px, calc((100vw - 16px) / var(--aio-z, 1))); max-height:calc(80vh / var(--aio-z, 1)); padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-lg); font:var(--aio-fs-md)/1.5 sans-serif; color:var(--aio-ink-2); }
+        #r20-abt { position:fixed; z-index:calc(var(--aio-z-tip) - 1); display:flex; flex-direction:column; gap:6px; width:min(380px, calc((100vw - 16px) / var(--aio-z, 1))); max-height:calc(80vh / var(--aio-z, 1)); padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-lg); font:var(--aio-fs-md)/1.5 sans-serif; color:var(--aio-ink-2); }
         #r20-abt {
             & .hd { display:flex; align-items:center; gap:6px; }
             & .hd b { flex:1; font-size:var(--aio-fs-lg); }
@@ -16214,10 +16228,11 @@ addCss(`
             & .x:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
             & p { margin:0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
             & .list { display:flex; flex-direction:column; min-height:40px; overflow-y:auto; border-top:1px solid var(--aio-line-4); }
-            & .row { display:grid; grid-template-columns:16px 30px minmax(0, 1fr) auto 22px; gap:8px; align-items:center; flex:none; margin:0; padding:3px 2px; border-bottom:1px solid var(--aio-line-4); font-weight:400; cursor:pointer; }
+            & .row i { margin-left:6px; color:var(--aio-ink-5); font-size:var(--aio-fs-sm); font-style:normal; }
+            & .row { display:grid; grid-template-columns:16px 40px minmax(0, 1fr) auto 22px; gap:8px; align-items:center; flex:none; margin:0; padding:3px 2px; border-bottom:1px solid var(--aio-line-4); font-weight:400; cursor:pointer; }
             & .row.off { opacity:.6; cursor:default; }
             & .row input, & .opt input { margin:0; }
-            & .row img { width:30px; height:30px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); object-fit:contain; }
+            & .row img { width:40px; height:40px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); object-fit:contain; }
             & .row span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
             & small { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
             & small.on, & small.same { color:var(--aio-ok); font-weight:700; }
@@ -16225,6 +16240,7 @@ addCss(`
             & .im:hover { background:var(--aio-bg-3); }
             & .opt { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0; font-weight:400; }
             & select { flex:1; min-width:0; height:var(--aio-h-sm); margin:0; padding:0 4px; font-size:var(--aio-fs-md); }
+            & .max { width:56px; height:var(--aio-h-sm); margin:0; padding:0 4px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:var(--aio-fs-md); }
             & .ft { display:flex; align-items:center; gap:6px; }
             & .ft span { flex:1; }
         }
