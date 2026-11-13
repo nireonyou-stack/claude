@@ -75,7 +75,29 @@ const SHOT = process.env.SHOT;
   await p.click('#r20-mscn .card:nth-child(2) .go'); await p.waitForTimeout(200);
   await p.click('#r20-mscn .card:nth-child(1) .go'); await p.waitForTimeout(200);
   console.log('떠날 때 저장 → 경비원 left:', await p.evaluate(() => Campaign.activePage().thegraphics.models.find(g => g.get('name') === '경비원').get('left')), '| 켜짐 기억:', await p.evaluate(() => localStorage.getItem('r20_mscn_leave')));
-  const ho = await p.evaluate(() => { const h = Campaign.handouts.models.find(m => m.get('name') === '맵 장면'); const d = JSON.parse(unescape(h.blobs.gmnotes)); return { pl: h.get('inplayerjournals'), list: d.pages.pg1.list.map(s => s.name + ':' + s.objs.length + ':' + s.layers.join('+')), cur: d.pages.pg1.list.find(s => s.id === d.pages.pg1.cur)?.name, notes: unescape(h.blobs.notes).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') }; });
+  await p.waitForTimeout(300);
+  await p.evaluate(() => { window.gunzip = async t => new TextDecoder().decode(await new Response(new Blob([Uint8Array.from(atob(t.slice(4)), c => c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()); });
+  const ho = await p.evaluate(async () => { const h = Campaign.handouts.models.find(m => m.get('name') === '맵 장면'); const raw = h.blobs.gmnotes, json = await gunzip(raw), d = JSON.parse(json);
+    return { pl: h.get('inplayerjournals'), list: d.pages.pg1.list.map(s => s.name + ':' + s.objs.length + ':' + s.layers.join('+')), 머리: raw.slice(0, 4), 크기: `예전 방식 ${escape(json).length} → 지금 ${raw.length}자`,
+      지금표시: JSON.parse(localStorage.getItem('r20_mscn_cur') || '{}').pg1 === d.pages.pg1.list[0].id, notes: unescape(h.blobs.notes).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') }; });
   console.log('핸드아웃:', JSON.stringify(ho));
+  // 장면만 바꿀 땐(떠날 때 저장 끔) 핸드아웃에 쓰지 않는다
+  await p.uncheck('#r20-mscn .leave');
+  const v0 = await p.evaluate(() => Campaign.handouts.models.find(m => m.get('name') === '맵 장면').get('gmnotes'));
+  await p.click('#r20-mscn .card:nth-child(2) .go'); await p.waitForTimeout(300);
+  console.log('장면만 바꿈 → 핸드아웃 다시 씀:', await p.evaluate(v => Campaign.handouts.models.find(m => m.get('name') === '맵 장면').get('gmnotes') !== v, v0), '| 카드:', await cards());
+  // 예전 판(escape) 글도 읽고, 한 번 줄여 다시 저장
+  await p.evaluate(async () => { const h = Campaign.handouts.models.find(m => m.get('name') === '맵 장면'); const json = await gunzip(h.blobs.gmnotes); h.updateBlobs({ gmnotes: escape(json) }); });
+  await p.click('#r20-mscn .x'); await p.click('#r20-mapshot .main').catch(() => {}); await p.waitForTimeout(200);
+  if (!(await p.$eval('#r20-mapshot', e => e.classList.contains('open')))) { await p.click('#r20-mapshot .main'); await p.waitForTimeout(200); }
+  await p.click('#r20-maptray .scn'); await p.waitForTimeout(500);
+  console.log('예전 글 읽기:', await cards(), '| 다시 저장한 머리:', await p.evaluate(() => Campaign.handouts.models.find(m => m.get('name') === '맵 장면').blobs.gmnotes.slice(0, 4)));
+  // 많은 토큰: 120개 장면도 나눠서 놓는다
+  await p.evaluate(() => { const pg = Campaign.activePage(); for (let i = 0; i < 120; i++) pg.thegraphics.create({ name: 'm' + i, layer: 'objects', imgsrc: 'https://files.d20.io/images/9/a/thumb.png?1', controlledby: '', width: 70, height: 70, left: i * 10, top: 10 }); });
+  await p.click('#r20-mscn .add'); await p.fill('#r20-mscn .fm .nm', '많은 토큰'); await p.click('#r20-mscn .fm [type=submit]'); await p.waitForTimeout(300);
+  await p.click('#r20-mscn .card:nth-child(1) .go'); await p.waitForTimeout(600);
+  const t0 = Date.now(); await p.click('#r20-mscn .card:nth-child(3) .go');
+  await p.waitForFunction(() => /장면으로 바꿨어요/.test(document.querySelector('#aio-toasts .aio-t:last-child .m')?.textContent || ''), null, { timeout: 15000 });
+  console.log('120개 장면 →', await p.evaluate(() => Campaign.activePage().thegraphics.models.filter(g => /^m\d/.test(g.get('name'))).length), '개 놓임 ·', Date.now() - t0 < 5000 ? '5초 안' : '느림', '| 알림:', await p.$eval('#aio-toasts .aio-t:last-child .m', e => e.textContent));
   console.log('errors:', errs); await b.close();
 })();

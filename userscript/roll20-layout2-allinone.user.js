@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.97.0
+// @version      1.98.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.97.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.98.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5148,30 +5148,50 @@ const mapScenes = (() => {
         try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
     });
     const unesc = v => { try { return unescape(String(v || "")); } catch (e) { return String(v || ""); } };
-    // 데이터: { v, pages: { 페이지 id: { cur: 지금 장면 id, list: [장면] } } } — 다른 GM 이 바꿨으면(GM 메모 버전이 다르면) 다시 읽는다
+    // 저장 글: JSON 을 gzip 으로 줄여 base64 로 ("gz1:" 머리). 예전 판은 escape(JSON) — 따옴표 · 한글이 3~6배로 불어나
+    // 장면이 쌓이면 수 MB 가 되고, 그걸 장면을 바꿀 때마다 다시 만들어 올려 브라우저가 멈췄다. 읽기는 둘 다
+    const GZ = "gz1:", CAN_GZ = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
+    const gzPipe = async (u8, Stream) => new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new Stream("gzip"))).arrayBuffer());
+    const toB64 = u8 => { let t = ""; for (let i = 0; i < u8.length; i += 0x8000) t += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(t); };
+    const packData = async d => { const json = JSON.stringify(d); return CAN_GZ ? GZ + toB64(await gzPipe(new TextEncoder().encode(json), CompressionStream)) : escape(json); };
+    const unpackData = async raw => {
+        raw = String(raw || "");
+        return raw.startsWith(GZ) ? new TextDecoder().decode(await gzPipe(Uint8Array.from(atob(raw.slice(GZ.length)), c => c.charCodeAt(0)), DecompressionStream)) : unesc(raw);
+    };
+    // '지금 장면' 표시는 이 브라우저에만 (페이지 id → 장면 id) — 핸드아웃에 넣으면 장면을 바꿀 때마다 전체를 다시 올려야 한다
+    const CUR_KEY = "r20_mscn_cur";
+    const curMap = () => { try { return JSON.parse(localStorage.getItem(CUR_KEY) || "{}") || {}; } catch (e) { return {}; } };
+    const setCur = (pg, id) => { const p = P(pg); p.cur = id; const c = curMap(); if (id) c[pg.id] = id; else delete c[pg.id]; try { localStorage.setItem(CUR_KEY, JSON.stringify(c)); } catch (e) { /* 저장 못 함 */ } };
+    // 데이터: { v, pages: { 페이지 id: { cur, list: [장면] } } } — 다른 GM 이 바꿨으면(GM 메모 버전이 다르면) 다시 읽는다
     const load = () => {
         const m = handout(), ver = m ? String(m.get("gmnotes") ?? "") : "";
         if (data && ver === dataVer) return Promise.resolve();
         if (!m) { data = data || { v: 1, pages: {} }; dataVer = ver; return Promise.resolve(); }
-        return loading || (loading = getBlob(m, "gmnotes").then(raw => {
+        return loading || (loading = getBlob(m, "gmnotes").then(async raw => {
             let d = null;
-            try { d = JSON.parse(unesc(raw) || "{}"); } catch (e) { /* 데이터가 아니면 빈 목록 */ }
+            try { d = JSON.parse(await unpackData(raw) || "{}"); } catch (e) { /* 데이터가 아니면 빈 목록 */ }
             data = d?.pages ? d : { v: 1, pages: {} }; dataVer = ver;
+            const c = curMap();
+            Object.entries(data.pages).forEach(([id, p]) => { if (c[id] && p.list.some(x => x.id === c[id])) p.cur = c[id]; });
+            if (CAN_GZ && raw && !String(raw).startsWith(GZ) && Object.values(data.pages).some(p => p.list.length)) store();       // 예전 큰 글은 한 번 줄여 둔다
         }).finally(() => { loading = null; }));
     };
     const summary = () => '<p><b>맵 장면</b> — 올인원 맵 도구의 \'맵 장면\'이 쓰는 핸드아웃이에요. GM 메모 칸(데이터)은 지우지 마세요.</p>'
         + Object.entries(data.pages).filter(([, p]) => p.list.length)
             .map(([id, p]) => `<p><b>${escAttr(window.Campaign?.pages?.get(id)?.get("name") || "(지운 페이지)")}</b> — ${p.list.map(s => escAttr(s.name)).join(" · ")}</p>`).join("");
-    const store = () => {
-        let m = handout();
+    // 저장은 차례대로 하나씩 (줄이는 동안 또 바뀌면 그다음에 한 번 더) → 성공 여부
+    let storing = Promise.resolve(true);
+    const store = () => (storing = storing.then(async () => {
         try {
+            const text = await packData(data);
+            let m = handout();
             if (!m) m = window.Campaign.handouts.create({ name: NAME, inplayerjournals: "", archived: false });
-            m.updateBlobs({ gmnotes: escape(JSON.stringify(data)), notes: escape(summary()) });
+            m.updateBlobs({ gmnotes: text, notes: escape(summary()) });
             m.save({});
             dataVer = String(m.get("gmnotes") ?? "");
             return true;
         } catch (e) { aioErr("맵 장면 저장", e); aioToast("맵 장면을 저장하지 못했어요", { kind: "err", id: "mscn" }); return false; }
-    };
+    }));
     const P = pg => (data.pages[pg.id] ||= { cur: null, list: [] });
     // 플레이어 말: 캐릭터에 연결된 토큰은 그 캐릭터(또는 토큰)를 나 말고 누가 조종하면('모두' 포함) · 캐릭터 없는 토큰은 특정 플레이어에게 준 것만.
     // '모두'만 있는 캐릭터 없는 토큰(코코포리아 가져오기의 패널 등)과 올인원 연결용 캐릭터(🎲 굴림표 · 🎬 매크로)의 토큰은 장면 소품이라 같이 바뀐다
@@ -5209,28 +5229,46 @@ const mapScenes = (() => {
             thumb: thumbOf(objs), n: { map: objs.filter(isMap).length, tok: objs.filter(o => o.a.layer === "objects").length, etc: objs.filter(o => !isMap(o) && o.a.layer !== "objects").length }, at: Date.now() };
     };
     // 장면 놓기: 담긴 층의 것을 지우고(뺀 플레이어 말은 그대로) 저장한 것을 차례로 만든다
-    const apply = (pg, sc) => {
-        let bad = 0;
-        objsOf(pg, sc.layers, sc.keepPC).forEach(({ m }) => { try { m.destroy(); } catch (e) { bad++; aioErr("맵 장면 지우기", e, true); } });
-        sc.objs.forEach(o => { try { pg[COLL[o.k]].create({ ...o.a, page_id: pg.id }); } catch (e) { bad++; aioErr("맵 장면 놓기", e, true); } });
+    // 한꺼번에 수십 ~ 수백 개를 지우고 만들면 Roll20 이 그리느라 화면이 멈춘다 → 12개마다 한 번 쉬어 간다 (많으면 진행 알림)
+    let busy = false;
+    const apply = async (pg, sc) => {
+        let bad = 0, n = 0;
+        const gone = objsOf(pg, sc.layers, sc.keepPC), total = gone.length + sc.objs.length;
+        const step = async () => {
+            if (++n % 12) return;
+            if (total > 36) aioToast(`장면 바꾸는 중… ${n}/${total}`, { kind: "busy", id: "mscn" });
+            await new Promise(r => setTimeout(r, 0));
+        };
+        for (const { m } of gone) { try { m.destroy(); } catch (e) { bad++; aioErr("맵 장면 지우기", e, true); } await step(); }
+        for (const o of sc.objs) { try { pg[COLL[o.k]].create({ ...o.a, page_id: pg.id }); } catch (e) { bad++; aioErr("맵 장면 놓기", e, true); } await step(); }
         if (sc.page) try { pg.save(sc.page); } catch (e) { bad++; aioErr("맵 장면 페이지", e, true); }
         return bad;
     };
     const go = async id => {
         const pg = page();
         if (!pg || !isGM()) return;
-        await load();
-        const p = P(pg), sc = p.list.find(s => s.id === id);
-        if (!sc) return;
-        const prev = p.list.find(s => s.id === p.cur);
-        if (prev && prev !== sc && leave()) Object.assign(prev, shot(pg, prev));       // 떠날 때 저장: 하던 배치를 그 장면에
-        const before = { layers: sc.layers, keepPC: sc.keepPC, withPage: sc.withPage, ...shot(pg, sc) }, was = p.cur;
-        const bad = apply(pg, sc);
-        p.cur = sc.id; store(); acts = null; draw();
-        const kept = sc.keepPC && sc.layers.includes("objects") ? objsOf(pg, ["objects"], false).filter(o => o.k === "g" && isPC(o.m)).length : 0;
-        aioToast(`'${sc.name}' 장면으로 바꿨어요 · ${sc.objs.length}개 놓음${kept ? ` · 플레이어 말 ${kept}개 그대로` : ""}${bad ? ` · ${bad}개 실패 (콘솔 확인)` : ""}`, {
-            kind: bad ? "err" : "ok", id: "mscn",
-            undo: () => { apply(pg, before); P(pg).cur = was; store(); draw(); setTimeout(() => aioToast("바꾸기 전으로 되돌렸어요", { kind: "ok", id: "mscn" }), 0); } });
+        if (busy) return;
+        busy = true;
+        try {
+            await load();
+            const p = P(pg), sc = p.list.find(s => s.id === id);
+            if (!sc) return;
+            const prev = p.list.find(s => s.id === p.cur), kept2 = prev && prev !== sc && leave();
+            if (kept2) Object.assign(prev, shot(pg, prev));       // 떠날 때 저장: 하던 배치를 그 장면에
+            const before = { layers: sc.layers, keepPC: sc.keepPC, withPage: sc.withPage, ...shot(pg, sc) }, was = p.cur;
+            const bad = await apply(pg, sc);
+            setCur(pg, sc.id); acts = null; draw();
+            if (kept2) store();         // 장면만 바꿀 땐 핸드아웃에 쓰지 않는다 ('지금' 표시는 이 브라우저에)
+            const kept = sc.keepPC && sc.layers.includes("objects") ? objsOf(pg, ["objects"], false).filter(o => o.k === "g" && isPC(o.m)).length : 0;
+            aioToast(`'${sc.name}' 장면으로 바꿨어요 · ${sc.objs.length}개 놓음${kept ? ` · 플레이어 말 ${kept}개 그대로` : ""}${bad ? ` · ${bad}개 실패 (콘솔 확인)` : ""}`, {
+                kind: bad ? "err" : "ok", id: "mscn",
+                undo: async () => {
+                    if (busy) return;
+                    busy = true;
+                    try { await apply(pg, before); setCur(pg, was); draw(); } finally { busy = false; }
+                    setTimeout(() => aioToast("바꾸기 전으로 되돌렸어요", { kind: "ok", id: "mscn" }), 0);
+                } });
+        } finally { busy = false; }
     };
     // ── 판 ──
     const meta = s => [s.n?.map ? `맵 ${s.n.map}` : "", s.layers.includes("objects") ? `토큰 ${s.n?.tok || 0}` : "", s.n?.etc ? `그 밖 ${s.n.etc}` : "",
@@ -5279,19 +5317,18 @@ const mapScenes = (() => {
         if (!layers.length) { aioToast("담을 층을 하나 이상 골라 주세요", { kind: "info", id: "mscn" }); return; }
         const set = { layers, keepPC: f.querySelector('[name="keepPC"]').checked, withPage: f.querySelector('[name="withPage"]').checked };
         const sc = { id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: f.querySelector(".nm").value.trim() || "이름 없는 장면", ...set, ...shot(pg, set) };
-        const p = P(pg);
-        p.list.push(sc); p.cur = sc.id;
-        if (store()) aioToast(`'${sc.name}' 장면을 저장했어요 · ${sc.objs.length}개`, { kind: "ok", id: "mscn" });
+        P(pg).list.push(sc); setCur(pg, sc.id);
+        store().then(ok => { if (ok) aioToast(`'${sc.name}' 장면을 저장했어요 · ${sc.objs.length}개`, { kind: "ok", id: "mscn" }); });
         hideForm(); draw();
     };
     const act = (a, id) => {
         const pg = page(), p = pg && P(pg), i = p ? p.list.findIndex(s => s.id === id) : -1, sc = p?.list[i];
         if (!sc) return;
         if (a === "ren") { const v = prompt("장면 이름", sc.name); if (v == null || !v.trim()) return; sc.name = v.trim().slice(0, 60); }
-        else if (a === "over") { if (!confirm(`'${sc.name}' 장면을 지금 화면으로 덮어쓸까요?`)) return; Object.assign(sc, shot(pg, sc)); p.cur = sc.id; }
+        else if (a === "over") { if (!confirm(`'${sc.name}' 장면을 지금 화면으로 덮어쓸까요?`)) return; Object.assign(sc, shot(pg, sc)); setCur(pg, sc.id); }
         else if (a === "dup") { const c = JSON.parse(JSON.stringify(sc)); c.id = "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); c.name = sc.name + " 사본"; p.list.splice(i + 1, 0, c); }
         else if (a === "up" || a === "down") { const j = a === "up" ? i - 1 : i + 1; if (j < 0 || j >= p.list.length) return; [p.list[i], p.list[j]] = [p.list[j], p.list[i]]; }
-        else if (a === "del") { if (!confirm(`'${sc.name}' 장면을 지울까요? (맵에 놓인 것은 그대로예요)`)) return; p.list.splice(i, 1); if (p.cur === id) p.cur = null; acts = null; }
+        else if (a === "del") { if (!confirm(`'${sc.name}' 장면을 지울까요? (맵에 놓인 것은 그대로예요)`)) return; p.list.splice(i, 1); if (p.cur === id) setCur(pg, null); acts = null; }
         store(); draw();
         pop.querySelector(`.more[data-id="${CSS.escape(id)}"]`)?.focus();
     };
@@ -15820,6 +15857,23 @@ const selfCheck = (() => {
                 : `<span>✓ 점검 ${res.total}개 모두 정상</span>`)
             + '<span class="btns"><button type="button" data-a="re">다시 점검</button><button type="button" data-a="copy" class="pri">진단 복사</button></span>';
     };
+    // 진단용 시험 (캐릭터 값 연결 · 값 변화 알림 준비 — [다시 점검]을 누를 때만, GM 만):
+    // 시트 창을 연 적 없는 캐릭터는 속성 목록이 비어 있다 → Roll20 이 시트를 열 때 하는 방식으로 읽히는지 한 캐릭터에 해 보고 진단 글에 적는다
+    let attrProbe = "아직 ([다시 점검]을 누르면 해 봐요)";
+    const probeAttribs = () => {
+        if (!isGM()) { attrProbe = "GM 이 아님"; return; }
+        const cs = window.Campaign?.characters?.models || [], BF = window.BackboneFirebase;
+        const loaded = cs.filter(c => c.attribs?.models?.length), c = cs.find(x => x.attribs && !x.attribs.models.length);
+        const info = `읽힌 ${loaded.length}/${cs.length} · BackboneFirebase=${typeof BF} · 읽힌 것의 연결=${loaded[0] ? typeof loaded[0].attribs.backboneFirebase : "-"} · fetch=${typeof cs[0]?.attribs?.fetch}`;
+        if (!c) { attrProbe = info + " · 시험할 빈 캐릭터 없음"; return; }
+        let how = "방법 없음";
+        try {
+            if (typeof BF === "function" && !c.attribs.backboneFirebase) { c.attribs.backboneFirebase = new BF(c.attribs); how = "new BackboneFirebase"; }
+            else if (typeof c.attribs.fetch === "function") { c.attribs.fetch(c.attribs); how = "fetch"; }
+        } catch (e) { how = "오류 " + String(e?.message || e).slice(0, 80); }
+        attrProbe = info + ` · 시험(${how}) 3초 기다리는 중`;
+        setTimeout(() => { attrProbe = info + ` · 시험(${how}) 0 → ${c.attribs.models.length}개`; }, 3000);
+    };
     // 진단 글: 버전 · 브라우저 · 화면 · 방 크기(개수만) · 켠 기능 · 점검 · 최근 오류
     const report = () => {
         const C = window.Campaign, ua = navigator.userAgent, br = (ua.match(/(Edg|OPR|Firefox|Chrome|Safari)\/(\d+)/) || []).slice(1).join(" ") || "?";
@@ -15833,7 +15887,8 @@ const selfCheck = (() => {
             `방: ${isGM() ? "GM" : "플레이어"} · 핸드아웃 ${n(C?.handouts)} · 캐릭터 ${n(C?.characters)} · 곡 ${n(window.Jukebox?.playlist)} · 매크로 ${n(window.currentPlayer?.macros)} · 페이지 ${n(C?.pages)}${h?.info?.length ? " · " + h.info.join(" · ") : ""}`,
             `켠 기능 ${on.length}/${all}: ${on.join(", ")}`,
             res ? `점검 ${res.total} 중 ${res.total - res.fail.length} 정상${res.fail.map(([a, b]) => `\n  ✗ ${a} — ${b}`).join("")}` : "점검 전",
-            `최근 오류 (${AIO_ERRS.length})${AIO_ERRS.map(e => `\n  ${hm(e.t)} ${e.w}: ${e.m}${e.n > 1 ? ` (×${e.n})` : ""}`).join("") || ": 없음"}`
+            `최근 오류 (${AIO_ERRS.length})${AIO_ERRS.map(e => `\n  ${hm(e.t)} ${e.w}: ${e.m}${e.n > 1 ? ` (×${e.n})` : ""}`).join("") || ": 없음"}`,
+            `캐릭터 속성 시험: ${attrProbe}`
         ].join("\n");
     };
     // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추
@@ -15842,7 +15897,7 @@ const selfCheck = (() => {
         const b = e.target.closest?.("#custom-settings-popup .cs-check button");
         if (!b) return;
         e.stopPropagation();
-        if (b.dataset.a === "re") { run(); return; }
+        if (b.dataset.a === "re") { run(); probeAttribs(); return; }
         copyText(report()).then(ok => { b.textContent = ok ? "✓ 복사했어요" : "못 했어요"; setTimeout(() => { if (b.isConnected) b.textContent = "진단 복사"; }, 1500); });
     }, true);
     // Roll20 이 다 뜨기를 기다렸다가 (채팅 칸 · 방 데이터 + 4초, 길어도 60초 뒤엔)
