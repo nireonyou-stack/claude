@@ -15,7 +15,7 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
     window.is_gm = true;
   });
   await p.addScriptTag({ content: us }); await p.waitForTimeout(400);
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200);
   console.log('rows:', await p.$$eval('#custom-settings-popup .cs-row', rs => rs.map(r => r.textContent.trim().replace(/\s+/g, ' ')).filter(t => /찾기|창 자리|기억 방식/.test(t)).join(' / ')));
   await p.$eval('#custom-settings-popup [role=radio][data-v="kind"]', b => b.click());
   console.log('mode:', await p.evaluate(() => localStorage.getItem('r20_win_mode')), await p.$eval('#custom-settings-popup [data-v="kind"]', b => b.getAttribute('aria-checked')));

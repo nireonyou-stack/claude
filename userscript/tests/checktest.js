@@ -24,7 +24,7 @@ const run = async (b, label, broken) => {
   await p.addScriptTag({ content: us });
   await p.waitForTimeout(6800);          // 기다렸다가 점검 (2초 + 4초)
   const badge = await p.$eval('#custom-settings-btn', b => b.classList.contains('aio-warn'));
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(100);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(100);
   console.log(`[${label}] ⚙ ! :`, badge, '| 맨 위 줄:', await p.$eval('#custom-settings-popup .cs-check', e => e.className + ' — ' + e.innerText.replace(/\n+/g, ' / ')));
   if (SHOT) await p.screenshot({ path: `${SHOT}/check-${label}.png`, clip: { x: 860, y: 60, width: 340, height: 560 } });
   if (broken) {

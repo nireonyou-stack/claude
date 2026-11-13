@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.99.0
+// @version      1.100.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.99.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.100.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -71,7 +71,8 @@ const btnVisible = {
     jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false",
     jbmini:    localStorage.getItem("r20_show_jbmini") !== "false",
     portrait:  localStorage.getItem("r20_show_portrait") !== "false",
-    home:      localStorage.getItem("r20_show_home") !== "false"
+    home:      localStorage.getItem("r20_show_home") !== "false",
+    vboard:    localStorage.getItem("r20_show_vboard") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -659,25 +660,13 @@ function applyCocofoliaLayout() {
         addBtnEl.onclick = () => openSidePanel("add");
         settingsPopup.appendChild(addBtnEl);
 
+        // 설정은 일괄 편집기의 [⚙ 설정] 탭 안에 있다 (v1.100 — 작은 설정 창은 없앰). 이 줄들은 거기로 옮겨져 보인다
         settingsBtn.addEventListener("click", (e) => {
             e.preventDefault(); e.stopPropagation();
-            if (settingsPopup.classList.contains("show")) {
-                settingsPopup.classList.remove("show");
-                closeSidePanel();
-                return;
-            }
-            const r = settingsBtn.getBoundingClientRect();
-            settingsPopup.style.right  = zpx(window.innerWidth  - r.right);
-            settingsPopup.style.bottom = zpx(window.innerHeight - r.top + 4);
-            settingsPopup.style.left = "auto"; settingsPopup.style.top = "auto";
-            settingsPopup.classList.add("show");
+            FEAT.bulkEditor?.toggleSettings();
         });
         document.addEventListener("click", (e) => {
-            if (!settingsPopup.contains(e.target) && e.target !== settingsBtn
-                && !sidePanel.contains(e.target)) {
-                settingsPopup.classList.remove("show");
-                closeSidePanel();
-            }
+            if (!settingsPopup.contains(e.target) && !sidePanel.contains(e.target)) closeSidePanel();
         });
         document.body.appendChild(settingsPopup);
 
@@ -1384,7 +1373,8 @@ const CORE_CSS = `
         /* 올인원이 만든 창 안의 체크 상자 · 라디오 · 슬라이더도 강조색 (Roll20 것은 그대로) */
         :is(#custom-settings-popup, #cs-side-panel, #custom-journal-popup, #r20be, #r20ss, #r20ss-bar, #r20-ccf, #r20-fit, #r20-mscn, #r20-emoji, #imagedialog .r20ri, .r20ts, .r20so-dlg) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color:var(--aio-accent); }
         #custom-settings-popup { position:fixed; width:300px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-md); z-index:var(--aio-z-win); display:none; flex-direction:column; font-family:sans-serif; font-size:var(--aio-fs-md); color:var(--aio-ink-2); overflow-y:auto; max-height:calc(70vh / var(--aio-z, 1)); }
-        #custom-settings-popup.show { display:flex !important; }
+        #r20be #custom-settings-popup { position:static; display:flex; width:auto; max-width:640px; max-height:none; overflow:visible; border:0; box-shadow:none; zoom:1; }
+        #cs-side-panel { z-index:calc(var(--aio-z-win) + 4); }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
         #textchat-input.layout-applied-v11 { border-top:0 !important; }
         #textchat-input.layout-applied-v11 {
@@ -9142,9 +9132,8 @@ const quickFind = (() => {
     let counts = null;
     // ── 명령 (UX 원칙 3): 기능 창 열기 · 설정 바로가기도 이 칸에서. '>' 로 시작하면 명령만 ──
     const openSettings = q => {
-        const pop = document.getElementById("custom-settings-popup");
-        if (!pop || getComputedStyle(pop).display === "none") document.getElementById("custom-settings-btn")?.click();
-        const i = document.querySelector("#custom-settings-popup .cs-search input");
+        FEAT.bulkEditor?.open("settings");
+        const i = document.querySelector("#r20be #custom-settings-popup .cs-search input");
         if (!i) return;
         i.value = q; i.dispatchEvent(new Event("input")); i.focus();
     };
@@ -9168,7 +9157,8 @@ const quickFind = (() => {
                 aioToast(on ? "값 변화 알림을 켰어요" : "값 변화 알림을 껐어요", { kind: "ok" });
             });
         }
-        add("⚙", "설정 열기", "올인원 설정", () => openSettings(""));
+        if (!isGM()) return L;        // 설정은 일괄 편집기 안 (GM 인 방에서만)
+        add("⚙", "설정 열기", "올인원 설정 — 일괄 편집기의 [⚙ 설정] 탭", () => openSettings(""));
         BUNDLES.forEach(b => add("⚙", "설정 · " + b.label, b.sub || "", () => openSettings(b.label.replace(/\s*\(.*$/, "").split(" · ")[0])));
         return L;
     };
@@ -14524,7 +14514,30 @@ const bulkEditor = (() => {
         setStatus();      // 도움말을 지금 탭에 맞춘다
         renderTree(); renderPane();
     };
+    // [⚙ 설정]: 채팅 입력칸에서 만든 설정 줄(#custom-settings-popup)을 이 창 안으로 옮겨 보여 준다 (자료 탭이 아니라 덮어 보이는 화면)
+    let setOn = false;
+    const showSettings = on => {
+        const pop = document.getElementById("custom-settings-popup");
+        if (on && !pop) { setStatus("채팅 입력칸이 아직 안 떠서 설정을 못 열어요 — 잠시 뒤에 다시 눌러 주세요", "err"); return; }
+        setOn = on;
+        ui.root.classList.toggle("r20be-setmode", on);
+        ui.setWrap.hidden = !on;
+        ui.segS.classList.toggle("on", on);
+        if (!on) return;
+        ui.menu.hidden = ui.bk.hidden = ui.tl.hidden = ui.aw.hidden = true;
+        [ui.segJ, ui.segB, ui.segT, ui.segM, ui.segD, ui.segI, ui.segP, ui.segL].forEach(b => b.classList.remove("on"));
+        ui.setHost.append(pop);
+        pop.classList.add("show");
+        // 왼쪽: 갈래로 바로 가기 (점검 줄은 탭을 연 바로 뒤에 생기므로 조금 뒤에 짓는다)
+        setTimeout(() => {
+            ui.setNav.textContent = "";
+            pop.querySelectorAll(":scope > .cs-check, :scope > .cs-gh, :scope > .cs-header").forEach(h => ui.setNav.append(el("button", { type: "button",
+                onclick: () => { ui.setHost.scrollTop += h.getBoundingClientRect().top - ui.setHost.getBoundingClientRect().top - 44 * aioZoom.get(); } },
+                h.classList.contains("cs-check") ? "점검 · 진단 복사" : h.querySelector("b")?.textContent || h.textContent.trim())));
+        }, 20);
+    };
     const switchTab = tab => {
+        if (setOn) showSettings(false);
         if (tab === "bgm" && !window.Jukebox?.playlist) { setStatus("주크박스를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "tables" && !tablesColl()) { setStatus("굴림표를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "macros" && !macrosColl()) { setStatus("매크로를 아직 불러오지 못했습니다", "err"); return; }
@@ -14692,6 +14705,8 @@ const bulkEditor = (() => {
         }, { capture: true, passive: false });
         // 창이 열려 있으면 Ctrl+S 는 브라우저 "페이지 저장" 대신 편집기 저장 (채팅 등 다른 입력칸에 있을 때는 제외)
         document.addEventListener("keydown", e => {
+            // 설정 화면에서 Esc = 창 닫기 (찾기 칸에 글자가 있으면 그 칸이 먼저 지운다)
+            if (e.key === "Escape" && setOn && p.classList.contains("r20be-show") && !e.defaultPrevented) { close(); return; }
             if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s" || !p.classList.contains("r20be-show")) return;
             if (!p.contains(e.target) && e.target !== document.body) return;
             e.preventDefault();
@@ -14779,6 +14794,10 @@ const bulkEditor = (() => {
         ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");
         ui.segP = el("button", { type: "button", title: "지금 페이지에 올라간 그림 정리", onclick: () => switchTab("map") }, "맵");     // 그림 묶음이 없으면 탭도 없다
         ui.segL = el("button", { type: "button", title: "안 열리는 · 너무 큰 그림 주소 찾아 고치기", onclick: () => switchTab("links") }, "링크 점검");
+        ui.segS = el("button", { type: "button", class: "r20be-segS", title: "올인원 설정 — 기능 켜고 끄기 · 글자 크기 · 채팅 단추 · 점검", onclick: () => showSettings(true) }, "⚙ 설정");
+        ui.setNav = el("nav", { class: "r20be-setnav", "aria-label": "설정 갈래" });
+        ui.setHost = el("div", { class: "r20be-sethost" });
+        ui.setWrap = el("div", { class: "r20be-set", hidden: true }, ui.setNav, ui.setHost);
         // 공용 창 틀: ⠿ 끌기(머리줄 끌기는 bindPanel) · 제목 · 탭 · Aa(글자 크기) · ✕ — 떠 있는 창만 되므로 자리 고르기 · 📌 은 없음
         const zmWrap = el("span", { class: "r20be-aa" });
         const aaBtn = el("button", { type: "button", class: "r20be-ib r20be-aab", title: "글자 크기", "aria-label": "글자 크기", "aria-expanded": "false",
@@ -14789,7 +14808,7 @@ const bulkEditor = (() => {
             el("span", { class: "aio-drag", "aria-hidden": "true", title: "끌어서 옮기기" }, "⠿"),
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segL),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segL, ui.segS),
             el("span", { class: "r20be-flex" }),
             zmWrap,
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
@@ -14839,7 +14858,7 @@ const bulkEditor = (() => {
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
             el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl, ui.aw),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
-            ui.foot);
+            ui.setWrap, ui.foot);
         bindTree();
         bindPanel(head);
         bindSplit(ui.root.querySelector(".r20be-col.tree"));
@@ -14855,7 +14874,8 @@ const bulkEditor = (() => {
         ui.root.classList.add("r20be-show");
         aioZoom.fit(ui.root);
         setStatus();
-        switchTab(tab || S.tab);
+        switchTab(tab === "settings" ? S.tab : tab || S.tab);
+        if (tab === "settings") return showSettings(true);
         const t = cur(), n = id && t && allNodes(t).find(x => x.id === id);
         if (!n) return;
         for (let p = n.parent; p; p = p.parent) t.collapsed.delete(p.id);
@@ -14885,7 +14905,9 @@ const bulkEditor = (() => {
     };
     setEnabled(btnVisible.bulk);
 
-    return { inject, setEnabled, open, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
+    // ⚙ 단추: 설정 화면이 떠 있으면 닫고, 아니면 연다
+    const toggleSettings = () => { if (ui?.root.classList.contains("r20be-show") && setOn) close(); else open("settings"); };
+    return { inject, setEnabled, open, toggleSettings, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
 })();
 
 addCss(`
@@ -14912,6 +14934,13 @@ addCss(`
             & .r20be-ico { display:inline-flex; flex-shrink:0; }
             & .r20be-ib { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border:0; background:transparent; border-radius:var(--aio-r-sm); cursor:pointer; color:var(--aio-ink-3); padding:0; flex-shrink:0; }
             & .r20be-ib:hover { background:var(--aio-bg-4); color:var(--aio-ink-2); }
+            &.r20be-setmode .r20be-tools, &.r20be-setmode .r20be-body, &.r20be-setmode .r20be-foot { display:none; }
+            & .r20be-set { display:flex; flex:1; min-height:0; }
+            & .r20be-set[hidden] { display:none; }
+            & .r20be-setnav { display:flex; flex-direction:column; flex:none; gap:2px; width:170px; padding:8px; border-right:1px solid var(--aio-line-3); overflow-y:auto; }
+            & .r20be-setnav button { flex:none; height:var(--aio-h); margin:0; padding:0 8px; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-2); font-size:var(--aio-fs-md); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+            & .r20be-setnav button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+            & .r20be-sethost { flex:1; min-width:0; overflow-y:auto; }
             & .r20be-tools { position:relative; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 8px; border-bottom:1px solid var(--aio-line-3); flex-shrink:0; }
             & .r20be-chips { display:flex; flex-wrap:wrap; gap:4px; }
             & .r20be-in { width:100%; height:28px; margin:0; padding:0 8px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-2); font-size:var(--aio-fs-md); box-shadow:none; }
@@ -15328,6 +15357,73 @@ addBundle({ place: "main", order: 4, group: "prep", label: "저널 · BGM · 매
     members: [["bulk", "bulkEditor"]],
     extra: row => { row.querySelector(".cs-text").after(bulkEditor.openButton()); } });
 
+// ───────── 캐릭터 값 판: 말하는 사람을 캐릭터로 바꾸면 그 캐릭터의 값을 맵 위에 (코코포리아의 스테이터스 줄처럼 · 올인원을 깐 사람 화면에만) ─────────
+// 보일 값은 캐릭터마다 그 캐릭터의 속성 aio_board 에 [[속성 이름, 보일 이름], …] 로 둔다 → GM 이 정하면 그 캐릭터를 볼 수 있는 플레이어도 같은 판을 본다
+const valueBoard = (() => {
+    const ATTR = "aio_board", POS = "r20_vb_pos";
+    let box = null, curId = null, off = null, raf = 0;
+    const list = c => {
+        try { const v = JSON.parse(aioAttrs.find(c, ATTR)?.get("current") || "[]"); return Array.isArray(v) ? v.filter(x => Array.isArray(x) && x[0]).map(x => [String(x[0]), String(x[1] || x[0])]) : []; }
+        catch (e) { return []; }
+    };
+    const save = (c, rows) => {
+        const a = aioAttrs.find(c, ATTR), v = JSON.stringify(rows);
+        if (a) a.save({ current: v }); else if (rows.length) c.attribs.create({ name: ATTR, current: v, max: "" });
+        if (c.id === curId) draw(c);
+    };
+    const hide = () => { box?.remove(); box = null; };
+    const draw = c => {
+        const rows = btnVisible.vboard ? list(c) : [];
+        if (!rows.length) return hide();
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "r20-vb"; box.setAttribute("role", "status"); box.title = "끌어서 옮기기";
+            try { const p = JSON.parse(localStorage.getItem(POS) || "null"); if (p) { box.style.left = p[0] + "px"; box.style.top = p[1] + "px"; } } catch (e) { /* 기본 자리 */ }
+            box.addEventListener("pointerdown", e => aioDragFrom(box, e, (x, y) => { try { localStorage.setItem(POS, JSON.stringify([x, y])); } catch (e2) { /* 저장 못 함 */ } }));
+            document.body.appendChild(box);
+        }
+        const av = c.get("avatar"), nm = c.get("name") || "";
+        box.setAttribute("aria-label", `${nm}의 값`);
+        box.innerHTML = (av ? `<img src="${escAttr(sizedUrl ? sizedUrl(av, "thumb") : av)}" alt="" draggable="false">` : "")
+            + `<div class="vs">` + rows.map(([n, l]) => {
+                const a = aioAttrs.find(c, n), v = String(a?.get("current") ?? ""), x = String(a?.get("max") ?? "");
+                return `<span><b>${escAttr(l)}</b><i>${escAttr(v === "" ? "–" : v)}${x !== "" ? "/" + escAttr(x) : ""}</i></span>`;
+            }).join("") + "</div>";
+    };
+    const show = async force => {
+        const v = document.getElementById("speakingas")?.value || "", id = v.startsWith("character|") ? v.slice(10) : "";
+        if (id === curId && !force) return;
+        curId = id; off?.(); off = null;
+        const c = id && btnVisible.vboard && window.Campaign?.characters?.get(id);
+        if (!c?.attribs) return hide();
+        await aioAttrs.load(c);
+        if (curId !== id) return;
+        const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (curId === id) draw(c); }); };       // 한꺼번에 바뀌어도 한 번만 그린다
+        ["change", "add", "remove"].forEach(ev => c.attribs.on(ev, later));
+        off = () => ["change", "add", "remove"].forEach(ev => c.attribs.off(ev, later));
+        draw(c);
+    };
+    return {
+        list, save,
+        inject() { show(); },       // 말하는 사람이 바뀌었는지만 본다 (값은 위에서 듣는다)
+        setEnabled() { show(true); }
+    };
+})();
+addCss(`
+        /* 캐릭터 값 판: 맵을 가리지 않게 바탕 없이 줄만 (코코포리아 스테이터스 줄 모양) */
+        #r20-vb { position:fixed; left:64px; top:8px; z-index:var(--aio-z-dock); display:flex; align-items:flex-start; gap:3px; font:var(--aio-fs-sm)/15px sans-serif; color:var(--aio-ink); cursor:move; user-select:none; }
+        #r20-vb {
+            & img { width:32px; height:32px; border-radius:var(--aio-r-sm); object-fit:cover; box-shadow:var(--aio-shadow-sm); }
+            & .vs { display:grid; grid-template-columns:repeat(2, minmax(84px, auto)); gap:2px; }
+            & span { display:flex; justify-content:space-between; gap:8px; height:15px; padding:0 4px; background:var(--aio-float); }
+            & b { max-width:76px; overflow:hidden; font-weight:700; white-space:nowrap; text-overflow:ellipsis; }
+            & i { font-style:normal; font-variant-numeric:tabular-nums; white-space:nowrap; }
+        }
+`);
+addFeature("valueBoard", valueBoard);
+addBundle({ place: "main", order: 2.2, group: "play", label: "캐릭터 값 판", sub: "말하는 사람을 캐릭터로 바꾸면 그 캐릭터의 값을 맵 왼쪽 위에 · 보일 값은 일괄 편집기에서 캐릭터를 고르고 [🔔 값 알림] 창의 '판' 칸으로",
+    members: [["vboard", "valueBoard"]] });
+
 // @share-cut-start aw — 값 변화 알림 (배포판에서 뺌: 개인용)
 // ───────── 값 변화 알림: 지켜보는 캐릭터의 시트 값이 바뀌면 채팅에 올린다 (GM 브라우저로 방에 들어와 있는 동안만) ─────────
 // 생각은 YANGSALT(kibkibe) 님의 API 스크립트 attribute_tracker 에서 — Pro 없이 쓰도록 브라우저에서 돌게 새로 썼다
@@ -15476,8 +15572,22 @@ const attrWatch = (() => {
         if (c) {
             const q = el("input", { type: "search", class: "aw-q aw-in", value: q0, placeholder: "값 찾기 — 이름 · 지금 값", "aria-label": `${nm}의 값 찾기` });
             const list = el("div", { class: "aw-list", role: "group", "aria-label": `${nm}의 값` }, el("p", {}, "값을 받아 오는 중…"));
+            // 값 판(말하는 캐릭터의 값을 맵 위에)에 보일 값 — 캐릭터에 저장된다
+            const VB = FEAT.valueBoard, bd = el("div", { class: "aw-rows" });
+            const setBoard = rows => { VB.save(c, rows); fill(); };
+            const fillBoard = () => {
+                const rows = VB.list(c);
+                bd.textContent = "";
+                bd.hidden = !rows.length;
+                rows.forEach(([n, l], i) => bd.append(el("div", { class: "aw-row" }, el("span", { class: "aw-nm", title: n }, n),
+                    el("input", { type: "text", class: "aw-in", value: l, placeholder: "판에 보일 이름", "aria-label": `${n} — 판에 보일 이름`, spellcheck: "false",
+                        onchange: e => { const r = VB.list(c); r[i][1] = e.target.value.trim() || n; VB.save(c, r); } }),
+                    el("button", { type: "button", class: "x", "aria-label": `${n} 판에서 빼기`, onclick: () => setBoard(VB.list(c).filter((x, k) => k !== i)) }, "✕"))));
+            };
             const fill = () => {
-                const all = (c.attribs?.models || []).map(a => ({ n: String(a.get("name") || ""), v: String(a.get("current") ?? ""), x: String(a.get("max") ?? "") })).filter(a => a.n)
+                const board = VB ? VB.list(c) : [];
+                if (VB) fillBoard();
+                const all = (c.attribs?.models || []).map(a => ({ n: String(a.get("name") || ""), v: String(a.get("current") ?? ""), x: String(a.get("max") ?? "") })).filter(a => a.n && a.n !== "aio_board")
                     .sort((a, b) => a.n.localeCompare(b.n, "en", { numeric: true }));
                 const k = lc(q.value), rows = all.filter(a => !k || lc(a.n).includes(k) || lc(a.v).includes(k));
                 list.textContent = "";
@@ -15488,12 +15598,15 @@ const attrWatch = (() => {
                         el("input", { type: "checkbox", checked: exact || !!hit, disabled: !!hit, onchange: e => set(() => {
                             if (e.target.checked) cfg.rows.push({ a: a.n, l: a.n }); else cfg.rows = cfg.rows.filter(r => lc(r.a) !== lc(a.n));
                         }) }),
+                        VB ? el("input", { type: "checkbox", class: "aw-bd", title: "값 판에 보이기", "aria-label": `${a.n} 값 판에 보이기`, checked: board.some(b => lc(b[0]) === lc(a.n)),
+                            onchange: e => setBoard(e.target.checked ? [...VB.list(c), [a.n, cfg.rows.find(r => lc(r.a) === lc(a.n))?.l || a.n]] : VB.list(c).filter(b => lc(b[0]) !== lc(a.n))) }) : null,
                         el("span", { title: a.n }, a.n), el("small", { title: hit ? `'${hit.r.a}' 줄에 들어 있어요` : null }, (hit ? "＊ " : "") + (a.v.length > 24 ? a.v.slice(0, 24) + "…" : a.v || "–") + (a.x ? ` / ${a.x}` : "")));
                 }), rows.length > 300 ? el("p", {}, `… ${rows.length - 300}개 더 — 찾기로 좁혀 보세요`) : null);
                 if (!rows.length) list.append(el("p", {}, "맞는 값이 없어요."));
             };
             q.addEventListener("input", fill);
-            host.append(el("div", { class: "aw-sec" }, el("b", {}, `'${nm}'의 값에서 고르기`), q), list);
+            add(host, el("div", { class: "aw-sec" }, el("b", {}, `'${nm}'의 값에서 고르기`), q),
+                VB ? el("p", {}, "앞 칸 = 바뀌면 알림 · 뒤 칸 = 값 판(이 캐릭터로 말할 때 맵 왼쪽 위)에 보이기") : null, list, VB ? bd : null);
             const mine = c.id;
             aioAttrs.load(c).then(() => { if (!host.hidden && host.dataset.id === mine && list.isConnected) { fill(); list.scrollTop = ltop0; host.scrollTop = top0; } });
         }
@@ -15538,7 +15651,9 @@ addCss(`
             & .aw-list { display:flex; flex-direction:column; flex:1 1 auto; min-height:68px; overflow-y:auto; border:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); }
             & .aw-pick { flex:none; }
             & .aw-list p { padding:6px; }
-            & .aw-pick { display:grid; grid-template-columns:16px minmax(0, 1fr) auto; gap:6px; align-items:center; min-height:22px; margin:0; padding:0 6px; font-weight:400; cursor:pointer; }
+            & .aw-nm { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            & .aw-rows[hidden] { display:none; }
+            & .aw-pick { display:grid; grid-template-columns:16px 16px minmax(0, 1fr) auto; gap:6px; align-items:center; min-height:22px; margin:0; padding:0 6px; font-weight:400; cursor:pointer; }
             & .aw-pick:hover { background:var(--aio-bg-2); }
             & .aw-pick input { margin:0; }
             & .aw-pick span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -16165,7 +16280,9 @@ const selfCheck = (() => {
     const bad = () => (res?.fail.length || 0) + AIO_ERRS.length;
     // ⚙ 에 ! · 설정 창이 열려 있으면 맨 위 줄도
     const paint = () => {
-        document.getElementById("custom-settings-btn")?.classList.toggle("aio-warn", !!bad());
+        const gear = document.getElementById("custom-settings-btn");
+        gear?.classList.toggle("aio-warn", !!bad());
+        if (gear && gmKnown()) gear.style.display = isGM() ? "flex" : "none";       // 설정은 일괄 편집기(GM 전용) 안에 있다
         const pop = document.getElementById("custom-settings-popup");
         if (pop?.classList.contains("show")) strip(pop);
     };
@@ -16219,7 +16336,7 @@ const selfCheck = (() => {
     };
     // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추
     document.addEventListener("click", e => {
-        if (e.target.closest?.("#custom-settings-btn")) return setTimeout(() => { const pop = document.getElementById("custom-settings-popup"); if (pop?.classList.contains("show")) strip(pop); }, 0);
+        if (e.target.closest?.("#custom-settings-btn, .r20be-segS")) return setTimeout(() => { const pop = document.getElementById("custom-settings-popup"); if (pop?.classList.contains("show")) strip(pop); }, 0);
         const b = e.target.closest?.("#custom-settings-popup .cs-check button");
         if (!b) return;
         e.stopPropagation();

@@ -17,7 +17,7 @@ const SHOT = process.env.SHOT;
     window.is_gm = true;
   });
   await p.addScriptTag({ content: us }); await p.waitForTimeout(500);
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200);
   const view = () => p.$$eval('#custom-settings-popup > *', cs => cs.filter(c => !c.hidden && getComputedStyle(c).display !== 'none' || c.classList.contains('cs-blk') && !c.hidden)
     .map(c => c.classList.contains('cs-gh') ? '【' + c.querySelector('b').textContent + '】' : c.classList.contains('cs-blk') ? [...c.querySelectorAll('.cs-name')].map(n => n.textContent.slice(0, 12)).join('+') : c.classList.contains('cs-search') ? '🔍' : c.className || c.tagName).filter(Boolean).join(' / '));
   console.log('처음:', await view());

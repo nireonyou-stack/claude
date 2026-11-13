@@ -50,7 +50,7 @@ const NOTES = {
   const R = sel => p.$eval(sel, e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round).join(','); });
   // 1) 왼쪽 도구 줄 (기본 가늘게)
   console.log('도구 줄 가늘게:', await R('.master-toolbar-outer'), '| 라벨 보임:', await p.$eval('.master-toolbar-outer .label', e => getComputedStyle(e).display !== 'none'), '| 서랍:', await R('.drawer-outer'), '| playerzone left:', await p.$eval('#playerzone', e => Math.round(e.getBoundingClientRect().left)));
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200);
   const seg = async v => { await p.$eval(`#custom-settings-popup [aria-label="왼쪽 도구 줄"] [data-v="${v}"]`, b => b.click()); await p.waitForTimeout(250); };
   console.log('설정 줄:', await p.$eval('#custom-settings-popup [aria-label="왼쪽 도구 줄"]', s => [...s.children].map(b => b.textContent + (b.getAttribute('aria-checked') === 'true' ? '✓' : '')).join(' ')));
   await seg('short'); console.log('짧게:', await R('.master-toolbar-outer'), '| playerzone left:', await p.$eval('#playerzone', e => Math.round(e.getBoundingClientRect().left)));
@@ -58,7 +58,7 @@ const NOTES = {
   await p.keyboard.press('Escape'); await p.waitForTimeout(100);
   await p.mouse.move(2, 300); await p.waitForTimeout(450); console.log('  마우스 대면:', await R('.master-toolbar-outer'));
   await p.mouse.move(700, 300); await p.waitForTimeout(900); console.log('  떠나면:', await R('.master-toolbar-outer'));
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200);
   await seg('orig'); console.log('원래:', await R('.master-toolbar-outer'), '| 라벨 보임:', await p.$eval('.master-toolbar-outer .label', e => getComputedStyle(e).display !== 'none'), '| playerzone left:', await p.$eval('#playerzone', e => Math.round(e.getBoundingClientRect().left)));
   await seg('thin');
   await p.keyboard.press('Escape'); await p.mouse.click(700, 400); await p.waitForTimeout(100);
@@ -136,9 +136,9 @@ const NOTES = {
   await p.click('#r20-snbtn'); await p.waitForTimeout(150);
   console.log('📖 로 다시 → 창:', await R('#r20-sn'));
   // 8) 도구 줄 바꾸면 따라옴
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200); await seg('orig'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200); await seg('orig'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
   console.log('도구 줄 원래로 → 창:', await R('#r20-sn'));
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200); await seg('thin'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200); await seg('thin'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
   // 9) 띄우기로
   await p.click('#r20-sn .aio-dock [data-v="float"]'); await p.waitForTimeout(150);
   console.log('떠 있기 →', await R('#r20-sn'), '| playerzone left:', await pz());

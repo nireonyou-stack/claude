@@ -26,7 +26,7 @@ const mock = () => {
   await p.evaluate(mock); await p.addScriptTag({ content: us }); await p.waitForTimeout(600);
   const rect = sel => p.$eval(sel, e => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round).join(','); });
   // 설정 창
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200);
   console.log('settings rows:', (await p.$$eval('#custom-settings-popup .cs-row', rs => rs.slice(0, 2).map(r => r.textContent.trim()))).join(' / '));
   console.log('settings @100%:', await rect('#custom-settings-popup'), 'btn', await rect('#custom-settings-btn'));
   for (let i = 0; i < 5; i++) await p.click('#custom-settings-popup .aio-zm [data-d="1"]');
@@ -36,7 +36,7 @@ const mock = () => {
   // 채팅 같이
   await p.click('#custom-settings-popup .cs-row:has-text("Roll20 채팅 글자도 같이") .cs-switch'); await p.waitForTimeout(150);
   console.log('chat zoom:', await p.$eval('#textchat .content', e => getComputedStyle(e).zoom), 'textarea fs:', await p.$eval('#textchat-input textarea', e => getComputedStyle(e).fontSize));
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(100);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(100);      // 설정 화면(일괄 편집기 안) 닫기
   // 일괄 편집기
   await p.evaluate(() => { if (!document.getElementById('sidebarcontrol')) document.body.insertAdjacentHTML('beforeend', '<div id="sidebarcontrol" style="position:fixed;right:0;top:0;width:28px;height:28px"></div>'); }); await p.waitForSelector('#r20-bebtn'); await p.$eval('#r20-bebtn', b => b.click()); await p.waitForSelector('#r20be.r20be-show'); await p.waitForTimeout(400);
   console.log('editor @150%:', await rect('#r20be'), '| header label:', await p.$eval('#r20be .aio-zv', e => e.textContent));

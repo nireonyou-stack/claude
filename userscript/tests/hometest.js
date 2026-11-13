@@ -37,7 +37,7 @@ const SHOT = process.env.SHOT;
   console.log('🏠 단추:', await p.$eval('.ui-dialog-titlebar', t => [...t.children].map(c => c.className || c.tagName).join(' | ')), '| 흐림(설정 전):', await p.$eval('.r20home', x => x.classList.contains('off')));
   await p.click('.r20home'); await p.waitForTimeout(100);
   console.log('설정 전 누름 →', await p.$eval('#r20-home-toast', e => e.textContent));
-  await p.click('#custom-settings-btn'); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }); await p.waitForTimeout(200);
   const rows = await p.$$('#custom-settings-popup .r20home-row input');
   console.log('설정 줄 칸 수:', rows.length);
   await rows[0].fill('https://home.test/skin/board/character/sheet/import.roll20.php'); await rows[0].dispatchEvent('change');

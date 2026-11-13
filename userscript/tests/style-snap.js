@@ -46,7 +46,7 @@ const snap = async file => {
     out.push(...await take(tab, '#r20be'));
   }
   await p.evaluate(() => document.querySelector('#r20be [aria-label="닫기"]')?.click());
-  await p.click('#custom-settings-btn').catch(() => {}); await p.waitForTimeout(200);
+  await p.evaluate(() => { const r = document.querySelector('#r20be'); if (!r || !r.classList.contains('r20be-show') || !r.classList.contains('r20be-setmode')) document.querySelector('#custom-settings-btn').click(); }).catch(() => {}); await p.waitForTimeout(200);
   out.push(...await take('설정', '#custom-settings-popup'));
   await p.keyboard.press('Escape'); await p.mouse.click(400, 400); await p.waitForTimeout(100);
   await p.keyboard.press('Control+KeyF'); await p.waitForTimeout(100); await p.fill('#r20-qf input.qf-in', '마').catch(() => {}); await p.waitForTimeout(100);
