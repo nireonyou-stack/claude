@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.100.0
+// @version      1.101.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.100.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.101.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -72,6 +72,7 @@ const btnVisible = {
     jbmini:    localStorage.getItem("r20_show_jbmini") !== "false",
     portrait:  localStorage.getItem("r20_show_portrait") !== "false",
     home:      localStorage.getItem("r20_show_home") !== "false",
+    abtok:     localStorage.getItem("r20_show_abtok") !== "false",
     vboard:    localStorage.getItem("r20_show_vboard") !== "false"
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
@@ -1221,7 +1222,7 @@ const DIRTY = { all: true, set: new Set() };
 // ── 글자 크기: 올인원이 띄우는 창을 CSS zoom 으로 한꺼번에 키운다 (설정 ⚙ 맨 위 · 일괄 편집기 머리줄) ──
 // 확대된 창은 left · top 같은 길이도 같이 커지므로, 화면 좌표(getBoundingClientRect · clientX)를 넣을 땐 zpx() 로 넣는다.
 // vw · vh 는 확대되지 않으므로 이 창들의 CSS 에선 var(--aio-z) 로 나눠 쓴다. (Roll20 창 안에 붙는 것 · 맵 위 단추줄은 제외)
-const AIO_ZOOMED = "#aio-toasts, #custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
+const AIO_ZOOMED = "#r20-abt, #aio-toasts, #custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
     let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
@@ -4892,7 +4893,7 @@ const ccfImport = (() => {
     const toggle = at => (isOpen() ? close() : open(at));
     document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
     window.addEventListener("resize", () => isOpen() && place());
-    return { toggle, close };
+    return { toggle, close, upload: dropUpload };
 })();
 
 // ───────── 맵 맞추기 (GM): 페이지 크기 · 내용 자리를 격자를 지키며 맞춘다 — 맵 단추 밑 ─────────
@@ -15951,6 +15952,7 @@ const autofill = (() => {
         doc.addEventListener("input", onInput, true);
         doc.addEventListener("keydown", onKey, true);
         doc.addEventListener("focusout", onFocusOut, true);
+        doc.addEventListener("mouseover", e => FEAT.abTok?.over(e), true);        // 어빌리티 이름 칸 → 🎯 (토큰에 연결)
         doc.addEventListener("scroll", onScroll, true);
         doc.defaultView?.addEventListener("resize", close);
     };
@@ -15975,7 +15977,7 @@ const autofill = (() => {
     document.addEventListener("focusin", e => { if (e.target.tagName === "IFRAME") hookFrame(e.target); });
 
     const setEnabled = on => { if (!on) close(); };
-    return { close, inject, getUrl, setUrl, setFile, clearData, fileName, statusText, setEnabled, watch: "iframe" };
+    return { close, inject, getUrl, setUrl, setFile, clearData, fileName, statusText, setEnabled, ctx, FIELDS, watch: "iframe" };
 })();
 
 addCss(`
@@ -16025,6 +16027,211 @@ addBundle({ place: "main", order: 5, group: "prep", label: "기본시트 데이�
         rdRow.append(rdInp, fileBtn, fileInp);
         return [rdRow];
     } });
+
+// ───────── 시트 어빌리티 → 토큰 연결 (GM): 시트의 어빌리티 이름 칸에 마우스를 올리면 칸 끝에 🎯 ─────────
+// 누르면 지금 페이지 · 토큰 층의 토큰을 골라 Roll20 기본 연결을 건다: 대표 캐릭터 + 토큰 이름 + (숫자 칸이 있으면) 막대 1 ↔ 그 칸
+// → 건 뒤에는 Roll20 이 직접 맞춘다 (GM 브라우저가 꺼져 있어도 · 올인원이 없어도). 효과는 캐릭터의 토큰 액션 '📜 이름' 으로 채팅에
+// 시트 줄은 자동완성이 알아보는 것 그대로 (autofill.ctx). 시트 안에는 아무것도 넣지 않는다 — 🎯 는 맨 위 문서에 띄운다 (시트 배치가 안 깨지게)
+const abTok = (() => {
+    const LABEL = { group: "유파", type: "타입", skill: "지정특기", range: "간격", target: "목표", cost: "코스트", charge: "충전", lv: "레벨", effect: "효과", recite: "주문" };
+    const ACT = "📜 ";
+    let chip = null, pop = null, cur = null, hideT = 0;
+    const pgNow = () => window.Campaign?.activePage?.() || null;
+    const toks = () => (pgNow()?.thegraphics?.models || []).filter(g => g.get("layer") === "objects");
+    // 시트 칸 → 캐릭터 (시트는 캐릭터 창 안의 iframe 에 그려진다)
+    const charOf = inp => {
+        const host = inp.ownerDocument.defaultView?.frameElement || inp, dlg = host.closest?.(".ui-dialog") || host.closest?.("[data-characterid]");
+        const id = host.closest?.("[data-characterid]")?.dataset.characterid || dlg?.querySelector?.("[data-characterid]")?.dataset.characterid;
+        return (id && window.Campaign?.characters?.get(id)) || null;
+    };
+    // 그 줄의 칸 이름 → 캐릭터 속성 이름 (반복 줄은 repeating_묶음_줄id_칸)
+    const attrName = (x, key) => {
+        const f = autofill.FIELDS[x.sys]?.[key], rep = x.row.closest?.(".repitem") || (x.row.matches?.(".repitem") ? x.row : null);
+        if (!f) return "";
+        const grp = rep?.closest(".repcontainer")?.dataset.groupname, rid = rep?.dataset.reprowid;
+        return (grp && rid ? `${grp}_${rid}_` : "") + x.base + f;
+    };
+    const linked = (c, nm) => toks().filter(g => g.get("represents") === c.id && g.get("name") === nm);
+    const hide = () => { chip?.remove(); chip = null; };
+    const over = e => {
+        if (!btnVisible.abtok || !isGM() || pop) return;
+        const inp = e.target, x = inp?.name && autofill.ctx(inp);
+        if (!x) { if (chip && !hideT) hideT = setTimeout(() => { hideT = 0; hide(); }, 350); return; }
+        clearTimeout(hideT); hideT = 0;
+        const c = charOf(inp), nm = String(inp.value || "").trim();
+        if (!c || !nm) return hide();
+        if (!chip) {
+            chip = document.createElement("button");
+            chip.type = "button"; chip.id = "r20-abt-chip"; chip.textContent = "🎯";
+            chip.addEventListener("mouseenter", () => { clearTimeout(hideT); hideT = 0; });
+            chip.addEventListener("mouseleave", () => { hideT = setTimeout(() => { hideT = 0; hide(); }, 350); });
+            chip.addEventListener("click", ev => { ev.preventDefault(); ev.stopPropagation(); const at = chip.getBoundingClientRect(); hide(); open(cur, at); });
+            document.body.appendChild(chip);
+        }
+        cur = { ...x, inp, c, nm };
+        const n = linked(c, nm).length, r = inp.getBoundingClientRect(), fr = inp.ownerDocument.defaultView?.frameElement?.getBoundingClientRect();
+        chip.classList.toggle("on", n > 0);
+        chip.title = n ? `'${nm}' — 토큰 ${n}개에 연결됨 · 눌러서 고치기` : `'${nm}' 을 토큰에 연결`;
+        chip.setAttribute("aria-label", chip.title);
+        chip.style.left = r.right + (fr?.left || 0) - 20 + "px";        // 🎯 는 확대하지 않는다 (시트 칸 크기에 맞춤)
+        chip.style.top = r.top + (fr?.top || 0) + (r.height - 18) / 2 + "px";
+    };
+    const close = () => { pop?.remove(); pop = null; };
+    // 캐릭터의 토큰 액션 '📜 이름': 그 줄의 칸들을 그때그때 읽어 채팅에 (시트를 고치면 따라간다)
+    const actText = x => `&{template:default} {{name=@{${attrName(x, "name")}}}} `
+        + Object.keys(autofill.FIELDS[x.sys] || {}).filter(k => LABEL[k] && x.row.querySelector(`[name="attr_${x.base}${autofill.FIELDS[x.sys][k]}"]`))
+            .map(k => `{{${LABEL[k]}=@{${attrName(x, k)}}}}`).join(" ");
+    const setAct = (x, on) => {
+        const ab = x.c.abilities, a = ab?.models?.find(m => m.get("name") === ACT + x.nm), action = actText(x);
+        if (!ab?.create) return;
+        if (!on) { if (a) a.destroy(); return; }
+        if (!a) ab.create({ name: ACT + x.nm, action, istokenaction: true });
+        else if (a.get("action") !== action || !a.get("istokenaction")) a.save({ action, istokenaction: true });
+    };
+    const pickFile = () => new Promise(ok => {
+        const i = document.createElement("input");
+        i.type = "file"; i.accept = "image/*,video/webm";
+        i.onchange = () => ok(i.files[0] || null);
+        i.addEventListener("cancel", () => ok(null));
+        i.click();
+    });
+    const open = async (x, at) => {
+        close();
+        const pg = pgNow();
+        if (!pg?.thegraphics) return aioToast("지금 페이지를 못 찾았어요", { kind: "err" });
+        await aioAttrs.load(x.c);
+        const KEYS = ["represents", "name", "bar1_link", "bar1_value", "bar1_max", "showplayers_bar1", "playersedit_bar1"];
+        const bars = ["charge", "cost"].filter(k => autofill.FIELDS[x.sys]?.[k] && x.row.querySelector(`[name="attr_${x.base}${autofill.FIELDS[x.sys][k]}"]`));
+        let bar = localStorage.getItem("r20_abt_bar") === "none" ? "" : bars[0] || "", pl = localStorage.getItem("r20_abt_pl") !== "false", act = localStorage.getItem("r20_abt_act") !== "false";
+        const ORD = { on: 0, same: 1, "": 2, other: 3 };
+        const picked = new Map();       // 토큰 → 체크 (처음: 이미 연결된 것 · 이름이 같은 것)
+        pop = document.createElement("div");
+        pop.id = "r20-abt"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", `${x.nm} 을 토큰에 연결`);
+        const state = g => g.get("represents") === x.c.id && g.get("name") === x.nm ? "on" : g.get("represents") && g.get("represents") !== x.c.id ? "other" : g.get("name") === x.nm ? "same" : "";
+        const draw = () => {
+            const list = toks().map(g => ({ g, st: state(g) })).sort((a, b) => ORD[a.st] - ORD[b.st] || String(a.g.get("name")).localeCompare(String(b.g.get("name"))));
+            list.forEach(t => { if (!picked.has(t.g)) picked.set(t.g, t.st === "on" || t.st === "same"); });
+            const n = list.filter(t => picked.get(t.g)).length;
+            pop.innerHTML = `<div class="hd"><b>'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x" aria-label="닫기">✕</button></div>`
+                + `<p>${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층</p>`
+                + `<div class="list">` + (list.length ? list.map((t, i) => `<label class="row${t.st === "other" ? " off" : ""}"><input type="checkbox" data-i="${i}"${picked.get(t.g) ? " checked" : ""}${t.st === "other" ? " disabled" : ""}>`
+                    + `<img src="${escAttr(sizedUrl(t.g.get("imgsrc") || "", "thumb"))}" alt="" loading="lazy"><span>${escAttr(t.g.get("name") || "이름 없는 토큰")}</span>`
+                    + `<small class="${t.st}">${{ on: "연결됨", same: "이름 같음", other: "다른 캐릭터에 연결됨" }[t.st] || (t.g.get("represents") ? "이 캐릭터의 다른 토큰" : "")}</small>`
+                    + `<button type="button" class="im" data-i="${i}" title="이 토큰의 그림 바꾸기 (파일 고르기)" aria-label="${escAttr(t.g.get("name") || "토큰")} 그림 바꾸기">🖼</button></label>`).join("") : `<p>이 페이지의 토큰 층에 토큰이 없어요 — 아래 [+ 새 토큰]으로 만들 수 있어요.</p>`) + `</div>`
+                + (bars.length ? `<label class="opt">막대 1 <select class="bar"><option value="">(없음)</option>${bars.map(k => `<option value="${k}"${k === bar ? " selected" : ""}>${LABEL[k]} — 지금 ${escAttr(String(aioAttrs.find(x.c, attrName(x, k))?.get("current") ?? "빈칸"))}</option>`).join("")}</select></label>`
+                    + `<label class="opt"><input type="checkbox" class="pl"${pl ? " checked" : ""}> 플레이어에게도 막대 보이기 · 고치기</label>` : "")
+                + `<label class="opt"><input type="checkbox" class="act"${act ? " checked" : ""}> 토큰 액션 '${escAttr(ACT + x.nm)}' 만들기 <small>— 누르면 효과를 채팅에 (이 캐릭터의 토큰 전부에 보여요)</small></label>`
+                + `<div class="ft"><button type="button" class="aio-btn new" title="캐릭터 그림으로 새 토큰을 만들어요 — 캐릭터 그림을 못 쓰면 그림 파일을 고릅니다">+ 새 토큰</button><span></span>`
+                + `<button type="button" class="aio-btn no">취소</button><button type="button" class="aio-btn pri go">${n ? `토큰 ${n}개에 연결` : "연결 풀기"}</button></div>`;
+            pop._list = list;
+        };
+        const apply = () => {
+            const attr = bar && aioAttrs.find(x.c, attrName(x, bar)), back = [];
+            let on = 0, offN = 0;
+            if (bar && !attr) { try { x.c.attribs.create({ name: attrName(x, bar), current: "0", max: "" }); } catch (e) { aioErr("어빌리티 토큰", e); } }
+            const a = bar ? aioAttrs.find(x.c, attrName(x, bar)) : null;
+            pop._list.forEach(t => {
+                const want = !!picked.get(t.g) && t.st !== "other", was = t.st === "on";
+                if (!want && !was) return;
+                back.push([t.g, Object.fromEntries(KEYS.map(k => [k, t.g.get(k) ?? ""]))]);
+                if (want) { on++; t.g.save({ represents: x.c.id, name: x.nm, bar1_link: a?.id || "", ...(a ? { bar1_value: a.get("current") ?? "", bar1_max: a.get("max") ?? "", showplayers_bar1: pl, playersedit_bar1: pl } : {}) }); }
+                else { offN++; t.g.save({ represents: "", bar1_link: "" }); }
+            });
+            const hadAct = !!x.c.abilities?.models?.some(m => m.get("name") === ACT + x.nm);
+            try { setAct(x, act && on > 0); } catch (e) { aioErr("어빌리티 토큰 액션", e); }
+            close();
+            aioToast(on ? `'${x.nm}' — 토큰 ${on}개에 연결했어요` + (offN ? ` · ${offN}개는 풀었어요` : "") : offN ? `'${x.nm}' — 토큰 ${offN}개의 연결을 풀었어요` : "바꾼 것이 없어요",
+                { kind: "ok", id: "abt", undo: back.length ? () => { back.forEach(([g, o]) => g.save(o)); if (!hadAct) { try { setAct(x, false); } catch (e) { /* 액션은 그대로 둠 */ } } setTimeout(() => aioToast("토큰 연결을 되돌렸어요", { kind: "ok", id: "abt" }), 0); } : undefined });
+        };
+        // 새 토큰: 캐릭터 그림이 Roll20 라이브러리 그림이면 그것으로, 아니면 그림 파일을 골라 올린다
+        const make = async file => {
+            const av = r20img(x.c.get("avatar") || "");
+            let g = null;
+            if (!file && /^https:\/\/files\.d20\.io\//i.test(av)) {
+                const W = (Number(pg.get("width")) || 25) * 70, H = (Number(pg.get("height")) || 25) * 70;
+                g = pg.thegraphics.create({ imgsrc: sizedUrl(av, "thumb"), page_id: pg.id, layer: "objects", left: Math.round(W / 2), top: Math.round(H / 2), width: 70, height: 70, name: x.nm });
+            } else {
+                file = file || await pickFile();
+                if (!file) return;
+                aioToast("그림을 올리는 중…", { kind: "busy", id: "abt" });
+                g = await ccfImport.upload(pg, file);
+                if (!g) return aioToast("그림을 못 올렸어요", { kind: "err", id: "abt" });
+                g.save({ layer: "objects", name: x.nm });
+                aioToast("새 토큰을 놓았어요 — 맵 가운데", { kind: "ok", id: "abt" });
+            }
+            if (g && pop) { picked.set(g, true); draw(); }
+        };
+        const swap = async g => {
+            const file = await pickFile();
+            if (!file) return;
+            aioToast("그림을 올리는 중…", { kind: "busy", id: "abt" });
+            const t = await ccfImport.upload(pg, file), src = t?.get("imgsrc");
+            if (!src) return aioToast("그림을 못 올렸어요", { kind: "err", id: "abt" });
+            const was = g.get("imgsrc");
+            g.save({ imgsrc: src });
+            try { t.destroy(); } catch (e) { /* 올리느라 생긴 그림은 그대로 둠 */ }
+            aioToast("토큰 그림을 바꿨어요", { kind: "ok", id: "abt", undo: () => g.save({ imgsrc: was }) });
+            if (pop) draw();
+        };
+        pop.addEventListener("click", e => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            e.preventDefault();
+            if (b.classList.contains("x") || b.classList.contains("no")) return close();
+            if (b.classList.contains("go")) return apply();
+            if (b.classList.contains("new")) return make().catch(err => aioErr("어빌리티 토큰 만들기", err));
+            if (b.classList.contains("im")) return swap(pop._list[+b.dataset.i].g).catch(err => aioErr("토큰 그림 바꾸기", err));
+        });
+        pop.addEventListener("change", e => {
+            const t = e.target;
+            if (t.dataset.i) picked.set(pop._list[+t.dataset.i].g, t.checked);
+            else if (t.classList.contains("bar")) { bar = t.value; localStorage.setItem("r20_abt_bar", bar || "none"); }
+            else if (t.classList.contains("pl")) { pl = t.checked; localStorage.setItem("r20_abt_pl", String(pl)); }
+            else if (t.classList.contains("act")) { act = t.checked; localStorage.setItem("r20_abt_act", String(act)); }
+            const k = [...pop.querySelectorAll(".row input")].filter(i => i.checked).length;
+            pop.querySelector(".go").textContent = k ? `토큰 ${k}개에 연결` : "연결 풀기";
+        });
+        pop.addEventListener("keydown", e => e.stopPropagation());       // 창 안에서 누른 글쇠가 Roll20 단축키로 가지 않게
+        draw();
+        document.body.appendChild(pop);
+        const { width: w, height: h } = pop.getBoundingClientRect();
+        pop.style.left = zpx(Math.max(4, Math.min(at.right + 6, innerWidth - w - 4)));
+        pop.style.top = zpx(Math.max(4, Math.min(at.top - 20, innerHeight - h - 4)));
+        pop.querySelector(".go").focus();
+    };
+    document.addEventListener("pointerdown", e => { if (pop && !pop.contains(e.target)) close(); }, true);
+    document.addEventListener("keydown", e => { if (pop && e.key === "Escape") { e.stopPropagation(); close(); } }, true);
+    return { over, setEnabled(on) { if (!on) { hide(); close(); } } };
+})();
+addCss(`
+        #r20-abt-chip { position:fixed; z-index:var(--aio-z-tip); width:18px; height:18px; margin:0; padding:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:var(--aio-shadow-sm); font-size:var(--aio-fs-xs); line-height:16px; text-align:center; cursor:pointer; }
+        #r20-abt-chip.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
+        #r20-abt { position:fixed; z-index:var(--aio-z-pop); display:flex; flex-direction:column; gap:6px; width:min(380px, calc((100vw - 16px) / var(--aio-z, 1))); max-height:calc(80vh / var(--aio-z, 1)); padding:8px 10px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-lg); font:var(--aio-fs-md)/1.5 sans-serif; color:var(--aio-ink-2); }
+        #r20-abt {
+            & .hd { display:flex; align-items:center; gap:6px; }
+            & .hd b { flex:1; font-size:var(--aio-fs-lg); }
+            & .x { flex:none; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-5); cursor:pointer; }
+            & .x:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+            & p { margin:0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+            & .list { display:flex; flex-direction:column; min-height:40px; overflow-y:auto; border-top:1px solid var(--aio-line-4); }
+            & .row { display:grid; grid-template-columns:16px 30px minmax(0, 1fr) auto 22px; gap:8px; align-items:center; flex:none; margin:0; padding:3px 2px; border-bottom:1px solid var(--aio-line-4); font-weight:400; cursor:pointer; }
+            & .row.off { opacity:.6; cursor:default; }
+            & .row input, & .opt input { margin:0; }
+            & .row img { width:30px; height:30px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); object-fit:contain; }
+            & .row span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            & small { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
+            & small.on, & small.same { color:var(--aio-ok); font-weight:700; }
+            & .im { width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; font-size:var(--aio-fs-md); cursor:pointer; }
+            & .im:hover { background:var(--aio-bg-3); }
+            & .opt { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0; font-weight:400; }
+            & select { flex:1; min-width:0; height:var(--aio-h-sm); margin:0; padding:0 4px; font-size:var(--aio-fs-md); }
+            & .ft { display:flex; align-items:center; gap:6px; }
+            & .ft span { flex:1; }
+        }
+`);
+addFeature("abTok", abTok);
+addBundle({ place: "main", order: 5.1, group: "prep", label: "시트 어빌리티 → 토큰 연결 (🎯 · GM)", sub: "시트의 어빌리티 이름 칸에 마우스를 올리면 칸 끝에 🎯 — 지금 페이지 토큰 층의 토큰에 연결 (대표 캐릭터 · 이름 · 막대 1) · 새 토큰 만들기 · 토큰 그림 바꾸기 · 효과를 채팅에 올리는 토큰 액션",
+    members: [["abtok", "abTok"]] });
 
 // ══════════ 채팅 단추 · 이모지 팔레트 ══════════
 
