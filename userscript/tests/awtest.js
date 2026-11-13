@@ -36,19 +36,23 @@ const SHOT = process.env.SHOT;
   await p.click('#r20be .r20be-row[data-id="c1"]'); await p.waitForTimeout(200);
   await p.click('#r20be .r20be-ph .r20be-awbtn');
   const AW = '#r20be .r20be-aw';
-  await p.waitForFunction(() => document.querySelectorAll('#r20be .r20be-aw .aw-pick').length >= 7, null, { timeout: 8000 });
-  console.log('칸:', await p.$eval(AW, e => e.querySelector('.hd').innerText.replace(/\s+/g, ' ').trim()), '| 받아 오기:', await p.evaluate(() => __fetch), '번');
-  console.log('값 목록:', await p.$$eval(AW + ' .aw-pick', rs => rs.map(r => r.querySelector('span').textContent + '=' + r.querySelector('small').textContent).join(' | ')));
-  // 지켜보기 + 값 고르기
-  await p.click(AW + ' .aw-sec .pri');
-  const pick = async name => { await p.evaluate(nm => [...document.querySelectorAll('#r20be .r20be-aw .aw-pick')].find(r => r.querySelector('span').textContent === nm).querySelector('input').click(), name); await p.waitForTimeout(80); };
-  await pick('hp'); await pick('Magic_01_Charge');
-  const rows = () => p.$$eval(AW + ' .aw-row', rs => rs.map(r => [...r.querySelectorAll('input')].map(i => i.value).join(' → ') + (r.querySelector('.aio-btn') ? ' [＊]' : '')).join(' | '));
-  console.log('고름:', await rows(), '| 캐릭터:', await p.$$eval(AW + ' .aw-chips .aio-chip', cs => cs.map(c => c.textContent).join(',')));
-  await p.click(AW + ' .aw-row:nth-child(2) .aio-btn'); await p.waitForTimeout(80);
-  console.log('＊ 전부:', await rows());
-  console.log('목록 표시:', await p.$$eval(AW + ' .aw-pick', rs => rs.filter(r => r.querySelector('input').checked).map(r => r.querySelector('span').textContent + (r.querySelector('input').disabled ? '(＊)' : '')).join(' ')));
-  console.log('왼쪽 줄 · 단추:', await p.$eval('#r20be .r20be-row[data-id="c1"]', e => /🔔/.test(e.textContent)), '·', await p.$eval('#r20be .r20be-awbtn', e => e.textContent));
+  await p.waitForFunction(() => document.querySelectorAll('#r20be .r20be-aw .aw-v').length >= 3, null, { timeout: 8000 });
+  const vals = () => p.$$eval(AW + ' .aw-v', rs => rs.map(r => r.querySelector('.aw-name b').textContent + (r.querySelector('.aw-name small') ? '‹' + r.querySelector('.aw-name small').textContent + '›' : '') + '=' + r.querySelector('.cur').textContent
+    + [...r.querySelectorAll('.aw-tg')].map(b => b.getAttribute('aria-pressed') === 'true' ? b.textContent : '').join('')).join(' | '));
+  console.log('칸:', await p.$eval(AW + ' .hd b', e => e.textContent), '| 받아 오기:', await p.evaluate(() => __fetch), '번 | 지켜보기:', await p.$eval(AW + ' .aw-top .aw-sw', e => e.getAttribute('aria-checked')));
+  console.log('갈래:', await p.$$eval(AW + ' .aw-gh', gs => gs.map(g => g.textContent).join(' / ')));
+  console.log('값:', await vals());
+  console.log('속성 이름 적는 칸 없음:', !(await p.$(AW + ' .aw-row')), '| *id* 글자 없음:', !(await p.$eval(AW, e => e.innerText.includes('*id*'))));
+  // 지켜보기 + 🔔
+  const tg = async (a, k = 0) => { await p.evaluate(([a, k]) => [...document.querySelectorAll('#r20be .r20be-aw .aw-v')].find(r => r.dataset.a === a).querySelectorAll('.aw-tg')[k].click(), [a, k]); await p.waitForTimeout(100); };
+  await p.click(AW + ' .aw-top .aw-sw'); await p.waitForTimeout(100);
+  await tg('hp'); await tg('Magic_*id*_Charge');
+  console.log('켠 뒤:', await vals());
+  console.log('왼쪽 줄 · 단추:', await p.$eval('#r20be .r20be-row[data-id="c1"]', e => /🔔/.test(e.textContent)), '·', await p.$eval('#r20be .r20be-awbtn', e => e.textContent), '|', await p.$eval(AW + ' > p', e => e.textContent.split(' · 🔔')[0]));
+  // 보일 이름 고치기: 이름을 누르면 칸으로
+  await p.evaluate(() => [...document.querySelectorAll('#r20be .r20be-aw .aw-v')].find(r => r.dataset.a === 'hp').querySelector('.aw-name').click());
+  await p.fill(AW + ' .aw-v input.aw-in', '체력'); await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  console.log('이름 고침:', (await vals()).split(' | ')[0]);
   if (SHOT) await p.screenshot({ path: SHOT + '/aw.png', clip: await p.$eval(AW, e => { const r = e.getBoundingClientRect(); return { x: r.x - 8, y: r.y - 8, width: r.width + 16, height: r.height + 16 }; }) });
   const chat = async () => { await p.waitForTimeout(700); return p.evaluate(() => { const c = __chat.slice(); __chat.length = 0; return c.join(' ‖ ') || '(없음)'; }); };
   const set = (cid, name, o) => p.evaluate(([cid, name, o]) => window['__' + cid].attribs.byName(name).set(o), [cid, name, o]);
@@ -56,38 +60,40 @@ const SHOT = process.env.SHOT;
   await set('c1', 'hp', { current: 8 });
   console.log('hp 10→8:', await chat(), '| 입력칸:', await p.$eval('#textchat-input textarea', e => e.value));
   await set('c1', 'Magic_02_Charge', { current: 3 });
-  console.log('장서 충전 (이름으로 · 굴림 글자 풀기):', await chat());
+  console.log('장서 충전 (줄 이름으로 · 굴림 글자 풀기):', await chat());
   await set('c1', 'hp', { max: 14 });
   console.log('최대값:', await chat());
   await set('c1', 'san', { current: 49 }); await set('c2', 'hp', { current: 1 });
   console.log('안 고른 값 · 안 지켜보는 캐릭터:', await chat());
   await set('c1', 'hp', { current: 7 }); await set('c1', 'hp', { current: 6 }); await set('c1', 'mp', { current: 9 }); await set('c1', 'Magic_01_Charge', { current: 5 });
   console.log('연달아 (한 줄로 · 처음→마지막):', await chat());
-  // 직접 쓰기 + 새로 생긴 값
-  await p.click(AW + ' .aw-sec button:has-text("줄 추가")');
-  await p.fill(AW + ' .aw-row:last-child input:nth-child(1)', 'temp_mp'); await p.fill(AW + ' .aw-row:last-child input:nth-child(2)', '일시적 마력'); await p.keyboard.press('Tab');
+  // 아직 시트에 없는 값도 켤 수 있다 (마기카로기아 기본값) → 처음 생길 때 알림
+  await tg('temp_mp');
   await p.evaluate(() => __c1.attribs.add({ name: 'temp_mp', current: 2, max: '' }));
   console.log('새로 생긴 값:', await chat());
   await p.evaluate(() => { for (let i = 3; i <= 10; i++) __c1.attribs.add({ name: `Magic_0${i}_Charge`, current: 1, max: '' }); });
   console.log('한꺼번에 8개 생김:', await chat());
-  // 보이기 방식
-  await p.click(AW + ' .mode label:nth-child(2) input'); await set('c1', 'hp', { current: 5 });
+  // 찾기로 그 밖의 값 꺼내기
+  await p.fill(AW + ' .aw-q', 'san'); await p.waitForTimeout(100);
+  console.log('찾기 san:', await p.$$eval(AW + ' .aw-q ~ .aw-v', rs => rs.map(r => r.dataset.a).join(',')), '| 찾기 칸 포커스 유지:', await p.evaluate(() => document.activeElement?.classList.contains('aw-q')));
+  await tg('san'); await set('c1', 'san', { current: 48 });
+  console.log('찾아서 켠 값:', await chat());
+  // 올리는 방식
+  await p.selectOption(AW + ' .aw-how select', 'desc'); await set('c1', 'hp', { current: 5 });
   console.log('설명 줄:', await chat());
-  await p.click(AW + ' .mode label:nth-child(3) input'); await set('c1', 'hp', { current: 4 });
+  await p.selectOption(AW + ' .aw-how select', 'gm'); await set('c1', 'hp', { current: 4 });
   console.log('GM 에게만:', await chat());
   console.log('저장:', await p.evaluate(() => localStorage.getItem('r20_aw_777')));
-  // 끄기 · 다시 켜기 · 캐릭터 빼기
-  await p.click(AW + ' .aw-sw'); await set('c1', 'hp', { current: 3 });
-  console.log('끔:', await chat(), '| 듣는 곳:', await p.evaluate(() => __c1.attribs.count('change:current')));
-  await p.click(AW + ' .aw-sw'); await p.waitForTimeout(100); await set('c1', 'hp', { current: 2 });
+  // 전체 끄기 · 다시 켜기 · 지켜보기 끄기
+  await p.click(AW + ' .ft .aw-sw'); await set('c1', 'hp', { current: 3 });
+  console.log('전체 끔:', await chat(), '| 듣는 곳:', await p.evaluate(() => __c1.attribs.count('change:current')));
+  await p.click(AW + ' .ft .aw-sw'); await p.waitForTimeout(100); await set('c1', 'hp', { current: 2 });
   console.log('다시 켬:', await chat());
-  await p.click(AW + ' .aw-chips .aio-chip'); await set('c1', 'hp', { current: 1 });
-  console.log('캐릭터 뺌:', await chat(), '| 듣는 곳:', await p.evaluate(() => __c1.attribs.count('change:current')), '| 단추:', await p.$eval('#r20be .r20be-awbtn', e => e.textContent));
-  await p.click(AW + ' .aw-sec button:has-text("마기카로기아")'); await p.waitForTimeout(80);
-  console.log('예시 넣은 뒤 줄 수:', await p.$$eval(AW + ' .aw-row', rs => rs.length));
+  await p.click(AW + ' .aw-top .aw-sw'); await set('c1', 'hp', { current: 1 });
+  console.log('지켜보기 끔:', await chat(), '| 듣는 곳:', await p.evaluate(() => __c1.attribs.count('change:current')), '| 단추:', await p.$eval('#r20be .r20be-awbtn', e => e.textContent));
   // 다른 캐릭터로 열면 그 캐릭터의 값 · 같은 단추를 다시 누르면 닫힘
-  await p.click('#r20be .r20be-row[data-id="c2"]'); await p.waitForTimeout(150); await p.click('#r20be .r20be-awbtn'); await p.waitForTimeout(150);
-  console.log('렌으로:', await p.$eval(AW + ' .aw-sec .pri', e => e.textContent), '|', await p.$$eval(AW + ' .aw-pick', rs => rs.map(r => r.querySelector('span').textContent + '=' + r.querySelector('small').textContent).join(' ')));
+  await p.click('#r20be .r20be-row[data-id="c2"]'); await p.waitForTimeout(150); await p.click('#r20be .r20be-awbtn'); await p.waitForTimeout(200);
+  console.log('렌으로:', await p.$eval(AW + ' .hd b', e => e.textContent), '|', await vals());
   await p.click('#r20be .r20be-awbtn'); await p.waitForTimeout(80);
   console.log('다시 누름 → 닫힘:', await p.$eval(AW, e => e.hidden));
   console.log('errors:', errs); await b.close();

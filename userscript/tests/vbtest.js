@@ -34,12 +34,13 @@ const SHOT = process.env.SHOT;
   // 값 알림 창에서 '판' 칸
   await p.$eval('#r20-bebtn', x => x.click()); await p.waitForSelector('#r20be');
   await p.click('#r20be .r20be-row[data-id="c1"]'); await p.waitForTimeout(200);
-  await p.click('#r20be .r20be-awbtn'); await p.waitForSelector('#r20be .r20be-aw .aw-pick');
-  const tick = async name => { await p.evaluate(nm => [...document.querySelectorAll('#r20be .r20be-aw .aw-pick')].find(r => r.querySelector('span').textContent === nm).querySelector('.aw-bd').click(), name); await p.waitForTimeout(80); };
+  await p.click('#r20be .r20be-awbtn'); await p.waitForSelector('#r20be .r20be-aw .aw-v');
+  // 📊 단추: 자주 쓰는 값(최대값 있는 것)은 바로 · 그 밖의 값은 찾기로
+  const tick = async name => { await p.evaluate(nm => [...document.querySelectorAll('#r20be .r20be-aw .aw-v')].find(r => r.dataset.a === nm).querySelectorAll('.aw-tg')[1].click(), name); await p.waitForTimeout(100); };
+  const rename = async (a, v) => { await p.evaluate(a => [...document.querySelectorAll('#r20be .r20be-aw .aw-v')].find(r => r.dataset.a === a).querySelector('.aw-name').click(), a); await p.fill('#r20be .r20be-aw .aw-v input.aw-in', v); await p.keyboard.press('Enter'); await p.waitForTimeout(150); };
   await tick('blood'); await tick('wound'); await tick('endurance');
-  console.log('값 목록에 aio_board 안 보임:', await p.$$eval('#r20be .r20be-aw .aw-pick span', ss => !ss.some(x => x.textContent === 'aio_board')));
-  await p.fill('#r20be .r20be-aw .aw-row:nth-child(1) .aw-in', '혈'); await p.keyboard.press('Tab');
-  await p.fill('#r20be .r20be-aw .aw-row:nth-child(2) .aw-in', '상'); await p.keyboard.press('Tab'); await p.waitForTimeout(100);
+  console.log('값 목록에 aio_board 안 보임:', await p.$$eval('#r20be .r20be-aw .aw-v', rs => !rs.some(x => x.dataset.a === 'aio_board')));
+  await rename('blood', '혈'); await rename('wound', '상');
   console.log('판:', await board(), '| 저장:', await p.evaluate(() => __c1.attribs.byName('aio_board').get('current')));
   if (SHOT) { await p.$eval('#r20be', e => e.classList.remove('r20be-show')); await p.waitForTimeout(100); await p.screenshot({ path: SHOT + '/vb.png', clip: { x: 0, y: 0, width: 560, height: 150 } }); await p.$eval('#r20be', e => e.classList.add('r20be-show')); }
   await p.evaluate(() => __c1.attribs.byName('blood').save({ current: 9 })); await p.waitForTimeout(150);
