@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.108.2
+// @version      1.108.3
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.108.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.108.3";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -17066,28 +17066,33 @@ const selfCheck = (() => {
     let fbProbe = "아직";
     const probeFolders = async () => {
         if (!isGM()) { fbProbe = "GM 이 아님"; return; }
+        const out = [];
         try {
             const fb = window.firebase, base = window.campaign_storage_path, C = window.Campaign;
-            if (typeof fb?.database !== "function" || !base) { fbProbe = `firebase=${typeof fb?.database} 경로=${typeof base}`; return; }
+            const ids = s2 => String(s2).replace(/-?[\w-]{15,}/g, "<id>").replace(/\d{5,}/g, "<n>");
+            // 페이지 메뉴가 폴더를 받아 오는 주소 (경로만 — 앞부분 · 물음표 뒤는 뺀다)
+            try {
+                const urls = [...new Set(performance.getEntriesByType("resource").map(e => e.name).filter(u => /folder|pagemenu|page-menu|pages?\//i.test(u) && !/\.(js|css|png|jpe?g|webp|gif|svg|woff2?|mp3|ogg|webm)(\?|$)/i.test(u))
+                    .map(u => { try { const x = new URL(u); return x.hostname.split(".").slice(-2).join(".") + ids(x.pathname); } catch (e) { return ""; } }).filter(Boolean))].slice(0, 8);
+                out.push("주소[" + (urls.join(" ") || "없음") + "]");
+            } catch (e) { out.push("주소:오류"); }
+            if (typeof fb?.database !== "function" || !base) { fbProbe = out.concat(`firebase=${typeof fb?.database} 경로=${typeof base}`).join(" · "); return; }
             const db = fb.database();
-            const once = (ref) => Promise.race([ref.once("value"), new Promise((_, no) => setTimeout(() => no(new Error("시간 초과")), 8000))]);
-            const keys = v => v && typeof v === "object" ? "{" + Object.keys(v).sort().map(k => `${/^-?[\w-]{15,}$/.test(k) ? "<id>" : k}:${shape(v[k]).slice(0, 24)}`).join(",") + "}" : shape(v);
+            const once = ref => Promise.race([ref.once("value"), new Promise((_, no) => setTimeout(() => no(new Error("시간 초과")), 8000))]);
+            const keys = v => v && typeof v === "object" ? "{" + Object.keys(v).sort().slice(0, 20).map(k => `${/^-?[\w-]{15,}$/.test(k) ? "<id>" : k}:${shape(v[k]).slice(0, 24)}`).join(",") + "}" : shape(v);
+            // 한 곳씩 따로: 거부 · 없음 · 모양
+            const look = async (label, ref, full) => {
+                try { const v = (await once(ref)).val(); out.push(`${label}=${v == null ? "없음" : full ? keys(v) : shape(v).slice(0, 60)}`); }
+                catch (e) { out.push(`${label}=${/permission/i.test(e?.message || "") ? "거부" : "오류"}`); }
+            };
             const fid = ((C?.pages?.models || []).map(pg => String(pg.get("path") || "")).find(x => /[^,]/.test(x)) || "").split(",").filter(Boolean)[0];
-            const out = [];
-            if (fid) {
-                const v = (await once(db.ref(base + "/pages/" + fid))).val();
-                out.push("pages/<폴더>=" + (v == null ? "없음" : keys(v)));
-            }
-            for (const k of ["pagefolders", "pageFolders", "page_folders", "pagefolder", "folders", "pagemenu", "pageMenu", "pageorder", "_pageorder"]) {
-                const v = (await once(db.ref(base + "/" + k).limitToFirst(2))).val();
-                if (v != null) out.push(k + "=" + shape(v));
-            }
-            if (fid && !out.some(x => !/없음$/.test(x))) {
-                // 이름이 다른 곳: 캠페인 바로 아래 이름 몇 개를 더 (한 개씩만 읽는다)
-                for (const k of ["campaign", "folders_pages", "pagefolderlist", "vttpagefolders"]) { const v = (await once(db.ref(base + "/" + k).limitToFirst(1))).val(); if (v != null) out.push(k + "=" + shape(v)); }
-            }
-            fbProbe = out.join(" · ") || "못 찾음";
-        } catch (e) { fbProbe = "오류 " + String(e?.message || e).slice(0, 80); }
+            const pid = C?.pages?.models?.[0]?.id;
+            if (fid) await look("pages/<폴더>", db.ref(base + "/pages/" + fid), true);
+            if (pid) await look("pages/<페이지>", db.ref(base + "/pages/" + pid + "/path"), false);
+            for (const k of ["pagefolders", "pageFolders", "page_folders", "folders", "pagefolder"]) await look(k, db.ref(base + "/" + k).limitToFirst(1), false);
+            if (fid) await look("folders/<폴더>", db.ref(base + "/folders/" + fid), true);
+        } catch (e) { out.push("오류 " + String(e?.message || e).slice(0, 60)); }
+        fbProbe = out.join(" · ") || "못 찾음";
     };
     const probeAttribs = () => {
         if (!isGM()) { attrProbe = "GM 이 아님"; return; }
