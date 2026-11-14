@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.108.0
+// @version      1.108.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.108.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.108.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -17150,7 +17150,26 @@ const selfCheck = (() => {
             try { Object.keys(localStorage).forEach(k => { if (String(localStorage.getItem(k) || "").includes(fid)) out.push("ls." + k.replace(/-?[\w-]{15,}/g, "<id>")); }); } catch (e) { /* 넘어감 */ }
             const dom = [...document.querySelectorAll("*")].filter(e => [...e.attributes].some(a => a.value === fid)).slice(0, 3).map(e => e.tagName.toLowerCase() + "." + String(e.className || "").split(" ")[0] + "[" + [...e.attributes].filter(a => a.value === fid).map(a => a.name).join(",") + "]");
             const pm = document.querySelector(".vtt-page-card-menu") ? "열림" : "닫힘";
-            return `path[${tally("path")}] · 폴더 아이디가 있는 곳: ${out.join(" · ") || "못 찾음"} · 화면[${dom.join(",") || "-"}] · Vue 앱 ${vapps} · 페이지 메뉴 ${pm}`;
+            // 폴더를 다루는 Roll20 자체 기능 찾기: Pinia 스토어의 함수 이름 · 폴더 카드의 Vue 속성 모양
+            const fnNames = o => { const ks = new Set(); for (let x = o, i = 0; x && x !== Object.prototype && i < 3; x = Object.getPrototypeOf(x), i++) Object.getOwnPropertyNames(x).forEach(k => { try { if (typeof o[k] === "function") ks.add(k); } catch (e) { /* 넘어감 */ } }); return [...ks]; };
+            const stores = [];
+            const app = [...document.querySelectorAll("[data-v-app]")].map(el => el.__vue_app__).find(a => a?.config?.globalProperties?.$pinia);
+            app?.config.globalProperties.$pinia._s?.forEach((st, id) => {
+                const fs = fnNames(st).filter(k => /folder|page|move|reorder|archive/i.test(k) && !/^\$|^_/.test(k));
+                const ss = Object.keys(st.$state || {}).filter(k => /folder|page/i.test(k)).map(k => `${k}=${shape(st.$state[k])}`);
+                if (fs.length || ss.length) stores.push(`${id}{${fs.join(",")}${ss.length ? " | " + ss.join(",") : ""}}`);
+            });
+            const card = [...document.querySelectorAll(".vtt-page-card-wrapper[data-page-id]")].find(w => !C.pages?.get?.(w.dataset.pageId));
+            const comps = [];
+            for (let c = card?.__vueParentComponent, i = 0; c && i < 5; c = c.parent, i++) {
+                const nm = c.type?.name || c.type?.__name || "?";
+                const props = Object.entries(c.props || {}).map(([k, v]) => {
+                    if (v && typeof v === "object" && (v.id ?? v.get?.("id")) === card.dataset.pageId) return `${k}=폴더{${Object.keys(v.attributes || v).slice(0, 12).join(",")}}·fn[${fnNames(v).filter(f => /save|destroy|set|update|rename|delete|remove|move|add|create/i.test(f)).slice(0, 12).join(",")}]`;
+                    return `${k}:${shape(v).slice(0, 30)}`;
+                }).slice(0, 8).join(";");
+                comps.push(`${nm}(${props})`);
+            }
+            return `path[${tally("path")}] · 페이지 메뉴 ${pm} · 스토어[${stores.join(" ") || "-"}] · 폴더 카드[${comps.join(" ← ") || "메뉴를 열어 주세요"}]`;
         } catch (e) { return "오류 " + String(e?.message || e).slice(0, 60); }
     };
     // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추
