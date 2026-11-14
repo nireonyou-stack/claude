@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.105.0
+// @version      1.106.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.105.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.106.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1364,6 +1364,7 @@ const CORE_CSS = `
         /* 햄버거 밑 단추줄(맵 단추 아래)에 붙는 올인원 단추 — 자리는 화면 배치(screenUI.place)가 잡는다 */
         .r20-dockbtn { position:fixed; z-index:var(--aio-z-dock); display:flex; align-items:center; justify-content:center; width:28px; height:28px; margin:0; padding:0; border:0; border-radius:var(--aio-r) 0 0 var(--aio-r); background:var(--aio-float); color:var(--aio-ink-3); box-shadow:var(--aio-shadow-sm); cursor:pointer; }
         .r20-dockbtn:hover { color:var(--aio-accent); }
+        .r20-dockbtn[hidden] { display:none; }
         .r20-dockbtn:disabled { cursor:progress; opacity:0.6; }
         .r20-dockbtn:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         .r20-dockbtn svg { width:15px; height:15px; }
@@ -2329,7 +2330,7 @@ const jbDrawer = (() => {
     let dkSeg = null;       // 자리 고르기 (붙임 · ½)
     const sideRect = () => { const r = document.getElementById("rightsidebar")?.getBoundingClientRect(); return r && r.width > 0 && r.left < innerWidth - 1 ? r : null; };
     // 단추줄 맨 아래 — 반쪽 서랍은 그 밑에서만 (단추줄을 가리지 않게)
-    const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-snbtn", "r20-qfbtn"]
+    const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-snbtn", "r20-mscnbtn", "r20-qfbtn"]
         .map(id => document.getElementById(id)?.getBoundingClientRect()).filter(r => r && r.height).map(r => r.bottom));
     // 서랍 위 끝 (화면 좌표): 전체 = 채팅 판 위 · 반쪽 = 화면 아래에서 기억한 높이만큼
     const topOf = r => half() ? Math.round(Math.max(r.top, dockBottom() + 6, innerHeight - Math.max(160, parseInt(localStorage.getItem(H_KEY) || "340", 10) || 340))) : Math.round(r.top);
@@ -5318,6 +5319,30 @@ const mapScenes = (() => {
         if (sc.page) try { pg.save(sc.page); } catch (e) { bad++; aioErr("맵 장면 페이지", e, true); }
         return bad;
     };
+    // 면 바로가기: 그 토큰의 면만 바꾼다 (다른 것은 그대로). 장면을 바꿔 토큰이 새로 만들어졌어도 그 그림을 가진 토큰을 찾는다
+    const sidesOf = g => String(g.get("sides") || "").split("|").filter(Boolean).map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
+    const goFace = (pg, sc) => {
+        const g = pg.thegraphics.get(sc.face.tok) || pg.thegraphics.models.find(m => sidesOf(m).includes(sc.face.src));
+        const sides = g ? sidesOf(g) : [], i = sides.indexOf(sc.face.src);
+        if (i < 0) return aioToast(`'${sc.name}' — 그 면을 가진 토큰을 이 페이지에서 못 찾았어요`, { kind: "err", id: "mscn" });
+        const was = { currentSide: g.get("currentSide"), imgsrc: g.get("imgsrc") }, wasCur = P(pg).cur;
+        g.save({ currentSide: i, imgsrc: sides[i] });
+        setCur(pg, sc.id); acts = null; draw();
+        aioToast(`'${sc.name}' 면으로 바꿨어요`, { kind: "ok", id: "mscn", undo: () => { g.save(was); setCur(pg, wasCur); draw(); } });
+    };
+    const addFaces = async (pg, g, idxs) => {
+        await load();
+        const sides = sidesOf(g), p = P(pg), have = new Set(p.list.filter(s => s.face).map(s => s.face.src));
+        let n = 0;
+        idxs.forEach(i => {
+            if (!sides[i] || have.has(sides[i])) return;
+            p.list.push({ id: "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: `${g.get("name") || "토큰"} ${i + 1}면`, face: { tok: g.id, src: sides[i] }, thumb: sizedUrl(r20img(sides[i]), "thumb"), at: Date.now() });
+            n++;
+        });
+        if (n) await store();
+        draw(); btn.refresh();
+        return n;
+    };
     const go = async id => {
         const pg = page();
         if (!pg || !isGM()) return;
@@ -5327,6 +5352,7 @@ const mapScenes = (() => {
             await load();
             const p = P(pg), sc = p.list.find(s => s.id === id);
             if (!sc) return;
+            if (sc.face) return goFace(pg, sc);
             const prev = p.list.find(s => s.id === p.cur), kept2 = prev && prev !== sc && leave();
             if (kept2) Object.assign(prev, shot(pg, prev));       // 떠날 때 저장: 하던 배치를 그 장면에
             const before = { layers: sc.layers, keepPC: sc.keepPC, withPage: sc.withPage, ...shot(pg, sc) }, was = p.cur;
@@ -5345,7 +5371,7 @@ const mapScenes = (() => {
         } finally { busy = false; }
     };
     // ── 판 ──
-    const meta = s => [s.n?.map ? `맵 ${s.n.map}` : "", s.layers.includes("objects") ? `토큰 ${s.n?.tok || 0}` : "", s.n?.etc ? `그 밖 ${s.n.etc}` : "",
+    const meta = s => s.face ? "토큰 면" : [s.n?.map ? `맵 ${s.n.map}` : "", s.layers.includes("objects") ? `토큰 ${s.n?.tok || 0}` : "", s.n?.etc ? `그 밖 ${s.n.etc}` : "",
         s.page?.width ? `${s.page.width}×${s.page.height}` : ""].filter(Boolean).join(" · ");
     const draw = () => {
         if (!isOpen()) return;
@@ -5361,7 +5387,7 @@ const mapScenes = (() => {
             + `<i class="th"${s.thumb ? ` style="background-image:url('${escAttr(s.thumb)}')"` : ""}></i><span class="t"><b>${escAttr(s.name)}</b><small>${escAttr(meta(s))}</small></span>`
             + `${s.id === p.cur ? "<em>지금</em>" : ""}</button>`
             + `<button type="button" class="more aio-ib" data-id="${escAttr(s.id)}" aria-label="${escAttr(s.name)} 장면 메뉴" aria-expanded="${acts === s.id}">⋯</button>`
-            + (acts === s.id ? '<div class="acts" role="group" aria-label="장면 메뉴">' + [["ren", "이름"], ["over", "지금 화면으로 덮어쓰기"], ["dup", "복제"], ["up", "↑"], ["down", "↓"], ["del", "지우기"]]
+            + (acts === s.id ? '<div class="acts" role="group" aria-label="장면 메뉴">' + [["ren", "이름"], ["over", "지금 화면으로 덮어쓰기"], ["dup", "복제"], ["up", "↑"], ["down", "↓"], ["del", "지우기"]].filter(x => !s.face || (x[0] !== "over" && x[0] !== "dup"))
                 .map(([a, t]) => `<button type="button" class="aio-btn sm${a === "del" ? " del" : ""}" data-a="${a}"${a === "up" ? ' aria-label="위로"' : a === "down" ? ' aria-label="아래로"' : ""}>${t}</button>`).join("") + "</div>" : "")
             + "</div>").join("")
             : '<p class="msg">아직 장면이 없어요 — 페이지를 꾸민 뒤 [＋ 지금 화면을 장면으로 저장]</p>';
@@ -5391,7 +5417,7 @@ const mapScenes = (() => {
         if (!layers.length) { aioToast("담을 층을 하나 이상 골라 주세요", { kind: "info", id: "mscn" }); return; }
         const set = { layers, keepPC: f.querySelector('[name="keepPC"]').checked, withPage: f.querySelector('[name="withPage"]').checked };
         const sc = { id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: f.querySelector(".nm").value.trim() || "이름 없는 장면", ...set, ...shot(pg, set) };
-        P(pg).list.push(sc); setCur(pg, sc.id);
+        P(pg).list.push(sc); setCur(pg, sc.id); btn.refresh();
         store().then(ok => { if (ok) aioToast(`'${sc.name}' 장면을 저장했어요 · ${sc.objs.length}개`, { kind: "ok", id: "mscn" }); });
         hideForm(); draw();
     };
@@ -5403,7 +5429,7 @@ const mapScenes = (() => {
         else if (a === "dup") { const c = JSON.parse(JSON.stringify(sc)); c.id = "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); c.name = sc.name + " 사본"; p.list.splice(i + 1, 0, c); }
         else if (a === "up" || a === "down") { const j = a === "up" ? i - 1 : i + 1; if (j < 0 || j >= p.list.length) return; [p.list[i], p.list[j]] = [p.list[j], p.list[i]]; }
         else if (a === "del") { if (!confirm(`'${sc.name}' 장면을 지울까요? (맵에 놓인 것은 그대로예요)`)) return; p.list.splice(i, 1); if (p.cur === id) setCur(pg, null); acts = null; }
-        store(); draw();
+        store(); draw(); btn.refresh();
         pop.querySelector(`.more[data-id="${CSS.escape(id)}"]`)?.focus();
     };
     const build = () => {
@@ -5456,12 +5482,37 @@ const mapScenes = (() => {
             p.list.push(sc); ids.push(sc.id);
         });
         if (ids.length) store();
+        btn.refresh();
         return ids;
     };
+    // 밖으로 꺼낸 단추 (시나리오 내비게이터 단추 아래): 이 페이지에 저장한 장면 · 면 바로가기가 있을 때만 — 고르기용. 만들기는 맵 서랍에서
+    const btn = (() => {
+        let b = null, asked = false, was = "";
+        const refresh = () => {
+            const pg = page(), on = isGM() && btnVisible.mapshot && !!pg && !!data?.pages?.[pg.id]?.list.length;
+            if (on && !b && document.getElementById("sidebarcontrol")) {
+                b = document.createElement("button");
+                b.type = "button"; b.id = "r20-mscnbtn"; b.className = "r20-dockbtn"; b.title = "맵 장면 고르기"; b.setAttribute("aria-label", "맵 장면");
+                b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13" height="11" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v9"/><path d="M6 15l3-3 2 2 2-3 3 4"/></svg>';
+                b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); toggle(b); });
+                document.body.appendChild(b);
+                FEAT.screenUI?.place();
+            }
+            if (b && b.hidden !== !on) { b.hidden = !on; FEAT.screenUI?.place(); }
+        };
+        const inject = () => {
+            if (!gmKnown() || !isGM() || !window.Campaign?.handouts?.models) return;
+            if (!asked) { asked = true; load().then(refresh).catch(() => { asked = false; }); }
+            const id = page()?.id || "";
+            if (id !== was) { was = id; refresh(); }
+        };
+        return { refresh, inject };
+    })();
     document.addEventListener("keydown", e => { if (e.key === "Escape" && isOpen() && pop.contains(document.activeElement)) close(); });
     window.addEventListener("resize", () => isOpen() && place());
-    return { toggle, close, addScenes, open: (at, first) => { open(at); if (first) go(first); } };
+    return { toggle, close, addScenes, addFaces, inject: btn.inject, open: (at, first) => { open(at); if (first) go(first); } };
 })();
+addFeature("mapScenes", mapScenes);
 addCss(`
         /* 맵 장면 판 (맵 단추 밑) — 가져오기 판과 같은 틀 */
         #r20-mscn { position:fixed; z-index:calc(var(--aio-z-win) + 3); display:flex; flex-direction:column; width:300px; max-width:calc((100vw - 32px) / var(--aio-z, 1)); max-height:calc(80vh / var(--aio-z, 1)); background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-lg); box-shadow:var(--aio-shadow-lg); font:12px/1.5 sans-serif; color:var(--aio-ink-2); }
@@ -5841,23 +5892,27 @@ const sideOrder = (() => {
         prevFocus?.focus?.(); prevFocus = null;
     };
     const onKey = e => { if (e.key === "Escape" && box) { e.preventDefault(); e.stopPropagation(); close(); } };
-    const open = ({ title, sub = "", items, cur = -1, unit = "면", onSave }) => {
+    // pick: 주면 [저장] 대신 그 글자의 단추 — onSave(순서, 고른 것들의 원래 번호) (고른 면으로 무엇을 만들 때)
+    const open = ({ title, sub = "", items, cur = -1, unit = "면", onSave, pick = "" }) => {
         close();
         prevFocus = document.activeElement;
         let list = items.map((it, i) => ({ ...it, i })), sel = Math.max(0, list.findIndex(x => x.i === cur)), dragFrom = -1;
+        const marked = new Set();       // 여러 개 고르기 (누르면 고르고 다시 누르면 풀림 · Shift 는 범위)
         box = document.createElement("div");
         box.className = "r20so";
         box.innerHTML = `<div class="r20so-dlg" role="dialog" aria-modal="true" aria-labelledby="r20so-t">
-            <div class="r20so-h"><b id="r20so-t"></b><small></small><button type="button" class="r20so-x" aria-label="닫기">✕</button></div>
-            <div class="r20so-grid" role="listbox" aria-label="면 순서"></div>
+            <div class="r20so-h"><b id="r20so-t"></b><button type="button" class="r20so-x" aria-label="닫기">✕</button></div>
+            <div class="r20so-grid" role="listbox" aria-multiselectable="true" aria-label="면 순서"></div>
             <div class="r20so-bar">
-                <button type="button" data-m="prev">‹ 앞으로</button><button type="button" data-m="next">뒤로 ›</button>
-                <button type="button" data-m="first">맨 앞</button><button type="button" data-m="last">맨 뒤</button>
-                <button type="button" data-m="drop">이 ${unit} 빼기</button><button type="button" data-m="rev">거꾸로</button></div>
-            <p class="r20so-hint">끌어서 놓거나, 하나 누르고 단추로 옮겨요 · ← → 고르기 · Shift + ← → 옮기기</p>
-            <div class="r20so-f"><button type="button" data-m="cancel">취소</button><button type="button" class="pri" data-m="save">저장</button></div></div>`;
+                <button type="button" data-m="all" title="전체 선택">전체</button><button type="button" data-m="none" title="선택 해제">해제</button><button type="button" data-m="inv" title="선택 반전">반전</button>
+                <button type="button" data-m="drop" title="고른 ${unit} 빼기 (저장해야 반영)">빼기</button><span class="r20so-sp"></span>
+                <button type="button" data-m="first" title="맨 앞으로" aria-label="맨 앞으로">⇤</button><button type="button" data-m="prev" title="앞으로 (Shift + ←)" aria-label="앞으로">‹</button>
+                <button type="button" data-m="next" title="뒤로 (Shift + →)" aria-label="뒤로">›</button><button type="button" data-m="last" title="맨 뒤로" aria-label="맨 뒤로">⇥</button>
+                <button type="button" data-m="rev" title="순서 거꾸로">거꾸로</button></div>
+            <div class="r20so-f"><button type="button" data-m="cancel">취소</button><button type="button" class="pri" data-m="save"></button></div></div>`;
         box.querySelector("#r20so-t").textContent = title;
-        box.querySelector(".r20so-h small").textContent = sub;
+        box.querySelector("#r20so-t").title = sub;
+        box.querySelector('[data-m="save"]').textContent = pick || "저장";
         const grid = box.querySelector(".r20so-grid");
         const move = (from, to) => {
             if (from < 0 || from >= list.length) return;
@@ -5870,20 +5925,32 @@ const sideOrder = (() => {
             grid.textContent = "";
             list.forEach((it, k) => {
                 const t = document.createElement("button");
-                t.type = "button"; t.className = "r20so-t" + (k === sel ? " sel" : "") + (it.i === cur ? " cur" : "");
+                t.type = "button"; t.className = "r20so-t" + (k === sel ? " sel" : "") + (it.i === cur ? " cur" : "") + (marked.has(it) ? " mk" : "");
                 t.draggable = true; t.dataset.k = k;
-                t.setAttribute("role", "option"); t.setAttribute("aria-selected", String(k === sel));
+                t.setAttribute("role", "option"); t.setAttribute("aria-selected", String(marked.has(it)));
                 t.setAttribute("aria-label", `${k + 1}번${it.name ? " " + it.name : ""}${it.i === cur ? " · 지금 면" : ""}`);
                 const n = document.createElement("b"); n.textContent = k + 1; t.appendChild(n);
-                if (it.src) { const im = document.createElement("img"); im.src = r20img(it.src); im.alt = ""; im.loading = "lazy"; t.appendChild(im); }
+                if (it.src) { const im = document.createElement("img"); im.src = sizedUrl(r20img(it.src), "thumb"); im.alt = ""; im.loading = "lazy"; t.appendChild(im); }       // 수백 면이어도 가볍게 (작은 그림)
                 else { const s = document.createElement("span"); s.className = "r20so-txt"; s.textContent = it.name || "(빈 항목)"; t.appendChild(s); }
                 if (it.i === cur) { const c = document.createElement("i"); c.textContent = "지금"; t.appendChild(c); }
                 grid.appendChild(t);
             });
-            box.querySelector('[data-m="drop"]').disabled = list.length <= 1;
-            if (focus) grid.children[sel]?.focus();
+            const dn = marked.size || 1, drop = box.querySelector('[data-m="drop"]');
+            drop.disabled = list.length - dn < 1;
+            drop.textContent = marked.size ? `${marked.size}개 빼기` : "빼기";
+            if (pick) box.querySelector('[data-m="save"]').textContent = marked.size ? `${pick} (${marked.size}개)` : `${pick} (전부)`;
+            const top = grid.scrollTop;
+            if (focus) grid.children[sel]?.focus({ preventScroll: true });
+            grid.scrollTop = top;
         };
-        grid.addEventListener("click", e => { const t = e.target.closest(".r20so-t"); if (!t) return; sel = +t.dataset.k; draw(true); });
+        grid.addEventListener("click", e => {
+            const t = e.target.closest(".r20so-t");
+            if (!t) return;
+            const k = +t.dataset.k;
+            if (e.shiftKey) { for (let a = Math.min(sel, k); a <= Math.max(sel, k); a++) marked.add(list[a]); }
+            else if (marked.has(list[k])) marked.delete(list[k]); else marked.add(list[k]);
+            sel = k; draw(true);
+        });
         grid.addEventListener("keydown", e => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
             e.preventDefault();
@@ -5914,8 +5981,15 @@ const sideOrder = (() => {
             else if (m === "first") move(sel, 0);
             else if (m === "last") move(sel, list.length - 1);
             else if (m === "rev") { list.reverse(); sel = list.length - 1 - sel; }
-            else if (m === "drop" && list.length > 1) { list.splice(sel, 1); sel = Math.min(sel, list.length - 1); }
-            else if (m === "save") { const order = list.map(x => x.i); close(); onSave?.(order); return; }
+            else if (m === "all") list.forEach(x => marked.add(x));
+            else if (m === "none") marked.clear();
+            else if (m === "inv") list.forEach(x => { if (marked.has(x)) marked.delete(x); else marked.add(x); });
+            else if (m === "drop") {
+                const gone = marked.size ? marked : new Set([list[sel]]);
+                if (list.length - gone.size < 1) return;
+                list = list.filter(x => !gone.has(x)); marked.clear(); sel = Math.min(sel, list.length - 1);
+            }
+            else if (m === "save") { const order = list.map(x => x.i), picks = list.filter(x => marked.has(x)).map(x => x.i); close(); onSave?.(order, picks); return; }
             draw(true);
         });
         document.addEventListener("keydown", onKey, true);
@@ -5926,12 +6000,14 @@ const sideOrder = (() => {
 })();
 addCss(`
     .r20so { position:fixed; inset:0; z-index:calc(var(--aio-z-tip) + 5); background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; }
-    .r20so-dlg { width:min(470px, calc((100vw - 32px) / var(--aio-z, 1))); max-height:calc((100vh - 40px) / var(--aio-z, 1)); display:flex; flex-direction:column; background:var(--aio-bg); color:var(--aio-ink);
+    .r20so-dlg { width:min(470px, calc((100vw - 32px) / var(--aio-z, 1))); height:min(640px, calc((100vh - 40px) / var(--aio-z, 1))); min-width:300px; min-height:260px; max-width:calc((100vw - 16px) / var(--aio-z, 1)); max-height:calc((100vh - 16px) / var(--aio-z, 1)); resize:both; overflow:hidden; display:flex; flex-direction:column; background:var(--aio-bg); color:var(--aio-ink);
         border-radius:var(--aio-r-lg); box-shadow:var(--aio-shadow-lg); font:14px/1.5 system-ui, "Malgun Gothic", sans-serif; }
     .r20so-h { display:flex; align-items:baseline; gap:8px; padding:12px 14px 10px; border-bottom:1px solid var(--aio-line-3); }
-    .r20so-h b { font-size:var(--aio-fs-xl); } .r20so-h small { color:var(--aio-ink-4); font-size:var(--aio-fs-md); }
+    .r20so-h b { font-size:var(--aio-fs-xl); }
     .r20so-x { margin-left:auto; border:0; background:none; font-size:var(--aio-fs-xl); color:var(--aio-ink-4); cursor:pointer; padding:2px 6px; border-radius:var(--aio-r); }
-    .r20so-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(88px, 1fr)); gap:10px; padding:14px; overflow:auto; }
+    .r20so-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(88px, 1fr)); align-content:start; gap:10px; flex:1 1 auto; min-height:0; padding:14px; overflow:auto; }
+    .r20so-t.mk { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
+    .r20so-sp { flex:1; }
     .r20so-t { position:relative; aspect-ratio:1; padding:6px; border:2px solid var(--aio-line-2); border-radius:var(--aio-r-lg); background:var(--aio-bg-3); cursor:grab;
         display:flex; align-items:center; justify-content:center; overflow:visible; }
     .r20so-t img { max-width:100%; max-height:100%; object-fit:contain; pointer-events:none; }
@@ -5943,11 +6019,11 @@ addCss(`
     .r20so-t.ins-l::before, .r20so-t.ins-r::after { content:""; position:absolute; top:6px; bottom:6px; width:3px; border-radius:2px; background:var(--aio-accent); }
     .r20so-t.ins-l::before { left:-8px; } .r20so-t.ins-r::after { right:-8px; }
     .r20so-t:focus-visible { outline:2px solid var(--aio-accent); outline-offset:2px; }
-    .r20so-bar { display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 8px; }
-    .r20so-bar button, .r20so-f button { min-height:32px; padding:4px 11px; border:1px solid var(--aio-line); border-radius:var(--aio-r); background:var(--aio-bg); color:var(--aio-ink-2); font-size:var(--aio-fs-lg); cursor:pointer; }
+    .r20so-bar { display:flex; flex-wrap:wrap; gap:4px; flex:none; padding:8px 14px; border-top:1px solid var(--aio-line-4); }
+    .r20so-bar button { min-height:var(--aio-h); padding:2px 9px; border:1px solid var(--aio-line); border-radius:var(--aio-r); background:var(--aio-bg); color:var(--aio-ink-2); font-size:var(--aio-fs-md); cursor:pointer; }
+    .r20so-f button { min-height:32px; padding:4px 11px; border:1px solid var(--aio-line); border-radius:var(--aio-r); background:var(--aio-bg); color:var(--aio-ink-2); font-size:var(--aio-fs-lg); cursor:pointer; }
     .r20so-bar button:disabled { opacity:.4; cursor:default; }
     .r20so-bar button:focus-visible, .r20so-f button:focus-visible, .r20so-x:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
-    .r20so-hint { margin:0; padding:0 14px 10px; font-size:var(--aio-fs-md); color:var(--aio-ink-4); }
     .r20so-f { display:flex; justify-content:flex-end; gap:8px; padding:10px 14px; border-top:1px solid var(--aio-line-4); }
     .r20so-f .pri { background:var(--aio-accent); border-color:var(--aio-accent); color:var(--aio-ink-inv); }
 `);
@@ -6756,9 +6832,9 @@ const screenUI = (() => {
         const edge = FEAT.jbDrawer?.leftEdge?.() ?? (side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right);       // 대화 판(· 주크박스 서랍) 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
-        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-qfbtn"));
+        els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-mscnbtn"), document.getElementById("r20-qfbtn"));
         els.forEach(el => {
-            if (!el) return;
+            if (!el || el.hidden) return;
             const set = (k, v) => el.style.setProperty(k, v, "important");
             set("position", "fixed"); set("left", "auto");
             if (el.id === "vm_zoom_buttons") { set("width", "auto"); set("height", "auto"); }
@@ -14040,6 +14116,15 @@ const bulkEditor = (() => {
                 list.forEach(n => { n.deleted = !allDel; }); t.checked.clear(); renderTree(); renderPane();
                 setStatus(allDel ? "지우기를 취소했습니다" : `${list.length}개를 지울 예정입니다 (저장해야 Roll20에 반영)`, "ok");
             } }, allDel ? "지우기 취소" : `고른 ${list.length}개 지우기`)),
+            one && !one.deleted && one.model && String(one.model.get("sides") || "").split("|").filter(Boolean).length > 1 ? sec("맵 장면",
+                el("button", { type: "button", class: "aio-btn r20be-sec", title: "이 토큰의 면을 맵 장면 단추에서 바로 고를 수 있게 — 면을 골라 바로가기로 (안 고르면 전부)", onclick: () => {
+                    const g = one.model, sides = String(g.get("sides") || "").split("|").filter(Boolean).map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
+                    sideOrder.open({ title: "장면 바로가기로 만들 면", sub: `${g.get("name") || "토큰"} · 면 ${sides.length}개`, items: sides.map(src => ({ src })), cur: Number(g.get("currentSide")) || 0, pick: "바로가기 만들기",
+                        onSave: async (order, picks) => {
+                            const n = await mapScenes.addFaces(t.page, g, picks.length ? picks : order);
+                            setStatus(n ? `면 바로가기 ${n}개를 만들었어요 — 오른쪽 단추줄의 맵 장면 단추에서 골라요` : "이미 있는 바로가기예요", "ok");
+                        } });
+                } }, "면을 장면 바로가기로…")) : null,
             sec("겹침 순서", b("맨 앞으로", l => mapZ(t, l, true), "맨 앞으로 옮겼습니다"), b("맨 뒤로", l => mapZ(t, l, false), "맨 뒤로 옮겼습니다")),
             sec("페이지 가운데로 (고른 것들은 한 덩어리로)", b("⇔ 가로 가운데", l => mapCenter(t, l, "x"), "가로 가운데로 옮겼습니다"),
                 b("⇕ 세로 가운데", l => mapCenter(t, l, "y"), "세로 가운데로 옮겼습니다"), b("✛ 한가운데", l => mapCenter(t, l, ""), "한가운데로 옮겼습니다")),
