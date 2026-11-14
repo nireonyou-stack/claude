@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.106.1
+// @version      1.106.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.106.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.106.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -311,7 +311,7 @@ function applyCocofoliaLayout() {
         settingsBtn.type = "button";
         settingsBtn.textContent = "⚙";
         settingsBtn.title = "버튼 표시 설정";
-        settingsBtn.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; background: rgba(136,136,136,0.07); color: #aaa; font-size: 13px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 0 3px 3px 0; flex-shrink: 0;";
+        settingsBtn.style.cssText = "width: 28px; min-width: 28px; border: none; border-left: 1px solid #ccc; background: rgba(136,136,136,0.07); color: #aaa; font-size: 13px; cursor: pointer; padding: 0; display: none; align-items: center; justify-content: center; border-radius: 0 3px 3px 0; flex-shrink: 0;";      // 채팅 줄에는 안 보임 (설정은 일괄 편집기 [⚙ 설정] 탭)
 
         // 사이드 패널
         const sidePanel = document.createElement("div");
@@ -16795,7 +16795,9 @@ const selfCheck = (() => {
     const paint = () => {
         const gear = document.getElementById("custom-settings-btn");
         gear?.classList.toggle("aio-warn", !!bad());
-        if (gear && gmKnown()) gear.style.display = isGM() ? "flex" : "none";       // 설정은 일괄 편집기(GM 전용) 안에 있다
+        if (gear) gear.style.display = "none";        // 채팅 줄의 ⚙ 는 숨김 — 설정은 일괄 편집기 [⚙ 설정] 탭 (요소는 대화 캡처 단추 자리 잡이로 남긴다)
+        document.getElementById("r20-bebtn")?.classList.toggle("aio-warn", !!bad());
+        document.querySelector("#r20be .r20be-segS")?.classList.toggle("aio-warn", !!bad());
         const pop = document.getElementById("custom-settings-popup");
         if (pop?.classList.contains("show")) strip(pop);
     };
@@ -16857,10 +16859,18 @@ const selfCheck = (() => {
     };
     const pageProbe = () => {
         try {
-            const C = window.Campaign, pg = C?.pages?.models?.[0];
-            const camp = Object.entries(C?.attributes || {}).filter(([k]) => /page|folder|order/i.test(k)).map(([k, v]) => `${k}=${shape(v)}`).join(" · ");
-            const keys = pg ? Object.keys(pg.attributes || {}).filter(k => !/^(id|_id|name|width|height|zorder)$/.test(k)).join(",") : "-";
-            return `방[${camp || "없음"}] · 페이지 칸[${keys}]`;
+            const C = window.Campaign, ps = C?.pages?.models || [];
+            // 폴더 · 순서 후보: 페이지의 path · placement 값 모양 (아이디는 <id>, 글자는 길이만)
+            const mask = v => typeof v === "string" && !/^[[{]/.test(v) ? (/^https?:/.test(v) ? v.replace(/^(https?:\/\/[^/]+).*$/, "$1/…") : v.replace(/[^/|,\s]+/g, m => /^-?[\w-]{15,}$/.test(m) ? "<id>" : "s" + m.length)) : shape(v);
+            const tally = k => { const m = new Map(); ps.forEach(pg => { const t = mask(pg.get(k)); m.set(t, (m.get(t) || 0) + 1); }); return [...m].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${t}×${n}`).join(" ") + (m.size > 6 ? ` …(${m.size}종)` : ""); };
+            const nums = ps.map(pg => pg.get("placement")).filter(v => v !== undefined && v !== null && v !== "");
+            const place = nums.length ? `${typeof nums[0]} ${Math.min(...nums.map(Number))}~${Math.max(...nums.map(Number))} 서로 다른 값 ${new Set(nums.map(String)).size}` : "없음";
+            const colls = Object.keys(C || {}).filter(k => C[k]?.models).map(k => `${k}:${C[k].models.length}`).join(",");
+            const fns = [...new Set([...Object.keys(C || {}), ...Object.keys(Object.getPrototypeOf(C || {}) || {})])].filter(k => /page|folder/i.test(k) && typeof C[k] === "function").join(",");
+            const pfns = ps[0] ? [...new Set([...Object.keys(ps[0]), ...Object.keys(Object.getPrototypeOf(ps[0]) || {})])].filter(k => typeof ps[0][k] === "function" && !/^(get|set|has|on|off|once|trigger|toJSON|clone|escape|unset|clear|fetch|save|destroy|url|parse|isNew|hasChanged|changedAttributes|previous|previousAttributes|isValid|validate|sync|keys|values|pairs|invert|pick|omit|chain|isEmpty|listenTo|listenToOnce|stopListening|bind|unbind|initialize|constructor)$/.test(k)).slice(0, 30).join(",") : "-";
+            const win = Object.keys(window).filter(k => /folder|pagemenu|pageMenu/i.test(k)).slice(0, 10).join(",");
+            const act = typeof C?.activePage === "function" ? C.activePage.toString().replace(/\s+/g, " ").slice(0, 160) : "-";
+            return `path[${tally("path")}] · placement[${place}] · 보관 ${ps.filter(pg => pg.get("archived")).length} · thumbnail[${tally("thumbnail").slice(0, 80)}] · 묶음[${colls}] · 방 함수[${fns || "-"}] · 페이지 함수[${pfns}] · window[${win || "-"}] · activePage=${act}`;
         } catch (e) { return "오류 " + String(e?.message || e).slice(0, 60); }
     };
     // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추
@@ -16885,6 +16895,8 @@ const selfCheck = (() => {
 })();
 addCss(`
         /* 자가 점검: ⚙ 의 ! · 설정 창 맨 위 줄 */
+        :is(#r20-bebtn, #r20be .r20be-segS).aio-warn { position:relative; }
+        :is(#r20-bebtn, #r20be .r20be-segS).aio-warn::after { content:"!"; position:absolute; top:1px; right:1px; width:11px; height:11px; border-radius:50%; background:var(--aio-warn); color:var(--aio-ink-inv); font:700 9px/11px sans-serif; text-align:center; }
         #custom-settings-btn.aio-warn { position:relative; color:var(--aio-warn) !important; }
         #custom-settings-btn.aio-warn::after { content:"!"; position:absolute; top:1px; right:1px; width:11px; height:11px; border-radius:50%; background:#f59e0b; color:var(--aio-ink-inv); font:700 8px/11px sans-serif; text-align:center; }
         #custom-settings-popup {
