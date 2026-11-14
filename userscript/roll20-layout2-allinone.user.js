@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.106.2
+// @version      1.107.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.106.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.107.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -7232,8 +7232,30 @@ const portraits = (() => {
             + `<div class="r"><b>줄</b>${SEG("dir", [["row", "가로"], ["col", "세로"]], c.dir)}</div>`
             + `<div class="r"><b>포트레이트</b>${SEG("pics", [["1", "보임"], ["0", "숨김"]], c.pics ? "1" : "0")}</div>`
             + `<div class="r"><b>이름</b>${SEG("names", [["1", "보임"], ["0", "숨김"]], c.names ? "1" : "0")}</div>`
+            + vbHtml()
             + '<div class="r ft"><button type="button" class="rs" data-a="reset">↺ 모두 원래대로</button><span>내 화면에서만 바뀌어요</span></div>';
     };
+    // 값 판에 보일 값 (모든 캐릭터 공통 · 6개까지): 보일 이름 · 속성 이름 · − / ＋
+    const vbHtml = () => {
+        const V = FEAT.valueBoard;
+        if (!V || !btnVisible.vboard) return "";
+        const rows = V.common();
+        return `<div class="r vb"><b title="말하는 사람을 캐릭터로 바꾸면 그 캐릭터의 이 값들이 포트레이트 옆에 — 모든 캐릭터 공통">값</b>`
+            + `<span class="vbs">${rows.map(([a, l], i) => `<span class="vr"><input class="vl" data-i="${i}" value="${escAttr(l)}" placeholder="이름" aria-label="${i + 1}번 보일 이름" title="판에 보일 이름 (비우면 속성 이름)">`
+                + `<input class="va" data-i="${i}" value="${escAttr(a)}" list="r20pz-vbl" placeholder="속성" aria-label="${i + 1}번 속성 이름" title="시트의 속성 이름 — 지금 말하는 캐릭터의 값에서 고를 수 있어요" spellcheck="false">`
+                + `<button type="button" class="vm" data-a="vdel" data-i="${i}" aria-label="${i + 1}번 빼기" title="빼기">−</button></span>`).join("")}`
+            + `<button type="button" class="vp" data-a="vadd" aria-label="값 더하기" title="값 더하기 (${V.MAX}개까지)"${rows.length >= V.MAX ? " disabled" : ""}>＋</button></span></div>`
+            + '<datalist id="r20pz-vbl"></datalist>';
+    };
+    // 속성 이름 고르기 목록은 창을 그린 뒤에 채운다 (말하는 캐릭터의 값을 받아 와야 해서)
+    const vbList = async () => {
+        const dl = pop?.querySelector("#r20pz-vbl"), V = FEAT.valueBoard;
+        if (!dl || !V) return;
+        const list = await V.suggest();
+        if (!dl.isConnected) return;
+        dl.innerHTML = list.slice(0, 400).map(([n, v, x]) => `<option value="${escAttr(n)}">${escAttr((v.length > 16 ? v.slice(0, 16) + "…" : v) + (x ? " / " + x : ""))}</option>`).join("");
+    };
+    const vbSet = f => { const V = FEAT.valueBoard, rows = V.common(); f(rows); V.setCommon(rows); };
     const build = () => {
         pop = document.createElement("div");
         pop.id = "r20-pz-pop";
@@ -7247,8 +7269,14 @@ const portraits = (() => {
             if (b.classList.contains("pi")) { const C = window.Campaign, m = (b.dataset.k === "h" ? C?.handouts : C?.characters)?.get?.(b.dataset.id); return m && openItem(m); }
             if (b.dataset.a === "orig") { save({ size: 0 }); return draw(); }
             if (b.dataset.a === "reset") { save({ ...D }); return draw(); }
+            if (b.dataset.a === "vadd") { vbSet(r => r.push(["", ""])); draw(); return pop.querySelector(".vr:last-of-type .va")?.focus(); }
+            if (b.dataset.a === "vdel") { vbSet(r => r.splice(+b.dataset.i, 1)); return draw(); }
             const seg = b.closest(".seg");
             if (seg) { const k = seg.dataset.k, v = b.dataset.v; save({ [k]: k === "names" || k === "pics" ? v === "1" : v }); draw(); }
+        });
+        pop.addEventListener("change", e => {
+            const t = e.target;
+            if (t.matches(".vl, .va")) vbSet(r => { const i = +t.dataset.i; if (r[i]) r[i][t.classList.contains("va") ? 0 : 1] = t.value.trim(); });
         });
         pop.addEventListener("input", e => { if (e.target.type === "range") { pop.querySelector(".sv").textContent = e.target.value + "px"; save({ size: +e.target.value }); } });
         pop.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Escape") closePop(); });
@@ -7263,6 +7291,7 @@ const portraits = (() => {
         const body = mine && (isGM() || tab === "set") ? setHtml() : permHtml(popFor);
         pop.innerHTML = `<div class="hd"><b>${mine ? "포트레이트" : escAttr(nm) + " — 저널 권한"}</b>${tabs}<button type="button" data-a="x" class="x" aria-label="닫기">✕</button></div><div class="bd">${body}</div>`;
         placePop();
+        vbList();
     };
     // 포트레이트 옆 화면 안쪽에 (위에 있으면 아래로, 아래에 있으면 위로)
     const placePop = () => {
@@ -7357,6 +7386,16 @@ addCss(`
             & .pg { margin:8px 0 2px; color:var(--aio-accent-dark); font-size:var(--aio-fs-sm); font-weight:700; }
             & .pi { display:flex; align-items:center; gap:6px; width:100%; height:24px; padding:0 4px; border:0; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-2); text-align:left; }
             & .pi:hover { background:var(--aio-accent-bg); } & .pi i { font-style:normal; width:16px; text-align:center; } & .pi span { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; } & .pi small { color:var(--aio-ink-5); font-size:var(--aio-fs-xs); }
+            & .r.vb { align-items:flex-start; }
+            & .vbs { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+            & .vr { display:flex; gap:4px; }
+            & .vr input { min-width:0; height:22px; margin:0; padding:0 5px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink); font-size:var(--aio-fs-sm); box-shadow:none; }
+            & .vl { flex:2; } & .va { flex:3; }
+            & .vr input:focus { outline:2px solid var(--aio-accent); outline-offset:-1px; }
+            & :is(.vm, .vp) { flex:none; width:22px; height:22px; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink-3); }
+            & .vp { align-self:flex-start; }
+            & :is(.vm, .vp):hover:not(:disabled) { background:var(--aio-bg-3); color:var(--aio-ink); }
+            & .vp:disabled { opacity:.4; cursor:default; }
             & .pe, & .pn { margin:2px 4px; color:var(--aio-ink-5); font-size:var(--aio-fs-sm); }
         }
 `);
@@ -15558,8 +15597,25 @@ const valueBoard = (() => {
         if (c.id === curId) draw(c);
     };
     const hide = () => { box?.remove(); box = null; };
+    // 모든 캐릭터 공통 값 (포트레이트 설정 창에서 · 이 브라우저에만) → 캐릭터마다 고른 값(📊)은 그 뒤에
+    const CKEY = "r20_vb_common", MAX = 6;
+    const common = () => { try { const v = JSON.parse(localStorage.getItem(CKEY) || "[]"); return Array.isArray(v) ? v.filter(x => Array.isArray(x)).slice(0, MAX).map(x => [String(x[0] || ""), String(x[1] || "")]) : []; } catch (e) { return []; } };
+    const setCommon = rows => { try { localStorage.setItem(CKEY, JSON.stringify(rows.slice(0, MAX))); } catch (e) { /* 저장 못 함 */ } show(true); };
+    const rowsOf = c => {
+        const out = [], seen = new Set();
+        [...common().filter(r => r[0].trim()).map(([a, l]) => [a.trim(), l.trim() || a.trim()]), ...list(c)].forEach(r => { const k = r[0].toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(r); } });
+        return out;
+    };
+    // 속성 이름 고르기 도움말: 지금 말하는 캐릭터의 값 (없으면 [])
+    const speaker = () => { const v = document.getElementById("speakingas")?.value || ""; return v.startsWith("character|") ? window.Campaign?.characters?.get(v.slice(10)) : null; };
+    const suggest = async () => {
+        const c = speaker();
+        if (!c) return [];
+        await aioAttrs.load(c);
+        return (c.attribs?.models || []).map(a => [String(a.get("name") || ""), String(a.get("current") ?? ""), String(a.get("max") ?? "")]).filter(a => a[0] && a[0] !== ATTR).sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }));
+    };
     const draw = c => {
-        const rows = btnVisible.vboard ? list(c) : [];
+        const rows = btnVisible.vboard ? rowsOf(c) : [];
         if (!rows.length) return hide();
         if (!box) {
             box = document.createElement("div");
@@ -15605,7 +15661,7 @@ const valueBoard = (() => {
         draw(c);
     };
     return {
-        list, save,
+        list, save, common, setCommon, suggest, MAX,
         inject() { show(); place(); },       // 말하는 사람이 바뀌었는지만 본다 (값은 위에서 듣는다) · 포트레이트가 옮겨졌으면 따라간다
         setEnabled() { show(true); }
     };
@@ -16857,20 +16913,56 @@ const selfCheck = (() => {
         if (typeof v === "string") { if (d < 3 && /^[[{]/.test(v)) { try { return "json" + shape(JSON.parse(v), d + 1); } catch (e) { /* 그냥 글 */ } } return /^-?[\w-]{15,}$/.test(v) ? "<id>" : /^(-?[\w-]{15,},)+-?[\w-]{15,}$/.test(v) ? `ids${v.split(",").length}` : `s${v.length}`; }
         return typeof v === "number" ? "n" : typeof v === "boolean" ? "b" : String(v);
     };
+    // 폴더 아이디가 어디에 또 있는지 찾는다 (폴더 이름이 같이 있을 곳): 방 데이터 · Vue 상태 · 전역 · 저장소 · 화면
+    const findIn = (root, id, max = 6) => {
+        const seen = new WeakSet(), hits = [];
+        let budget = 30000;         // 큰 것을 끝없이 훑지 않게
+        const walk = (v, path, d) => {
+            if (hits.length >= 3 || d > max || v == null || --budget < 0) return;
+            if (typeof v === "string") { if (v.includes(id)) hits.push(path); return; }
+            if (typeof v !== "object" || seen.has(v) || v instanceof Node || v === window) return;
+            seen.add(v);
+            let ks;
+            try { ks = Array.isArray(v) ? v.map((_, i) => i).slice(0, 400) : Object.keys(v).slice(0, 400); } catch (e) { return; }
+            for (const k of ks) {
+                if (String(k) === id) { hits.push(path + "." + "<id>(키)"); continue; }
+                let x; try { x = v[k]; } catch (e) { continue; }
+                walk(x, path + "." + (/^-?[\w-]{15,}$/.test(String(k)) ? "<id>" : k), d + 1);
+            }
+        };
+        walk(root, "", 0);
+        return hits;
+    };
     const pageProbe = () => {
         try {
             const C = window.Campaign, ps = C?.pages?.models || [];
-            // 폴더 · 순서 후보: 페이지의 path · placement 값 모양 (아이디는 <id>, 글자는 길이만)
             const mask = v => typeof v === "string" && !/^[[{]/.test(v) ? (/^https?:/.test(v) ? v.replace(/^(https?:\/\/[^/]+).*$/, "$1/…") : v.replace(/[^/|,\s]+/g, m => /^-?[\w-]{15,}$/.test(m) ? "<id>" : "s" + m.length)) : shape(v);
-            const tally = k => { const m = new Map(); ps.forEach(pg => { const t = mask(pg.get(k)); m.set(t, (m.get(t) || 0) + 1); }); return [...m].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${t}×${n}`).join(" ") + (m.size > 6 ? ` …(${m.size}종)` : ""); };
-            const nums = ps.map(pg => pg.get("placement")).filter(v => v !== undefined && v !== null && v !== "");
-            const place = nums.length ? `${typeof nums[0]} ${Math.min(...nums.map(Number))}~${Math.max(...nums.map(Number))} 서로 다른 값 ${new Set(nums.map(String)).size}` : "없음";
-            const colls = Object.keys(C || {}).filter(k => C[k]?.models).map(k => `${k}:${C[k].models.length}`).join(",");
-            const fns = [...new Set([...Object.keys(C || {}), ...Object.keys(Object.getPrototypeOf(C || {}) || {})])].filter(k => /page|folder/i.test(k) && typeof C[k] === "function").join(",");
-            const pfns = ps[0] ? [...new Set([...Object.keys(ps[0]), ...Object.keys(Object.getPrototypeOf(ps[0]) || {})])].filter(k => typeof ps[0][k] === "function" && !/^(get|set|has|on|off|once|trigger|toJSON|clone|escape|unset|clear|fetch|save|destroy|url|parse|isNew|hasChanged|changedAttributes|previous|previousAttributes|isValid|validate|sync|keys|values|pairs|invert|pick|omit|chain|isEmpty|listenTo|listenToOnce|stopListening|bind|unbind|initialize|constructor)$/.test(k)).slice(0, 30).join(",") : "-";
-            const win = Object.keys(window).filter(k => /folder|pagemenu|pageMenu/i.test(k)).slice(0, 10).join(",");
-            const act = typeof C?.activePage === "function" ? C.activePage.toString().replace(/\s+/g, " ").slice(0, 160) : "-";
-            return `path[${tally("path")}] · placement[${place}] · 보관 ${ps.filter(pg => pg.get("archived")).length} · thumbnail[${tally("thumbnail").slice(0, 80)}] · 묶음[${colls}] · 방 함수[${fns || "-"}] · 페이지 함수[${pfns}] · window[${win || "-"}] · activePage=${act}`;
+            const tally = k => { const m = new Map(); ps.forEach(pg => { const t = mask(pg.get(k)); m.set(t, (m.get(t) || 0) + 1); }); return [...m].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t, n]) => `${t}×${n}`).join(" ") + (m.size > 4 ? ` …(${m.size}종)` : ""); };
+            const fid = (ps.map(pg => String(pg.get("path") || "")).find(x => /[^,]/.test(x)) || "").split(",").filter(Boolean)[0];
+            if (!fid) return `path[${tally("path")}] · 폴더 아이디 없음`;
+            const out = [];
+            try { const h = findIn(C.attributes, fid, 3); if (h.length) out.push("방" + h.join("|")); } catch (e) { /* 넘어감 */ }
+            // Vue 앱 (페이지 메뉴는 Vue) — 앱 전역 · Pinia · Vuex
+            document.querySelectorAll("[data-v-app]").forEach((el, i) => {
+                const app = el.__vue_app__, gp = app?.config?.globalProperties;
+                if (!gp) return;
+                [["pinia", gp.$pinia?.state?.value], ["vuex", gp.$store?.state], ["prov", app._context?.provides]].forEach(([nm, root]) => {
+                    if (!root) return;
+                    try { const h = findIn(root, fid, 7); if (h.length) out.push(`vue${i}.${nm}${h.join("|")}`); } catch (e) { out.push(`vue${i}.${nm}:오류`); }
+                });
+            });
+            const vapps = document.querySelectorAll("[data-v-app]").length;
+            // 전역 (Campaign 은 위에서) — 큰 것은 얕게
+            Object.keys(window).forEach(k => {
+                if (out.length > 8 || /^(Campaign|document|window|self|top|parent|frames|jQuery|\$|_|webkit.*)$/.test(k)) return;
+                let v; try { v = window[k]; } catch (e) { return; }
+                if (!v || typeof v !== "object" || v instanceof Node) return;
+                try { const h = findIn(v, fid, 4); if (h.length) out.push("win." + k + h.join("|")); } catch (e) { /* 넘어감 */ }
+            });
+            try { Object.keys(localStorage).forEach(k => { if (String(localStorage.getItem(k) || "").includes(fid)) out.push("ls." + k.replace(/-?[\w-]{15,}/g, "<id>")); }); } catch (e) { /* 넘어감 */ }
+            const dom = [...document.querySelectorAll("*")].filter(e => [...e.attributes].some(a => a.value === fid)).slice(0, 3).map(e => e.tagName.toLowerCase() + "." + String(e.className || "").split(" ")[0] + "[" + [...e.attributes].filter(a => a.value === fid).map(a => a.name).join(",") + "]");
+            const pm = document.querySelector(".vtt-page-card-menu") ? "열림" : "닫힘";
+            return `path[${tally("path")}] · 폴더 아이디가 있는 곳: ${out.join(" · ") || "못 찾음"} · 화면[${dom.join(",") || "-"}] · Vue 앱 ${vapps} · 페이지 메뉴 ${pm}`;
         } catch (e) { return "오류 " + String(e?.message || e).slice(0, 60); }
     };
     // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추

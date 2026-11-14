@@ -58,6 +58,28 @@ const SHOT = process.env.SHOT;
   console.log('끌어 옮긴 자리:', await at());
   await p.$eval('#r20-vb', e => e.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))); await p.waitForTimeout(100);
   console.log('두 번 누름 → 다시 옆:', await at());
+  // 포트레이트 설정 창의 '값': 모든 캐릭터 공통 (− ＋ · 6개까지) · 속성 이름 고르기 목록은 말하는 캐릭터의 값
+  await p.evaluate(() => { localStorage.removeItem('r20_vb_pos'); document.querySelector('#player_me').innerHTML = '<div class="video" style="width:120px;height:120px"></div>'; window.currentPlayer.id = 'me'; });
+  await p.evaluate(() => document.querySelector('#r20be')?.classList.remove('r20be-show'));
+  await p.$eval('#player_me .video', e => { e.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, isPrimary: true })); e.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  await p.waitForSelector('#r20-pz-pop:not([hidden]) .r.vb');
+  const vrows = () => p.$$eval('#r20-pz-pop .vr', rs => rs.map(r => [...r.querySelectorAll('input')].map(i => i.value || '·').join('/')).join(' | ') || '(없음)');
+  console.log('값 줄 처음:', await vrows(), '| ＋:', await p.$eval('#r20-pz-pop .vp', b => !b.disabled));
+  await p.click('#r20-pz-pop .vp'); await p.waitForTimeout(150);
+  console.log('＋ 뒤 포커스:', await p.evaluate(() => document.activeElement?.className), '| 고르기 목록:', await p.$$eval('#r20pz-vbl option', os => os.map(o => o.value).join(',')));
+  await p.fill('#r20-pz-pop .vr:nth-of-type(1) .va', 'memo'); await p.press('#r20-pz-pop .vr:nth-of-type(1) .va', 'Tab'); await p.waitForTimeout(150);
+  console.log('공통 memo 넣음 → 판:', await board());
+  await p.fill('#r20-pz-pop .vr:nth-of-type(1) .vl', '메모'); await p.press('#r20-pz-pop .vr:nth-of-type(1) .vl', 'Tab'); await p.waitForTimeout(150);
+  console.log('이름 메모:', await board());
+  if (SHOT) await p.screenshot({ path: SHOT + '/pzvb.png', clip: await p.$eval('#r20-pz-pop', e => { const r = e.getBoundingClientRect(); return { x: Math.max(0, r.x - 6), y: Math.max(0, r.y - 6), width: r.width + 12, height: r.height + 12 }; }) });
+  await speak('character|c2'); console.log('렌으로 (공통 값만 · 렌에게 memo 없음):', await board());
+  await speak('character|c1');
+  for (let i = 0; i < 6; i++) { const d = await p.$eval('#r20-pz-pop .vp', b => b.disabled); if (d) break; await p.click('#r20-pz-pop .vp'); await p.waitForTimeout(60); }
+  console.log('여섯 개까지:', await p.$$eval('#r20-pz-pop .vr', rs => rs.length), '| ＋ 꺼짐:', await p.$eval('#r20-pz-pop .vp', b => b.disabled));
+  await p.click('#r20-pz-pop .vr:nth-of-type(6) .vm'); await p.click('#r20-pz-pop .vr:nth-of-type(5) .vm'); await p.waitForTimeout(100);
+  console.log('− 두 번:', await vrows(), '| 저장:', await p.evaluate(() => localStorage.getItem('r20_vb_common')));
+  await p.keyboard.press('Escape');
+  await p.evaluate(() => document.querySelector('#r20be')?.classList.add('r20be-show'));
   // 설정 탭
   await p.click('#r20be .r20be-segS'); await p.waitForTimeout(150);
   console.log('설정 화면:', await p.$eval('#r20be', e => e.classList.contains('r20be-setmode')), '| 줄이 창 안에:', await p.$eval('#custom-settings-popup', e => !!e.closest('#r20be .r20be-sethost') && e.getBoundingClientRect().height > 100),
