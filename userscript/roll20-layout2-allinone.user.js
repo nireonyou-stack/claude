@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.103.0
+// @version      1.104.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.103.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.104.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -1375,7 +1375,7 @@ const CORE_CSS = `
         :is(#custom-settings-popup, #cs-side-panel, #custom-journal-popup, #r20be, #r20ss, #r20ss-bar, #r20-ccf, #r20-fit, #r20-mscn, #r20-emoji, #imagedialog .r20ri, .r20ts, .r20so-dlg) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color:var(--aio-accent); }
         #custom-settings-popup { position:fixed; width:300px; background:var(--aio-bg); border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); box-shadow:var(--aio-shadow-md); z-index:var(--aio-z-win); display:none; flex-direction:column; font-family:sans-serif; font-size:var(--aio-fs-md); color:var(--aio-ink-2); overflow-y:auto; max-height:calc(70vh / var(--aio-z, 1)); }
         #r20be #custom-settings-popup { position:static; display:flex; width:auto; max-width:640px; max-height:none; overflow:visible; border:0; box-shadow:none; zoom:1; }
-        #cs-side-panel { z-index:calc(var(--aio-z-win) + 4); }
+        #cs-side-panel { z-index:var(--aio-z-pop); }
         /* 대화 입력 칸: 여백을 줄여 기록 판을 넓게 */
         #textchat-input.layout-applied-v11 { border-top:0 !important; }
         #textchat-input.layout-applied-v11 {
@@ -10231,7 +10231,7 @@ const winMemory = (() => {
         return row;
     };
     const setEnabled = on => { if (on) { bindJq(); inject(); } else document.querySelectorAll(".r20wm-pin").forEach(b => b.remove()); };
-    return { inject, setEnabled, modeRow, watch: ".ui-dialog" };
+    return { inject, setEnabled, modeRow, info, watch: ".ui-dialog" };
 })();
 
 addCss(`
@@ -10379,10 +10379,52 @@ addCss(`
 
 addFeature("quickFind", quickFind);
 addFeature("winMemory", winMemory);
+// ───────── 창 겹침 순서: 올인원 창도 Roll20 창(시트 · 핸드아웃)처럼 누른 창 · 새로 연 창이 맨 앞으로 ─────────
+// Roll20 창은 누를 때마다 z-index 가 올라가는데 올인원 창은 고정이라 늘 그 뒤에 깔렸다 → 올인원 창도 누르면 지금 가장 높은 값 + 1 을 준다
+// + 저널 탭에서 이미 맨 앞에 열려 있는 시트 · 핸드아웃의 제목을 다시 누르면 닫는다 (뒤에 깔려 있으면 Roll20 이 앞으로 가져오게 둔다)
+const winOrder = (() => {
+    const WINS = "#r20be, #r20-sn, #r20-ccf, #r20-fit, #r20-mscn, #r20-logbak, #custom-journal-popup";
+    const zOf = e => parseInt(getComputedStyle(e).zIndex, 10) || 0;
+    const shown = e => e.getClientRects().length > 0;
+    const dialogs = () => [...document.querySelectorAll("body > .ui-dialog")].filter(shown);
+    const topZ = skip => Math.max(0, ...[...dialogs(), ...document.querySelectorAll(WINS)].filter(e => e !== skip && shown(e)).map(zOf));
+    // 펼침 창 · 편집기의 말풍선 층(--aio-z-pop)은 늘 모든 창 위에
+    const lift = () => document.documentElement.style.setProperty("--aio-z-pop", String(Math.max(10010, topZ() + 10)));
+    const raise = w => {
+        const top = topZ(w);
+        if (zOf(w) <= top) w.style.zIndex = String(top + 1);
+        w.classList.add("ui-front");        // 새 jQuery UI 는 누른 창을 .ui-front 형제 가운데 맨 위로 올린다 → 다음에 누른 Roll20 창이 이 창 위로 온다
+        const D = window.jQuery?.ui?.dialog;
+        if (D && typeof D.maxZ === "number" && D.maxZ < top + 1) D.maxZ = top + 1;       // 옛 jQuery UI 는 이 숫자를 하나씩 올려 쓴다
+        lift();
+    };
+    document.addEventListener("pointerdown", e => {
+        const w = e.target.closest?.(WINS);
+        if (w) raise(w); else if (e.target.closest?.(".ui-dialog")) setTimeout(lift, 0);
+    }, true);
+    document.addEventListener("click", e => {
+        if (!btnVisible.winmem || !e.isTrusted || e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+        const li = e.target.closest?.("#journal li.journalitem");
+        if (!li || e.target.closest("button, a, input")) return;
+        const id = li.dataset.itemid, name = (li.querySelector(".namecontainer, .name")?.textContent || "").trim();
+        const dlg = dialogs().find(d => { const i = winMemory.info(d); return i && (i.id === id || (name && i.id === name)); });
+        if (!dlg || zOf(dlg) < topZ(dlg)) return;
+        const x = dlg.querySelector(".ui-dialog-titlebar-close");
+        if (!x) return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        x.click();
+    }, true);
+    return {
+        // 새로 연 창도 맨 앞으로 (보이기 시작한 때)
+        inject() { document.querySelectorAll(WINS).forEach(w => { const on = shown(w); if (on && !w._aioShown) raise(w); w._aioShown = on; }); }
+    };
+})();
+addFeature("winOrder", winOrder);
+
 addBundle({ place: "main", order: 3.1, group: "play", label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
-addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
+addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "저널 탭에서 맨 앞에 열려 있는 시트 · 핸드아웃 제목을 다시 누르면 닫기 · 캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
 
@@ -15185,7 +15227,7 @@ addCss(`
         }
         #r20be .r20be-ed.rich .note-editor { flex:1 0 auto; margin:0; border:0; border-radius:0; box-shadow:none; }
         #r20be .r20be-ed.rich :is(.note-toolbar-wrapper, .note-editor > .note-toolbar) { position:sticky; top:-14px; z-index:3; }     /* 긴 글을 내려도 단추줄은 위에 */
-        body > .note-popover { z-index:calc(var(--aio-z-win) + 3) !important; }     /* 서식 편집기의 링크 · 그림 말풍선은 body 에 붙으므로 이 창보다 위로 */
+        body > .note-popover { z-index:var(--aio-z-pop) !important; }     /* 서식 편집기의 링크 · 그림 말풍선은 body 에 붙으므로 이 창보다 위로 */
         #r20be {
             & .r20be-docnav { display:flex; gap:4px; }
             & a.r20be-link { display:inline-flex; align-items:center; text-decoration:none; }
