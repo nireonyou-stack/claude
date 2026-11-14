@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.102.0
+// @version      1.103.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.102.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.103.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -12228,6 +12228,7 @@ const bulkEditor = (() => {
 
     const bulkPane = list => {
         const t = cur(), st = t.bulk;
+        ui.aw.hidden = true;        // 한 캐릭터용 값 알림 칸이 여러 개 고른 화면의 단추를 가리지 않게
         const prev = el("div", { class: "r20be-prev" });
         // 공개 범위(저널에 표시 · 매크로 보이는 사람): "_keep" 이면 바꾸지 않음
         const shareOn = () => (t.which === "journal" || t.which === "macros") && st.share != null && st.share !== "_keep";
@@ -12268,6 +12269,14 @@ const bulkEditor = (() => {
         };
         const box = el("div", { class: "r20be-pane-in" },
             el("div", { class: "r20be-ph" }, el("strong", {}, `${list.length}개 선택됨`), el("span", { class: "r20be-flex" }),
+                (() => {
+                    const cs = FEAT.attrWatch && t.which === "journal" ? list.filter(n => n.kind === "char" && n.model && !n.deleted) : [];
+                    if (!cs.length) return null;
+                    const all = cs.every(n => FEAT.attrWatch.has(n.id));
+                    return el("button", { type: "button", class: "aio-btn r20be-sec r20be-awmany", title: "체크한 캐릭터의 값(마력 · 장서 충전 등)이 바뀌면 채팅에 알림 — 캐릭터마다 따로 누르지 않아도 돼요",
+                        onclick: async () => { for (const n of cs) await FEAT.attrWatch.follow(n.model, !all); renderTree(); renderPane(); setStatus(`캐릭터 ${cs.length}명 — 값 알림을 ${all ? "껐" : "켰"}어요`, "ok"); } },
+                        all ? `🔔 지켜보기 끄기 ${cs.length}명` : `🔔 지켜보기 ${cs.length}명`);
+                })(),
                 el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => { t.checked.clear(); renderTree(); renderPane(); } }, "선택 해제")),
             el("div", { class: "r20be-grid" },
                 field("찾을 말", el("input", { class: "r20be-in", value: st.find, oninput: e => { st.find = e.target.value; draw(); } })),
@@ -15379,9 +15388,9 @@ const valueBoard = (() => {
         if (!rows.length) return hide();
         if (!box) {
             box = document.createElement("div");
-            box.id = "r20-vb"; box.setAttribute("role", "status"); box.title = "끌어서 옮기기";
-            try { const p = JSON.parse(localStorage.getItem(POS) || "null"); if (p) { box.style.left = p[0] + "px"; box.style.top = p[1] + "px"; } } catch (e) { /* 기본 자리 */ }
+            box.id = "r20-vb"; box.setAttribute("role", "status"); box.title = "끌어서 옮기기 · 두 번 누르면 포트레이트 옆으로";
             box.addEventListener("pointerdown", e => aioDragFrom(box, e, (x, y) => { try { localStorage.setItem(POS, JSON.stringify([x, y])); } catch (e2) { /* 저장 못 함 */ } }));
+            box.addEventListener("dblclick", () => { try { localStorage.removeItem(POS); } catch (e) { /* 그대로 */ } place(); });
             document.body.appendChild(box);
         }
         const av = c.get("avatar"), nm = c.get("name") || "";
@@ -15391,6 +15400,21 @@ const valueBoard = (() => {
                 const a = aioAttrs.find(c, n), v = String(a?.get("current") ?? ""), x = String(a?.get("max") ?? "");
                 return `<span><b>${escAttr(l)}</b><i>${escAttr(v === "" ? "–" : v)}${x !== "" ? "/" + escAttr(x) : ""}</i></span>`;
             }).join("") + "</div>";
+        place();
+    };
+    // 자리: 끌어 옮긴 자리가 있으면 그 자리 (두 번 누르면 풀림). 없으면 내 포트레이트에 붙인다 —
+    // 포트레이트가 세로로 늘어서 있으면 오른쪽 위, 가로로 늘어서 있으면 위(왼쪽 아래 자리) · 아래(왼쪽 위 자리)
+    const place = () => {
+        if (!box) return;
+        let p = null;
+        try { p = JSON.parse(localStorage.getItem(POS) || "null"); } catch (e) { /* 기본 자리 */ }
+        const me = p ? null : document.querySelector(`#avatarContainer #player_${CSS.escape(String(window.currentPlayer?.id || ""))}`), r = me?.getBoundingClientRect();
+        if (r?.width && r.height) {
+            const col = document.body.classList.contains("r20pz-col"), top = r.top < innerHeight / 2, h = box.offsetHeight;
+            p = col ? [r.right + 6, top ? r.top : Math.max(4, r.bottom - h)] : [r.left, top ? r.bottom + 4 : Math.max(4, r.top - h - 4)];
+        }
+        box.style.left = (p ? Math.max(0, Math.min(p[0], innerWidth - 60)) : 64) + "px";
+        box.style.top = (p ? Math.max(0, Math.min(p[1], innerHeight - 20)) : 8) + "px";
     };
     const show = async force => {
         const v = document.getElementById("speakingas")?.value || "", id = v.startsWith("character|") ? v.slice(10) : "";
@@ -15407,13 +15431,13 @@ const valueBoard = (() => {
     };
     return {
         list, save,
-        inject() { show(); },       // 말하는 사람이 바뀌었는지만 본다 (값은 위에서 듣는다)
+        inject() { show(); place(); },       // 말하는 사람이 바뀌었는지만 본다 (값은 위에서 듣는다) · 포트레이트가 옮겨졌으면 따라간다
         setEnabled() { show(true); }
     };
 })();
 addCss(`
         /* 캐릭터 값 판: 맵을 가리지 않게 바탕 없이 줄만 (코코포리아 스테이터스 줄 모양) */
-        #r20-vb { position:fixed; left:64px; top:8px; z-index:var(--aio-z-dock); display:flex; align-items:flex-start; gap:3px; font:var(--aio-fs-sm)/15px sans-serif; color:var(--aio-ink); cursor:move; user-select:none; }
+        #r20-vb { position:fixed; left:64px; top:8px; width:max-content; z-index:var(--aio-z-dock); display:flex; align-items:flex-start; gap:3px; font:var(--aio-fs-sm)/15px sans-serif; color:var(--aio-ink); cursor:move; user-select:none; }
         #r20-vb {
             & img { width:32px; height:32px; border-radius:var(--aio-r-sm); object-fit:cover; box-shadow:var(--aio-shadow-sm); }
             & .vs { display:grid; grid-template-columns:repeat(2, minmax(84px, auto)); gap:2px; }
@@ -15521,6 +15545,40 @@ const attrWatch = (() => {
     // 속성 이름 · *id* 는 보이지 않게: 값마다 🔔(알림) · 📊(값 판) 단추만. 줄마다 있는 값(장서 충전 등)은 '전부' 한 줄로 켠다
     const BASIC = { mp: "마력", temp_mp: "일시적 마력", atk: "공격력", def: "방어력", bas: "근원력" };
     const PAT_KO = { charge: "충전", cost: "코스트", fate: "운명" };
+    // 캐릭터의 값 훑기: 전체 · 줄마다 있는 값 묶음(번호 · 줄 id 만 다른 것) · 기본으로 알릴 값(마기카로기아 기본값 + 최대값이 있는 값)
+    const scan = c => {
+        const all = (c.attribs?.models || []).map(a => ({ n: String(a.get("name") || ""), v: String(a.get("current") ?? ""), x: String(a.get("max") ?? "") })).filter(a => a.n && a.n !== "aio_board")
+            .sort((a, b) => a.n.localeCompare(b.n, "en", { numeric: true }));
+        const by = new Map(all.map(a => [lc(a.n), a])), pats = new Map();
+        all.forEach(a => { const w = widen(a.n); if (!w || /_name$/i.test(a.n)) return; const g = pats.get(lc(w.pat)) || { pat: w.pat, items: [] }; g.items.push({ ...a, id: w.id }); pats.set(lc(w.pat), g); });
+        const groups = [...pats.values()].filter(g => g.items.some(it => it.x !== "" || (it.v !== "" && !isNaN(+it.v))));
+        groups.forEach(g => {
+            const field = (g.pat.match(/_([^_*]+)$/) || g.pat.match(/^(?:.*_)?([^_*]+)_\*id\*$/) || [])[1] || "", ko = PAT_KO[lc(field)] || field;
+            // 그 줄의 이름 칸 (…_Name · relation_name_n) 이 있으면 채팅에 그 이름으로
+            const refs = [g.pat.replace(/_[^_*]+$/, "_Name"), g.pat.replace(/_[^_*]+$/, "_name"), g.pat.replace(/[^_]+_\*id\*$/, "name_*id*")].filter(r => r !== g.pat);
+            g.ref = refs.find(r => by.has(lc(r.replace("*id*", g.items[0].id))));
+            g.title = /^(repeating_acitems_-|magic_)/i.test(g.pat) ? `장서 ${ko}` : ko + " (줄마다)";
+            g.label = (g.ref ? g.ref + " " : "") + ko;
+        });
+        const inPat = new Set(groups.flatMap(g => g.items.map(it => lc(it.n))));
+        const base = [...new Set([...(all.some(a => /^magic_|^repeating_acitems_/i.test(a.n)) ? Object.keys(BASIC) : []), ...all.filter(a => a.x !== "" && !inPat.has(lc(a.n))).map(a => a.n)].map(n => by.get(lc(n))?.n || n))].slice(0, 30);
+        return { all, by, groups, inPat, base };
+    };
+    // 지켜보기를 켜면 기본값은 따로 누르지 않아도 알린다 (빼고 싶은 것만 🔔 를 끈다)
+    const addDefaults = c => {
+        const sc = scan(c);
+        sc.base.forEach(n => { if (!cfg.rows.some(r => lc(r.a) === lc(n))) cfg.rows.push({ a: n, l: cfg.names[lc(n)] || BASIC[lc(n)] || n }); });
+        sc.groups.forEach(g => { if (!cfg.rows.some(r => lc(r.a) === lc(g.pat))) cfg.rows.push({ a: g.pat, l: g.label }); });
+    };
+    const follow = async (c, on) => {
+        read();
+        cfg.chars = cfg.chars.filter(x => x !== c.id);
+        if (on) { cfg.chars.push(c.id); cfg.on = true; }
+        store();
+        if (!on) return;
+        await aioAttrs.load(c);
+        if (cfg.chars.includes(c.id)) { addDefaults(c); store(); }
+    };
     const open = (el, host, c, onChange) => {
         read();
         if (chars()?.models?.length && cfg.chars.some(id => !chars().get(id))) { cfg.chars = cfg.chars.filter(id => chars().get(id)); store(); }       // 지워진 캐릭터는 뺀다
@@ -15532,20 +15590,16 @@ const attrWatch = (() => {
         const watched = cfg.chars.includes(c.id);
         host.dataset.id = c.id;
         host.textContent = "";
-        const sw = (on, label, fn) => el("button", { type: "button", class: "aw-sw", role: "switch", "aria-checked": String(on), "aria-label": label, onclick: fn }, el("i", { "aria-hidden": "true" }));
+        const sw = (on, label, fn) => el("button", { type: "button", class: "aw-sw", role: "switch", "aria-checked": String(on), "aria-label": label, title: label, onclick: fn }, el("i", { "aria-hidden": "true" }));
         const list = el("div", { class: "aw-list" }, el("p", {}, "값을 받아 오는 중…"));
-        const q = el("input", { type: "search", class: "aw-q aw-in", value: q0, placeholder: "값 찾기 — 이름 · 지금 값", "aria-label": `${nm}의 다른 값 찾기` });
+        const q = el("input", { type: "search", class: "aw-q aw-in", value: q0, placeholder: "다른 값 찾기", "aria-label": `${nm}의 다른 값 찾기 — 이름 · 지금 값` });
         add(host,
-            el("div", { class: "hd" }, el("b", {}, `🔔 ${nm} 의 값`), el("button", { type: "button", class: "x", "aria-label": "닫기", onclick: () => { host.hidden = true; } }, "✕")),
-            el("div", { class: "aw-top" }, el("span", {}, el("b", {}, "이 캐릭터 지켜보기"), el("small", {}, " — 켜면 아래에서 🔔 를 켠 값이 바뀔 때 채팅에 알려요")),
-                sw(watched, "이 캐릭터 지켜보기", () => set(() => { cfg.chars = watched ? cfg.chars.filter(x => x !== c.id) : [...cfg.chars, c.id]; if (!watched) cfg.on = true; }))),
-            el("div", { class: "aw-cols", "aria-hidden": "true" }, el("span", {}), el("span", {}, "지금"), el("span", {}, "알림"), el("span", {}, "값 판")),
+            el("div", { class: "hd" }, el("b", {}, `🔔 ${nm}`), el("button", { type: "button", class: "x", "aria-label": "닫기", onclick: () => { host.hidden = true; } }, "✕")),
+            el("div", { class: "aw-top", title: "켜면 이 캐릭터의 값(아래 🔔 가 켜진 것)이 바뀔 때 채팅에 알려요 — 이 브라우저(GM)로 방에 들어와 있는 동안만" }, el("b", {}, "지켜보기"),
+                sw(watched, "이 캐릭터 지켜보기", () => follow(c, !watched).then(() => { redraw(); onChange?.(); }))),
             list);
         const fill = () => {
-            const board = VB ? VB.list(c) : [];
-            const all = (c.attribs?.models || []).map(a => ({ n: String(a.get("name") || ""), v: String(a.get("current") ?? ""), x: String(a.get("max") ?? "") })).filter(a => a.n && a.n !== "aio_board")
-                .sort((a, b) => a.n.localeCompare(b.n, "en", { numeric: true }));
-            const by = new Map(all.map(a => [lc(a.n), a]));
+            const board = VB ? VB.list(c) : [], { all, by, groups, inPat, base } = scan(c);
             const exact = n => cfg.rows.find(r => lc(r.a) === lc(n));
             const nameOf = n => cfg.names[lc(n)] || (exact(n)?.l && exact(n).l !== n ? exact(n).l : "") || board.find(b => lc(b[0]) === lc(n) && b[1] !== b[0])?.[1] || BASIC[lc(n)] || n;
             const cut = (v, k = 22) => v.length > k ? v.slice(0, k) + "…" : v;
@@ -15559,55 +15613,38 @@ const attrWatch = (() => {
                     const r = exact(n); if (r) r.l = v || n;
                     if (bd) VB.save(c, board.map(b => lc(b[0]) === lc(n) ? [b[0], v || n] : b));
                 });
-                const nb = el("button", { type: "button", class: "aw-name", title: "누르면 채팅 · 값 판에 보일 이름을 고쳐요", onclick: () => {
+                const nb = el("button", { type: "button", class: "aw-name", title: `${n} — 누르면 채팅 · 값 판에 보일 이름을 고쳐요`, onclick: () => {
                     const inp = el("input", { type: "text", class: "aw-in", value: label, "aria-label": `${n} — 보일 이름`, spellcheck: "false",
                         onkeydown: e => { e.stopPropagation(); if (e.key === "Enter") inp.blur(); if (e.key === "Escape") { inp.value = label; inp.blur(); } }, onblur: () => { if (inp.value.trim() !== label) rename(inp.value); else redraw(); } });
                     nb.replaceWith(inp); inp.focus(); inp.select();
-                } }, el("b", {}, label), label !== n ? el("small", {}, n) : null);
+                } }, el("b", {}, label));
                 return el("div", { class: "aw-v", "data-a": n }, nb, el("span", { class: "cur" }, a ? cut(a.v === "" ? "–" : a.v) + (a.x !== "" ? ` / ${cut(a.x, 8)}` : "") : "–"),
-                    tg(al || !!pat, "🔔", pat ? `'전부' 줄로 이미 알리는 값이에요` : `${label} — 바뀌면 알림`, () => set(() => { if (al) cfg.rows = cfg.rows.filter(r => lc(r.a) !== lc(n)); else cfg.rows.push({ a: n, l: label }); }), pat),
-                    VB ? tg(bd, "📊", `${label} — 값 판에 보이기`, () => { VB.save(c, bd ? board.filter(b => lc(b[0]) !== lc(n)) : [...board, [n, label]]); redraw(); }) : null);
+                    tg(al || !!pat, "🔔", pat ? `'전부' 줄로 이미 알리는 값이에요` : `${label} — 바뀌면 채팅에 알림 (지켜보는 캐릭터 모두에게 같이 적용)`, () => set(() => { if (al) cfg.rows = cfg.rows.filter(r => lc(r.a) !== lc(n)); else cfg.rows.push({ a: n, l: label }); }), pat),
+                    VB ? tg(bd, "📊", `${label} — 값 판에 보이기 (이 캐릭터로 말할 때 맵 위에)`, () => { VB.save(c, bd ? board.filter(b => lc(b[0]) !== lc(n)) : [...board, [n, label]]); redraw(); }) : null);
             };
-            // 줄마다 있는 값: 번호 · 줄 id 만 다른 것끼리 묶는다 (숫자 값이 하나라도 있는 묶음만)
-            const pats = new Map();
-            all.forEach(a => { const w = widen(a.n); if (!w || /_name$/i.test(a.n)) return; const g = pats.get(lc(w.pat)) || { pat: w.pat, items: [] }; g.items.push({ ...a, id: w.id }); pats.set(lc(w.pat), g); });
             const prow = g => {
-                const field = (g.pat.match(/_([^_*]+)$/) || g.pat.match(/^(?:.*_)?([^_*]+)_\*id\*$/) || [])[1] || "", ko = PAT_KO[lc(field)] || field;
-                // 그 줄의 이름 칸 (…_Name · relation_name_n) 이 있으면 채팅에 그 이름으로
-                const refs = [g.pat.replace(/_[^_*]+$/, "_Name"), g.pat.replace(/_[^_*]+$/, "_name"), g.pat.replace(/[^_]+_\*id\*$/, "name_*id*")].filter(r => r !== g.pat);
-                const ref = refs.find(r => by.has(lc(r.replace("*id*", g.items[0].id)))), on = cfg.rows.some(r => lc(r.a) === lc(g.pat));
-                const title = /^(repeating_acitems_-|magic_)/i.test(g.pat) ? `장서 ${ko}` : ko + " (줄마다)";
-                const sample = g.items.slice(0, 3).map(it => `${cut(ref ? by.get(lc(ref.replace("*id*", it.id)))?.v || it.id : it.id, 10)} ${it.v === "" ? "–" : it.v}${it.x !== "" ? "/" + it.x : ""}`).join(" · ") + (g.items.length > 3 ? " · …" : "");
-                return el("div", { class: "aw-v pat", "data-a": g.pat }, el("span", { class: "aw-name" }, el("b", {}, title), el("small", {}, sample + (ref ? " — 채팅에는 줄 이름으로 나와요" : ""))),
+                const on = cfg.rows.some(r => lc(r.a) === lc(g.pat));
+                const sample = g.items.slice(0, 4).map(it => `${cut(g.ref ? by.get(lc(g.ref.replace("*id*", it.id)))?.v || it.id : it.id, 10)} ${it.v === "" ? "–" : it.v}${it.x !== "" ? "/" + it.x : ""}`).join(" · ") + (g.items.length > 4 ? " · …" : "");
+                return el("div", { class: "aw-v pat", "data-a": g.pat }, el("span", { class: "aw-name", title: sample + (g.ref ? " — 채팅에는 줄 이름으로 나와요" : "") }, el("b", {}, g.title)),
                     el("span", { class: "cur" }, `${g.items.length}줄`),
-                    tg(on, "🔔", `${title} — 줄 전부, 바뀌면 알림`, () => set(() => { if (on) cfg.rows = cfg.rows.filter(r => lc(r.a) !== lc(g.pat)); else cfg.rows.push({ a: g.pat, l: (ref ? ref + " " : "") + ko }); })), VB ? el("span", {}) : null);
+                    tg(on, "🔔", `${g.title} — 줄 전부, 바뀌면 채팅에 알림`, () => set(() => { if (on) cfg.rows = cfg.rows.filter(r => lc(r.a) !== lc(g.pat)); else cfg.rows.push({ a: g.pat, l: g.label }); })), VB ? el("span", {}) : null);
             };
-            const groups = [...pats.values()].filter(g => g.items.some(it => it.x !== "" || (it.v !== "" && !isNaN(+it.v))));
-            const inPat = new Set(groups.flatMap(g => g.items.map(it => lc(it.n))));
-            const magi = all.some(a => /^magic_|^repeating_acitems_/i.test(a.n));
-            const often = [...new Set([...(magi ? Object.keys(BASIC) : []), ...all.filter(a => a.x !== "" && !inPat.has(lc(a.n))).map(a => a.n),
-                ...cfg.rows.filter(r => !r.a.includes("*id*") && by.has(lc(r.a))).map(r => by.get(lc(r.a)).n), ...board.map(b => b[0])].map(n => by.get(lc(n))?.n || n))].slice(0, 30);
+            const often = [...new Set([...base, ...cfg.rows.filter(r => !r.a.includes("*id*") && by.has(lc(r.a))).map(r => by.get(lc(r.a)).n), ...board.map(b => b[0])].map(n => by.get(lc(n))?.n || n))].slice(0, 40);
             const k = lc(q.value), shown = new Set(often.map(lc));
             const found = k ? all.filter(a => !shown.has(lc(a.n)) && (lc(a.n).includes(k) || lc(a.v).includes(k) || lc(nameOf(a.n)).includes(k))) : [];
-            // 이 캐릭터에 없는 값을 알리게 해 둔 줄 (예전에 직접 적은 것) — 지울 수만 있다
-            const stray = cfg.rows.filter(r => r.a && !r.a.includes("*id*") && !by.has(lc(r.a)) && !shown.has(lc(r.a)));
             list.textContent = "";
-            add(list, el("div", { class: "aw-gh" }, "자주 쓰는 값"), ...(often.length ? often.map(vrow) : [el("p", {}, "최대값이 있는 값이 없어요 — 아래 찾기로 꺼내세요.")]),
-                groups.length ? el("div", { class: "aw-gh" }, "줄마다 있는 값 — 한 번에 전부") : null, ...groups.map(prow),
-                stray.length ? el("div", { class: "aw-gh" }, "다른 캐릭터에서 켠 알림", el("small", {}, " — 이 캐릭터에는 그 값이 없어요")) : null,
-                ...stray.map(r => el("div", { class: "aw-v" }, el("span", { class: "aw-name" }, el("b", {}, r.l || r.a), el("small", {}, r.a)), el("span", { class: "cur" }),
-                    el("button", { type: "button", class: "aw-tg", "aria-label": `${r.a} 알림 지우기`, title: "이 알림 지우기", onclick: () => set(() => { cfg.rows = cfg.rows.filter(x => x !== r); }) }, "✕"), VB ? el("span", {}) : null)),
-                el("div", { class: "aw-gh" }, `그 밖의 값 ${all.filter(a => !shown.has(lc(a.n)) && !inPat.has(lc(a.n))).length}개`, el("small", {}, " — 찾기로 꺼내요")), q,
+            add(list, ...often.map(vrow), ...groups.map(prow), q,
                 ...found.slice(0, 40).map(a => vrow(a.n)), k && !found.length ? el("p", {}, "맞는 값이 없어요.") : null, found.length > 40 ? el("p", {}, `… ${found.length - 40}개 더 — 더 좁혀 보세요`) : null);
         };
         q.addEventListener("input", () => { const at = q.selectionStart; fill(); q.focus(); try { q.setSelectionRange(at, at); } catch (e) { /* 자리만 못 돌림 */ } });
         q.addEventListener("keydown", e => e.stopPropagation());
         const names = cfg.chars.map(id => chars()?.get(id)?.get("name") || "이름 없음");
-        add(host, el("p", {}, (cfg.chars.length ? `지켜보는 캐릭터 ${cfg.chars.length}명: ${names.join(" · ")}` : "아직 지켜보는 캐릭터가 없어요.") + " · 🔔 는 지켜보는 캐릭터 모두에게 같이 적용돼요 (📊 는 캐릭터마다)"),
-            cfg.chars.length > 12 ? el("p", { class: "warn" }, "지켜보는 캐릭터가 많으면 브라우저가 무거워질 수 있어요 — 이번 세션에 나오는 캐릭터만 두세요.") : null,
-            el("div", { class: "ft" }, el("label", { class: "aw-how" }, "채팅에 올리는 방식",
-                    el("select", { "aria-label": "채팅에 올리는 방식", onchange: e => set(() => { cfg.how = e.target.value; }) }, ...HOW.map(([v, t]) => el("option", { value: v, selected: cfg.how === v }, t)))),
-                el("span", { class: "r20be-flex" }), el("span", { class: "r20be-note" }, "전체 알림"), sw(cfg.on, "값 변화 알림 전체 켜기 · 끄기", () => set(() => { cfg.on = !cfg.on; })),
+        add(host, cfg.chars.length > 12 ? el("p", { class: "warn" }, "지켜보는 캐릭터가 많으면 브라우저가 무거워질 수 있어요 — 이번 세션에 나오는 캐릭터만 두세요.") : null,
+            el("div", { class: "ft" },
+                el("select", { class: "aw-how", "aria-label": "채팅에 올리는 방식", title: "채팅에 올리는 방식", onchange: e => set(() => { cfg.how = e.target.value; }) }, ...HOW.map(([v, t]) => el("option", { value: v, selected: cfg.how === v }, t))),
+                el("span", { class: "r20be-flex" }),
+                el("span", { class: "r20be-note", title: names.length ? `지켜보는 캐릭터: ${names.join(" · ")}` : "아직 지켜보는 캐릭터가 없어요" }, `전체 ${cfg.chars.length}명`),
+                sw(cfg.on, "값 변화 알림 전체 켜기 · 끄기", () => set(() => { cfg.on = !cfg.on; })),
                 el("button", { type: "button", class: "aio-btn", onclick: () => { host.hidden = true; } }, "닫기")));
         host.hidden = false;
         // 일괄 편집기 창 아래로 넘치지 않게 (창이 넘친 곳을 잘라서, 화면 높이만으로는 못 맞춘다)
@@ -15616,7 +15653,7 @@ const attrWatch = (() => {
         aioAttrs.load(c).then(() => { if (!host.hidden && host.dataset.id === mine && list.isConnected) { fill(); list.scrollTop = top0; } });
     };
     return {
-        open, has: id => !!read().on && cfg.chars.includes(id),
+        open, follow, has: id => !!read().on && cfg.chars.includes(id),
         info: () => ({ on: read().on, chars: cfg.chars.length, rows: cfg.rows.length }),
         toggle: () => { read().on = !cfg.on; store(); return cfg.on; },
         inject() {
@@ -15636,27 +15673,21 @@ addCss(`
             & .aw-sw[aria-checked=true] i { background:var(--aio-accent); }
             & .aw-sw[aria-checked=true] i::after { left:14px; }
             & .aw-top { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px solid var(--aio-line-4); border-bottom:1px solid var(--aio-line-4); }
-            & .aw-top small { color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
-            & .aw-cols, & .aw-v { display:grid; grid-template-columns:minmax(0, 1fr) minmax(48px, auto) 30px 30px; gap:6px; align-items:center; }
-            & .aw-cols { flex:none; padding:0 6px; color:var(--aio-ink-5); font-size:var(--aio-fs-xs); text-align:center; }
+            & .aw-v { display:grid; grid-template-columns:minmax(0, 1fr) minmax(48px, auto) 30px 30px; gap:6px; align-items:center; }
             & .aw-list { display:flex; flex-direction:column; flex:1 1 auto; min-height:120px; padding:0 6px 6px; overflow-y:auto; border:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); }
             & .aw-list p { padding:6px 0; }
-            & .aw-gh { flex:none; margin-top:8px; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); font-weight:700; }
-            & .aw-gh small { color:var(--aio-ink-5); font-weight:400; }
-            & .aw-v { flex:none; min-height:30px; padding:2px 0; border-bottom:1px solid var(--aio-line-4); }
+            & .aw-v { flex:none; min-height:26px; padding:1px 0; border-bottom:1px solid var(--aio-line-4); }
             & .aw-name { display:flex; flex-direction:column; align-items:flex-start; min-width:0; margin:0; padding:0; border:0; background:none; box-shadow:none; color:var(--aio-ink); font-size:var(--aio-fs-md); line-height:1.3; text-align:left; }
             & button.aw-name { cursor:text; }
-            & .aw-name b, & .aw-name small { max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-            & .aw-name small { color:var(--aio-ink-5); font-size:var(--aio-fs-xs); }
+            & .aw-name b { max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
             & .aw-v .cur { color:var(--aio-ink-3); font-size:var(--aio-fs-sm); font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
             & .aw-tg { width:30px; height:var(--aio-h-sm); margin:0; padding:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; font-size:var(--aio-fs-sm); line-height:1; cursor:pointer; filter:grayscale(1); opacity:.55; }
             & .aw-tg[aria-pressed=true] { border-color:var(--aio-accent); background:var(--aio-accent-bg); filter:none; opacity:1; }
             & .aw-tg:disabled { cursor:default; }
             & .aw-in { min-width:0; height:var(--aio-h-sm); margin:0; padding:0 6px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); color:var(--aio-ink); font-size:var(--aio-fs-md); box-shadow:none; }
             & .aw-in:focus { outline:2px solid var(--aio-accent); outline-offset:-1px; border-color:var(--aio-accent); }
-            & .aw-q { flex:none; margin-top:4px; }
-            & .aw-how { display:flex; align-items:center; gap:6px; margin:0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); font-weight:400; }
-            & .aw-how select { height:var(--aio-h-sm); margin:0; padding:0 4px; font-size:var(--aio-fs-sm); }
+            & .aw-q { flex:none; margin-top:6px; }
+            & .aw-how { width:auto; max-width:190px; height:var(--aio-h-sm); margin:0; padding:0 4px; font-size:var(--aio-fs-sm); }
         }
 `);
 addFeature("attrWatch", attrWatch);
@@ -16111,13 +16142,16 @@ const abTok = (() => {
         // 탭: 맵의 토큰(고르기) · 복사해서 새로 · 덱에서 꺼내기 · 그림 파일 — 새로 만든 토큰은 바로 연결한다
         const TABS = [["map", "맵의 토큰"], ["copy", "복사해서 새로"], ["deck", "덱에서 꺼내기"], ["file", "그림 파일"]];
         const decks = () => (window.Campaign?.decks?.models || []).filter(d => (d.cards?.models || []).some(m => m.get("avatar")));
-        let tab = "map", q = "", src = -1, card = -1, deckId = localStorage.getItem("r20_abt_deck") || "";
-        const created = [];
+        const TIP = { map: "지금 페이지 토큰 층의 연결 안 된 토큰에서 고르기", copy: "맵의 토큰과 똑같은 토큰을 그 옆에 하나 더 만들어 연결 (원래 토큰은 그대로)", deck: "카드 그림으로 맵 가운데에 보통 토큰을 만들어 연결 (덱의 카드는 줄지 않아요)", file: "그림 파일 · 캐릭터 그림으로 맵 가운데에 새 토큰을 만들어 연결" };
+        let tab = "map", q = "", src = -1, card = -1, deckId = localStorage.getItem("r20_abt_deck") || "", optOpen = false;
         const thumb = (u, nm) => `<img src="${escAttr(sizedUrl(r20img(u || ""), "thumb"))}" alt="" loading="lazy"><span>${escAttr(nm)}</span>`;
         const draw = () => {
             const list = toks().map(g => ({ g, st: state(g) })).filter(t => t.st === "on" || !t.g.get("represents")).sort((a, b) => ORD[a.st] - ORD[b.st] || String(a.g.get("name")).localeCompare(String(b.g.get("name"))));
             list.forEach(t => { if (!picked.has(t.g)) picked.set(t.g, t.st === "on" || t.st === "same"); });
-            const n = list.filter(t => picked.get(t.g)).length, all = toks(), ds = decks(), dk = ds.find(d => d.id === deckId) || ds[0], cards = (dk?.cards?.models || []).filter(m => m.get("avatar"));
+            // 복사 원본: 같은 그림은 한 칸으로 (수백 장 복사해 둔 것도 종류별로 하나씩 · 많은 것부터)
+            const kinds = new Map();
+            toks().forEach(g => { const k = String(g.get("imgsrc") || "").replace(/\?.*$/, ""), v = kinds.get(k) || { g, n: 0 }; v.n++; kinds.set(k, v); });
+            const n = list.filter(t => picked.get(t.g)).length, all = [...kinds.values()].sort((a, b) => b.n - a.n), ds = decks(), dk = ds.find(d => d.id === deckId) || ds[0], cards = (dk?.cards?.models || []).filter(m => m.get("avatar"));
             let body = "", go = "";
             if (tab === "map") {
                 body = (list.length > 5 ? `<input type="search" class="q" placeholder="토큰 찾기 — 이름" aria-label="토큰 찾기" value="${escAttr(q)}">` : "")
@@ -16128,28 +16162,26 @@ const abTok = (() => {
                     : `<p>이 페이지의 토큰 층에 연결 안 된 토큰이 없어요 — 위 탭에서 새로 만들 수 있어요.</p>`) + `</div>`;
                 go = `<button type="button" class="aio-btn pri go">${n ? `토큰 ${n}개에 연결` : "연결 풀기"}</button>`;
             } else if (tab === "copy") {
-                body = `<p>맵의 토큰 하나를 고르면 그 옆에 똑같은 토큰을 만들어 연결해요. 원래 토큰은 그대로예요.</p>`
-                    + (all.length ? `<div class="grid">${all.map((g, i) => `<button type="button" class="tile cp${i === src ? " sel" : ""}" data-i="${i}" aria-pressed="${i === src}">${thumb(g.get("imgsrc"), g.get("name") || "이름 없음")}</button>`).join("")}</div>` : `<p>이 페이지의 토큰 층에 토큰이 없어요.</p>`);
+                body = all.length ? `<div class="grid">${all.map((k, i) => `<button type="button" class="tile cp${i === src ? " sel" : ""}" data-i="${i}" aria-pressed="${i === src}">${thumb(k.g.get("imgsrc"), k.n > 1 ? `${k.n}개` : k.g.get("name") || "이름 없음")}</button>`).join("")}</div>` : `<p>이 페이지의 토큰 층에 토큰이 없어요.</p>`;
                 go = `<button type="button" class="aio-btn pri mk" data-mk="copy"${src < 0 ? " disabled" : ""}>복사해서 연결</button>`;
             } else if (tab === "deck") {
                 body = ds.length ? `<label class="opt">덱 <select class="deck">${ds.map(d => `<option value="${escAttr(d.id)}"${d === dk ? " selected" : ""}>${escAttr(d.get("name") || "이름 없는 덱")}</option>`).join("")}</select></label>`
-                    + `<p>카드 한 장을 고르면 그 그림으로 맵 가운데에 보통 토큰을 만들어 연결해요. 덱의 카드는 줄지 않아요.</p>`
                     + `<div class="grid">${cards.map((m, i) => `<button type="button" class="tile cd${i === card ? " sel" : ""}" data-i="${i}" aria-pressed="${i === card}">${thumb(m.get("avatar"), m.get("name") || "이름 없음")}</button>`).join("")}</div>`
                     : `<p>그림이 든 덱이 없어요.</p>`;
                 go = `<button type="button" class="aio-btn pri mk" data-mk="deck"${card < 0 ? " disabled" : ""}>꺼내서 연결</button>`;
             } else {
-                body = `<p>그림으로 맵 가운데에 새 토큰을 만들어 연결해요.</p><div class="ft"><button type="button" class="aio-btn mk" data-mk="file">그림 파일 고르기</button><button type="button" class="aio-btn mk" data-mk="avatar">캐릭터 그림으로</button><span></span></div>`;
+                body = `<div class="ft"><button type="button" class="aio-btn mk" data-mk="file">그림 파일 고르기</button><button type="button" class="aio-btn mk" data-mk="avatar">캐릭터 그림으로</button><span></span></div>`;
             }
-            pop.innerHTML = `<div class="hd"><b>'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x" aria-label="닫기">✕</button></div>`
-                + `<p>${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층</p>`
-                + `<div class="tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" class="aio-chip" role="tab" data-tab="${k}" aria-selected="${k === tab}" aria-pressed="${k === tab}">${t}</button>`).join("")}</div>`
+            pop.innerHTML = `<div class="hd"><b title="${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층">'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x" aria-label="닫기">✕</button></div>`
+                + `<div class="tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" class="aio-chip" role="tab" data-tab="${k}" title="${TIP[k]}" aria-selected="${k === tab}" aria-pressed="${k === tab}">${t}</button>`).join("")}</div>`
                 + body
+                + `<div class="opts"${optOpen ? "" : " hidden"}>`
                 + (bars.length ? `<label class="opt">막대 1 <select class="bar"><option value="">(없음)</option>${bars.map(k => `<option value="${k}"${k === bar ? " selected" : ""}>${LABEL[k]} — 지금 ${escAttr(String(aioAttrs.find(x.c, attrName(x, k))?.get("current") ?? "빈칸"))}</option>`).join("")}</select></label>`
-                    + `<label class="opt">막대 최대값 <input type="number" class="max" min="0" value="${escAttr(max)}" aria-label="막대 최대값"> <small>— 시트에 최대값이 없을 때만 넣어요</small></label>`
+                    + `<label class="opt">막대 최대값 <input type="number" class="max" min="0" value="${escAttr(max)}" aria-label="막대 최대값" title="시트에 최대값이 없을 때만 넣어요"></label>`
                     + `<label class="opt"><input type="checkbox" class="pl"${pl ? " checked" : ""}> 플레이어에게도 막대 보이기 · 고치기</label>` : "")
                 + `<label class="opt"><input type="checkbox" class="show"${show ? " checked" : ""}> 이름표 · 막대 숫자를 늘 보이게</label>`
-                + `<label class="opt"><input type="checkbox" class="act"${act ? " checked" : ""}> 토큰 액션 '${escAttr(ACT + x.nm)}' 만들기 <small>— 누르면 효과를 채팅에 (이 캐릭터의 토큰 전부에 보여요)</small></label>`
-                + `<div class="ft"><span></span><button type="button" class="aio-btn no">취소</button>${go}</div>`;
+                + `<label class="opt" title="누르면 효과를 채팅에 올리는 토큰 액션 — 이 캐릭터의 토큰 전부에 보여요"><input type="checkbox" class="act"${act ? " checked" : ""}> 토큰 액션 '${escAttr(ACT + x.nm)}' 만들기</label></div>`
+                + `<div class="ft"><button type="button" class="aio-btn gear" aria-expanded="${optOpen}" aria-label="연결 옵션" title="연결 옵션 — 막대 · 이름표 · 토큰 액션">⚙</button><span></span><button type="button" class="aio-btn no">취소</button>${go}</div>`;
             pop._list = list; pop._all = all; pop._cards = cards;
             filter();
             if (pop.isConnected) fit();
@@ -16157,33 +16189,44 @@ const abTok = (() => {
         const filter = () => { const k = q.replace(/\s+/g, "").toLowerCase(); pop.querySelectorAll(".row").forEach((r, i) => { r.hidden = !!k && !String(pop._list[i].g.get("name") || "").replace(/\s+/g, "").toLowerCase().includes(k); }); };
         // 탭을 바꾸면 높이가 달라진다 → 화면 아래로 넘치지 않게 다시 맞춘다
         const fit = () => { const r = pop.getBoundingClientRect(); if (r.bottom > innerHeight - 4) pop.style.top = zpx(Math.max(4, innerHeight - r.height - 4)); };
+        // 막대에 연결할 속성 (없으면 만든다 · 시트에 최대값이 없을 때만 채운다)
+        const barAttr = () => {
+            if (!bar) return null;
+            if (!aioAttrs.find(x.c, attrName(x, bar))) { try { x.c.attribs.create({ name: attrName(x, bar), current: "0", max: "" }); } catch (e) { aioErr("어빌리티 토큰", e); } }
+            const a = aioAttrs.find(x.c, attrName(x, bar));
+            if (a && max !== "" && String(a.get("max") ?? "") === "") a.save({ max });
+            return a;
+        };
+        // 토큰에 넣을 연결 값. numOk: 막대 숫자 보이기(숨김 · 편집자 · 모두) 칸이 있는 화면인지 (없는 옛 화면에서는 건드리지 않는다)
+        const linkAttrs = (a, numOk) => ({ represents: x.c.id, name: x.nm, bar1_link: a?.id || "",
+            ...(a ? { bar1_value: a.get("current") ?? "", bar1_max: a.get("max") ?? "", showplayers_bar1: pl, playersedit_bar1: pl, ...(show && numOk ? { bar1_num_permission: pl ? "everyone" : "editors" } : {}) } : {}),
+            ...(show ? { showname: true, showplayers_name: true } : {}) });
+        const numOk = g => typeof g?.get("bar1_num_permission") === "string";
+        const done = (on, offN, back, made) => {
+            const hadAct = !!x.c.abilities?.models?.some(m => m.get("name") === ACT + x.nm);
+            try { setAct(x, act && on > 0); } catch (e) { aioErr("어빌리티 토큰 액션", e); }
+            close();
+            aioToast(made ? `'${x.nm}' — 새 토큰을 만들어 연결했어요` : on ? `'${x.nm}' — 토큰 ${on}개에 연결했어요` + (offN ? ` · ${offN}개는 풀었어요` : "") : offN ? `'${x.nm}' — 토큰 ${offN}개의 연결을 풀었어요` : "바꾼 것이 없어요",
+                { kind: "ok", id: "abt", undo: back.length || made ? () => {
+                    back.forEach(([g, o]) => g.save(o));
+                    if (made) { try { made.destroy(); } catch (e) { /* 새 토큰은 그대로 둠 */ } }
+                    if (!hadAct) { try { setAct(x, false); } catch (e) { /* 액션은 그대로 둠 */ } }
+                    setTimeout(() => aioToast(made ? "새 토큰을 지웠어요" : "토큰 연결을 되돌렸어요", { kind: "ok", id: "abt" }), 0);
+                } : undefined });
+        };
         const apply = () => {
-            const attr = bar && aioAttrs.find(x.c, attrName(x, bar)), back = [];
+            const a = barAttr(), back = [];
             let on = 0, offN = 0;
-            if (bar && !attr) { try { x.c.attribs.create({ name: attrName(x, bar), current: "0", max: "" }); } catch (e) { aioErr("어빌리티 토큰", e); } }
-            const a = bar ? aioAttrs.find(x.c, attrName(x, bar)) : null;
-            if (a && max !== "" && String(a.get("max") ?? "") === "") a.save({ max });        // 시트에 최대값이 없을 때만 채운다
             pop._list.forEach(t => {
                 const want = !!picked.get(t.g) && t.st !== "other", was = t.st === "on";
                 if (!want && !was) return;
                 back.push([t.g, Object.fromEntries(KEYS.map(k => [k, t.g.get(k) ?? ""]))]);
-                if (want) {
-                    on++;
-                    // 막대 숫자 보이기(숨김 · 편집자 · 모두)는 그 칸이 있는 토큰에만 (이름이 다른 옛 화면에서는 건드리지 않는다)
-                    const num = show && typeof t.g.get("bar1_num_permission") === "string" ? { bar1_num_permission: pl ? "everyone" : "editors" } : {};
-                    t.g.save({ represents: x.c.id, name: x.nm, bar1_link: a?.id || "",
-                        ...(a ? { bar1_value: a.get("current") ?? "", bar1_max: a.get("max") ?? "", showplayers_bar1: pl, playersedit_bar1: pl, ...num } : {}),
-                        ...(show ? { showname: true, showplayers_name: true } : {}) });
-                }
+                if (want) { on++; t.g.save(linkAttrs(a, numOk(t.g))); }
                 else { offN++; t.g.save({ represents: "", bar1_link: "" }); }
             });
-            const hadAct = !!x.c.abilities?.models?.some(m => m.get("name") === ACT + x.nm);
-            try { setAct(x, act && on > 0); } catch (e) { aioErr("어빌리티 토큰 액션", e); }
-            close();
-            aioToast(on ? `'${x.nm}' — 토큰 ${on}개에 연결했어요` + (offN ? ` · ${offN}개는 풀었어요` : "") : offN ? `'${x.nm}' — 토큰 ${offN}개의 연결을 풀었어요` : "바꾼 것이 없어요",
-                { kind: "ok", id: "abt", undo: back.length ? () => { back.forEach(([g, o]) => g.save(o)); created.forEach(g => { try { g.destroy(); } catch (e) { /* 새 토큰은 그대로 둠 */ } }); if (!hadAct) { try { setAct(x, false); } catch (e) { /* 액션은 그대로 둠 */ } } setTimeout(() => aioToast("토큰 연결을 되돌렸어요", { kind: "ok", id: "abt" }), 0); } : undefined });
+            done(on, offN, back, null);
         };
-        // 새 토큰 만들기 (만든 것은 바로 연결): 그림은 가로세로 비율대로 한 칸 안에, 맵 가운데에
+        // 새 토큰 만들기: 연결 값(대표 캐릭터 · 이름 · 막대 · 이름표)을 만들 때 한 번에 넣는다. 그림은 가로세로 비율대로 한 칸 안에, 맵 가운데에
         const dims = url => new Promise(ok => {
             const im = new Image();
             im.onload = () => { const r = im.naturalWidth / im.naturalHeight || 1; ok(r >= 1 ? [70, Math.round(70 / r)] : [Math.round(70 * r), 70]); };
@@ -16191,41 +16234,36 @@ const abTok = (() => {
             setTimeout(() => ok([70, 70]), 4000);
             im.src = url;
         });
-        const place = async url => {
+        const place = async (url, link) => {
             const [w, h] = await dims(url), W = (Number(pg.get("width")) || 25) * 70, H = (Number(pg.get("height")) || 25) * 70;
-            return pg.thegraphics.create({ imgsrc: url, page_id: pg.id, layer: "objects", left: Math.round(W / 2), top: Math.round(H / 2), width: w, height: h, name: x.nm });
+            return pg.thegraphics.create({ imgsrc: url, page_id: pg.id, layer: "objects", left: Math.round(W / 2), top: Math.round(H / 2), width: w, height: h, ...link });
         };
         const makers = {
-            copy: async () => {
-                const g = pop._all[src], a = { ...(g?.attributes || {}) };
+            copy: async link => {
+                const g = pop._all[src]?.g, a = { ...(g?.attributes || {}) };
                 if (!g) return null;
-                ["id", "_id", "_type", "_pageid", "lastmove", "represents", "bar1_link", "bar2_link", "bar3_link", "bar1_value", "bar1_max"].forEach(k => delete a[k]);
-                return pg.thegraphics.create({ ...a, page_id: pg.id, left: (Number(a.left) || 0) + (Number(a.width) || 70), name: x.nm });
+                ["id", "_id", "_type", "_pageid", "lastmove", "bar2_link", "bar3_link"].forEach(k => delete a[k]);
+                return pg.thegraphics.create({ ...a, page_id: pg.id, left: (Number(a.left) || 0) + (Number(a.width) || 70), ...link(numOk(g)) });
             },
-            deck: async () => { const m = pop._cards[card]; return m ? place(sizedUrl(r20img(m.get("avatar")), "max")) : null; },
-            avatar: async () => {
+            deck: async link => { const m = pop._cards[card]; return m ? place(sizedUrl(r20img(m.get("avatar")), "max"), link(toks().some(numOk))) : null; },
+            avatar: async link => {
                 const av = r20img(x.c.get("avatar") || "");
                 if (!/^https:\/\/files\.d20\.io\//i.test(av)) { aioToast("캐릭터 그림이 Roll20 라이브러리 그림이 아니라서 못 써요 — [그림 파일 고르기]로 해 주세요", { kind: "info", id: "abt" }); return null; }
-                return place(sizedUrl(av, "max"));
+                return place(sizedUrl(av, "max"), link(toks().some(numOk)));
             },
-            file: async () => {
+            file: async link => {
                 const file = await pickFile();
                 if (!file) return null;
                 aioToast("그림을 올리는 중…", { kind: "busy", id: "abt" });
                 const g = await ccfImport.upload(pg, file);
                 if (!g) { aioToast("그림을 못 올렸어요", { kind: "err", id: "abt" }); return null; }
-                g.save({ layer: "objects", name: x.nm });
+                g.save({ layer: "objects", ...link(numOk(g)) });
                 return g;
             }
         };
         const make = async how => {
-            const g = await makers[how]();
-            if (!g || !pop) return;
-            created.push(g);
-            // 새 토큰만 연결한다 (이름이 같다고 미리 체크된 다른 토큰은 건드리지 않게)
-            toks().forEach(t => picked.set(t, state(t) === "on"));
-            picked.set(g, true);
-            tab = "map"; draw(); apply();
+            const a = barAttr(), g = await makers[how](ok => linkAttrs(a, ok));
+            if (g && pop) done(1, 0, [], g);
         };
         const swap = async g => {
             const file = await pickFile();
@@ -16245,6 +16283,7 @@ const abTok = (() => {
             e.preventDefault();
             if (b.classList.contains("x") || b.classList.contains("no")) return close();
             if (b.classList.contains("go")) return apply();
+            if (b.classList.contains("gear")) { optOpen = !optOpen; return draw(); }
             if (b.dataset.tab) { tab = b.dataset.tab; return draw(); }
             if (b.classList.contains("cp")) { src = +b.dataset.i; return draw(); }
             if (b.classList.contains("cd")) { card = +b.dataset.i; return draw(); }
@@ -16289,6 +16328,10 @@ addCss(`
             & .list { display:flex; flex-direction:column; flex:none; min-height:40px; max-height:236px; overflow-y:auto; border-top:1px solid var(--aio-line-4); }
             & .row[hidden] { display:none; }
             & .tabs { display:flex; flex-wrap:wrap; gap:4px; }
+            & .opts { display:flex; flex-direction:column; gap:6px; padding-top:6px; border-top:1px solid var(--aio-line-4); }
+            & .opts[hidden] { display:none; }
+            & .gear { padding:0 8px; }
+            & .gear[aria-expanded=true] { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
             & .q { height:var(--aio-h-sm); margin:0; padding:0 6px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); font-size:var(--aio-fs-md); box-shadow:none; }
             & .grid { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:4px; flex:none; max-height:236px; overflow-y:auto; }
             & .tile { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; margin:0; padding:3px; border:2px solid transparent; border-radius:var(--aio-r-sm); background:var(--aio-bg-2); box-shadow:none; cursor:pointer; }

@@ -49,6 +49,15 @@ const SHOT = process.env.SHOT;
   await speak('player|me'); console.log('GM 으로:', await board());
   await speak('character|c1'); console.log('다시 하루카:', await board());
   await tick('wound'); console.log('상 뺌:', await board());
+  // 자리: 내 포트레이트 옆 (세로로 늘어선 포트레이트면 오른쪽 위) · 끌어 옮기면 그 자리 · 두 번 누르면 다시 포트레이트 옆
+  await p.evaluate(() => { document.body.insertAdjacentHTML('beforeend', '<div id="avatarContainer"><div class="player" id="player_me" style="position:fixed;left:20px;top:50px;width:120px;height:120px;background:#667"></div></div>'); document.body.classList.add('r20pz-col'); });
+  await p.waitForTimeout(400);
+  const at = () => p.$eval('#r20-vb', e => { const r = e.getBoundingClientRect(); return `${Math.round(r.left)},${Math.round(r.top)}`; });
+  console.log('포트레이트(20,50 · 120px · 가로로 늘어섬 · 위쪽) 바로 아래:', await at());
+  await p.evaluate(() => { localStorage.setItem('r20_vb_pos', '[300,200]'); document.getElementById('sidebarcontrol').append(document.createElement('i')); }); await p.waitForTimeout(1500);
+  console.log('끌어 옮긴 자리:', await at());
+  await p.$eval('#r20-vb', e => e.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))); await p.waitForTimeout(100);
+  console.log('두 번 누름 → 다시 옆:', await at());
   // 설정 탭
   await p.click('#r20be .r20be-segS'); await p.waitForTimeout(150);
   console.log('설정 화면:', await p.$eval('#r20be', e => e.classList.contains('r20be-setmode')), '| 줄이 창 안에:', await p.$eval('#custom-settings-popup', e => !!e.closest('#r20be .r20be-sethost') && e.getBoundingClientRect().height > 100),
