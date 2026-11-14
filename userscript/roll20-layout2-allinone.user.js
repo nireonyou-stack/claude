@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.107.0
+// @version      1.108.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.107.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.108.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -6943,12 +6943,44 @@ const screenUI = (() => {
     return { inject, setEnabled, place };
 })();
 
+// ───────── 페이지 폴더 이름: 방 데이터에는 폴더 아이디만 있다(페이지마다 path ",폴더,하위폴더,") ─────────
+// 이름은 Roll20 페이지 메뉴(Vue)가 그린 폴더 카드에서 읽어 이 브라우저에 방마다 기억한다 (메뉴를 한 번 열면 채워진다)
+const pgFolders = (() => {
+    const key = () => "r20_pg_folders_" + (window.campaign_id || "");
+    let mem = null;
+    const read = () => { if (!mem) { try { mem = JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch (e) { mem = {}; } mem.names ||= {}; mem.order ||= []; } return mem; };
+    const isPage = id => !!window.Campaign?.pages?.get?.(id);
+    // 카드의 Vue 속성에서 그 아이디의 이름 → 없으면 카드 글자 중 숫자(페이지 수)가 아닌 마지막 줄
+    const vueName = (el, id) => {
+        for (let c = el.__vueParentComponent, i = 0; c && i < 5; c = c.parent, i++) {
+            for (const v of Object.values(c.props || {})) {
+                if (!v || typeof v !== "object") continue;
+                const vid = v.id ?? v.get?.("id");
+                if (vid === id) { const nm = v.name ?? v.title ?? v.get?.("name"); if (typeof nm === "string" && nm.trim()) return nm.trim(); }
+            }
+        }
+        return "";
+    };
+    const textName = el => (el.innerText || "").split("\n").map(x => x.trim()).filter(x => x && !/^\d+$/.test(x) && x !== "현재").pop() || "";
+    const scan = () => {
+        const cards = [...document.querySelectorAll(".vtt-page-card-wrapper[data-page-id]")].filter(w => !isPage(w.dataset.pageId));
+        if (!cards.length) return;
+        const m = read(), seen = [];
+        cards.forEach(w => { const id = w.dataset.pageId, nm = vueName(w, id) || textName(w); if (nm) { m.names[id] = nm; seen.push(id); } });
+        // 보이는 차례 (지금 연 폴더 안의 순서) — 이미 아는 것과 섞어 둔다
+        m.order = [...seen, ...m.order.filter(id => !seen.includes(id))].slice(0, 500);
+        try { localStorage.setItem(key(), JSON.stringify(m)); } catch (e) { /* 저장 못 함 */ }
+    };
+    return { scan, name: id => read().names[id] || "", rank: id => { const i = read().order.indexOf(id); return i < 0 ? 1e6 : i; } };
+})();
+
 // ───────── 페이지 창 슬림: Roll20 페이지 창(.vtt-page-card-menu)의 겉모양만 가늘고 가볍게 (body.r20pg-on) ─────────
 // 누르기 · 끌기 · 메뉴 등 동작은 Roll20 그대로. 카드 크기만 −/+ 단추로 바꾼다
 const pagePanel = (() => {
     let size = Math.max(90, Math.min(260, parseInt(localStorage.getItem("r20_pg_size"), 10) || 150));
     const apply = menu => { if (menu.style.getPropertyValue("--r20pg-size") !== size + "px") menu.style.setProperty("--r20pg-size", size + "px"); };
     const inject = () => {
+        try { pgFolders.scan(); } catch (e) { aioErr("페이지 폴더 이름", e, true); }
         if (!btnVisible.pageslim) return;
         document.querySelectorAll(".vtt-page-card-menu").forEach(menu => {
             apply(menu);
@@ -6974,7 +7006,7 @@ const pagePanel = (() => {
         else inject();
     };
     setEnabled(btnVisible.pageslim);
-    return { inject, setEnabled, watch: ".vtt-page-card-menu" };
+    return { inject, setEnabled, watch: ".vtt-page-card-menu, .vtt-page-card-wrapper" };
 })();
 
 // ───────── 맵 아래 매크로 줄: 두 줄로 쌓기 + 길게(0.4초) 눌러 끌면 순서 바꾸기 (body.r20mb-on) ─────────
@@ -11545,9 +11577,10 @@ const bulkEditor = (() => {
         deck:    SVG('<rect x="4" y="3" width="12" height="16" rx="2"/><path d="M8 21h10a2 2 0 0 0 2-2V7"/>', ' style="color:#7c3a7c"'),
         gfx:     SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-8 8"/>', ' style="color:#0f766e"'),
         mlayer:  SVG('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>', ' style="color:#64748b"'),
+        page:    SVG('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-4 4 3 3-2 6 4"/>', ' style="color:#0e7490"'),
         grid:    SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')
     };
-    const KIND_NAME = { folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표", macro: "매크로", deck: "덱" };
+    const KIND_NAME = { page: "페이지", folder: "폴더", group: "플레이리스트", handout: "핸드아웃", char: "캐릭터", track: "트랙", rtable: "굴림표", macro: "매크로", deck: "덱" };
     const CONTENT = ["notes", "gm"];
     // 편집칸 [내용, GM 노트] → Roll20 blob 이름
     const BLOBS = { handout: ["notes", "gmnotes"], char: ["bio", "gmnotes"] };
@@ -11618,8 +11651,8 @@ const bulkEditor = (() => {
     });
 
     // ── 작업용 트리 ──
-    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images", "map", "links"];
-    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null, links: null };
+    const TABS = ["journal", "bgm", "macros", "decks", "tables", "images", "map", "pages", "links"];
+    const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null, pages: null, links: null };
     // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
     const VIEW = {
         icons: localStorage.getItem("r20be_icons") !== "0",
@@ -11701,6 +11734,44 @@ const bulkEditor = (() => {
         return n;
     }));
 
+    // 페이지: 폴더는 페이지마다의 path(",폴더,하위폴더,")로 짓는다 — 폴더 자체는 방 데이터에 없어 이름만 pgFolders 에서.
+    // 폴더 만들기 · 이름 바꾸기 · 지우기는 아직 못 한다 (Roll20 페이지 메뉴에서) → 폴더 줄은 읽기만
+    const pagesColl = () => window.Campaign?.pages || null;
+    const pathIds = m => String(m.get("path") || "").split(",").filter(Boolean);
+    const buildPages = () => {
+        const folders = new Map(), roots = [];
+        const folderNode = (chain, depth) => {
+            const id = chain[depth - 1];
+            if (folders.has(id)) return folders.get(id);
+            const f = mkNode(id, "folder", null, { name: pgFolders.name(id) || "폴더 (이름 모름)" });
+            f.ro = true; f.unnamed = !pgFolders.name(id);
+            const parent = depth > 1 ? folderNode(chain, depth - 1) : null;
+            f.parent = parent; listOf({ roots }, parent).push(f);
+            folders.set(id, f);
+            return f;
+        };
+        const models = [...(pagesColl()?.models || [])].sort((a, b) => (Number(a.get("placement")) || 0) - (Number(b.get("placement")) || 0)
+            || String(a.get("name") || "").localeCompare(String(b.get("name") || ""), "ko", { numeric: true }));
+        models.forEach(m => {
+            const chain = pathIds(m), parent = chain.length ? folderNode(chain, chain.length) : null;
+            const n = mkNode(m.id, "page", m, { name: m.get("name") || "", archived: !!m.get("archived"), width: Number(m.get("width")) || 25, height: Number(m.get("height")) || 25,
+                showgrid: m.get("showgrid") !== false, background_color: m.get("background_color") || "#ffffff" });
+            n.parent = parent; listOf({ roots }, parent).push(n);
+        });
+        // 폴더는 페이지 메뉴에서 본 차례 → 이름순, 페이지보다 앞에
+        const order = list => list.sort((a, b) => (!!b.kids - !!a.kids) || (a.kids && b.kids ? pgFolders.rank(a.id) - pgFolders.rank(b.id) || a.cur.name.localeCompare(b.cur.name, "ko", { numeric: true }) : 0));
+        const walk = list => { order(list); list.forEach(n => n.kids && walk(n.kids)); };
+        walk(roots);
+        const t = flatTab("pages", roots);
+        t.unnamed = [...folders.values()].filter(f => f.unnamed).length;
+        if (models.length > 60) folders.forEach(f => t.collapsed.add(f.id));
+        return t;
+    };
+    const pageOk = (t, n) => t.filter === "all" || (t.filter === "archived") === !!n.cur.archived;
+    const pageHit = (t, n) => { const q = t.q.trim().toLowerCase(); return !q || n.cur.name.toLowerCase().includes(q) || (n.parent?.cur.name || "").toLowerCase().includes(q); };
+    const pageLeaves = t => allNodes(t).filter(n => n.kind === "page" && pageOk(t, n) && pageHit(t, n));
+    const isPlayerPage = id => window.Campaign?.get?.("playerpageid") === id;
+
     // 방 이미지: '이 방의 이미지'와 같은 모음 (편집 대상이 아니라 덱·굴림표 탭으로 보내는 곳)
     const buildImages = () => ({ ...flatTab("images", []), data: FEAT.roomImages.gather(), gsel: "" });
     // ── 맵: 지금 페이지에 올라간 그림 전부 (층별 · 위에 있는 것부터). 안 보이게 된 것에 표시를 붙이고,
@@ -11773,6 +11844,7 @@ const bulkEditor = (() => {
         if (which === "tables") return buildTables();
         if (which === "macros") return buildMacros();
         if (which === "decks") return buildDecks();
+        if (which === "pages") return buildPages();
         const C = window.Campaign, isJ = which === "journal";
         const colls = isJ ? [["handout", C.handouts], ["char", C.characters]] : [["track", window.Jukebox.playlist]];
         const lookup = id => { for (const [kind, c] of colls) { const m = c.get(id); if (m) return [kind, m]; } return null; };
@@ -11833,7 +11905,7 @@ const bulkEditor = (() => {
     const toHtml = (n, k) => n.htmlMode[k] ? n.cur[k] : textToHtml(n.cur[k]);
     const nodeDirty = n => n.isNew || n.deleted || n.moved || n.changed.size > 0;
     const isDirty = n => nodeDirty(n) || !!n.items?.some(itemDirty);       // 목록의 주황 점
-    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables, S.map, S.links].filter(Boolean);
+    const builtTabs = () => [S.journal, S.bgm, S.macros, S.decks, S.tables, S.map, S.pages, S.links].filter(Boolean);
     const dirtyCount = () => builtTabs().reduce((s, t) => s + t.removed + (t.fixes?.size || 0) + (t.dels?.size || 0) + allNodes(t).reduce((c, n) =>
         c + (nodeDirty(n) ? 1 : 0) + (n.items ? n.items.filter(itemDirty).length : 0), 0), 0);
     // 저장 안 한 변경이 있으면 새로고침 · 탭 닫기 전에 브라우저가 한 번 묻는다
@@ -11882,6 +11954,7 @@ const bulkEditor = (() => {
         if (n.kind === "deck") return `${n.items.filter(it => !it.deleted).length}장`;
         if (n.kind === "macro") { const k = tlCountMac(n.model?.get("name")); return [n.cur.token ? "토큰" : "", k ? `🎯${k}` : ""].filter(Boolean).join(" · "); }
         if (n.kind === "track") return `${n.cur.vol}%${n.cur.loop ? " · 반복" : ""}${tagList(n.cur.tags).map(x => " #" + x).join("")}`;
+        if (n.kind === "page") return [isPlayerPage(n.id) ? "▶ 플레이어" : "", n.cur.archived ? "보관" : "", `${n.cur.width}×${n.cur.height}`].filter(Boolean).join(" · ");
         const s = n.cur.share;
         return (n.cur.archived ? "보관 · " : "") + (s === "all" ? "전체" : s ? `${s.split(",").filter(Boolean).length}명` : "GM")
             + (n.kind === "char" && FEAT.attrWatch?.has(n.id) ? " · 🔔" : "");
@@ -11891,18 +11964,19 @@ const bulkEditor = (() => {
         const hit = n => !q || n.cur.name.toLowerCase().includes(q) || (n.kind === "macro" && n.cur.action.toLowerCase().includes(q))
             || (n.kind === "track" && (n.cur.tags || "").toLowerCase().includes(q.replace(/^#/, "")));
         // 핸드아웃·캐릭터만 볼 때는 폴더 없이 한 줄로 모은다 (어느 폴더인지는 오른쪽에 표시)
+        if (t.which === "pages" && isFlat(t)) return pageLeaves(t).map(n => ({ n, depth: 0, flat: true }));
         if (isFlat(t)) return allNodes(t).filter(n => !n.kids && n.kind === t.filter && hit(n)).map(n => ({ n, depth: 0, flat: true }));
         const walk = (list, depth) => list.flatMap(n => {
-            if (!n.kids) return (t.which === "map" ? t.filter === "all" || (t.filter === "hidden" ? t.flags.has(n.id) : !!t.flags.get(n.id)?.has(t.filter))
+            if (!n.kids) return t.which === "pages" ? (pageOk(t, n) && pageHit(t, n) ? [{ n, depth }] : []) : (t.which === "map" ? t.filter === "all" || (t.filter === "hidden" ? t.flags.has(n.id) : !!t.flags.get(n.id)?.has(t.filter))
                 : t.filter === "all" || n.kind === t.filter) && hit(n) ? [{ n, depth }] : [];
             const inner = walk(n.kids, depth + 1);
-            const selfOk = !filtering || ((t.filter === "all" || t.filter === n.kind) && hit(n));
+            const selfOk = !filtering || (t.which !== "pages" && (t.filter === "all" || t.filter === n.kind) && hit(n));
             if (filtering && !inner.length && !selfOk) return [];
             return [{ n, depth }, ...(filtering || !t.collapsed.has(n.id) ? inner : [])];
         });
         return walk(t.roots, 0);
     };
-    const isFlat = t => t.which === "journal" && t.filter !== "all";
+    const isFlat = t => t.which === "pages" ? VIEW.icons : t.which === "journal" && t.filter !== "all";
     const rowHtml = ({ n, depth, flat }) => {
         const t = cur(), sel = t.sel === n.id, chk = t.checked.has(n.id), shut = t.collapsed.has(n.id);
         const cls = ["r20be-row", sel && "sel", chk && "chk", n.deleted && "del"].filter(Boolean).join(" ");
@@ -11925,6 +11999,7 @@ const bulkEditor = (() => {
     };
     const avatarOf = n => {
         const m = n.model || n.dupOf;
+        if (n.kind === "page") return m?.get("thumbnail") || "";
         return m ? journalThumb(m.id) || m.get?.("avatar") || "" : "";
     };
     // 그림: 바꾼 주소(r20img)로 먼저 열고, 안 열리면 data-alts 의 다른 크기·원래 주소로
@@ -12444,7 +12519,7 @@ const bulkEditor = (() => {
             if (shareOn()) list.forEach(n => { if (!n.kids && n.cur.share !== st.share) setField(n, "share", st.share); });
             if (st.move) {
                 const p = st.move === "_root" ? null : find(t, st.move);
-                list.forEach(n => { if (!(t.which === "bgm" && n.kids)) moveNode(t, n, p, null); });
+                list.forEach(n => { if (!((t.which === "bgm" || t.which === "pages") && n.kids)) moveNode(t, n, p, null); });
             }
             t.bulk = { find: "", rep: "", pre: "", move: "", share: "_keep" };
             renderTree(); renderPane();
@@ -12492,6 +12567,18 @@ const bulkEditor = (() => {
                 el("button", { type: "button", class: "aio-btn r20be-sec", title: "목록 순서대로 복제본이 맨 뒤에 생기고 원본은 지워집니다 (순서 정리용)",
                     onclick: () => dupMany(list, true) }, "복제 후 원본 삭제"),
                 t.which === "tables" ? el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => openRollMacro(list) }, "굴림 매크로 만들기") : null) : null,
+            t.which === "pages" ? (() => {
+                const pgs = list.filter(n => n.kind === "page" && !n.deleted), w = el("input", { class: "r20be-in r20be-num", type: "number", min: 1, max: 1000, placeholder: "가로", "aria-label": "가로 칸" }),
+                    h = el("input", { class: "r20be-in r20be-num", type: "number", min: 1, max: 1000, placeholder: "세로", "aria-label": "세로 칸" });
+                const arch = on => { pgs.forEach(n => { if (n.cur.archived !== on) setField(n, "archived", on); }); renderTree(); renderPane(); setStatus(`${pgs.length}개를 ${on ? "보관" : "보관 해제"}할 예정입니다 (저장해야 반영)`, "ok"); };
+                return el("div", { class: "r20be-pgbulk" },
+                    field("보관", el("div", { class: "r20be-acts" }, pgBtn("보관", () => arch(true), { disabled: !pgs.length }), pgBtn("보관 해제", () => arch(false), { disabled: !pgs.length }))),
+                    field("크기 한꺼번에 (칸 · 빈칸은 그대로)", el("div", { class: "r20be-acts" }, w, "×", h, pgBtn("적용", () => {
+                        const W = Math.round(+w.value), H = Math.round(+h.value);
+                        pgs.forEach(n => { if (W > 0) setField(n, "width", Math.min(1000, W)); if (H > 0) setField(n, "height", Math.min(1000, H)); });
+                        renderTree(); renderPane();
+                    }, { disabled: !pgs.length }))));
+            })() : null,
             t.which === "journal" ? (() => {
                 const docs = list.filter(n => !n.kids && !n.deleted);
                 const op = on => {
@@ -12528,7 +12615,7 @@ const bulkEditor = (() => {
             t.which === "macros" ? el("div", { class: "r20be-acts" },
                 el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => setTok(true) }, "토큰 액션 켜기"),
                 el("button", { type: "button", class: "aio-btn r20be-sec", onclick: () => setTok(false) }, "토큰 액션 끄기")) : null,
-            !(t.which === "journal" || t.which === "bgm") ? null : field(t.which === "journal" ? "폴더로 이동" : "플레이리스트로 이동",
+            !(t.which === "journal" || t.which === "bgm" || t.which === "pages") ? null : field(t.which === "bgm" ? "플레이리스트로 이동" : "폴더로 이동",
                 el("select", { class: "r20be-in", onchange: e => { st.move = e.target.value; draw(); } },
                     el("option", { value: "", selected: !st.move }, "이동 안 함"),
                     el("option", { value: "_root", selected: st.move === "_root" }, "맨 위 (폴더 밖)"),
@@ -14172,6 +14259,56 @@ const bulkEditor = (() => {
             sec("층 옮기기", ...MAP_LAYERS.slice(0, 3).map(([L, label]) => b(label, l => l.forEach(n => { if (n.cur.layer !== L) setField(n, "layer", L); }), `${label}으로 옮겼습니다`,
                 { "aria-pressed": String(live.length > 0 && live.every(n => n.cur.layer === L)) }))));
     };
+    // ── 페이지 탭 오른쪽 칸 ──
+    const pgBtn = (label, onclick, extra = {}) => el("button", { type: "button", class: "aio-btn r20be-sec", onclick, ...extra }, label);
+    const folderOptions = t => [["", "(폴더 밖)"], ...groupList(t).map(g => [g.n.id, g.label])];
+    const moveToFolder = (t, list, fid) => {
+        const p = fid ? find(t, fid) : null;
+        let c = 0;
+        list.forEach(n => { if (n.kind === "page" && n.parent !== p && moveNode(t, n, p, null)) c++; });
+        renderTree(); renderPane();
+        if (c) setStatus(`${c}개를 ${p ? `'${p.cur.name}'` : "폴더 밖"}으로 옮겼습니다 (저장해야 Roll20에 반영)`, "ok");
+    };
+    const pagePane = n => {
+        const t = cur(), C = window.Campaign, pl = isPlayerPage(n.id);
+        const num = (k, label) => el("input", { class: "r20be-in r20be-num", type: "number", min: 1, max: 1000, value: n.cur[k], "aria-label": label,
+            onchange: e => { const v = Math.max(1, Math.min(1000, Math.round(+e.target.value) || 1)); setField(n, k, v); refreshRow(n); renderPane(); } });
+        const ratio = (r, label) => el("button", { type: "button", class: "aio-chip", title: `가로에 맞춰 세로를 ${label} 비율로`, onclick: () => { setField(n, "height", Math.max(1, Math.round(n.cur.width / r))); refreshRow(n); renderPane(); } }, label);
+        const seg = (on, fn) => el("span", { class: "r20be-seg2", role: "radiogroup", "aria-label": "격자" },
+            el("button", { type: "button", role: "radio", "aria-checked": String(on), onclick: () => fn(true) }, "보임"),
+            el("button", { type: "button", role: "radio", "aria-checked": String(!on), onclick: () => fn(false) }, "숨김"));
+        const thumb = n.model?.get("thumbnail");
+        return el("div", { class: "r20be-pane-in" },
+            el("div", { class: "r20be-ph" }, el("strong", {}, "페이지"), pl ? el("span", { class: "r20be-tag new" }, "▶ 플레이어") : null,
+                n.deleted ? el("span", { class: "r20be-tag del" }, "삭제 예정") : null, el("span", { class: "r20be-flex" }),
+                pgBtn("▶ 플레이어를 여기로", () => {
+                    try { C.save({ playerpageid: n.id, playerspecificpages: false }); setStatus(`플레이어를 '${n.cur.name}'으로 옮겼어요`, "ok"); } catch (e) { aioErr("플레이어 이동", e); setStatus("플레이어를 못 옮겼어요", "err"); }
+                    renderTree(); renderPane();
+                }, { disabled: pl || n.deleted, title: "플레이어 리본을 이 페이지로 (Roll20 즉시 반영)" }),
+                pgBtn("이 페이지 열기", () => {
+                    try { if (typeof C.switchPageById !== "function") throw new Error("switchPageById 없음"); C.switchPageById(n.id); setStatus(`'${n.cur.name}' 페이지를 열었어요 (GM 만)`, "ok"); }
+                    catch (e) { aioErr("페이지 열기", e); setStatus("페이지를 못 열었어요", "err"); }
+                }, { disabled: n.deleted, title: "GM 화면만 이 페이지로 (플레이어는 그대로)" }),
+                pgBtn(n.cur.archived ? "보관 해제" : "보관", () => { setField(n, "archived", !n.cur.archived); refreshRow(n); renderPane(); }, { disabled: n.deleted }),
+                el("button", { type: "button", class: "aio-btn r20be-sec" + (n.deleted ? "" : " danger"), onclick: () => toggleDelete(n) }, n.deleted ? "삭제 취소" : "삭제")),
+            el("div", { class: "r20be-grid" },
+                field("페이지 이름", nameInput(n)),
+                field("폴더", el("select", { class: "r20be-in", onchange: e => moveToFolder(t, [n], e.target.value) },
+                    folderOptions(t).map(([v, l]) => el("option", { value: v, selected: (n.parent?.id || "") === v }, l))))),
+            el("div", { class: "r20be-pgrow" }, el("span", { class: "r20be-lb" }, "크기 (칸)"), num("width", "가로 칸"), "×", num("height", "세로 칸"), ratio(16 / 9, "16:9"), ratio(4 / 3, "4:3"), ratio(1, "1:1")),
+            el("div", { class: "r20be-pgrow" }, el("span", { class: "r20be-lb" }, "격자"), seg(n.cur.showgrid, v => { setField(n, "showgrid", v); renderPane(); }),
+                el("span", { class: "r20be-lb" }, "배경색"), el("input", { type: "color", class: "r20be-clr", value: /^#[0-9a-f]{6}$/i.test(n.cur.background_color) ? n.cur.background_color : "#ffffff", "aria-label": "배경색",
+                    onchange: e => { setField(n, "background_color", e.target.value); renderPane(); } }), el("span", { class: "r20be-note" }, n.cur.background_color)),
+            thumb ? el("img", { class: "r20be-pgth", src: r20img(thumb), alt: "", loading: "lazy" }) : null);
+    };
+    const pageFolderPane = (t, f) => {
+        const pages = allNodes({ roots: f.kids }).filter(n => n.kind === "page");
+        return el("div", { class: "r20be-pane-in" },
+            el("div", { class: "r20be-ph" }, el("strong", {}, "폴더"), el("span", { class: "r20be-flex" }),
+                pgBtn(`안의 페이지 ${pages.length}개 고르기`, () => { pages.forEach(n => t.checked.add(n.id)); renderTree(); renderPane(); }, { disabled: !pages.length })),
+            el("p", {}, el("b", {}, f.cur.name), ` · 페이지 ${pages.length}개`),
+            el("p", { class: "r20be-note" }, f.unnamed ? "폴더 이름을 아직 몰라요 — Roll20 페이지 메뉴를 한 번 열면 읽어 와요 (창을 다시 열면 반영)" : "폴더 이름 바꾸기 · 새 폴더 · 폴더 지우기는 Roll20 페이지 메뉴에서 해 주세요"));
+    };
     const renderPane = () => {
         const t = cur();
         noteOff();
@@ -14183,6 +14320,7 @@ const bulkEditor = (() => {
         const n = t.sel && find(t, t.sel);
         ui.pane.append(checked.length >= 2 ? bulkPane(checked)
             : !n ? el("p", { class: "r20be-empty" }, "왼쪽에서 항목을 고르세요")
+            : n.kind === "page" ? pagePane(n) : n.kids && t.which === "pages" ? pageFolderPane(t, n)
             : n.kids ? groupPane(n) : n.kind === "rtable" ? tablePane(n) : n.kind === "deck" ? deckPane(n) : n.kind === "macro" ? macroPane(n)
             : n.kind === "track" ? trackPane(n) : docPane(n));
         ui.pane.querySelectorAll(".r20be-ta").forEach(autosize);
@@ -14394,7 +14532,9 @@ const bulkEditor = (() => {
         renderTree(); renderPane();
     };
     const bulkDelete = list => {
-        const t = cur(), groups = list.filter(n => n.kids);
+        const t = cur();
+        if (t.which === "pages") list = list.filter(n => n.kind === "page");       // 페이지 폴더는 읽기만
+        const groups = list.filter(n => n.kids);
         if (groups.length && !confirm(`폴더·플레이리스트 ${groups.length}개도 지웁니다. 안의 항목은 한 단계 위로 옮겨집니다. (저장해야 반영)`)) return;
         list.filter(n => !n.kids).forEach(n => { if (n.isNew) removeNode(t, n); else n.deleted = true; });
         groups.forEach(g => removeGroup(t, g, false));
@@ -14403,6 +14543,24 @@ const bulkEditor = (() => {
     };
 
     // ── 저장 ──
+    // 페이지: 지우기 → 고친 칸 · 옮긴 폴더(path) → 옮긴 페이지가 든 폴더는 안의 페이지 차례(placement)를 0 부터 다시
+    const savePages = async (t, attempt) => {
+        const nodes = allNodes(t).filter(n => n.kind === "page");
+        for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
+        const pathTo = f => { const ids = []; for (let p = f; p; p = p.parent) ids.unshift(p.id); return "," + ids.map(x => x + ",").join(""); };
+        const boxes = new Set();
+        for (const n of nodes) {
+            if (n.deleted) continue;
+            const upd = {};
+            n.changed.forEach(k => { upd[k] = n.cur[k]; });
+            if (n.moved) { upd.path = pathTo(n.parent); boxes.add(n.parent || null); }
+            if (Object.keys(upd).length) await attempt(n.cur.name, () => n.model.save(upd));
+        }
+        for (const box of boxes) {
+            const kids = (box ? box.kids : t.roots).filter(n => n.kind === "page" && !n.deleted);
+            for (let i = 0; i < kids.length; i++) if (Number(kids[i].model.get("placement")) !== i) await attempt(kids[i].cur.name + " 차례", () => kids[i].model.save({ placement: i }));
+        }
+    };
     const saveStruct = async t => {
         window.Campaign.save({ [t.which === "journal" ? "journalfolder" : "jukeboxfolder"]: JSON.stringify(serialize(t)) });
         t.structDirty = false; t.removed = 0;
@@ -14652,6 +14810,7 @@ const bulkEditor = (() => {
             if (t.which === "tables") { await saveTables(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "decks") { await saveDecks(t, attempt); await deleteRoots(t, attempt); continue; }
             if (t.which === "macros") { await saveMacros(t, attempt); continue; }
+            if (t.which === "pages") { await savePages(t, attempt); continue; }
             if (t.which === "map") { await saveMapTab(t, attempt); continue; }
             const nodes = allNodes(t);
             for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
@@ -14713,13 +14872,16 @@ const bulkEditor = (() => {
         ui.segI.classList.toggle("on", S.tab === "images");
         ui.segP.classList.toggle("on", S.tab === "map");
         ui.segL.classList.toggle("on", S.tab === "links");
+        ui.segPg.classList.toggle("on", S.tab === "pages");
+        ui.selTools.hidden = t.which !== "pages";
         if (t.which === "map") t.flags = mapFlags(t);
         ui.search.value = t.q;
-        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색", map: "그림 이름 검색", links: "이름 · 주소 · 쓰는 곳 검색" }[t.which] || "이름 검색";
-        ui.newBtn.hidden = t.which === "images" || t.which === "map" || t.which === "links";
+        ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색", map: "그림 이름 검색", pages: "페이지 · 폴더 이름 검색", links: "이름 · 주소 · 쓰는 곳 검색" }[t.which] || "이름 검색";
+        ui.newBtn.hidden = t.which === "images" || t.which === "map" || t.which === "links" || t.which === "pages";
         drawPagesBtn();
         ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱" }[t.which] || "새로 만들기";
-        const defs = t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
+        const defs = t.which === "pages" ? (() => { const ps = allNodes(t).filter(n => n.kind === "page"); return [["all", `전체 ${ps.length}`], ["archived", `보관 ${ps.filter(n => n.cur.archived).length}`]]; })()
+            : t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
             : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]]
             : t.which === "images" ? [["all", "전체"], ["page", "페이지"], ["char", "캐릭터"], ["handout", "핸드아웃"], ["table", "굴림표"], ["deck", "덱"]]
             : t.which === "map" ? [["all", `전체 ${t.roots.reduce((c, g) => c + g.kids.length, 0)}`], ["hidden", `안 보이는 것만 ${t.flags.size}`],
@@ -14727,9 +14889,9 @@ const bulkEditor = (() => {
         ui.chips.textContent = "";
         defs.forEach(([k, label]) => ui.chips.append(el("button", { type: "button", class: "aio-chip r20be-chip" + (t.filter === k ? " on" : ""),
             "aria-pressed": String(t.filter === k), onclick: () => { t.filter = k; render(); } }, label)));
-        ui.view.hidden = !isFlat(t);
+        ui.view.hidden = !isFlat(t) && t.which !== "pages";
         ui.zoom.hidden = !iconMode(t) && t.which !== "images";
-        ui.fold.hidden = !(t.which === "journal" || t.which === "bgm" || t.which === "map") || isFlat(t);
+        ui.fold.hidden = !(t.which === "journal" || t.which === "bgm" || t.which === "map" || t.which === "pages") || isFlat(t);
         ui.bkBtn.hidden = t.which !== "bgm" || !FEAT.jbBackup || !btnVisible.jbrow;
         if (t.which !== "bgm") ui.bk.hidden = true;
         if (t.which !== "tables" && t.which !== "macros") ui.tl.hidden = true;
@@ -14749,7 +14911,7 @@ const bulkEditor = (() => {
         ui.segS.classList.toggle("on", on);
         if (!on) return;
         ui.menu.hidden = ui.bk.hidden = ui.tl.hidden = ui.aw.hidden = true;
-        [ui.segJ, ui.segB, ui.segT, ui.segM, ui.segD, ui.segI, ui.segP, ui.segL].forEach(b => b.classList.remove("on"));
+        [ui.segJ, ui.segB, ui.segT, ui.segM, ui.segD, ui.segI, ui.segP, ui.segPg, ui.segL].forEach(b => b.classList.remove("on"));
         ui.setHost.append(pop);
         pop.classList.add("show");
         // 왼쪽: 갈래로 바로 가기 (점검 줄은 탭을 연 바로 뒤에 생기므로 조금 뒤에 짓는다)
@@ -14767,6 +14929,7 @@ const bulkEditor = (() => {
         if (tab === "macros" && !macrosColl()) { setStatus("매크로를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "decks" && !decksColl()) { setStatus("덱을 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "map" && !pageNow()?.thegraphics) { setStatus("지금 페이지를 아직 불러오지 못했습니다", "err"); return; }
+        if (tab === "pages" && !pagesColl()) { setStatus("페이지를 아직 불러오지 못했습니다", "err"); return; }
         // 다른 페이지로 옮겼고 맵 탭에 저장 안 한 변경이 없으면 새로 읽는다
         if (tab === "map" && S.map && S.map.page !== pageNow() && !allNodes(S.map).some(nodeDirty)) S.map = null;
         S.tab = tab;
@@ -14818,6 +14981,7 @@ const bulkEditor = (() => {
         if (!row) return { parent: null, before: null, row: null };     // 빈 곳: 맨 위 단계 끝
         const n = find(t, row.dataset.id);
         if (!n || n === d) return null;
+        if (t.which === "pages" && n.kids) return { parent: n, before: null, row, into: true };
         if (n.kids && (t.which === "journal" || !d.kids) && !isAncestor(d, n)) return { parent: n, before: null, row, into: true };
         if (t.which === "bgm" && d.kids) { let top = n; while (top.parent) top = top.parent; return { parent: null, before: top, row }; }
         return { parent: n.parent, before: n, row };
@@ -14858,13 +15022,13 @@ const bulkEditor = (() => {
         tr.addEventListener("dblclick", e => {
             const row = e.target.closest(".r20be-row");
             const n = row && e.target.closest(".r20be-nm") && find(cur(), row.dataset.id);
-            if (n && !n.deleted && n.kind !== "mlayer") startRename(row, n);
+            if (n && !n.deleted && n.kind !== "mlayer" && !n.ro) startRename(row, n);
         });
         // 끌어서 옮기기
         const clearDrop = () => tr.querySelectorAll(".drop-in,.drop-before").forEach(r => r.classList.remove("drop-in", "drop-before"));
         tr.addEventListener("dragstart", e => {
             const row = e.target.closest?.(".r20be-row");
-            if (!row || !["journal", "bgm"].includes(cur().which)) { e.preventDefault(); return; }
+            if (!row || !["journal", "bgm", "pages"].includes(cur().which) || (cur().which === "pages" && find(cur(), row.dataset.id)?.kids)) { e.preventDefault(); return; }
             dragId = row.dataset.id;
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", dragId);
@@ -15018,6 +15182,21 @@ const bulkEditor = (() => {
         ui.segI = el("button", { type: "button", hidden: !FEAT.roomImages, onclick: () => switchTab("images") }, "방 이미지");
         ui.segP = el("button", { type: "button", title: "지금 페이지에 올라간 그림 정리", onclick: () => switchTab("map") }, "맵");     // 그림 묶음이 없으면 탭도 없다
         ui.segL = el("button", { type: "button", title: "안 열리는 · 너무 큰 그림 주소 찾아 고치기", onclick: () => switchTab("links") }, "링크 점검");
+        ui.segPg = el("button", { type: "button", title: "페이지 메뉴 정리 — 폴더 옮기기 · 이름 · 보관 · 삭제 · 크기", onclick: () => switchTab("pages") }, "페이지");
+        // 페이지 탭: 보이는 페이지(찾기 · 보관 거르기 반영)를 한꺼번에 고르기 — 기본방을 복사한 방에서 안 쓰는 페이지를 지울 때
+        const selOp = op => {
+            const t = cur(), ids = pageLeaves(t).map(n => n.id);
+            if (op === "all") ids.forEach(id => t.checked.add(id));
+            else if (op === "none") t.checked.clear();
+            else if (op === "inv") ids.forEach(id => { if (t.checked.has(id)) t.checked.delete(id); else t.checked.add(id); });
+            else if (op === "del") { const list = [...t.checked].map(id => find(t, id)).filter(n => n?.kind === "page"); if (!list.length) return setStatus("고른 페이지가 없어요", "info"); bulkDelete(list); setStatus(`${list.length}개를 지울 예정입니다 — [저장]을 눌러야 지워져요`, "ok"); return; }
+            renderTree(); renderPane();
+        };
+        ui.selTools = el("span", { class: "r20be-zm r20be-fold", hidden: true, role: "group", "aria-label": "고르기" },
+            el("button", { type: "button", title: "보이는 페이지 모두 고르기", onclick: () => selOp("all") }, "전체"),
+            el("button", { type: "button", title: "고르기 모두 풀기", onclick: () => selOp("none") }, "해제"),
+            el("button", { type: "button", title: "보이는 페이지의 고르기 뒤집기", onclick: () => selOp("inv") }, "반전"),
+            el("button", { type: "button", class: "danger", title: "고른 페이지 지우기 (저장할 때 확인)", onclick: () => selOp("del") }, "삭제"));
         ui.segS = el("button", { type: "button", class: "r20be-segS", title: "올인원 설정 — 기능 켜고 끄기 · 글자 크기 · 채팅 단추 · 점검", onclick: () => showSettings(true) }, "⚙ 설정");
         ui.setNav = el("nav", { class: "r20be-setnav", "aria-label": "설정 갈래" });
         ui.setHost = el("div", { class: "r20be-sethost" });
@@ -15032,7 +15211,7 @@ const bulkEditor = (() => {
             el("span", { class: "aio-drag", "aria-hidden": "true", title: "끌어서 옮기기" }, "⠿"),
             el("strong", {}, "일괄 편집기"),
             SCRIPT_VER ? el("small", { class: "r20be-ver" }, "v" + SCRIPT_VER) : null,
-            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segL, ui.segS),
+            el("div", { class: "r20be-seg" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segPg, ui.segL, ui.segS),
             el("span", { class: "r20be-flex" }),
             zmWrap,
             el("button", { type: "button", class: "r20be-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
@@ -15080,7 +15259,7 @@ const bulkEditor = (() => {
         ui.pane = el("div", { class: "r20be-pane" });
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
-            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl, ui.aw),
+            el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, ui.selTools, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl, ui.aw),
             el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
             ui.setWrap, ui.foot);
         bindTree();
@@ -15360,6 +15539,15 @@ addCss(`
             & .r20be-mode button[aria-checked="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); }
             & .r20be-ed.rich { overflow:visible; }
             & .r20be-sec.r20be-secret { border-color:var(--aio-bad); color:var(--aio-bad); }
+            & .r20be-num { width:64px; }
+            & .r20be-pgrow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:8px 0; }
+            & .r20be-pgrow .r20be-lb { min-width:56px; }
+            & .r20be-seg2 { display:inline-flex; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); overflow:hidden; }
+            & .r20be-seg2 button { height:var(--aio-h-sm); margin:0; padding:0 9px; border:0; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); cursor:pointer; }
+            & .r20be-seg2 button[aria-checked=true] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
+            & .r20be-clr { width:34px; height:var(--aio-h-sm); margin:0; padding:0 2px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); }
+            & .r20be-pgth { display:block; max-width:min(100%, 420px); max-height:240px; margin-top:8px; border-radius:var(--aio-r-sm); object-fit:contain; background:var(--aio-bg-3); }
+            & .r20be-fold .danger { color:var(--aio-bad); }
             & .r20be-sec.r20be-secret.on { background:var(--aio-bad); color:var(--aio-ink-inv); }
             /* 파트 편집 */
             & .r20be-part { container-type:inline-size; padding:10px 12px 12px; }
