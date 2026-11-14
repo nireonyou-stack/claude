@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.106.0
+// @version      1.106.1
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.106.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.106.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -16844,8 +16844,24 @@ const selfCheck = (() => {
             `켠 기능 ${on.length}/${all}: ${on.join(", ")}`,
             res ? `점검 ${res.total} 중 ${res.total - res.fail.length} 정상${res.fail.map(([a, b]) => `\n  ✗ ${a} — ${b}`).join("")}` : "점검 전",
             `최근 오류 (${AIO_ERRS.length})${AIO_ERRS.map(e => `\n  ${hm(e.t)} ${e.w}: ${e.m}${e.n > 1 ? ` (×${e.n})` : ""}`).join("") || ": 없음"}`,
-            `캐릭터 속성 시험: ${attrProbe}`
+            `캐릭터 속성 시험: ${attrProbe}`,
+            `페이지 폴더 찾기: ${pageProbe()}`
         ].join("\n");
+    };
+    // 페이지 메뉴의 폴더 · 순서가 방 데이터의 어디에 있는지 (공개 문서가 없다) — 이름 · 모양 · 길이만 (내용 글자는 안 적는다)
+    const shape = (v, d = 0) => {
+        if (Array.isArray(v)) return `[${v.length}${v.length ? ": " + shape(v[0], d + 1) : ""}]`;
+        if (v && typeof v === "object") { const ks = Object.keys(v); return d > 2 ? `{${ks.length}}` : `{${ks.slice(0, 8).map(k => `${/^-?[\w-]{15,}$/.test(k) ? "<id>" : k}:${shape(v[k], d + 1)}`).join(",")}${ks.length > 8 ? ",…" + ks.length : ""}}`; }
+        if (typeof v === "string") { if (d < 3 && /^[[{]/.test(v)) { try { return "json" + shape(JSON.parse(v), d + 1); } catch (e) { /* 그냥 글 */ } } return /^-?[\w-]{15,}$/.test(v) ? "<id>" : /^(-?[\w-]{15,},)+-?[\w-]{15,}$/.test(v) ? `ids${v.split(",").length}` : `s${v.length}`; }
+        return typeof v === "number" ? "n" : typeof v === "boolean" ? "b" : String(v);
+    };
+    const pageProbe = () => {
+        try {
+            const C = window.Campaign, pg = C?.pages?.models?.[0];
+            const camp = Object.entries(C?.attributes || {}).filter(([k]) => /page|folder|order/i.test(k)).map(([k, v]) => `${k}=${shape(v)}`).join(" · ");
+            const keys = pg ? Object.keys(pg.attributes || {}).filter(k => !/^(id|_id|name|width|height|zorder)$/.test(k)).join(",") : "-";
+            return `방[${camp || "없음"}] · 페이지 칸[${keys}]`;
+        } catch (e) { return "오류 " + String(e?.message || e).slice(0, 60); }
     };
     // 설정 창을 열 때 맨 위 줄을 새로 · 그 줄의 단추
     document.addEventListener("click", e => {
