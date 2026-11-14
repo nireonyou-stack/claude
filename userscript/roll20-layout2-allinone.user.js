@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.109.0
+// @version      1.109.1
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.109.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.109.1";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5221,8 +5221,8 @@ const mapScenes = (() => {
     const leave = () => localStorage.getItem(LEAVE_KEY) === "true";
     const handout = () => (window.Campaign?.handouts?.models || []).find(m => m.get("name") === NAME);
     const getBlob = (m, f) => new Promise(ok => {
-        const t = setTimeout(() => ok(""), 8000);
-        try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
+        const t = setTimeout(() => ok(null), 8000);       // 시간 초과 · 오류 = null (빈 글과 다르게)
+        try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(null); }
     });
     const unesc = v => { try { return unescape(String(v || "")); } catch (e) { return String(v || ""); } };
     // 저장 글: JSON 을 gzip 으로 줄여 base64 로 ("gz1:" 머리). 예전 판은 escape(JSON) — 따옴표 · 한글이 3~6배로 불어나
@@ -5240,14 +5240,23 @@ const mapScenes = (() => {
     const curMap = () => { try { return JSON.parse(localStorage.getItem(CUR_KEY) || "{}") || {}; } catch (e) { return {}; } };
     const setCur = (pg, id) => { const p = P(pg); p.cur = id; const c = curMap(); if (id) c[pg.id] = id; else delete c[pg.id]; try { localStorage.setItem(CUR_KEY, JSON.stringify(c)); } catch (e) { /* 저장 못 함 */ } };
     // 데이터: { v, pages: { 페이지 id: { cur, list: [장면] } } } — 다른 GM 이 바꿨으면(GM 메모 버전이 다르면) 다시 읽는다
+    // readOk: 핸드아웃을 제대로 읽었는지 (또는 아직 없는 방). 거짓이면 기억하지 않고 다음에 다시 읽고, 저장(store)도 막는다
+    // — 방에 막 들어온 때는 Roll20 이 핸드아웃 내용을 아직 안 줘서 빈 글 · 시간 초과가 온다 (v1.106 에서 장면이 안 보이던 까닭)
+    let readOk = false;
     const load = () => {
         const m = handout(), ver = m ? String(m.get("gmnotes") ?? "") : "";
-        if (data && ver === dataVer) return Promise.resolve();
-        if (!m) { data = data || { v: 1, pages: {} }; dataVer = ver; return Promise.resolve(); }
+        if (data && readOk && ver === dataVer) return Promise.resolve();
+        if (!m) { if (!readOk || dataVer !== "∅") data = { v: 1, pages: {} }; dataVer = "∅"; readOk = true; return Promise.resolve(); }
         return loading || (loading = getBlob(m, "gmnotes").then(async raw => {
             let d = null;
-            try { d = JSON.parse(await unpackData(raw) || "{}"); } catch (e) { /* 데이터가 아니면 빈 목록 */ }
-            data = d?.pages ? d : { v: 1, pages: {} }; dataVer = ver;
+            try { d = raw ? JSON.parse(await unpackData(raw) || "{}") : null; } catch (e) { /* 데이터가 아니면 아래에서 실패로 */ }
+            if (!d?.pages) {        // 이 핸드아웃은 늘 데이터가 있다 → 비었거나 못 읽은 것은 실패로 (다음에 다시)
+                readOk = false; data = data || { v: 1, pages: {} };
+                if (raw === null || raw === "") return;
+                aioErr("맵 장면 읽기", new Error("데이터 모양이 아님"), true); return;
+            }
+            data = d; dataVer = ver; readOk = true;
+            setTimeout(() => btn.refresh(), 0);       // 다 읽으면 단추줄 장면 단추도
             const c = curMap();
             Object.entries(data.pages).forEach(([id, p]) => { if (c[id] && p.list.some(x => x.id === c[id])) p.cur = c[id]; });
             if (CAN_GZ && raw && !String(raw).startsWith(GZ) && Object.values(data.pages).some(p => p.list.length)) store();       // 예전 큰 글은 한 번 줄여 둔다
@@ -5259,6 +5268,7 @@ const mapScenes = (() => {
     // 저장은 차례대로 하나씩 (줄이는 동안 또 바뀌면 그다음에 한 번 더) → 성공 여부
     let storing = Promise.resolve(true);
     const store = () => (storing = storing.then(async () => {
+        if (!readOk) { aioToast("맵 장면 기록을 아직 못 읽어서 저장하지 않았어요 — 잠시 뒤 다시 해 주세요 (예전 장면을 덮어쓰지 않게)", { kind: "err", id: "mscn" }); return false; }
         try {
             const text = await packData(data);
             let m = handout();
@@ -5383,6 +5393,7 @@ const mapScenes = (() => {
         $(".leave").checked = leave();
         if (!pg) { ls.innerHTML = '<p class="msg">페이지를 찾지 못했어요</p>'; return; }
         if (!data) { ls.innerHTML = '<p class="msg">읽는 중…</p>'; return; }
+        if (!readOk) { ls.innerHTML = '<p class="msg">장면 기록을 아직 못 읽었어요 — 잠시 뒤 창을 다시 열어 주세요</p>'; return; }
         const p = P(pg);
         ls.innerHTML = p.list.length ? p.list.map(s => `<div class="card${s.id === p.cur ? " now" : ""}" role="listitem">`
             + `<button type="button" class="go" data-id="${escAttr(s.id)}"${s.id === p.cur ? ' aria-current="true"' : ""} title="이 장면으로 바꾸기">`
@@ -5398,6 +5409,7 @@ const mapScenes = (() => {
     const showForm = () => {
         const pg = page();
         if (!pg || !data) return;
+        if (!readOk) return aioToast("맵 장면 기록을 아직 못 읽었어요 — 잠시 뒤 다시 해 주세요", { kind: "info", id: "mscn" });
         const n = k => objsOf(pg, [k], false).length, pcs = objsOf(pg, ["objects"], false).filter(o => o.k === "g" && isPC(o.m)).length;
         const chk = (k, label, on) => `<label><input type="checkbox" name="L" value="${k}"${on ? " checked" : ""}> ${label}<span>${n(k)}개</span></label>`;
         const f = $(".fm");
@@ -5470,7 +5482,7 @@ const mapScenes = (() => {
         pop.hidden = false; place(); hideForm(); draw();
         load().then(draw);
         clearInterval(tick);
-        tick = setInterval(() => { if (!isOpen()) return clearInterval(tick); if ((page()?.id || "") !== seen) { acts = null; hideForm(); draw(); } }, 1500);      // GM 이 다른 페이지로 가면
+        tick = setInterval(() => { if (!isOpen()) return clearInterval(tick); if (!readOk) load().then(draw); if ((page()?.id || "") !== seen) { acts = null; hideForm(); draw(); } }, 1500);      // GM 이 다른 페이지로 가면
     };
     const close = () => { if (pop) pop.hidden = true; clearInterval(tick); };
     const toggle = at => (isOpen() ? close() : open(at));
@@ -5489,7 +5501,8 @@ const mapScenes = (() => {
     };
     // 밖으로 꺼낸 단추 (시나리오 내비게이터 단추 아래): 이 페이지에 저장한 장면 · 면 바로가기가 있을 때만 — 고르기용. 만들기는 맵 서랍에서
     const btn = (() => {
-        let b = null, asked = false, was = "";
+        let b = null, asked = 0, was = "";
+        const t0 = Date.now();
         const refresh = () => {
             const pg = page(), on = isGM() && btnVisible.mapshot && !!pg && !!data?.pages?.[pg.id]?.list.length;
             if (on && !b && document.getElementById("sidebarcontrol")) {
@@ -5504,7 +5517,8 @@ const mapScenes = (() => {
         };
         const inject = () => {
             if (!gmKnown() || !isGM() || !window.Campaign?.handouts?.models) return;
-            if (!asked) { asked = true; load().then(refresh).catch(() => { asked = false; }); }
+            const ready = window.Campaign.handouts.models.length || Date.now() - t0 > 30000;
+            if (ready && !readOk && Date.now() - asked > 15000) { asked = Date.now(); load().then(refresh).catch(() => { /* 다음에 다시 */ }); }
             const id = page()?.id || "";
             if (id !== was) { was = id; refresh(); }
         };
