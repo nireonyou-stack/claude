@@ -138,7 +138,8 @@
 - 버전: `@version`과 `SCRIPT_VER`를 같이 올린다. 기능 추가 = 가운데 자리, 고침 = 끝자리.
 - 사용자에게는 **GitHub 주소**로 준다 (2026-11-14 사용자 요청 — zip 은 열기 번거로움). 푸시한 뒤 이 주소를 알린다:
   `https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js`
-  (Tampermonkey 에서 열면 설치 · 업데이트 화면. 푸시 직후 몇 분은 옛 판이 보일 수 있다.)
+  알릴 때는 끝에 `?v=<버전>` 을 붙인다 (GitHub 이 5분쯤 옛 판을 내주므로 — 주소가 달라야 새로 받는다).
+  스크립트 머리의 `@updateURL` · `@downloadURL` 도 이 주소 (Tampermonkey 업데이트 확인이 여기서 받는다).
 - 테스트는 Playwright(실행 환경에 깔린 것) + 정적 서버 `tests/serve.js`(127.0.0.1:8766). jQuery · Summernote 등은 `tests/package.json`의 npm 패키지.
 
 ## 7. 지켜야 할 것

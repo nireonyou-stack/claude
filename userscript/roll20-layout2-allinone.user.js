@@ -1,6 +1,8 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.108.3
+// @version      1.108.4
+// @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
+// @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.108.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.108.4";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
