@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.108.1
+// @version      1.108.2
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.108.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.108.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -17062,6 +17062,33 @@ const selfCheck = (() => {
     // 진단용 시험 (캐릭터 값 연결 · 값 변화 알림 준비 — [다시 점검]을 누를 때만, GM 만):
     // 시트 창을 연 적 없는 캐릭터는 속성 목록이 비어 있다 → Roll20 이 시트를 열 때 하는 방식으로 읽히는지 한 캐릭터에 해 보고 진단 글에 적는다
     let attrProbe = "아직 ([다시 점검]을 누르면 해 봐요)";
+    // 페이지 폴더가 Roll20 저장소(Firebase)에 어떤 모양으로 있는지 — 읽기만 · 칸 이름과 모양만 적는다
+    let fbProbe = "아직";
+    const probeFolders = async () => {
+        if (!isGM()) { fbProbe = "GM 이 아님"; return; }
+        try {
+            const fb = window.firebase, base = window.campaign_storage_path, C = window.Campaign;
+            if (typeof fb?.database !== "function" || !base) { fbProbe = `firebase=${typeof fb?.database} 경로=${typeof base}`; return; }
+            const db = fb.database();
+            const once = (ref) => Promise.race([ref.once("value"), new Promise((_, no) => setTimeout(() => no(new Error("시간 초과")), 8000))]);
+            const keys = v => v && typeof v === "object" ? "{" + Object.keys(v).sort().map(k => `${/^-?[\w-]{15,}$/.test(k) ? "<id>" : k}:${shape(v[k]).slice(0, 24)}`).join(",") + "}" : shape(v);
+            const fid = ((C?.pages?.models || []).map(pg => String(pg.get("path") || "")).find(x => /[^,]/.test(x)) || "").split(",").filter(Boolean)[0];
+            const out = [];
+            if (fid) {
+                const v = (await once(db.ref(base + "/pages/" + fid))).val();
+                out.push("pages/<폴더>=" + (v == null ? "없음" : keys(v)));
+            }
+            for (const k of ["pagefolders", "pageFolders", "page_folders", "pagefolder", "folders", "pagemenu", "pageMenu", "pageorder", "_pageorder"]) {
+                const v = (await once(db.ref(base + "/" + k).limitToFirst(2))).val();
+                if (v != null) out.push(k + "=" + shape(v));
+            }
+            if (fid && !out.some(x => !/없음$/.test(x))) {
+                // 이름이 다른 곳: 캠페인 바로 아래 이름 몇 개를 더 (한 개씩만 읽는다)
+                for (const k of ["campaign", "folders_pages", "pagefolderlist", "vttpagefolders"]) { const v = (await once(db.ref(base + "/" + k).limitToFirst(1))).val(); if (v != null) out.push(k + "=" + shape(v)); }
+            }
+            fbProbe = out.join(" · ") || "못 찾음";
+        } catch (e) { fbProbe = "오류 " + String(e?.message || e).slice(0, 80); }
+    };
     const probeAttribs = () => {
         if (!isGM()) { attrProbe = "GM 이 아님"; return; }
         const cs = window.Campaign?.characters?.models || [], BF = window.BackboneFirebase;
@@ -17091,7 +17118,8 @@ const selfCheck = (() => {
             res ? `점검 ${res.total} 중 ${res.total - res.fail.length} 정상${res.fail.map(([a, b]) => `\n  ✗ ${a} — ${b}`).join("")}` : "점검 전",
             `최근 오류 (${AIO_ERRS.length})${AIO_ERRS.map(e => `\n  ${hm(e.t)} ${e.w}: ${e.m}${e.n > 1 ? ` (×${e.n})` : ""}`).join("") || ": 없음"}`,
             `캐릭터 속성 시험: ${attrProbe}`,
-            `페이지 폴더 찾기: ${pageProbe()}`
+            `페이지 폴더 찾기: ${pageProbe()}`,
+            `페이지 폴더 저장소: ${fbProbe}`
         ].join("\n");
     };
     // 페이지 메뉴의 폴더 · 순서가 방 데이터의 어디에 있는지 (공개 문서가 없다) — 이름 · 모양 · 길이만 (내용 글자는 안 적는다)
@@ -17178,14 +17206,14 @@ const selfCheck = (() => {
         const b = e.target.closest?.("#custom-settings-popup .cs-check button");
         if (!b) return;
         e.stopPropagation();
-        if (b.dataset.a === "re") { run(); probeAttribs(); return; }
+        if (b.dataset.a === "re") { run(); probeAttribs(); probeFolders(); return; }
         copyText(report()).then(ok => { b.textContent = ok ? "✓ 복사했어요" : "못 했어요"; setTimeout(() => { if (b.isConnected) b.textContent = "진단 복사"; }, 1500); });
     }, true);
     // Roll20 이 다 뜨기를 기다렸다가 (채팅 칸 · 방 데이터 + 4초, 길어도 60초 뒤엔)
     if (!IS_ARCHIVE) {
         const t0 = Date.now();
         const wait = () => {
-            if ((document.querySelector("#textchat .content") && window.Campaign?.handouts) || Date.now() - t0 > 20000) setTimeout(run, 4000);
+            if ((document.querySelector("#textchat .content") && window.Campaign?.handouts) || Date.now() - t0 > 20000) { setTimeout(run, 4000); setTimeout(probeFolders, 5000); }
             else setTimeout(wait, 2000);
         };
         setTimeout(wait, 2000);
