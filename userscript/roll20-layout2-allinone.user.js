@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.108.4
+// @version      1.109.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.108.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.109.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -11740,32 +11740,64 @@ const bulkEditor = (() => {
     // 폴더 만들기 · 이름 바꾸기 · 지우기는 아직 못 한다 (Roll20 페이지 메뉴에서) → 폴더 줄은 읽기만
     const pagesColl = () => window.Campaign?.pages || null;
     const pathIds = m => String(m.get("path") || "").split(",").filter(Boolean);
+    // 폴더 기록: Roll20 저장소(Firebase) 캠페인/pageFolders/<id> = { id, name, placement, (하위 폴더면 부모를 적는 칸) }
+    // 진단으로 확인 (11-14): 그 경로는 GM 이 읽을 수 있다. 하위 폴더를 적는 칸은 기록을 보고 고른다 — 모르면 폴더 끼워 넣기는 막는다
+    const FB = { data: null, ok: false, nest: "", loading: null, err: "" };
+    const fbRef = sub => window.firebase.database().ref(window.campaign_storage_path + "/" + sub);
+    const fbTimed = (pr, ms = 10000) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no(new Error("시간 초과")), ms))]);
+    const loadFolders = () => FB.loading || (FB.loading = (async () => {
+        try {
+            if (!window.campaign_storage_path || typeof window.firebase?.database !== "function") throw new Error("Roll20 저장소를 못 찾음");
+            const v = (await fbTimed(fbRef("pageFolders").once("value"))).val() || {};
+            FB.data = v; FB.ok = true; FB.err = "";
+            // 하위 폴더 표시 칸: 페이지 path 에서 둘째 뒤로 나오는 폴더의 기록에 있는 칸 (path = ",부모," · parent* = 부모 아이디)
+            const nested = new Set((pagesColl()?.models || []).flatMap(m => pathIds(m).slice(1)));
+            const keysOf = r => Object.keys(r || {}).filter(k => !/^(id|name|placement)$/.test(k));
+            const sample = [...nested].map(id => v[id]).find(Boolean), ks = sample ? keysOf(sample) : [...new Set(Object.values(v).flatMap(keysOf))];
+            FB.nest = ks.includes("path") ? "path" : ks.find(k => /^parent/i.test(k)) || "";
+        } catch (e) { FB.ok = false; FB.err = String(e?.message || e); aioErr("페이지 폴더 읽기", e, true); }
+        finally { FB.loading = null; }
+    })());
     const buildPages = () => {
-        const folders = new Map(), roots = [];
-        const folderNode = (chain, depth) => {
-            const id = chain[depth - 1];
+        const folders = new Map(), roots = [], recs = FB.ok ? FB.data || {} : {};
+        const box = { roots };
+        const mkFolder = id => {
             if (folders.has(id)) return folders.get(id);
-            const f = mkNode(id, "folder", null, { name: pgFolders.name(id) || "폴더 (이름 모름)" });
-            f.ro = true; f.unnamed = !pgFolders.name(id);
-            const parent = depth > 1 ? folderNode(chain, depth - 1) : null;
-            f.parent = parent; listOf({ roots }, parent).push(f);
+            const r = recs[id], nm = r?.name || pgFolders.name(id);
+            const f = mkNode(id, "folder", null, { name: nm || "폴더 (이름 모름)" });
+            f.ro = !FB.ok; f.unnamed = !nm; f.place = Number(r?.placement) || 0; f.rec = r || null;
             folders.set(id, f);
             return f;
         };
+        // 부모: 폴더 기록의 칸 → 없으면 페이지 path 에서 그 폴더 바로 앞 폴더
+        const parentOf = new Map();
+        (pagesColl()?.models || []).forEach(m => { const c = pathIds(m); c.forEach((id, k) => { mkFolder(id); if (k && !parentOf.has(id)) parentOf.set(id, c[k - 1]); }); });
+        Object.keys(recs).forEach(id => {
+            mkFolder(id);
+            const r = recs[id];
+            if (FB.nest === "path" && typeof r.path === "string") { const c = r.path.split(",").filter(Boolean); if (c.length) parentOf.set(id, c[c.length - 1]); else parentOf.delete(id); }
+            else if (FB.nest && r[FB.nest]) parentOf.set(id, String(r[FB.nest]));
+        });
+        folders.forEach((f, id) => {
+            let p = parentOf.has(id) ? mkFolder(parentOf.get(id)) : null;
+            for (let q = p; q; q = parentOf.has(q.id) ? folders.get(parentOf.get(q.id)) : null) if (q === f) { p = null; break; }       // 고리는 끊는다
+            f.parent = p; listOf(box, p).push(f);
+        });
         const models = [...(pagesColl()?.models || [])].sort((a, b) => (Number(a.get("placement")) || 0) - (Number(b.get("placement")) || 0)
             || String(a.get("name") || "").localeCompare(String(b.get("name") || ""), "ko", { numeric: true }));
         models.forEach(m => {
-            const chain = pathIds(m), parent = chain.length ? folderNode(chain, chain.length) : null;
+            const chain = pathIds(m), parent = chain.length ? mkFolder(chain[chain.length - 1]) : null;
             const n = mkNode(m.id, "page", m, { name: m.get("name") || "", archived: !!m.get("archived"), width: Number(m.get("width")) || 25, height: Number(m.get("height")) || 25,
                 showgrid: m.get("showgrid") !== false, background_color: m.get("background_color") || "#ffffff" });
-            n.parent = parent; listOf({ roots }, parent).push(n);
+            n.parent = parent; listOf(box, parent).push(n);
         });
-        // 폴더는 페이지 메뉴에서 본 차례 → 이름순, 페이지보다 앞에
-        const order = list => list.sort((a, b) => (!!b.kids - !!a.kids) || (a.kids && b.kids ? pgFolders.rank(a.id) - pgFolders.rank(b.id) || a.cur.name.localeCompare(b.cur.name, "ko", { numeric: true }) : 0));
+        // 폴더(차례 칸 → 메뉴에서 본 차례 → 이름순)가 페이지보다 앞에
+        const order = list => list.sort((a, b) => (!!b.kids - !!a.kids) || (a.kids && b.kids ? a.place - b.place || pgFolders.rank(a.id) - pgFolders.rank(b.id) || a.cur.name.localeCompare(b.cur.name, "ko", { numeric: true }) : 0));
         const walk = list => { order(list); list.forEach(n => n.kids && walk(n.kids)); };
         walk(roots);
         const t = flatTab("pages", roots);
         t.unnamed = [...folders.values()].filter(f => f.unnamed).length;
+        t.delFolders = [];
         if (models.length > 60) folders.forEach(f => t.collapsed.add(f.id));
         return t;
     };
@@ -14304,12 +14336,14 @@ const bulkEditor = (() => {
             thumb ? el("img", { class: "r20be-pgth", src: r20img(thumb), alt: "", loading: "lazy" }) : null);
     };
     const pageFolderPane = (t, f) => {
-        const pages = allNodes({ roots: f.kids }).filter(n => n.kind === "page");
+        const pages = allNodes({ roots: f.kids }).filter(n => n.kind === "page"), subs = allNodes({ roots: f.kids }).filter(n => n.kids).length;
         return el("div", { class: "r20be-pane-in" },
-            el("div", { class: "r20be-ph" }, el("strong", {}, "폴더"), el("span", { class: "r20be-flex" }),
-                pgBtn(`안의 페이지 ${pages.length}개 고르기`, () => { pages.forEach(n => t.checked.add(n.id)); renderTree(); renderPane(); }, { disabled: !pages.length })),
-            el("p", {}, el("b", {}, f.cur.name), ` · 페이지 ${pages.length}개`),
-            el("p", { class: "r20be-note" }, f.unnamed ? "폴더 이름을 아직 몰라요 — Roll20 페이지 메뉴를 한 번 열면 읽어 와요 (창을 다시 열면 반영)" : "폴더 이름 바꾸기 · 새 폴더 · 폴더 지우기는 Roll20 페이지 메뉴에서 해 주세요"));
+            el("div", { class: "r20be-ph" }, el("strong", {}, "폴더"), f.isNew ? el("span", { class: "r20be-tag new" }, "새 폴더") : null, el("span", { class: "r20be-flex" }),
+                pgBtn(`안의 페이지 ${pages.length}개 고르기`, () => { pages.forEach(n => t.checked.add(n.id)); renderTree(); renderPane(); }, { disabled: !pages.length }),
+                f.ro ? null : el("button", { type: "button", class: "aio-btn r20be-sec danger", title: "폴더만 지우고 안의 페이지 · 폴더는 한 단계 위로 (저장해야 반영)", onclick: () => toggleDelete(f) }, "폴더 지우기")),
+            f.ro ? el("p", {}, el("b", {}, f.cur.name), ` · 페이지 ${pages.length}개`) : el("div", { class: "r20be-grid" }, field("폴더 이름", nameInput(f))),
+            el("p", { class: "r20be-note" }, f.ro ? `폴더 기록을 못 읽었어요${FB.err ? ` (${FB.err})` : ""} — 폴더 만들기 · 이름 · 지우기는 Roll20 페이지 메뉴에서`
+                : `페이지 ${pages.length}개${subs ? ` · 하위 폴더 ${subs}개` : ""} · 끌어서 다른 폴더로${FB.nest ? "" : " (이 방은 하위 폴더 적는 법을 몰라 같은 곳 안에서 차례만)"}`));
     };
     const renderPane = () => {
         const t = cur();
@@ -14528,6 +14562,12 @@ const bulkEditor = (() => {
     };
     const toggleDelete = n => {
         const t = cur();
+        if (n.kids && t.which === "pages") {
+            if (n.ro) return setStatus("폴더 기록을 못 읽어서 폴더는 Roll20 페이지 메뉴에서 지워 주세요", "info");
+            if (!n.isNew) t.delFolders.push(n.id);
+            removeGroup(t, n);       // 안의 페이지 · 폴더는 한 단계 위로
+            return renderTree(), renderPane();
+        }
         if (n.kids) removeGroup(t, n);
         else if (n.isNew) removeNode(t, n);
         else n.deleted = !n.deleted;
@@ -14546,22 +14586,43 @@ const bulkEditor = (() => {
 
     // ── 저장 ──
     // 페이지: 지우기 → 고친 칸 · 옮긴 폴더(path) → 옮긴 페이지가 든 폴더는 안의 페이지 차례(placement)를 0 부터 다시
+    // 페이지 탭 저장: ① 새 폴더에 진짜 아이디 → ② 폴더 기록(이름 · 부모 · 차례) → ③ 페이지(지우기 · 칸 · path · 차례) → ④ 지운 폴더 기록
     const savePages = async (t, attempt) => {
-        const nodes = allNodes(t).filter(n => n.kind === "page");
-        for (const n of nodes) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
-        const pathTo = f => { const ids = []; for (let p = f; p; p = p.parent) ids.unshift(p.id); return "," + ids.map(x => x + ",").join(""); };
-        const boxes = new Set();
-        for (const n of nodes) {
+        const all = allNodes(t), fold = all.filter(n => n.kids), pages = all.filter(n => n.kind === "page");
+        const realId = f => f.fid || f.id;
+        const pathTo = f => { const ids = []; for (let p = f; p; p = p.parent) ids.unshift(realId(p)); return "," + ids.map(x => x + ",").join(""); };
+        // 차례를 다시 매길 곳: 옮겼거나 새로 생긴 것이 든 곳
+        const boxes = new Set(all.filter(n => n.moved || n.isNew).map(n => n.parent || null));
+        if (t.removed) boxes.add(null);
+        const fbW = (sub, fn) => attempt("폴더 " + sub, () => fbTimed(fn(fbRef("pageFolders/" + sub))));
+        if (FB.ok) {
+            for (const f of fold) if (f.isNew && !f.fid) f.fid = fbRef("pageFolders").push().key;
+            for (const box of boxes) (box ? box.kids : t.roots).filter(n => n.kids).forEach((f, i) => { f.newPlace = i; });
+            for (const f of fold) {
+                const id = realId(f), upd = {};
+                if (f.isNew || f.changed.has("name")) upd.name = f.cur.name || "새 폴더";
+                if (f.newPlace !== undefined && (f.isNew || Number(f.rec?.placement) !== f.newPlace)) upd.placement = f.newPlace;
+                // 맨 위 폴더는 Roll20 기록처럼 부모 칸 없이 (있던 것은 지운다 = null)
+                if (FB.nest && (f.isNew || f.moved)) upd[FB.nest] = f.parent ? (FB.nest === "path" ? pathTo(f.parent) : realId(f.parent)) : null;
+                if (f.isNew) await fbW(id, r => r.set(Object.fromEntries(Object.entries({ id, placement: 0, ...upd }).filter(([, v]) => v !== null))));
+                else if (Object.keys(upd).length) await fbW(id, r => r.update(upd));
+            }
+        }
+        for (const n of pages) if (n.deleted && !n.isNew) await attempt(n.cur.name, async () => { n.model.destroy(); removeNode(t, n); });
+        for (const n of pages) {
             if (n.deleted) continue;
             const upd = {};
             n.changed.forEach(k => { upd[k] = n.cur[k]; });
-            if (n.moved) { upd.path = pathTo(n.parent); boxes.add(n.parent || null); }
+            const want = pathTo(n.parent);
+            if (String(n.model.get("path") || ",") !== want) upd.path = want;
             if (Object.keys(upd).length) await attempt(n.cur.name, () => n.model.save(upd));
         }
         for (const box of boxes) {
             const kids = (box ? box.kids : t.roots).filter(n => n.kind === "page" && !n.deleted);
             for (let i = 0; i < kids.length; i++) if (Number(kids[i].model.get("placement")) !== i) await attempt(kids[i].cur.name + " 차례", () => kids[i].model.save({ placement: i }));
         }
+        if (FB.ok) for (const id of t.delFolders || []) await fbW(id, r => r.remove());
+        if (FB.ok) await loadFolders();       // 다시 짓기 전에 저장소의 새 기록을 읽어 둔다
     };
     const saveStruct = async t => {
         window.Campaign.save({ [t.which === "journal" ? "journalfolder" : "jukeboxfolder"]: JSON.stringify(serialize(t)) });
@@ -14879,9 +14940,9 @@ const bulkEditor = (() => {
         if (t.which === "map") t.flags = mapFlags(t);
         ui.search.value = t.q;
         ui.search.placeholder = { tables: "굴림표 이름 검색", macros: "매크로 이름·내용 검색", decks: "덱 이름 검색", images: "이름·사용처 검색", map: "그림 이름 검색", pages: "페이지 · 폴더 이름 검색", links: "이름 · 주소 · 쓰는 곳 검색" }[t.which] || "이름 검색";
-        ui.newBtn.hidden = t.which === "images" || t.which === "map" || t.which === "links" || t.which === "pages";
+        ui.newBtn.hidden = t.which === "images" || t.which === "map" || t.which === "links" || (t.which === "pages" && (!FB.ok || isFlat(t)));
         drawPagesBtn();
-        ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱" }[t.which] || "새로 만들기";
+        ui.newLabel.textContent = isFlat(t) ? `새 ${KIND_NAME[t.filter]}` : { tables: "새 굴림표", macros: "새 매크로", decks: "새 덱", pages: "새 폴더" }[t.which] || "새로 만들기";
         const defs = t.which === "pages" ? (() => { const ps = allNodes(t).filter(n => n.kind === "page"); return [["all", `전체 ${ps.length}`], ["archived", `보관 ${ps.filter(n => n.cur.archived).length}`]]; })()
             : t.which === "journal" ? [["all", "전체"], ["handout", "핸드아웃만"], ["char", "캐릭터만"]]
             : t.which === "bgm" ? [["all", "전체"], ["track", "트랙"], ["group", "플레이리스트"]]
@@ -14932,6 +14993,13 @@ const bulkEditor = (() => {
         if (tab === "decks" && !decksColl()) { setStatus("덱을 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "map" && !pageNow()?.thegraphics) { setStatus("지금 페이지를 아직 불러오지 못했습니다", "err"); return; }
         if (tab === "pages" && !pagesColl()) { setStatus("페이지를 아직 불러오지 못했습니다", "err"); return; }
+        if (tab === "pages" && !FB.ok && !FB.loading && isGM()) loadFolders().then(() => {
+            const t = S.pages;
+            if (!FB.ok || !t || t.removed || allNodes(t).some(nodeDirty)) return;
+            const keep = { sel: t.sel, q: t.q, filter: t.filter };
+            S.pages = Object.assign(buildPages(), keep);
+            if (S.tab === "pages" && ui.root.classList.contains("r20be-show")) render();
+        });
         // 다른 페이지로 옮겼고 맵 탭에 저장 안 한 변경이 없으면 새로 읽는다
         if (tab === "map" && S.map && S.map.page !== pageNow() && !allNodes(S.map).some(nodeDirty)) S.map = null;
         S.tab = tab;
@@ -14966,6 +15034,7 @@ const bulkEditor = (() => {
         if (isFlat(t)) return createNode(t.filter);
         if (t.which === "tables") return openTableTemplate();
         if (t.which === "macros") return createNode("macro");
+        if (t.which === "pages") { if (!FB.nest) t.sel = null; return createNode("folder"); }        // 하위 폴더 적는 법을 모르면 맨 위에만
         if (t.which === "decks") return createNode("deck");
         const items = t.which === "journal" ? [["handout", "핸드아웃"], ["char", "캐릭터"], ["folder", "폴더"]] : [["group", "플레이리스트"]];
         ui.menu.textContent = "";
@@ -14983,7 +15052,8 @@ const bulkEditor = (() => {
         if (!row) return { parent: null, before: null, row: null };     // 빈 곳: 맨 위 단계 끝
         const n = find(t, row.dataset.id);
         if (!n || n === d) return null;
-        if (t.which === "pages" && n.kids) return { parent: n, before: null, row, into: true };
+        if (t.which === "pages" && d.kids && !FB.nest) return n.parent === d.parent ? { parent: n.parent, before: n, row } : null;     // 하위 폴더 적는 법을 모름: 같은 곳에서 차례만
+        if (t.which === "pages" && n.kids && !isAncestor(d, n)) return { parent: n, before: null, row, into: true };
         if (n.kids && (t.which === "journal" || !d.kids) && !isAncestor(d, n)) return { parent: n, before: null, row, into: true };
         if (t.which === "bgm" && d.kids) { let top = n; while (top.parent) top = top.parent; return { parent: null, before: top, row }; }
         return { parent: n.parent, before: n, row };
@@ -15030,7 +15100,7 @@ const bulkEditor = (() => {
         const clearDrop = () => tr.querySelectorAll(".drop-in,.drop-before").forEach(r => r.classList.remove("drop-in", "drop-before"));
         tr.addEventListener("dragstart", e => {
             const row = e.target.closest?.(".r20be-row");
-            if (!row || !["journal", "bgm", "pages"].includes(cur().which) || (cur().which === "pages" && find(cur(), row.dataset.id)?.kids)) { e.preventDefault(); return; }
+            if (!row || !["journal", "bgm", "pages"].includes(cur().which) || (cur().which === "pages" && find(cur(), row.dataset.id)?.ro)) { e.preventDefault(); return; }
             dragId = row.dataset.id;
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", dragId);
