@@ -138,7 +138,9 @@
 - 버전: `@version`과 `SCRIPT_VER`를 같이 올린다. 기능 추가 = 가운데 자리, 고침 = 끝자리.
 - 사용자에게는 **GitHub 주소**로 준다 (2026-11-14 사용자 요청 — zip 은 열기 번거로움). 푸시한 뒤 이 주소를 알린다:
   `https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js`
-  알릴 때는 끝에 `?v=<버전>` 을 붙인다 (GitHub 이 5분쯤 옛 판을 내주므로 — 주소가 달라야 새로 받는다).
+  푸시 직후에는 GitHub 이 브랜치 주소로 몇 분 동안 옛 판을 내준다 (`?v=` 를 붙여도 그대로 — 2026-11-14 확인).
+  그래서 바로 받을 주소는 **커밋 주소**로 준다: `https://raw.githubusercontent.com/nireonyou-stack/claude/<커밋 해시>/userscript/roll20-layout2-allinone.user.js`
+  — 거기서 설치해도 다음 업데이트는 아래 `@updateURL`(브랜치 주소)로 받는다.
   스크립트 머리의 `@updateURL` · `@downloadURL` 도 이 주소 (Tampermonkey 업데이트 확인이 여기서 받는다).
 - 테스트는 Playwright(실행 환경에 깔린 것) + 정적 서버 `tests/serve.js`(127.0.0.1:8766). jQuery · Summernote 등은 `tests/package.json`의 npm 패키지.
 
