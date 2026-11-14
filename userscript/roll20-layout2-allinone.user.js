@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.104.0
+// @version      1.105.0
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -20,7 +20,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.104.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.105.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -5005,6 +5005,8 @@ const mapFit = (() => {
         if (!b0) return { err: "고른 층에 놓인 것이 없어요" };
         // 여백 · 크기는 맵과 같은 70px 칸으로 센다 (격자 한 칸이 7px 인 촘촘한 페이지도 있다). 옮기는 거리만 격자 칸 단위
         const W0 = num(pg, "width", 25), H0 = num(pg, "height", 25), m = Math.max(0, +st.margin || 0) * 70;
+        // 여백을 넣을 쪽만 (안 고른 쪽은 0)
+        const sd = String(st.sides ?? "lrtb"), ml = sd.includes("l") ? m : 0, mr = sd.includes("r") ? m : 0, mt = sd.includes("t") ? m : 0, mb = sd.includes("b") ? m : 0;
         let k = 1, b = b0;
         if (st.mode === "scale") {
             // 격자를 지키는 배율만: 키우기는 2 · 3 · 4배, 줄이기는 ½ · ⅓ · ¼ 중 칸에 딱 맞는 토큰이 모두 그 배수일 때만
@@ -5014,7 +5016,7 @@ const mapFit = (() => {
                 const isGrid = Math.abs(w / cell - Math.round(w / cell)) < 0.01 && Math.abs(h / cell - Math.round(h / cell)) < 0.01;
                 return !isGrid || [w, h, t.box.x0 - g.ox, t.box.y0 - g.oy].every(v => Math.abs(mod(Math.round(v / cell), d)) < 1e-6);
             });
-            const fits = f => (b0.x1 - b0.x0) * f + 2 * m <= W0 * 70 + 0.5 && (b0.y1 - b0.y0) * f + 2 * m <= H0 * 70 + 0.5;
+            const fits = f => (b0.x1 - b0.x0) * f + ml + mr <= W0 * 70 + 0.5 && (b0.y1 - b0.y0) * f + mt + mb <= H0 * 70 + 0.5;
             const cands = [4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4].filter(f => f >= 1 || safeDown(Math.round(1 / f)));
             k = cands.find(fits) || 0;
             if (!k) return { err: "격자를 지키며 맵 안에 맞출 배율이 없어요 — 여백을 줄이거나 '맵을 내용에'를 써 보세요" };
@@ -5025,11 +5027,11 @@ const mapFit = (() => {
         // 맞추기: 비율이 있으면 1% 안쪽 크기 · 없으면 딱 그만큼 / 가운데 · 배율: 넘치는 쪽만 늘린다
         const size = (nw, nh) => st.mode === "fit" ? (r ? fitRatio(Math.max(1, nw), Math.max(1, nh), r) : [Math.max(1, nw), Math.max(1, nh)]) : [Math.max(W0, nw), Math.max(H0, nh)];
         // 옮길 거리 — 칸 단위로, 여백을 지키며 가운데에 가장 가깝게. 칸이 안 들어가면 그쪽을 한 칸 늘려 크기(비율)부터 다시
-        let nw = Math.ceil((cw + 2 * m - 0.5) / 70), nh = Math.ceil((ch + 2 * m - 0.5) / 70), Wu = W0, Hu = H0, dx = null, dy = null;
+        let nw = Math.ceil((cw + ml + mr - 0.5) / 70), nh = Math.ceil((ch + mt + mb - 0.5) / 70), Wu = W0, Hu = H0, dx = null, dy = null;
         for (let i = 0; i < 8; i++) {
             [Wu, Hu] = size(nw, nh);
-            dx = pickShift(m - b.x0, Wu * 70 - m - b.x1, (Wu * 70 - cw) / 2 - b.x0, cell);
-            dy = pickShift(m - b.y0, Hu * 70 - m - b.y1, (Hu * 70 - ch) / 2 - b.y0, cell);
+            dx = pickShift(ml - b.x0, Wu * 70 - mr - b.x1, ml + (Wu * 70 - ml - mr - cw) / 2 - b.x0, cell);
+            dy = pickShift(mt - b.y0, Hu * 70 - mb - b.y1, mt + (Hu * 70 - mt - mb - ch) / 2 - b.y0, cell);
             if (dx !== null && dy !== null) break;
             if (dx === null) nw = Wu + 1;
             if (dy === null) nh = Hu + 1;
@@ -5116,6 +5118,7 @@ const mapFit = (() => {
         $(".rrow").hidden = st.mode !== "fit";
         $(".margin").innerHTML = MARGINS.map(v => chip("data-margin", v, v, +st.margin === v)).join("")
             + `<input type="number" min="0" max="200" step="1" aria-label="여백 직접 (칸)" placeholder="직접" value="${MARGINS.includes(+st.margin) ? "" : st.margin}">`;
+        $(".sides").innerHTML = [["l", "왼쪽"], ["r", "오른쪽"], ["t", "위"], ["b", "아래"]].map(([v, l]) => chip("data-side", v, l, String(st.sides ?? "lrtb").includes(v))).join("");
         $(".layers").innerHTML = LAYERS.map(([v, l]) => chip("data-layer", v, l, st.layers.includes(v))).join("");
         const p = plan();
         $(".sum").textContent = "";
@@ -5160,7 +5163,7 @@ const mapFit = (() => {
         pop.innerHTML = '<div class="hd"><b>맵 맞추기</b><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>'
             + '<div class="bd"><span class="lb">방식</span><div class="rg mode"></div>'
             + '<div class="rrow"><span class="lb">맵 비율 <small>1% 안쪽으로</small></span><div class="rg ratio"></div></div>'
-            + '<span class="lb">여백 (칸) <small>가장 좁은 쪽</small></span><div class="rg margin"></div>'
+            + '<span class="lb">여백 (칸) <small>가장 좁은 쪽</small></span><div class="rg margin"></div><div class="rg sides" role="group" aria-label="여백을 넣을 쪽"></div>'
             + '<span class="lb">범위를 셀 층 <small>옮기는 건 전부</small></span><div class="rg layers"></div>'
             + '<div class="grid"></div><div class="sum" aria-live="polite"></div>'
             + '<div class="go"><button type="button" class="undo">되돌리기</button><button type="button" class="pri">맞추기</button></div><div class="prog" aria-live="polite"></div></div>';
@@ -5171,6 +5174,7 @@ const mapFit = (() => {
             if (b.dataset.mode) st.mode = b.dataset.mode;
             else if (b.dataset.ratio) st.ratio = b.dataset.ratio;
             else if (b.dataset.margin != null) st.margin = +b.dataset.margin;
+            else if (b.dataset.side) { const v = b.dataset.side, c = String(st.sides ?? "lrtb"); st.sides = c.includes(v) ? c.replace(v, "") : c + v; }
             else if (b.dataset.layer) { const v = b.dataset.layer; st.layers = st.layers.includes(v) ? st.layers.filter(x => x !== v) : [...st.layers, v]; }
             else if (b.dataset.act === "far") st.far = !st.far;
             else if (b.dataset.act === "align") return alignAll();
@@ -7112,6 +7116,12 @@ const portraits = (() => {
         B.classList.toggle("r20pz-nopic", on && !c.pics);
         document.documentElement.style.setProperty("--r20pz-z", String(on && c.size ? c.size / 150 : 1));
         if (on && ac()) markNames();
+        // 위쪽 자리: 왼쪽 도구 줄과 겹치지 않게 그 오른쪽 끝에 붙인다 (도구 줄이 위쪽만 차지하는 '짧게'에서는 Roll20 이 자리를 안 비켜 준다)
+        const pz = document.getElementById("playerzone"), tb = document.querySelector(".master-toolbar-outer"), r = tb?.getBoundingClientRect();
+        if (pz) {
+            if (on && c.pos === "tl" && r && r.height > 0 && r.right > 0) pz.style.setProperty("left", Math.round(r.right + 4) + "px", "important");
+            else if (pz.style.getPropertyPriority("left") === "important") pz.style.removeProperty("left");
+        }
     };
     const save = patch => { try { localStorage.setItem(KEY, JSON.stringify({ ...cfg(), ...patch })); } catch (e) { /* 저장 못 함 */ } apply(); requestAnimationFrame(() => { apply(); placePop(); }); };
 
@@ -7802,6 +7812,44 @@ addCss(`
             }
         }
 `);
+// ───────── GM 레이어 · GM 어둠 불투명도: 숫자 칸 자리에 켜고 끄는 스위치 (0% ↔ 50%) — Roll20 화면 설정 창 (GM) ─────────
+// Roll20 창의 속 구조를 모르므로 글자로 찾는다: 슬라이더와 숫자 칸이 같이 있고 가까이에 'GM 레이어 / GM 어둠'이 적힌 줄. 못 찾으면 아무것도 안 한다
+const gmOpacity = (() => {
+    const RE = /GM\s*(레이어|어둠|Layer|Darkness)/i;
+    const setVal = (el, v) => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, String(v));      // Vue 가 바뀐 것을 알도록 원래 setter + 이벤트
+        el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    const inject = () => {
+        if (!btnVisible.screenui || !isGM()) return;
+        document.querySelectorAll('input[type="range"]').forEach(rg => {
+            if (rg._aioSw || rg.closest("#r20be, #r20-vb, [id^='r20-']")) return;
+            let row = rg.parentElement, num = null;
+            for (let i = 0; row && i < 4 && !(num = row.querySelector('input[type="number"], input[type="text"]')); i++) row = row.parentElement;
+            if (!num || !RE.test((row.textContent + " " + (row.previousElementSibling?.textContent || "")).slice(0, 300))) return;
+            rg._aioSw = true;
+            const wrap = num.parentElement && !num.parentElement.contains(rg) ? num.parentElement : num;
+            const sw = document.createElement("button");
+            sw.type = "button"; sw.className = "r20-gmo"; sw.setAttribute("role", "switch"); sw.innerHTML = '<i aria-hidden="true"></i><span></span>';
+            const sync = () => { const on = +rg.value > 0; sw.setAttribute("aria-checked", String(on)); sw.lastChild.textContent = Math.round(+rg.value) + "%"; sw.title = sw.ariaLabel = on ? "끄기 (0%)" : "켜기 (50%)"; };
+            sw.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); const v = +rg.value > 0 ? 0 : 50; setVal(rg, v); setVal(num, v); sync(); });
+            rg.addEventListener("input", sync); rg.addEventListener("change", sync);
+            wrap.style.display = "none";
+            wrap.after(sw);
+            sync();
+        });
+    };
+    return { inject };
+})();
+addCss(`
+        .r20-gmo { display:inline-flex; align-items:center; gap:6px; flex:none; height:var(--aio-h); margin:0 0 0 8px; padding:0 4px; border:0; background:none; box-shadow:none; color:inherit; font-size:var(--aio-fs-md); cursor:pointer; }
+        .r20-gmo i { position:relative; width:30px; height:16px; border-radius:var(--aio-r-lg); background:var(--aio-bg-5); }
+        .r20-gmo i::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
+        .r20-gmo[aria-checked=true] i { background:var(--aio-accent); }
+        .r20-gmo[aria-checked=true] i::after { left:16px; }
+        .r20-gmo span { min-width:30px; text-align:right; font-variant-numeric:tabular-nums; }
+`);
+addFeature("gmOpacity", gmOpacity);
 addFeature("sidePicker", sidePicker);
 addFeature("tokenMenu", tokenMenu);
 addFeature("tokenActs", tokenActs);
@@ -16177,6 +16225,8 @@ const abTok = (() => {
         let show = localStorage.getItem("r20_abt_show") !== "false", max = localStorage.getItem("r20_abt_max") ?? "10";
         let bar = localStorage.getItem("r20_abt_bar") === "none" ? "" : bars[0] || "", pl = localStorage.getItem("r20_abt_pl") !== "false", act = localStorage.getItem("r20_abt_act") !== "false";
         const ORD = { on: 0, same: 1, "": 2, other: 3 };
+        // 겹친 순서: 페이지의 zorder 에서 뒤에 있을수록 위 (가장 나중에 올린 것)
+        const zs = String(pg.get("zorder") || "").split(","), zAt = g => { const i = zs.indexOf(g.id); return i < 0 ? zs.length + toks().indexOf(g) : i; };
         const picked = new Map();       // 토큰 → 체크 (처음: 이미 연결된 것 · 이름이 같은 것)
         pop = document.createElement("div");
         pop.id = "r20-abt"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", `${x.nm} 을 토큰에 연결`);
@@ -16188,11 +16238,13 @@ const abTok = (() => {
         let tab = "map", q = "", src = -1, card = -1, deckId = localStorage.getItem("r20_abt_deck") || "", optOpen = false;
         const thumb = (u, nm) => `<img src="${escAttr(sizedUrl(r20img(u || ""), "thumb"))}" alt="" loading="lazy"><span>${escAttr(nm)}</span>`;
         const draw = () => {
-            const list = toks().map(g => ({ g, st: state(g) })).filter(t => t.st === "on" || !t.g.get("represents")).sort((a, b) => ORD[a.st] - ORD[b.st] || String(a.g.get("name")).localeCompare(String(b.g.get("name"))));
-            list.forEach(t => { if (!picked.has(t.g)) picked.set(t.g, t.st === "on" || t.st === "same"); });
+            const list = toks().map(g => ({ g, st: state(g) })).filter(t => t.st === "on" || !t.g.get("represents")).sort((a, b) => ORD[a.st] - ORD[b.st] || zAt(b.g) - zAt(a.g));
+            // 이름이 같은 토큰이 없으면 맨 위 토큰 하나를 미리 고른다 (쌓아 둔 토큰 더미에서 맨 위 것부터 쓰게)
+            const first = !list.some(t => picked.has(t.g)) && !list.some(t => t.st) && list[0];
+            list.forEach(t => { if (!picked.has(t.g)) picked.set(t.g, t.st === "on" || t.st === "same" || t === first); });
             // 복사 원본: 같은 그림은 한 칸으로 (수백 장 복사해 둔 것도 종류별로 하나씩 · 많은 것부터)
             const kinds = new Map();
-            toks().forEach(g => { const k = String(g.get("imgsrc") || "").replace(/\?.*$/, ""), v = kinds.get(k) || { g, n: 0 }; v.n++; kinds.set(k, v); });
+            toks().forEach(g => { const k = String(g.get("imgsrc") || "").replace(/\?.*$/, ""), v = kinds.get(k) || { g, n: 0 }; v.n++; if (zAt(g) > zAt(v.g)) v.g = g; kinds.set(k, v); });       // 원본은 그 종류의 맨 위 것
             const n = list.filter(t => picked.get(t.g)).length, all = [...kinds.values()].sort((a, b) => b.n - a.n), ds = decks(), dk = ds.find(d => d.id === deckId) || ds[0], cards = (dk?.cards?.models || []).filter(m => m.get("avatar"));
             let body = "", go = "";
             if (tab === "map") {

@@ -59,7 +59,7 @@ const SHOT = process.env.SHOT;
   // 반복 줄 + 다른 토큰에: 치유 → 이름 없는 토큰 (이름도 맞춤)
   await hover('.repitem [name="attr_Magic_Name"]'); await p.click('#r20-abt-chip'); await p.waitForSelector('#r20-abt');
   console.log('치유 창 토큰:', await rows());
-  await p.evaluate(() => [...document.querySelectorAll('#r20-abt .row')].find(r => r.querySelector('span').firstChild.textContent === '이름 없는').querySelector('input').click());
+  // 이름이 같은 토큰이 없으면 맨 위(가장 나중에 올린) 토큰이 미리 체크돼 있다 → 그대로 [연결]
   await p.click('#r20-abt .go'); await p.waitForTimeout(150);
   console.log('반복 줄 연결:', await tok('g3'), '| 액션:', await p.evaluate(() => __c1.abilities.models.find(a => a.get('name') === '📜 치유')?.get('action').slice(0, 90)));
   // 풀기: 체크를 빼고 누름 → 연결 풀고 토큰 액션도 지움
