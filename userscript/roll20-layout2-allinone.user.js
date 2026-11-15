@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.109.2
+// @version      1.110.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.109.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.110.0";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -512,7 +512,7 @@ function applyCocofoliaLayout() {
         zText.className = "cs-text";
         zText.dataset.tip = "올인원이 띄우는 창 전체 — 일괄 편집기 · 말하는 사람 고르기 · 설정 · 이모지 · 시트 촬영 · 말풍선 …";
         zText.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "글자 크기" }));
-        zRow.append(zText, aioZoom.control("cs-seg"));
+        zRow.append(zText, aioZoom.control("aio-seg"));
         // 쓰임새별 묶음 (UX 원칙 4) — 줄들은 .cs-blk 로 감싸 찾기에서 한 덩어리로 보이고 숨는다 (display:contents 라 모양은 그대로)
         const blk = (...rows) => { const d = document.createElement("div"); d.className = "cs-blk"; d.append(...rows); return d; };
         const gh = (name, hint) => { const d = document.createElement("div"); d.className = "cs-gh"; d.innerHTML = `<b>${escAttr(name)}</b><span>${escAttr(hint)}</span>`; return d; };
@@ -539,7 +539,7 @@ function applyCocofoliaLayout() {
         sadamName.className = "cs-name";
         sadamName.textContent = "사담";
         const seg = document.createElement("div");
-        seg.className = "cs-seg";
+        seg.className = "aio-seg";
         seg.setAttribute("role", "radiogroup");
         seg.setAttribute("aria-label", "사담 단추");
         const sadamNow = () => btnVisible.charsadam ? "char" : btnVisible.sadam ? "owner" : "off";
@@ -1323,10 +1323,21 @@ const CORE_CSS = `
         .aio-chip.lg { height:var(--aio-h); padding:0 10px; border-radius:13px; }
         .aio-chip:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         .aio-chip:is(.on, [aria-pressed="true"]) { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
-        /* 공용 부품: 머리줄 아이콘 단추 (📌 · ✕ 등) — 22px · 테두리 없음 · 누른 상태는 강조색 옅게 */
-        :is(#r20-sn, #r20-qf, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn) {
+        /* 공용 부품: 머리줄 아이콘 단추 .aio-ib (📌 · ✕ — 22px · 테두리 없음) · 스위치 .aio-sw (button role=switch + <i>) · 고르기 막대 .aio-seg (role=radio 단추들)
+           :is(html, #r20be) — 어디서나 맞되 구체성은 id 급이라 창마다 쓴 '#창 button' 규칙보다 앞선다. 자리마다 고칠 때는 '#창 .이름' 으로 */
+        :is(html, #r20be) {
             & .aio-ib { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:1; cursor:pointer; }
             & .aio-ib:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
+            & .aio-sw { display:inline-flex; align-items:center; gap:6px; flex:none; height:var(--aio-h-sm); margin:0; padding:0 4px; border:0; background:none; box-shadow:none; color:inherit; font-size:var(--aio-fs-sm); font-weight:400; cursor:pointer; }
+            & .aio-sw i { position:relative; flex:none; width:26px; height:14px; border-radius:var(--aio-r); background:var(--aio-bg-5); }
+            & .aio-sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
+            & .aio-sw[aria-checked=true] i { background:var(--aio-accent); }
+            & .aio-sw[aria-checked=true] i::after { left:14px; }
+            & .aio-seg { display:inline-flex; flex-shrink:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); overflow:hidden; }
+            & .aio-seg button { height:20px; margin:0; padding:0 7px; border:0; border-left:1px solid var(--aio-line-2); border-radius:0; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); cursor:pointer; }
+            & .aio-seg button:first-child { border-left:0; }
+            & .aio-seg button[aria-checked="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
+            & .aio-seg button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:-2px; }
         }
         /* 공용 창 틀 — ⠿ 끌기 손잡이 · 자리 고르기 (aioDockSeg) */
         .aio-drag { flex:none; width:14px; color:var(--aio-ink-5); font-size:var(--aio-fs-lg); line-height:1; text-align:center; cursor:move; user-select:none; touch-action:none; }
@@ -1439,11 +1450,6 @@ const CORE_CSS = `
         .cs-name { font-size:var(--aio-fs-md); color:var(--aio-ink-2); }
         .cs-tip { position:fixed; z-index:calc(var(--aio-z-tip) + 5); max-width:240px; padding:4px 8px; border-radius:var(--aio-r-sm); background:var(--aio-tip); color:var(--aio-ink-inv); font-size:var(--aio-fs-sm); line-height:1.45; pointer-events:none; word-break:keep-all; box-shadow:var(--aio-shadow-sm); }
         .cs-sep { flex-shrink:0; height:0; margin:3px 0; border-top:1px solid var(--aio-line-2); }
-        .cs-seg { display:flex; flex-shrink:0; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); overflow:hidden; }
-        .cs-seg button { height:20px; margin:0; padding:0 7px; border:0; border-left:1px solid var(--aio-line); background:var(--aio-bg); color:var(--aio-ink-4); font-size:var(--aio-fs-sm); cursor:pointer; }
-        .cs-seg button:first-child { border-left:0; }
-        .cs-seg button[aria-checked="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); }
-        .cs-seg button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:-2px; }
 `;
 
 // ══════════ 묶음 1 · 주크박스 · 저널 목록 간소화 ══════════
@@ -4850,15 +4856,15 @@ const ccfImport = (() => {
             + '<input type="file" multiple accept=".zip,.webm,.mp4,.gif,.png,.webp,.jpg,.jpeg" hidden></div>'
             + '<div class="rg pw" hidden><input type="password" placeholder="ZIP 암호" aria-label="ZIP 암호" autocomplete="off"><button type="button" data-k="pw">열기</button></div>'
             + '<label class="rg scn" hidden><span>장면</span><select></select></label><div class="info"></div>'
-            + '<button type="button" class="sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button>'
-            + '<button type="button" class="sw lay" role="switch" hidden><i aria-hidden="true"></i>올린 그림을 지금 페이지에도 늘어놓기</button><canvas class="pv" hidden></canvas>'
+            + '<button type="button" class="sw aio-sw conv" role="switch" hidden><i aria-hidden="true"></i>움직이는 그림은 webm 으로 바꿔 올리기</button>'
+            + '<button type="button" class="sw aio-sw lay" role="switch" hidden><i aria-hidden="true"></i>올린 그림을 지금 페이지에도 늘어놓기</button><canvas class="pv" hidden></canvas>'
             + '<div class="set"><div class="rg"><span>칸 크기</span><button type="button" data-cell="24">원본 24px</button><button type="button" data-cell="70">Roll20 70px</button>'
-            + '<button type="button" class="sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
+            + '<button type="button" class="sw aio-sw grid" role="switch"><i aria-hidden="true"></i>그리드 표시</button></div>'
             + '<div class="pg"></div><div class="warn"></div></div>'
             + '<div class="scs" hidden><div class="pkh"><span>맵 장면으로 만들 장면 <b class="pkn"></b></span><button type="button" data-pk="all">모두</button><button type="button" data-pk="none">없음</button></div>'
             + '<div class="pkl" role="group" aria-label="맵 장면으로 만들 장면"></div>'
             + '<button type="button" class="all" title="코코포리아처럼: 장면을 바꾸면 배경 · 필드 · 마커만 바뀌고 스크린 패널은 그대로 — 맵 도구의 \'맵 장면\' 카드로"></button>'
-            + '<button type="button" class="sw pan" role="switch"><i aria-hidden="true"></i>스크린 패널도 지금 페이지에 놓기 (한 번만)</button></div>'
+            + '<button type="button" class="sw aio-sw pan" role="switch"><i aria-hidden="true"></i>스크린 패널도 지금 페이지에 놓기 (한 번만)</button></div>'
             + '<div class="go"><button type="button" class="pri">가져오기</button><span class="prog" aria-live="polite"></span></div></div>';
         const inp = $("input[type=file]");
         $(".pw input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); tryPw(); } });
@@ -5627,7 +5633,7 @@ addCss(`
             & select { flex:1; min-width:0; height:24px; margin:0; padding:0 4px; font-size:var(--aio-fs-md); }
             & .pv { display:block; max-width:100%; margin:0 auto; border-radius:var(--aio-r-sm); }
             & .pv[hidden] { display:none; }
-            & .sw { display:flex; align-items:center; gap:6px; margin-left:auto; padding:0; border:0; background:none; font-weight:400; }
+            & .sw { margin-left:auto; padding:0; }
             & .conv, & .lay { align-self:flex-start; margin-left:0; }
             & .conv[hidden], & .lay[hidden] { display:none; }
             & .scs { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:6px 0; border-top:1px solid var(--aio-line-4); border-bottom:1px solid var(--aio-line-4); }
@@ -5641,10 +5647,6 @@ addCss(`
             & .pkl label:hover { background:var(--aio-bg-2); }
             & .pkl input { margin:0; flex:none; }
             & .pkl span { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-            & .sw i { position:relative; width:26px; height:14px; border-radius:var(--aio-r); background:var(--aio-bg-5); }
-            & .sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
-            & .sw[aria-checked=true] i { background:var(--aio-accent); }
-            & .sw[aria-checked=true] i::after { left:14px; }
             & .pg b { color:var(--aio-ink-2); }
             & .pg i { display:inline-block; width:10px; height:10px; margin:0 3px 0 4px; border:1px solid var(--aio-line); border-radius:2px; vertical-align:-1px; }
             & .warn { color:var(--aio-warn); font-size:var(--aio-fs-sm); }
@@ -5917,7 +5919,7 @@ const sideOrder = (() => {
         box = document.createElement("div");
         box.className = "r20so";
         box.innerHTML = `<div class="r20so-dlg" role="dialog" aria-modal="true" aria-labelledby="r20so-t">
-            <div class="r20so-h"><b id="r20so-t"></b><button type="button" class="r20so-x" aria-label="닫기">✕</button></div>
+            <div class="r20so-h"><b id="r20so-t"></b><button type="button" class="r20so-x aio-ib" aria-label="닫기">✕</button></div>
             <div class="r20so-grid" role="listbox" aria-multiselectable="true" aria-label="면 순서"></div>
             <div class="r20so-bar">
                 <button type="button" data-m="all" title="전체 선택">전체</button><button type="button" data-m="none" title="선택 해제">해제</button><button type="button" data-m="inv" title="선택 반전">반전</button>
@@ -6019,8 +6021,7 @@ addCss(`
     .r20so-dlg { width:min(470px, calc((100vw - 32px) / var(--aio-z, 1))); height:min(640px, calc((100vh - 40px) / var(--aio-z, 1))); min-width:300px; min-height:260px; max-width:calc((100vw - 16px) / var(--aio-z, 1)); max-height:calc((100vh - 16px) / var(--aio-z, 1)); resize:both; overflow:hidden; display:flex; flex-direction:column; background:var(--aio-bg); color:var(--aio-ink);
         border-radius:var(--aio-r-lg); box-shadow:var(--aio-shadow-lg); font:14px/1.5 system-ui, "Malgun Gothic", sans-serif; }
     .r20so-h { display:flex; align-items:baseline; gap:8px; padding:12px 14px 10px; border-bottom:1px solid var(--aio-line-3); }
-    .r20so-h b { font-size:var(--aio-fs-xl); }
-    .r20so-x { margin-left:auto; border:0; background:none; font-size:var(--aio-fs-xl); color:var(--aio-ink-4); cursor:pointer; padding:2px 6px; border-radius:var(--aio-r); }
+    .r20so-h b { flex:1; font-size:var(--aio-fs-xl); }
     .r20so-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(88px, 1fr)); align-content:start; gap:10px; flex:1 1 auto; min-height:0; padding:14px; overflow:auto; }
     .r20so-t.mk { border-color:var(--aio-accent); background:var(--aio-accent-bg); }
     .r20so-sp { flex:1; }
@@ -7115,7 +7116,7 @@ const edgeDock = (() => {
         name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "덱 · 매크로 자리" }));
         name.dataset.tip = "오른쪽 판 왼쪽 끝: 단추줄 밑에 덱 카드 → 매크로 단추를 세로로 (매크로가 길면 휠 · 손가락으로 위아래) · 원래 자리: 덱은 Roll20 자리, 매크로는 맵 아래 줄";
         const seg = document.createElement("div");
-        seg.className = "cs-seg";
+        seg.className = "aio-seg";
         seg.setAttribute("role", "radiogroup");
         seg.setAttribute("aria-label", "덱 · 매크로 자리");
         const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode())));
@@ -7183,7 +7184,7 @@ const leftBar = (() => {
         name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "왼쪽 도구 줄" }));
         name.dataset.tip = "가늘게: 26px · 라벨 글씨 숨김 · 짧게: 단추 길이만큼 반투명 · 숨김 띠: 평소 4px, 마우스를 왼쪽 끝에 대면 나옴";
         const seg = document.createElement("div");
-        seg.className = "cs-seg";
+        seg.className = "aio-seg";
         seg.setAttribute("role", "radiogroup");
         seg.setAttribute("aria-label", "왼쪽 도구 줄");
         const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode())));
@@ -7272,7 +7273,7 @@ const portraits = (() => {
             + grp("📜 볼 수 있는 핸드아웃", hos, "inplayerjournals", "📜") + (isGM() ? "" : '<p class="pn">내 화면에 보이는 것 중에서만</p>');
     };
     // ── 설정 (자리 · 크기 · 줄 · 이름) ──
-    const SEG = (k, list, v) => `<span class="seg" role="radiogroup" data-k="${k}">${list.map(([x, l]) => `<button type="button" role="radio" data-v="${x}" aria-checked="${x === v}">${l}</button>`).join("")}</span>`;
+    const SEG = (k, list, v) => `<span class="seg aio-seg" role="radiogroup" data-k="${k}">${list.map(([x, l]) => `<button type="button" role="radio" data-v="${x}" aria-checked="${x === v}">${l}</button>`).join("")}</span>`;
     const setHtml = () => {
         const c = cfg();
         return `<div class="r"><b>자리</b>${SEG("pos", [["bl", "왼쪽 아래"], ["tl", "왼쪽 위"]], c.pos)}</div>`
@@ -7337,7 +7338,7 @@ const portraits = (() => {
         const mine = popFor === me(), nm = nameOf(popFor) || "플레이어";
         const tabs = mine && !isGM() ? `<span class="tabs"><button type="button" data-tab="set" aria-pressed="${tab === "set"}">설정</button><button type="button" data-tab="perm" aria-pressed="${tab === "perm"}">내 권한</button></span>` : "";
         const body = mine && (isGM() || tab === "set") ? setHtml() : permHtml(popFor);
-        pop.innerHTML = `<div class="hd"><b>${mine ? "포트레이트" : escAttr(nm) + " — 저널 권한"}</b>${tabs}<button type="button" data-a="x" class="x" aria-label="닫기">✕</button></div><div class="bd">${body}</div>`;
+        pop.innerHTML = `<div class="hd"><b>${mine ? "포트레이트" : escAttr(nm) + " — 저널 권한"}</b>${tabs}<button type="button" data-a="x" class="x aio-ib" aria-label="닫기">✕</button></div><div class="bd">${body}</div>`;
         placePop();
         vbList();
     };
@@ -7421,12 +7422,9 @@ addCss(`
             & .hd { display:flex; align-items:center; gap:6px; height:32px; padding:0 4px 0 10px; border-bottom:1px solid var(--aio-line-4); flex-shrink:0; }
             & .hd b { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
             & button { margin:0; font:inherit; cursor:pointer; box-shadow:none; }
-            & .x { width:24px; height:24px; padding:0; border:0; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-4); }
             & .tabs { display:inline-flex; gap:2px; } & .tabs button { height:22px; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-sm); } & .tabs button[aria-pressed="true"] { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
             & .bd { overflow-y:auto; padding:6px 10px 10px; }
             & .r { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:6px 0; } & .r > b { width:56px; font-weight:400; color:var(--aio-ink-4); } & .r > b.b2 { width:auto; margin-left:6px; }
-            & .seg { display:inline-flex; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
-            & .seg button { height:22px; padding:0 7px; border:0; background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-sm); } & .seg button[aria-checked="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
             & input[type=range] { width:110px; height:14px; margin:0; accent-color:var(--aio-accent); }
             & .sv { min-width:34px; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); }
             & .rs { height:22px; padding:0 8px; border:1px solid var(--aio-line-2); border-radius:11px; background:var(--aio-bg); color:var(--aio-ink-3); font-size:var(--aio-fs-sm); }
@@ -7993,7 +7991,7 @@ const gmOpacity = (() => {
             rg._aioSw = true;
             const wrap = num.parentElement && !num.parentElement.contains(rg) ? num.parentElement : num;
             const sw = document.createElement("button");
-            sw.type = "button"; sw.className = "r20-gmo"; sw.setAttribute("role", "switch"); sw.innerHTML = '<i aria-hidden="true"></i><span></span>';
+            sw.type = "button"; sw.className = "r20-gmo aio-sw"; sw.setAttribute("role", "switch"); sw.innerHTML = '<i aria-hidden="true"></i><span></span>';
             const sync = () => { const on = +rg.value > 0; sw.setAttribute("aria-checked", String(on)); sw.lastChild.textContent = Math.round(+rg.value) + "%"; sw.title = sw.ariaLabel = on ? "끄기 (0%)" : "켜기 (50%)"; };
             sw.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); const v = +rg.value > 0 ? 0 : 50; setVal(rg, v); setVal(num, v); sync(); });
             rg.addEventListener("input", sync); rg.addEventListener("change", sync);
@@ -8005,11 +8003,6 @@ const gmOpacity = (() => {
     return { inject };
 })();
 addCss(`
-        .r20-gmo { display:inline-flex; align-items:center; gap:6px; flex:none; height:var(--aio-h); margin:0 0 0 8px; padding:0 4px; border:0; background:none; box-shadow:none; color:inherit; font-size:var(--aio-fs-md); cursor:pointer; }
-        .r20-gmo i { position:relative; width:30px; height:16px; border-radius:var(--aio-r-lg); background:var(--aio-bg-5); }
-        .r20-gmo i::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
-        .r20-gmo[aria-checked=true] i { background:var(--aio-accent); }
-        .r20-gmo[aria-checked=true] i::after { left:16px; }
         .r20-gmo span { min-width:30px; text-align:right; font-variant-numeric:tabular-nums; }
 `);
 addFeature("gmOpacity", gmOpacity);
@@ -10426,7 +10419,7 @@ const winMemory = (() => {
         name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "기억 방식" }));
         name.dataset.tip = "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리 (덱 선택창 등 그 밖의 창은 늘 창 제목마다)";
         const seg = document.createElement("div");
-        seg.className = "cs-seg";
+        seg.className = "aio-seg";
         seg.setAttribute("role", "radiogroup");
         seg.setAttribute("aria-label", "기억 방식");
         const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode)));
@@ -10931,7 +10924,7 @@ const scenNav = (() => {
             + '<div class="tgr" role="separator" aria-orientation="vertical" aria-label="목차 너비" title="끌어서 목차 너비 · 두 번 누르면 기본"></div><div class="pane">'
             + '<div class="tb"><input type="search" class="q" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
             + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
-            + '<span class="md" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
+            + '<span class="md aio-seg" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
             + '<div class="bd" tabindex="-1"></div><div class="lg" tabindex="-1" hidden></div></div></div>'
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>'
             + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>'
@@ -11439,8 +11432,6 @@ addCss(`
             & .hd { display:flex; align-items:center; gap:2px; flex-shrink:0; height:30px; padding:0 3px 0 3px; border-bottom:1px solid var(--aio-line-4); cursor:move; touch-action:none; user-select:none; }
             & .nm { flex:0 1 auto; min-width:0; max-width:40%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:var(--aio-fs-md); }
             & .mt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
-            & .ib { flex-shrink:0; width:22px; height:22px; margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:22px; cursor:pointer; box-shadow:none; }
-            & .ib:hover { background:var(--aio-bg-3); }
             & .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
             & .pin { filter:grayscale(1); opacity:0.5; } & .pin[aria-pressed="true"] { filter:none; opacity:1; }
             & .warn { color:var(--aio-warn); }
@@ -11511,9 +11502,6 @@ addCss(`
             & .tb { display:flex; align-items:center; gap:4px; flex-shrink:0; padding:3px 6px; border-bottom:1px solid var(--aio-line-4); }
             & :is(.q, .pq) { flex:1; min-width:0; width:auto !important; height:20px !important; margin:0 !important; padding:0 6px !important; border:0 !important; border-radius:var(--aio-r) !important; background:var(--aio-bg-3) !important; box-shadow:none !important; font-size:var(--aio-fs-sm) !important; }
             & .qn { color:var(--aio-ink-5); font-size:var(--aio-fs-sm); white-space:nowrap; }
-            & .md { display:inline-flex; flex-shrink:0; border:1px solid var(--aio-line-2); border-radius:var(--aio-r); overflow:hidden; }
-            & .md button { height:20px; margin:0; padding:0 6px; border:0; background:var(--aio-bg); color:var(--aio-ink-4); font-size:var(--aio-fs-sm); line-height:20px; cursor:pointer; box-shadow:none; }
-            & .md button[aria-checked="true"] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
             /* 본문: 핸드아웃 서식 그대로 (Roll20 핸드아웃 창과 같은 바탕 글꼴 · 크기) — 우리 쪽은 장 머리 · GM 메모 테두리만 */
             & .bd { position:relative; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:4px 10px 12px; font-size:var(--aio-fs-xl); line-height:1.5; color:var(--aio-ink-2); user-select:text; outline:none; overflow-wrap:anywhere; }
             & .bd.sep section:not(.on) { display:none; }
@@ -12754,7 +12742,7 @@ const bulkEditor = (() => {
         const pg = window.Campaign?.activePage?.(), tc = tlChar(), mc = isT ? null : tlMacChar(name);
         const target = isT ? tc : mc;
         ui.tl.append(el("div", { class: "hd" }, el("b", {}, `'${name}' ${isT ? "굴림표" : "매크로"}를 토큰에 연결`),
-                el("button", { type: "button", class: "x", "aria-label": "닫기", onclick: () => { ui.tl.hidden = true; } }, "✕")),
+                el("button", { type: "button", class: "x aio-ib", "aria-label": "닫기", onclick: () => { ui.tl.hidden = true; } }, "✕")),
             el("p", {}, `지금 페이지 '${pg?.get("name") || "?"}' · 토큰 층 — 연결한 토큰을 누르면 클릭 메뉴(또는 위쪽 토큰 액션 줄)에 `
                 + (isT ? "'🎲 굴리기' · '🤫 몰래 굴리기'" : `'${name}'`)));
         if (isT && /\s/.test(name)) ui.tl.append(el("p", { class: "warn" }, "표 이름에 띄어쓰기가 있어 Roll20 굴림(1t[…])이 안 될 수 있어요 — 이름에서 띄어쓰기를 빼고 저장한 뒤 연결해 주세요."));
@@ -14322,7 +14310,7 @@ const bulkEditor = (() => {
         const num = (k, label) => el("input", { class: "r20be-in r20be-num", type: "number", min: 1, max: 1000, value: n.cur[k], "aria-label": label,
             onchange: e => { const v = Math.max(1, Math.min(1000, Math.round(+e.target.value) || 1)); setField(n, k, v); refreshRow(n); renderPane(); } });
         const ratio = (r, label) => el("button", { type: "button", class: "aio-chip", title: `가로에 맞춰 세로를 ${label} 비율로`, onclick: () => { setField(n, "height", Math.max(1, Math.round(n.cur.width / r))); refreshRow(n); renderPane(); } }, label);
-        const seg = (on, fn) => el("span", { class: "r20be-seg2", role: "radiogroup", "aria-label": "격자" },
+        const seg = (on, fn) => el("span", { class: "r20be-seg2 aio-seg", role: "radiogroup", "aria-label": "격자" },
             el("button", { type: "button", role: "radio", "aria-checked": String(on), onclick: () => fn(true) }, "보임"),
             el("button", { type: "button", role: "radio", "aria-checked": String(!on), onclick: () => fn(false) }, "숨김"));
         const thumb = n.model?.get("thumbnail");
@@ -15628,9 +15616,6 @@ addCss(`
             & .r20be-num { width:64px; }
             & .r20be-pgrow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:8px 0; }
             & .r20be-pgrow .r20be-lb { min-width:56px; }
-            & .r20be-seg2 { display:inline-flex; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-sm); overflow:hidden; }
-            & .r20be-seg2 button { height:var(--aio-h-sm); margin:0; padding:0 9px; border:0; background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); cursor:pointer; }
-            & .r20be-seg2 button[aria-checked=true] { background:var(--aio-accent); color:var(--aio-ink-inv); font-weight:700; }
             & .r20be-clr { width:34px; height:var(--aio-h-sm); margin:0; padding:0 2px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); }
             & .r20be-pgth { display:block; max-width:min(100%, 420px); max-height:240px; margin-top:8px; border-radius:var(--aio-r-sm); object-fit:contain; background:var(--aio-bg-3); }
             & .r20be-fold .danger { color:var(--aio-bad); }
@@ -15776,8 +15761,6 @@ addCss(`
             & .r20be-tlink {
                 & .hd { display:flex; align-items:center; gap:6px; }
                 & .hd b { flex:1; font-size:var(--aio-fs-lg); }
-                & .hd .x { flex:none; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-5); cursor:pointer; }
-                & .hd .x:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
                 & p { margin:0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
                 & p.warn { color:var(--aio-warn); }
                 & .list { display:flex; flex-direction:column; max-height:calc(36vh / var(--aio-z, 1)); overflow-y:auto; border-top:1px solid var(--aio-line-4); }
@@ -16095,11 +16078,11 @@ const attrWatch = (() => {
         const watched = cfg.chars.includes(c.id);
         host.dataset.id = c.id;
         host.textContent = "";
-        const sw = (on, label, fn) => el("button", { type: "button", class: "aw-sw", role: "switch", "aria-checked": String(on), "aria-label": label, title: label, onclick: fn }, el("i", { "aria-hidden": "true" }));
+        const sw = (on, label, fn) => el("button", { type: "button", class: "aw-sw aio-sw", role: "switch", "aria-checked": String(on), "aria-label": label, title: label, onclick: fn }, el("i", { "aria-hidden": "true" }));
         const list = el("div", { class: "aw-list" }, el("p", {}, "값을 받아 오는 중…"));
         const q = el("input", { type: "search", class: "aw-q aw-in", value: q0, placeholder: "다른 값 찾기", "aria-label": `${nm}의 다른 값 찾기 — 이름 · 지금 값` });
         add(host,
-            el("div", { class: "hd" }, el("b", {}, `🔔 ${nm}`), el("button", { type: "button", class: "x", "aria-label": "닫기", onclick: () => { host.hidden = true; } }, "✕")),
+            el("div", { class: "hd" }, el("b", {}, `🔔 ${nm}`), el("button", { type: "button", class: "x aio-ib", "aria-label": "닫기", onclick: () => { host.hidden = true; } }, "✕")),
             el("div", { class: "aw-top", title: "켜면 이 캐릭터의 값(아래 🔔 가 켜진 것)이 바뀔 때 채팅에 알려요 — 이 브라우저(GM)로 방에 들어와 있는 동안만" }, el("b", {}, "지켜보기"),
                 sw(watched, "이 캐릭터 지켜보기", () => follow(c, !watched).then(() => { redraw(); onChange?.(); }))),
             list);
@@ -16172,11 +16155,6 @@ const attrWatch = (() => {
 addCss(`
         #r20be .r20be-tlink.r20be-aw { width:min(520px, calc((100vw - 40px) / var(--aio-z, 1))); max-height:calc(78vh / var(--aio-z, 1)); overflow-y:auto; }
         #r20be .r20be-aw {
-            & .aw-sw { display:flex; align-items:center; gap:6px; flex:none; height:var(--aio-h-sm); margin:0; padding:0 4px; border:0; background:none; box-shadow:none; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); cursor:pointer; }
-            & .aw-sw i { position:relative; width:26px; height:14px; border-radius:var(--aio-r); background:var(--aio-bg-5); }
-            & .aw-sw i::after { content:""; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--aio-bg); transition:left .15s; }
-            & .aw-sw[aria-checked=true] i { background:var(--aio-accent); }
-            & .aw-sw[aria-checked=true] i::after { left:14px; }
             & .aw-top { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px solid var(--aio-line-4); border-bottom:1px solid var(--aio-line-4); }
             & .aw-v { display:grid; grid-template-columns:minmax(0, 1fr) minmax(48px, auto) 30px 30px; gap:6px; align-items:center; }
             & .aw-list { display:flex; flex-direction:column; flex:1 1 auto; min-height:120px; padding:0 6px 6px; overflow-y:auto; border:1px solid var(--aio-line-4); border-radius:var(--aio-r-sm); }
@@ -16684,7 +16662,7 @@ const abTok = (() => {
             } else {
                 body = `<div class="ft"><button type="button" class="aio-btn mk" data-mk="file">그림 파일 고르기</button><button type="button" class="aio-btn mk" data-mk="avatar">캐릭터 그림으로</button><span></span></div>`;
             }
-            pop.innerHTML = `<div class="hd"><b title="${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층">'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x" aria-label="닫기">✕</button></div>`
+            pop.innerHTML = `<div class="hd"><b title="${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층">'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>`
                 + `<div class="tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" class="aio-chip" role="tab" data-tab="${k}" title="${TIP[k]}" aria-selected="${k === tab}" aria-pressed="${k === tab}">${t}</button>`).join("")}</div>`
                 + body
                 + `<div class="opts"${optOpen ? "" : " hidden"}>`
@@ -16834,8 +16812,6 @@ addCss(`
         #r20-abt {
             & .hd { display:flex; align-items:center; gap:6px; }
             & .hd b { flex:1; font-size:var(--aio-fs-lg); }
-            & .x { flex:none; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; border:0; border-radius:var(--aio-r-sm); background:transparent; box-shadow:none; color:var(--aio-ink-5); cursor:pointer; }
-            & .x:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
             & p { margin:0; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); }
             & .list { display:flex; flex-direction:column; flex:none; min-height:40px; max-height:236px; overflow-y:auto; border-top:1px solid var(--aio-line-4); }
             & .row[hidden] { display:none; }
