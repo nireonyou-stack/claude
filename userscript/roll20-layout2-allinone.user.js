@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.110.3
+// @version      1.110.4
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,14 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.110.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.110.4";     // @version 과 같이 올린다
+
+// 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
+const aioPref = {
+    get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    on: k => aioPref.get(k) !== "false",          // 켜고 끄기 (기본 켬)
+    set: (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+};
 
 const CONFIG={
     prefix: "/desc ",
@@ -36,46 +43,46 @@ let isDescMode = false;
 let isSadamMode = false;
 let activeCustomBtn = null;
 
-let localSadam = localStorage.getItem("r20_show_sadam") !== "false";
-let localCharSadam = localStorage.getItem("r20_show_charsadam") !== "false";
+let localSadam = aioPref.on("r20_show_sadam");
+let localCharSadam = aioPref.on("r20_show_charsadam");
 if (localSadam && localCharSadam) {
     localCharSadam = false;
     localStorage.setItem("r20_show_charsadam", "false");
 }
 
 const btnVisible = {
-    desc:      localStorage.getItem("r20_show_desc")    !== "false",
+    desc:      aioPref.get("r20_show_desc")    !== "false",
     sadam:     localSadam,
     charsadam: localCharSadam,
-    journal:   localStorage.getItem("r20_show_journal") !== "false",
-    autofill:  localStorage.getItem("r20_show_autofill") !== "false",
-    bgm:       localStorage.getItem("r20_show_bgm")     !== "false",
-    bulk:      localStorage.getItem("r20_show_bulk")    !== "false",
-    jbrow:     localStorage.getItem("r20_show_jbrow")   !== "false",
-    sidepick:  localStorage.getItem("r20_show_sidepick") !== "false",
-    qpick:     localStorage.getItem("r20_show_qpick")   !== "false",
-    tokmenu:   localStorage.getItem("r20_show_tokmenu") !== "false",
-    pageslim:  localStorage.getItem("r20_show_pageslim") !== "false",
-    artroom:   localStorage.getItem("r20_show_artroom") !== "false",
-    screenui:  localStorage.getItem("r20_show_screenui") !== "false",
-    tokact:    localStorage.getItem("r20_show_tokact") !== "false",
-    capture:   localStorage.getItem("r20_show_capture") !== "false",
-    sheetshot: localStorage.getItem("r20_show_sheetshot") !== "false",
-    deckview:  localStorage.getItem("r20_show_deckview") !== "false",
-    macrobar:  localStorage.getItem("r20_show_macrobar") !== "false",
-    mapshot:   localStorage.getItem("r20_show_mapshot") !== "false",
-    emoji:     localStorage.getItem("r20_show_emoji") !== "false",
-    logbak:    localStorage.getItem("r20_show_logbak") !== "false",
-    tokset:    localStorage.getItem("r20_show_tokset") !== "false",
-    qfind:     localStorage.getItem("r20_show_qfind") !== "false",
-    winmem:    localStorage.getItem("r20_show_winmem") !== "false",
-    scen:      localStorage.getItem("r20_show_scen") !== "false",
-    jbdrawer:  localStorage.getItem("r20_show_jbdrawer") !== "false",
-    jbmini:    localStorage.getItem("r20_show_jbmini") !== "false",
-    portrait:  localStorage.getItem("r20_show_portrait") !== "false",
-    home:      localStorage.getItem("r20_show_home") !== "false",
-    abtok:     localStorage.getItem("r20_show_abtok") !== "false",
-    vboard:    localStorage.getItem("r20_show_vboard") !== "false"
+    journal:   aioPref.on("r20_show_journal"),
+    autofill:  aioPref.on("r20_show_autofill"),
+    bgm:       aioPref.get("r20_show_bgm")     !== "false",
+    bulk:      aioPref.get("r20_show_bulk")    !== "false",
+    jbrow:     aioPref.get("r20_show_jbrow")   !== "false",
+    sidepick:  aioPref.on("r20_show_sidepick"),
+    qpick:     aioPref.get("r20_show_qpick")   !== "false",
+    tokmenu:   aioPref.on("r20_show_tokmenu"),
+    pageslim:  aioPref.on("r20_show_pageslim"),
+    artroom:   aioPref.on("r20_show_artroom"),
+    screenui:  aioPref.on("r20_show_screenui"),
+    tokact:    aioPref.on("r20_show_tokact"),
+    capture:   aioPref.on("r20_show_capture"),
+    sheetshot: aioPref.on("r20_show_sheetshot"),
+    deckview:  aioPref.on("r20_show_deckview"),
+    macrobar:  aioPref.on("r20_show_macrobar"),
+    mapshot:   aioPref.on("r20_show_mapshot"),
+    emoji:     aioPref.on("r20_show_emoji"),
+    logbak:    aioPref.on("r20_show_logbak"),
+    tokset:    aioPref.on("r20_show_tokset"),
+    qfind:     aioPref.on("r20_show_qfind"),
+    winmem:    aioPref.on("r20_show_winmem"),
+    scen:      aioPref.on("r20_show_scen"),
+    jbdrawer:  aioPref.on("r20_show_jbdrawer"),
+    jbmini:    aioPref.on("r20_show_jbmini"),
+    portrait:  aioPref.on("r20_show_portrait"),
+    home:      aioPref.on("r20_show_home"),
+    abtok:     aioPref.on("r20_show_abtok"),
+    vboard:    aioPref.on("r20_show_vboard")
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -100,7 +107,7 @@ const sharedBtnStyle = `
 `;
 
 function getCustomBtns() {
-    try { return JSON.parse(localStorage.getItem("r20_custom_btns") || "[]"); } catch(e) { return []; }
+    try { return JSON.parse(aioPref.get("r20_custom_btns") || "[]"); } catch(e) { return []; }
 }
 function saveCustomBtns(btns) {
     localStorage.setItem("r20_custom_btns", JSON.stringify(btns));
@@ -533,24 +540,9 @@ function applyCocofoliaLayout() {
             if (d) d.style.display = on ? "" : "none";
         }));
         // 사담 단추: 끔 · 오너 · 캐릭터 중 하나
-        const sadamRow = document.createElement("div");
-        sadamRow.className = "cs-row";
-        const sadamName = document.createElement("span");
-        sadamName.className = "cs-name";
-        sadamName.textContent = "사담";
-        const seg = document.createElement("div");
-        seg.className = "aio-seg";
-        seg.setAttribute("role", "radiogroup");
-        seg.setAttribute("aria-label", "사담 단추");
-        const sadamNow = () => btnVisible.charsadam ? "char" : btnVisible.sadam ? "owner" : "off";
-        const paintSeg = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === sadamNow())));
-        [["off", "끔"], ["owner", "오너"], ["char", "캐릭터"]].forEach(([v, label]) => {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.dataset.v = v;
-            b.textContent = label;
-            b.setAttribute("role", "radio");
-            b.onclick = () => {
+        const sadamRow = aioSegRow("사담", "", [["off", "끔"], ["owner", "오너"], ["char", "캐릭터"]],
+            () => btnVisible.charsadam ? "char" : btnVisible.sadam ? "owner" : "off",
+            v => {
                 btnVisible.sadam = v === "owner";
                 btnVisible.charsadam = v === "char";
                 localStorage.setItem("r20_show_sadam", String(btnVisible.sadam));
@@ -558,12 +550,7 @@ function applyCocofoliaLayout() {
                 if (v === "off") isSadamMode = false;
                 const sBtn = document.getElementById("custom-sadam-toggle");
                 if (sBtn) { sBtn.style.display = v === "off" ? "none" : ""; updateSadamButtonStyle(sBtn); }
-                paintSeg();
-            };
-            seg.appendChild(b);
-        });
-        paintSeg();
-        sadamRow.append(sadamName, seg);
+            });
         settingsPopup.appendChild(sadamRow);
         byPlace("chat").forEach(b => settingsPopup.append(blk(...bundleRows(b))));
         settingsPopup.appendChild(sep());
@@ -1227,9 +1214,25 @@ const DIRTY = { all: true, set: new Set() };
 const AIO_ZOOMED = "#r20-abt, #aio-toasts, #custom-settings-popup, #cs-side-panel, .cs-tip, #custom-journal-popup, .r20jb-tip, .r20jb-menu, #r20ss, #r20ss-bar, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, .r20so, .r20tm-tip, .r20ta-pop, #r20be, #r20-ac-box, #r20-emoji, #r20-qf, #r20-pz-pop, #r20-sn";
 // 올인원이 만든 요소의 뿌리 (확대 안 받는 것 포함) — 숨김 · 체크박스 등 공용 규칙의 범위
 const AIO_ROOTS = AIO_ZOOMED + ", #r20-jbd-res, #r20-jbm, #r20-home-toast, #r20-scb, #r20-scd, #r20-scq, .aio-pm, .aio-gd-menu, .r20-dockbtn";
+// 설정 줄 하나: 이름(말풍선 설명) + 값 고르기 막대 .aio-seg — opts [[값, 글], …] · get() → 지금 값 · set(값) 뒤에 표시를 다시 맞춘다
+function aioSegRow(label, tip, opts, get, set) {
+    const mk = (tag, cls, txt) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, txt != null ? { textContent: txt } : {});
+    const row = mk("div", "cs-row"), name = mk("span", "cs-text"), seg = mk("div", "aio-seg");
+    name.appendChild(mk("span", "cs-name", label));
+    if (tip) name.dataset.tip = tip;
+    seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", label);
+    const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === get())));
+    opts.forEach(([v, l]) => {
+        const b = mk("button", "", l); b.type = "button"; b.dataset.v = v; b.setAttribute("role", "radio");
+        b.onclick = () => { set(v); sync(); };
+        seg.appendChild(b);
+    });
+    sync(); row.append(name, seg);
+    return row;
+}
 const aioZoom = (() => {
     const KEY = "r20_aio_zoom", CHAT = "r20_aio_zoom_chat", MIN = 0.8, MAX = 2;
-    let z = Math.min(MAX, Math.max(MIN, parseFloat(localStorage.getItem(KEY)) || 1));
+    let z = Math.min(MAX, Math.max(MIN, parseFloat(aioPref.get(KEY)) || 1));
     const ctrls = new Set();
     const paint = () => ctrls.forEach(c => {
         c.querySelector(".aio-zv").textContent = Math.round(z * 100) + "%";
@@ -1239,7 +1242,7 @@ const aioZoom = (() => {
     const apply = () => document.documentElement.style.setProperty("--aio-z", z);
     const chat = on => {
         if (on !== undefined) localStorage.setItem(CHAT, String(on));
-        const v = localStorage.getItem(CHAT) === "true";
+        const v = aioPref.get(CHAT) === "true";
         document.documentElement.classList.toggle("r20-zchat", v);
         return v;
     };
@@ -1626,13 +1629,13 @@ const jukeboxRow = (() => {
     const volOf = li => Number(trackOf(li)?.get("volume") ?? li.querySelector(".volume input.slider")?.value ?? 0);
 
     // ◂ ▸ 조절 단위(%)는 주크박스 위 칸에서 그때그때 바꾼다 (수동 페이드용)
-    let STEP = Math.max(1, Math.min(50, parseInt(localStorage.getItem("r20jb_step"), 10) || 5));
+    let STEP = Math.max(1, Math.min(50, parseInt(aioPref.get("r20jb_step"), 10) || 5));
     // 페이드 아웃: ◂ ▸ 와 같은 길(Roll20 볼륨 막대 + 저장)로 FADE 초 동안 0 까지 줄이기만 하고, 정지는 직접 누른다.
     // (예전 '정지 페이드'는 저장값만 줄이고 정지를 대신 눌러서, Roll20 이 막대에 남은 옛 볼륨으로 잠깐 크게 되살아났다)
     // 줄이기 전 볼륨은 기억했다가 그 곡을 다음에 재생할 때 되돌린다. 멈춘 동안 ◂ ▸ 로 직접 바꾸면 그 값을 따른다
-    let FADE = Math.max(1, Math.min(30, parseInt(localStorage.getItem("r20jb_fade"), 10) || 3));
-    const held = (() => { try { return new Map(Object.entries(JSON.parse(localStorage.getItem("r20jb_held") || "{}"))); } catch (e) { return new Map(); } })();
-    const keepHeld = () => { try { localStorage.setItem("r20jb_held", JSON.stringify(Object.fromEntries(held))); } catch (e) { /* 저장 못 함 */ } };
+    let FADE = Math.max(1, Math.min(30, parseInt(aioPref.get("r20jb_fade"), 10) || 3));
+    const held = (() => { try { return new Map(Object.entries(JSON.parse(aioPref.get("r20jb_held") || "{}"))); } catch (e) { return new Map(); } })();
+    const keepHeld = () => { aioPref.set("r20jb_held", JSON.stringify(Object.fromEntries(held))); };
     const fading = new Map();       // 곡 id → 페이드 멈추기
     const rowOf = id => document.querySelector(`#jukebox li.jukeboxitem[data-itemid="${CSS.escape(id)}"]`);
     const isPlaying = li => li?.querySelector("a.play")?.dataset.isplaying === "true";
@@ -2356,16 +2359,16 @@ const jbDrawer = (() => {
     let on = false, hd = null, grip = null, hgrip = null, res = null, pass = false, ro = null, hits = [], at = 0;
     const tab = () => document.getElementById("jukeboxtab");
     const pane = () => document.getElementById("jukebox");
-    const width = () => Math.max(240, Math.min(600, parseInt(localStorage.getItem(W_KEY) || "300", 10) || 300));
-    const pinned = () => localStorage.getItem(PIN_KEY) === "true";
-    const half = () => localStorage.getItem(MODE_KEY) === "half";
+    const width = () => Math.max(240, Math.min(600, parseInt(aioPref.get(W_KEY) || "300", 10) || 300));
+    const pinned = () => aioPref.get(PIN_KEY) === "true";
+    const half = () => aioPref.get(MODE_KEY) === "half";
     let dkSeg = null;       // 자리 고르기 (붙임 · ½)
     const sideRect = () => { const r = document.getElementById("rightsidebar")?.getBoundingClientRect(); return r && r.width > 0 && r.left < innerWidth - 1 ? r : null; };
     // 단추줄 맨 아래 — 반쪽 서랍은 그 밑에서만 (단추줄을 가리지 않게)
     const dockBottom = () => Math.max(0, ...["sidebarcontrol", "page-button", "vm_zoom_buttons", "r20-mapshot", "r20-bebtn", "r20-snbtn", "r20-mscnbtn", "r20-qfbtn"]
         .map(id => document.getElementById(id)?.getBoundingClientRect()).filter(r => r && r.height).map(r => r.bottom));
     // 서랍 위 끝 (화면 좌표): 전체 = 채팅 판 위 · 반쪽 = 화면 아래에서 기억한 높이만큼
-    const topOf = r => half() ? Math.round(Math.max(r.top, dockBottom() + 6, innerHeight - Math.max(160, parseInt(localStorage.getItem(H_KEY) || "340", 10) || 340))) : Math.round(r.top);
+    const topOf = r => half() ? Math.round(Math.max(r.top, dockBottom() + 6, innerHeight - Math.max(160, parseInt(aioPref.get(H_KEY) || "340", 10) || 340))) : Math.round(r.top);
     // 서랍 왼쪽 끝 (화면 좌표) — 화면 배치가 단추줄을 그 왼쪽에 쌓는다. 반쪽이면 단추줄 밑이라 그대로
     const leftEdge = () => { if (!on || half()) return null; const r = sideRect(); return r ? r.left - width() : null; };
     const place = () => {
@@ -3191,8 +3194,8 @@ const sheetShot = (() => {
     // ── 숨길 부분 고르기: 실제 시트에서 덩어리를 눌러 잠깐 숨긴다(아래가 위로 붙는다) → 찍기 → 미리보기. 닫으면 시트는 그대로 돌아온다 ──
     // 시트 종류별로 숨긴 자리(시트 안 경로 + 클래스)를 기억해 두면 같은 시트의 다른 캐릭터에도 처음부터 적용한다
     const MEM_KEY = "r20_sheetshot_hide";
-    const memLoad = () => { try { return JSON.parse(localStorage.getItem(MEM_KEY)) || {}; } catch (e) { return {}; } };
-    const memSave = m => { try { localStorage.setItem(MEM_KEY, JSON.stringify(m)); } catch (e) { /* 저장 공간 없음 */ } };
+    const memLoad = () => { try { return JSON.parse(aioPref.get(MEM_KEY)) || {}; } catch (e) { return {}; } };
+    const memSave = m => { aioPref.set(MEM_KEY, JSON.stringify(m)); };
     const clsOf = e => String(e.className?.baseVal ?? e.className ?? "").replace(/\br20ss-\S+/g, "").trim();
     // 시트 종류: 맨 위 몇 층의 태그 · 클래스 모양 (반복 섹션 줄 수와 무관)
     const kindOf = sheet => {
@@ -3232,7 +3235,7 @@ const sheetShot = (() => {
             + '<label class="r20ss-mem"><input type="checkbox"> 이 시트 종류에 기억</label>'
             + '<span class="r20ss-grp"><button type="button" data-a="cancel" title="그만두기 (Esc)">취소</button><button type="button" data-a="shot" class="pri">찍기 ▶</button></span>';
         const hint = bar.querySelector(".r20ss-hint"), num = bar.querySelector(".r20ss-n"), mem = bar.querySelector(".r20ss-mem input");
-        mem.checked = localStorage.getItem("r20_sheetshot_remember") !== "false";
+        mem.checked = aioPref.on("r20_sheetshot_remember");
         mem.addEventListener("change", () => localStorage.setItem("r20_sheetshot_remember", String(mem.checked)));
         const status = () => {
             num.textContent = `숨김 ${hidden.length}`;
@@ -3361,7 +3364,7 @@ const sheetShot = (() => {
 // 주소 · 열쇠는 ⚙ 설정(이 브라우저에만 저장) · 열쇠는 홈페이지 import.roll20.config.php 와 같은 값
 const homeExport = (() => {
     const URL_KEY = "r20_home_url", KEY_KEY = "r20_home_key";
-    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ""; localStorage.setItem(k, v); } catch (e) { return ""; } };
+    const ls = (k, v) => { try { if (v === undefined) return aioPref.get(k) || ""; localStorage.setItem(k, v); } catch (e) { return ""; } };
     const ready = () => /^https:\/\//i.test(ls(URL_KEY)) && ls(KEY_KEY).length >= 12;
     let toastEl = null, toastT = 0;
     const toast = (html, ms = 6000) => {
@@ -3591,8 +3594,8 @@ const logBackup = (() => {
     const R20 = /^https?:\/\/(?:[^/]*\.)?(?:roll20\.net|d20\.io)\/|^https?:\/\/s3\.amazonaws\.com\/files\.d20\.io\//i;
     const MAP_KEY = "r20lb_imgmap";
     let imgMap = {};
-    try { imgMap = JSON.parse(localStorage.getItem(MAP_KEY)) || {}; } catch (e) {}
-    const saveMap = () => { try { localStorage.setItem(MAP_KEY, JSON.stringify(imgMap)); } catch (e) {} };
+    try { imgMap = JSON.parse(aioPref.get(MAP_KEY)) || {}; } catch (e) {}
+    const saveMap = () => { aioPref.set(MAP_KEY, JSON.stringify(imgMap)); };
     let found = null;           // 바꾸는 동안 만난 Roll20 그림: 주소 → 이름표
     const swap = (u, label) => {
         if (!R20.test(u)) return u;
@@ -4126,18 +4129,18 @@ const mapShot = (() => {
 const ccfImport = (() => {
     const UP_KEY = "r20_ccf_up";
     const CAN_CONV = typeof ImageDecoder === "function" && typeof VideoEncoder === "function";
-    let conv = localStorage.getItem("r20_ccf_conv") !== "false";
-    let lay = localStorage.getItem("r20_ccf_lay") !== "false";        // 그림 묶음: 올린 그림을 지금 페이지에도 늘어놓기
+    let conv = aioPref.on("r20_ccf_conv");
+    let lay = aioPref.on("r20_ccf_lay");        // 그림 묶음: 올린 그림을 지금 페이지에도 늘어놓기
     const MIME = { png: "image/png", apng: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", webm: "video/webm", mp4: "video/mp4" };
     const R20 = /^https:\/\/(?:s3\.amazonaws\.com\/)?files\.d20\.io\//i;
     let pop = null, anchor = null, zip = null, zipName = "", data = null, scenes = [], sel = 0, grid = null, busy = false, stop = false;
     let pending = null, zipPw = null;      // 암호를 기다리는 ZIP, 맞힌 암호(바이트)
     let pack = null;                       // 룸 데이터가 없는 ZIP: 올릴 그림 이름들
-    let cell = localStorage.getItem("r20_ccf_cell") === "70" ? 70 : 24;      // 기본은 코코포리아 그림 그대로 (1칸 = 24px)
+    let cell = aioPref.get("r20_ccf_cell") === "70" ? 70 : 24;      // 기본은 코코포리아 그림 그대로 (1칸 = 24px)
     const extra = new Map();          // 확장자 뺀 이름 → 바꿔 올릴 파일
     const blobs = new Map(), looks = new Map(), bitmaps = new Map(), anims = new Map();
-    const upMap = (() => { try { return JSON.parse(localStorage.getItem(UP_KEY) || "{}") || {}; } catch (e) { return {}; } })();
-    const saveUp = () => { try { localStorage.setItem(UP_KEY, JSON.stringify(upMap)); } catch (e) {} };
+    const upMap = (() => { try { return JSON.parse(aioPref.get(UP_KEY) || "{}") || {}; } catch (e) { return {}; } })();
+    const saveUp = () => { aioPref.set(UP_KEY, JSON.stringify(upMap)); };
     const base = n => String(n).replace(/^.*\//, "").replace(/\.[^.]+$/, "");
     const typeOf = n => data?.resources?.[n]?.type || MIME[String(n).split(".").pop().toLowerCase()] || "application/octet-stream";
 
@@ -4523,7 +4526,7 @@ const ccfImport = (() => {
     // ── 장면 전부 → 맵 장면: 코코포리아처럼 장면마다 배경 · 필드 · 마커만 바뀌고 스크린 패널은 그대로 ──
     // 장면 것은 맵 층에(맵 장면이 맵 층만 갈아 끼움), 패널은 토큰 · GM 층에 한 번만. 패널이 장면마다 같은 자리에 오게
     // 모든 장면 · 패널을 덮는 왼쪽 위를 같은 원점으로, 페이지 크기도 모두를 덮게 (배경 그림은 그 페이지 가득)
-    let pan = localStorage.getItem("r20_ccf_pan") !== "false";
+    let pan = aioPref.on("r20_ccf_pan");
     const sceneList = () => scenes.filter(c => c.grp === "장면");
     const skipSc = new Set();        // 맵 장면으로 만들지 않을 장면 (기본: 전부 만든다)
     const pickedScenes = () => sceneList().filter(c => !skipSc.has(c));
@@ -4935,8 +4938,8 @@ const mapFit = (() => {
     const MARGINS = [0, 1, 2, 5, 10, 20];
     const LAYERS = [["map", "맵"], ["objects", "토큰"], ["gmlayer", "GM"]];
     const KEY = "r20_fit";
-    const st = Object.assign({ mode: "fit", ratio: "free", margin: 1, layers: ["map", "objects"], far: false }, (() => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } })());
-    const saveSt = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
+    const st = Object.assign({ mode: "fit", ratio: "free", margin: 1, layers: ["map", "objects"], far: false }, (() => { try { return JSON.parse(aioPref.get(KEY) || "{}"); } catch (e) { return {}; } })());
+    const saveSt = () => { aioPref.set(KEY, JSON.stringify(st)); };
     let pop = null, anchor = null, undo = null;
     const num = (m, k, d = 0) => { const v = parseFloat(m.get(k)); return Number.isFinite(v) ? v : d; };
     const page = () => window.Campaign?.activePage?.() || null;
@@ -5243,7 +5246,7 @@ const mapScenes = (() => {
     const $ = s => pop.querySelector(s);
     const isOpen = () => !!pop && !pop.hidden;
     const page = () => window.Campaign?.activePage?.() || null;
-    const leave = () => localStorage.getItem(LEAVE_KEY) === "true";
+    const leave = () => aioPref.get(LEAVE_KEY) === "true";
     const handout = () => (window.Campaign?.handouts?.models || []).find(m => m.get("name") === NAME);
     const getBlob = (m, f) => new Promise(ok => {
         const t = setTimeout(() => ok(null), 8000);       // 시간 초과 · 오류 = null (빈 글과 다르게)
@@ -5262,8 +5265,8 @@ const mapScenes = (() => {
     };
     // '지금 장면' 표시는 이 브라우저에만 (페이지 id → 장면 id) — 핸드아웃에 넣으면 장면을 바꿀 때마다 전체를 다시 올려야 한다
     const CUR_KEY = "r20_mscn_cur";
-    const curMap = () => { try { return JSON.parse(localStorage.getItem(CUR_KEY) || "{}") || {}; } catch (e) { return {}; } };
-    const setCur = (pg, id) => { const p = P(pg); p.cur = id; const c = curMap(); if (id) c[pg.id] = id; else delete c[pg.id]; try { localStorage.setItem(CUR_KEY, JSON.stringify(c)); } catch (e) { /* 저장 못 함 */ } };
+    const curMap = () => { try { return JSON.parse(aioPref.get(CUR_KEY) || "{}") || {}; } catch (e) { return {}; } };
+    const setCur = (pg, id) => { const p = P(pg); p.cur = id; const c = curMap(); if (id) c[pg.id] = id; else delete c[pg.id]; aioPref.set(CUR_KEY, JSON.stringify(c)); };
     // 데이터: { v, pages: { 페이지 id: { cur, list: [장면] } } } — 다른 GM 이 바꿨으면(GM 메모 버전이 다르면) 다시 읽는다
     // readOk: 핸드아웃을 제대로 읽었는지 (또는 아직 없는 방). 거짓이면 기억하지 않고 다음에 다시 읽고, 저장(store)도 막는다
     // — 방에 막 들어온 때는 Roll20 이 핸드아웃 내용을 아직 안 줘서 빈 글 · 시간 초과가 온다 (v1.106 에서 장면이 안 보이던 까닭)
@@ -5717,7 +5720,7 @@ addBundle({ place: "main", order: 6, group: "prep", label: "대화 캡처 · 시
 // ───────── 면 선택: 다면 토큰의 Choose Side 창을 썸네일 격자로 (슬라이더 대신 눌러서 고르기) ─────────
 // Roll20 창과 이미지는 그대로 두고, 고른 면에 맞춰 Roll20 슬라이더를 움직인 뒤 원래 [Choose] 로 적용한다
 const sidePicker = (() => {
-    let size = Math.max(48, Math.min(220, parseInt(localStorage.getItem("r20_cs_size"), 10) || 96));
+    let size = Math.max(48, Math.min(220, parseInt(aioPref.get("r20_cs_size"), 10) || 96));
     const choicesOf = dlg => [...dlg.querySelectorAll(".sidechoices > .sidechoice")];
 
     const select = (dlg, idx) => {
@@ -5797,7 +5800,7 @@ const sidePicker = (() => {
         if (!info) return;
         info.heads.forEach(i => list[i].classList.add("r20cs-hdside"));      // 묶음 제목 자리(빈 면)는 감춤
         let mem = {};
-        try { mem = JSON.parse(localStorage.getItem(GRP_KEY) || "{}") || {}; } catch (e) {}
+        try { mem = JSON.parse(aioPref.get(GRP_KEY) || "{}") || {}; } catch (e) {}
         let grp = info.groups.findIndex(x => x.name === mem[info.id]);
         const row = document.createElement("div");
         row.className = "r20cs-grps";
@@ -5810,7 +5813,7 @@ const sidePicker = (() => {
         row.appendChild(grpDrop(info.groups.map(x => ({ name: x.name, count: x.sides.length, thumb: src(x.sides[0]) })), grp, total, k => {
             grp = k;
             if (grp < 0) delete mem[info.id]; else mem[info.id] = info.groups[grp].name;
-            try { localStorage.setItem(GRP_KEY, JSON.stringify(mem)); } catch (e) {}
+            aioPref.set(GRP_KEY, JSON.stringify(mem));
             apply();
         }));
         bar.after(row);
@@ -6968,7 +6971,7 @@ const screenUI = (() => {
 const pgFolders = (() => {
     const key = () => "r20_pg_folders_" + (window.campaign_id || "");
     let mem = null;
-    const read = () => { if (!mem) { try { mem = JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch (e) { mem = {}; } mem.names ||= {}; mem.order ||= []; } return mem; };
+    const read = () => { if (!mem) { try { mem = JSON.parse(aioPref.get(key()) || "{}") || {}; } catch (e) { mem = {}; } mem.names ||= {}; mem.order ||= []; } return mem; };
     const isPage = id => !!window.Campaign?.pages?.get?.(id);
     // 카드의 Vue 속성에서 그 아이디의 이름 → 없으면 카드 글자 중 숫자(페이지 수)가 아닌 마지막 줄
     const vueName = (el, id) => {
@@ -6989,7 +6992,7 @@ const pgFolders = (() => {
         cards.forEach(w => { const id = w.dataset.pageId, nm = vueName(w, id) || textName(w); if (nm) { m.names[id] = nm; seen.push(id); } });
         // 보이는 차례 (지금 연 폴더 안의 순서) — 이미 아는 것과 섞어 둔다
         m.order = [...seen, ...m.order.filter(id => !seen.includes(id))].slice(0, 500);
-        try { localStorage.setItem(key(), JSON.stringify(m)); } catch (e) { /* 저장 못 함 */ }
+        aioPref.set(key(), JSON.stringify(m));
     };
     return { scan, name: id => read().names[id] || "", rank: id => { const i = read().order.indexOf(id); return i < 0 ? 1e6 : i; } };
 })();
@@ -6997,7 +7000,7 @@ const pgFolders = (() => {
 // ───────── 페이지 창 슬림: Roll20 페이지 창(.vtt-page-card-menu)의 겉모양만 가늘고 가볍게 (body.r20pg-on) ─────────
 // 누르기 · 끌기 · 메뉴 등 동작은 Roll20 그대로. 카드 크기만 −/+ 단추로 바꾼다
 const pagePanel = (() => {
-    let size = Math.max(90, Math.min(260, parseInt(localStorage.getItem("r20_pg_size"), 10) || 150));
+    let size = Math.max(90, Math.min(260, parseInt(aioPref.get("r20_pg_size"), 10) || 150));
     const apply = menu => { if (menu.style.getPropertyValue("--r20pg-size") !== size + "px") menu.style.setProperty("--r20pg-size", size + "px"); };
     const inject = () => {
         try { pgFolders.scan(); } catch (e) { aioErr("페이지 폴더 이름", e, true); }
@@ -7066,7 +7069,7 @@ const macroBar = (() => {
 // 화면 구조 때문에 자리가 안 맞으면(부모가 transform 등) 원래 자리로 되돌린다
 const edgeDock = (() => {
     const KEY = "r20_edge_dm";
-    const mode = () => localStorage.getItem(KEY) === "map" ? "map" : "edge";
+    const mode = () => aioPref.get(KEY) === "map" ? "map" : "edge";
     let last = null, ro = null, roEl = null, wheelEl = null, failed = false, vT = 0;
     const shown = el => !!el && el.getClientRects().length > 0;
     // 화면 배치(screenUI)가 단추줄을 쌓은 뒤 부른다: y = 단추줄 아래 끝, edge = 단추줄 오른쪽 끝(채팅 판 · 서랍 왼쪽)
@@ -7112,28 +7115,7 @@ const edgeDock = (() => {
     };
     const setMode = v => { localStorage.setItem(KEY, v); failed = false; place(); FEAT.macroBar?.inject(); FEAT.screenUI?.place(); };
     // 설정 창 줄: 덱 · 매크로 자리
-    const modeRow = () => {
-        const row = document.createElement("div");
-        row.className = "cs-row";
-        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
-        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "덱 · 매크로 자리" }));
-        name.dataset.tip = "오른쪽 판 왼쪽 끝: 단추줄 밑에 덱 카드 → 매크로 단추를 세로로 (매크로가 길면 휠 · 손가락으로 위아래) · 원래 자리: 덱은 Roll20 자리, 매크로는 맵 아래 줄";
-        const seg = document.createElement("div");
-        seg.className = "aio-seg";
-        seg.setAttribute("role", "radiogroup");
-        seg.setAttribute("aria-label", "덱 · 매크로 자리");
-        const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode())));
-        [["edge", "왼쪽 끝"], ["map", "원래 자리"]].forEach(([v, l]) => {
-            const b = Object.assign(document.createElement("button"), { type: "button", textContent: l });
-            b.dataset.v = v;
-            b.setAttribute("role", "radio");
-            b.onclick = () => { setMode(v); sync(); };
-            seg.appendChild(b);
-        });
-        sync();
-        row.append(name, seg);
-        return row;
-    };
+    const modeRow = () => aioSegRow("덱 · 매크로 자리", "오른쪽 판 왼쪽 끝: 단추줄 밑에 덱 카드 → 매크로 단추를 세로로 (매크로가 길면 휠 · 손가락으로 위아래) · 원래 자리: 덱은 Roll20 자리, 매크로는 맵 아래 줄", [["edge", "왼쪽 끝"], ["map", "원래 자리"]], mode, setMode);
     return { place, modeRow };
 })();
 addFeature("edgeDock", edgeDock);
@@ -7144,7 +7126,7 @@ addFeature("edgeDock", edgeDock);
 const leftBar = (() => {
     const KEY = "r20_lt_mode", Z = 0.6;
     const PZ = { thin: "26px", short: "0px", strip: "4px" };        // #playerzone 왼쪽 (짧게는 도구 줄이 위쪽만이라 0)
-    const mode = () => { const v = localStorage.getItem(KEY); return v === "orig" || v in PZ ? v : "thin"; };
+    const mode = () => { const v = aioPref.get(KEY); return v === "orig" || v in PZ ? v : "thin"; };
     const bar = () => document.querySelector(".master-toolbar-outer");
     const subs = new Set();
     let mo = null, moEl = null, vT = 0, warned = false;
@@ -7180,28 +7162,7 @@ const leftBar = (() => {
     };
     const inject = () => { if (bar() !== moEl) apply(); };
     const setMode = v => { localStorage.setItem(KEY, v); warned = false; apply(); };
-    const modeRow = () => {
-        const row = document.createElement("div");
-        row.className = "cs-row";
-        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
-        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "왼쪽 도구 줄" }));
-        name.dataset.tip = "가늘게: 26px · 라벨 글씨 숨김 · 짧게: 단추 길이만큼 반투명 · 숨김 띠: 평소 4px, 마우스를 왼쪽 끝에 대면 나옴";
-        const seg = document.createElement("div");
-        seg.className = "aio-seg";
-        seg.setAttribute("role", "radiogroup");
-        seg.setAttribute("aria-label", "왼쪽 도구 줄");
-        const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode())));
-        [["orig", "원래"], ["thin", "가늘게"], ["short", "짧게"], ["strip", "숨김 띠"]].forEach(([v, l]) => {
-            const b = Object.assign(document.createElement("button"), { type: "button", textContent: l });
-            b.dataset.v = v;
-            b.setAttribute("role", "radio");
-            b.onclick = () => { setMode(v); sync(); };
-            seg.appendChild(b);
-        });
-        sync();
-        row.append(name, seg);
-        return row;
-    };
+    const modeRow = () => aioSegRow("왼쪽 도구 줄", "가늘게: 26px · 라벨 글씨 숨김 · 짧게: 단추 길이만큼 반투명 · 숨김 띠: 평소 4px, 마우스를 왼쪽 끝에 대면 나옴", [["orig", "원래"], ["thin", "가늘게"], ["short", "짧게"], ["strip", "숨김 띠"]], mode, setMode);
     addCss(`
         html body.r20lt-on .master-toolbar-outer { zoom:${Z}; }
         html body.r20lt-on .master-toolbar-outer :is(.label, .spacer-header) { display:none !important; }
@@ -7223,7 +7184,7 @@ addFeature("leftBar", leftBar);
 // 카드 패(.deckhands)는 포트레이트 안이라 같이 따라간다 · 위쪽에 두면 패를 아래로 연다 · 누르기는 Roll20 에도 그대로 간다
 const portraits = (() => {
     const KEY = "r20_pz", D = { pos: "bl", size: 0, dir: "row", names: true, pics: true };
-    const cfg = () => { let c; try { c = { ...D, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch (e) { c = { ...D }; } if (c.pos !== "tl") c.pos = "bl"; return c; };      // 예전 가운데 자리는 왼쪽 아래로
+    const cfg = () => { let c; try { c = { ...D, ...JSON.parse(aioPref.get(KEY) || "{}") }; } catch (e) { c = { ...D }; } if (c.pos !== "tl") c.pos = "bl"; return c; };      // 예전 가운데 자리는 왼쪽 아래로
     let pop = null, popFor = null, down = null;
     const ac = () => document.getElementById("avatarContainer");
     const me = () => window.currentPlayer?.id;
@@ -7251,7 +7212,7 @@ const portraits = (() => {
             else if (pz.style.getPropertyPriority("left") === "important") pz.style.removeProperty("left");
         }
     };
-    const save = patch => { try { localStorage.setItem(KEY, JSON.stringify({ ...cfg(), ...patch })); } catch (e) { /* 저장 못 함 */ } apply(); requestAnimationFrame(() => { apply(); placePop(); }); };
+    const save = patch => { aioPref.set(KEY, JSON.stringify({ ...cfg(), ...patch })); apply(); requestAnimationFrame(() => { apply(); placePop(); }); };
 
     // ── 저널 권한: 조종하는 시트 · (조종은 아니지만) 볼 수 있는 시트 · 볼 수 있는 핸드아웃 — 보관함에 넣은 것은 뺀다 ──
     const permOf = pid => {
@@ -7735,7 +7696,7 @@ const tokenSet = (() => {
     const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const fire = (e, ...types) => types.forEach(t => e.dispatchEvent(new Event(t, { bubbles: true })));
     const LIMIT = 150;          // Roll20 툴팁 글자 수
-    let auraOpen = localStorage.getItem("r20_ts_aura") === "1";
+    let auraOpen = aioPref.get("r20_ts_aura") === "1";
     // 세부 정보 칸들을 담은 곳: 연동 캐릭터와 마지막 칸(오라 2 반경 · 바 위치)의 가장 가까운 공통 조상 (GM 메모를 품으면 안 된다)
     const paneOf = dlg => {
         const a = dlg.querySelector(".represents"), b = dlg.querySelector(".aura2_radius") || dlg.querySelector(".token_bar_location");
@@ -8030,8 +7991,8 @@ const roomImages = (() => {
     const sized = sizedUrl;
     const keyOf = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "");
 
-    let size = Math.max(48, Math.min(160, parseInt(localStorage.getItem("r20_ri_size"), 10) || 72));
-    let mode = localStorage.getItem("r20_ri_mode");
+    let size = Math.max(48, Math.min(160, parseInt(aioPref.get("r20_ri_size"), 10) || 72));
+    let mode = aioPref.get("r20_ri_mode");
     if (mode !== "room") mode = "lib";
     let src = "all", q = "", groups = [], items = new Map(), unread = 0, shown = 0;
     let loading = null, root = null, ro = null, wasVisible = false, dragBase = null;
@@ -8434,7 +8395,7 @@ const roomImages = (() => {
 // ───────── 매크로 선택 썸네일: ?{질문|이름,이미지주소|…} 의 Macro Options 창에 이미지 격자를 붙인다 ─────────
 // 원래 드롭다운은 그대로 두고 같이 바꾼다 (Submit 때 Roll20 은 드롭다운 값을 읽는다)
 const queryPicker = (() => {
-    let size = Math.max(80, Math.min(260, parseInt(localStorage.getItem("r20_qp_size"), 10) || 140));
+    let size = Math.max(80, Math.min(260, parseInt(aioPref.get("r20_qp_size"), 10) || 140));
     const GRP_KEY = "r20_qp_grp";      // 질문(앞 글 + 항목 수) → 마지막에 고른 묶음 이름
     // 값 → 그림 주소: 전체 주소이거나, imgur 그림 ID 만 고르는 꼴(https://imgur.com/?{…|이름,oTmvLxD|…}.png)
     // ID 판별: 5~8자 영문·숫자 섞임 — 'Attack' 같은 보통 낱말·숫자만은 뺀다
@@ -8546,14 +8507,14 @@ const queryPicker = (() => {
         const names = secs.map((s, k) => s.querySelector(".r20qp-cap")?.textContent || `묶음 ${k + 1}`);
         const p = sel.closest("p"), memKey = ([...(p?.childNodes || [])].filter(x => x.nodeType === 3).map(x => x.textContent).join("").trim() || "?") + "#" + sel.options.length;
         let mem = {};
-        try { mem = JSON.parse(localStorage.getItem(GRP_KEY) || "{}") || {}; } catch (e) {}
+        try { mem = JSON.parse(aioPref.get(GRP_KEY) || "{}") || {}; } catch (e) {}
         let grp = names.indexOf(mem[memKey]);
         const setGrp = k => {
             grp = k;
             if (k < 0) delete mem[memKey]; else mem[memKey] = names[k];
             const ks = Object.keys(mem);
             if (ks.length > 60) delete mem[ks[0]];      // 오래된 것부터 버림
-            try { localStorage.setItem(GRP_KEY, JSON.stringify(mem)); } catch (e) {}
+            aioPref.set(GRP_KEY, JSON.stringify(mem));
             apply();
         };
         const gInfo = sc => {
@@ -8633,7 +8594,7 @@ const quickJournal = (() => {
     const DOCK = "r20_cj_dock", DW = "r20_cj_w", DH = "r20_cj_h", GEO = "r20_cj_geo";
     const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
     const cho = t => [...t].map(c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : c; }).join("");
-    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+    const ls = (k, v) => { try { if (v === undefined) return aioPref.get(k); localStorage.setItem(k, v); } catch (e) { return null; } };
     const sel = () => document.getElementById("speakingas");
     const grid = () => ls(VIEW) === "grid";
     const pinned = () => ls(PIN) === "true";
@@ -9049,11 +9010,11 @@ const quickFind = (() => {
     const RKEY = "r20_qf_recent", CAT_KEY = "r20_qf_cats", CTX_KEY = "r20_qf_ctx", ORD_KEY = "r20_qf_order", PER_GROUP = 6, MAX = 60, MAX_BLK = 40;
     const CHAT_MSG = "#textchat .content > .message[data-messageid]";
     let root = null, inp = null, list = null, catBox = null, ctxRow = null, items = [], shown = [], sel = 0, back = null;
-    let cats = (() => { try { const a = JSON.parse(localStorage.getItem(CAT_KEY) || "null"); if (Array.isArray(a)) return new Set(a); } catch (e) { /* 처음 */ } return new Set(["journal", "body", "bgm", "macro"]); })();
+    let cats = (() => { try { const a = JSON.parse(aioPref.get(CAT_KEY) || "null"); if (Array.isArray(a)) return new Set(a); } catch (e) { /* 처음 */ } return new Set(["journal", "body", "bgm", "macro"]); })();
     const gmOnly = c => c === "bgm" || c === "scene";        // 주크박스 · 장면 목차는 GM 만
     const catsOn = () => CATS.map(c => c[0]).filter(c => cats.has(c) && (!gmOnly(c) || isGM()));
-    const ctxN = () => Math.max(0, Math.min(100, parseInt(localStorage.getItem(CTX_KEY) ?? "2", 10) || 0));
-    const ordOld = () => localStorage.getItem(ORD_KEY) === "old";       // 채팅 묶음: 최신순(기본) / 오래된순
+    const ctxN = () => Math.max(0, Math.min(100, parseInt(aioPref.get(CTX_KEY) ?? "2", 10) || 0));
+    const ordOld = () => aioPref.get(ORD_KEY) === "old";       // 채팅 묶음: 최신순(기본) / 오래된순
 
     // ── 맞추기: 한 글자씩 앞에서부터. 자음만 친 글자는 그 초성으로 시작하는 음절과 맞는다 ──
     const choOf = c => { const k = c.charCodeAt(0) - 0xAC00; return k >= 0 && k <= 11171 ? CHO[Math.floor(k / 588)] : null; };
@@ -9158,10 +9119,10 @@ const quickFind = (() => {
     };
 
     // ── 최근에 쓴 것 ──
-    const recent = () => { try { const a = JSON.parse(localStorage.getItem(RKEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+    const recent = () => { try { const a = JSON.parse(aioPref.get(RKEY) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
     const remember = it => {
         const a = [{ k: it.k, id: it.id }, ...recent().filter(r => !(r.k === it.k && r.id === it.id))].slice(0, 8);
-        try { localStorage.setItem(RKEY, JSON.stringify(a)); } catch (e) { /* 저장 못 함 */ }
+        aioPref.set(RKEY, JSON.stringify(a));
     };
 
     // ── 본문: 핸드아웃 본문 · 캐릭터 소개 (+ GM 메모는 GM 만). 켜 두면 열 때 읽어 두고, 다음엔 바뀐 것만 다시 ──
@@ -9555,7 +9516,7 @@ const quickFind = (() => {
     };
     const setCats = v => {
         cats = v;
-        try { localStorage.setItem(CAT_KEY, JSON.stringify([...cats])); } catch (e) { /* 저장 못 함 */ }
+        aioPref.set(CAT_KEY, JSON.stringify([...cats]));
         if (cats.has("body")) loadBody();
         if (cats.has("chat") || (cats.has("scene") && isGM())) loadChat();       // 구간 시각 · 개수도 로그에서
         if (cats.has("scene")) loadScenes();
@@ -9711,7 +9672,7 @@ const quickFind = (() => {
     // 닫기: 열기 매크로로 연 진행 중 장면 중 가장 안쪽 → 없으면 방금 닫은 장면의 끝을 여기로 (다음 열기 전까지 마지막 닫기가 끝)
     // 페이즈 · 사이클처럼 손으로 찍은 구간(▶ ■)은 건드리지 않는다
     const MAC_KEY = "r20_sc_mac";
-    const macCfg = () => { try { const o = JSON.parse(localStorage.getItem(MAC_KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } };
+    const macCfg = () => { try { const o = JSON.parse(aioPref.get(MAC_KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } };
     const macLinked = () => { const c = macCfg(); return !!(c.a || c.b); };
     const imgKey = u => r20img(u).replace(/^https?:/i, "").replace(/[?#].*$/, "").replace(/\/(?:thumb|med|max|original)\.[a-z0-9]+$/i, "/");
     const macSig = name => {
@@ -9990,17 +9951,17 @@ const quickFind = (() => {
     // ── 📌 이 자리에 고정: 실행해도 안 닫힘 · 위쪽 줄로 옮기고 모서리로 크기 → 자리 · 크기 기억 (다른 창 📌 처럼) ──
     // ── ▶ 붙이기: 채팅 판 왼쪽, 맵 · 일괄 편집기 · 빠른 찾기 단추 바로 밑에 붙어 열려 있다 (판을 넓히면 따라감) · ◀ 떼면 따로 뜬다 ──
     const PIN_KEY = "r20_qf_pin", GEO_KEY = "r20_qf_geo", DOCK_KEY = "r20_qf_dock";
-    let pinned = localStorage.getItem(PIN_KEY) === "true", docked = localStorage.getItem(DOCK_KEY) === "true", box = null, pinBtn = null, dockBtn = null;
+    let pinned = aioPref.get(PIN_KEY) === "true", docked = aioPref.get(DOCK_KEY) === "true", box = null, pinBtn = null, dockBtn = null;
     const keepOpen = () => pinned || docked;
     const keepGeo = () => {
         if (!pinned || docked || !isOpen() || box.closest(".aio-min") || box.classList.contains("aio-min")) return;
-        try { localStorage.setItem(GEO_KEY, JSON.stringify({ l: box.offsetLeft, t: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight })); } catch (e) { /* 저장 못 함 */ }
+        aioPref.set(GEO_KEY, JSON.stringify({ l: box.offsetLeft, t: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight }));
     };
     // 창 안 길이는 확대(zoom) 전 단위 — 화면 크기도 그 단위로 나눠 잰다
     // 기본 자리: 오른쪽 판(채팅 · 저널) 바로 왼쪽, 위에서 조금 아래 (예전 모은 트랙 창 자리 · 창이 좁으면 오른쪽 끝). 📌 면 기억한 자리 · 크기
     const placeBox = () => {
         let g = null;
-        if (pinned) try { g = JSON.parse(localStorage.getItem(GEO_KEY) || "null"); } catch (e) { /* 없음 */ }
+        if (pinned) try { g = JSON.parse(aioPref.get(GEO_KEY) || "null"); } catch (e) { /* 없음 */ }
         const z = aioZoom.get(), W = innerWidth / z, H = innerHeight / z, side = document.getElementById("rightsidebar")?.getBoundingClientRect();
         const w = Math.min(Math.max(260, g?.w || 340), W - 16), edge = side?.width ? side.left / z - 8 : W - 8;
         const l = g?.l == null ? (edge - w < 8 ? W - w - 8 : edge - w) : Math.max(0, Math.min(g.l, W - w));
@@ -10059,7 +10020,7 @@ const quickFind = (() => {
         // 자리: 붙임(채팅 왼쪽에 열어 둠) · 떠 있기 — 공용 창 틀의 자리 고르기
         dockBtn = aioDockSeg([["dock", "붙임"], ["float", "떠 있기"]], docked ? "dock" : "float", v => {
             docked = v === "dock";
-            try { localStorage.setItem(DOCK_KEY, String(docked)); } catch (e) { /* 저장 못 함 */ }
+            aioPref.set(DOCK_KEY, String(docked));
             box.classList.remove("aio-min");
             applyPin();
             inp.focus();
@@ -10068,7 +10029,7 @@ const quickFind = (() => {
         root.querySelector(".qf-x").addEventListener("click", close);
         pinBtn.addEventListener("click", () => {
             pinned = !pinned;
-            try { localStorage.setItem(PIN_KEY, String(pinned)); } catch (e) { /* 저장 못 함 */ }
+            aioPref.set(PIN_KEY, String(pinned));
             applyPin();
             inp.focus();
         });
@@ -10126,7 +10087,7 @@ const quickFind = (() => {
         const nIn = ctxRow.querySelector(".qf-n");
         nIn.value = ctxN();
         nIn.addEventListener("input", () => {
-            try { localStorage.setItem(CTX_KEY, String(Math.max(0, Math.min(100, parseInt(nIn.value, 10) || 0)))); } catch (e) { /* 저장 못 함 */ }
+            aioPref.set(CTX_KEY, String(Math.max(0, Math.min(100, parseInt(nIn.value, 10) || 0))));
             sel = 0; draw();
         });
         ctxRow.querySelector(`input[value="${ordOld() ? "old" : "new"}"]`).checked = true;
@@ -10250,9 +10211,9 @@ const quickFind = (() => {
 // 📌 길게(0.6초) 누르면 기억한 자리만 지운다 → 다음에 열 때 Roll20 기본 자리
 const winMemory = (() => {
     const KEY = "r20_win_mem", MODE = "r20_win_mode";
-    let mem = (() => { try { const o = JSON.parse(localStorage.getItem(KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
-    let mode = localStorage.getItem(MODE) === "kind" ? "kind" : "item";
-    const keep = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { /* 저장 못 함 */ } };
+    let mem = (() => { try { const o = JSON.parse(aioPref.get(KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
+    let mode = aioPref.get(MODE) === "kind" ? "kind" : "item";
+    const keep = () => { aioPref.set(KEY, JSON.stringify(mem)); };
     const content = dlg => dlg.querySelector(":scope > .ui-dialog-content");
     const titleOf = dlg => (dlg.querySelector(":scope > .ui-dialog-titlebar .ui-dialog-title")?.textContent || "").trim();
     // 어떤 창인지: 캐릭터 시트는 .characterdialog, 핸드아웃은 handout 표시 또는 제목이 핸드아웃 이름
@@ -10397,28 +10358,7 @@ const winMemory = (() => {
     }, true);
     const setMode = m => { mode = m === "kind" ? "kind" : "item"; localStorage.setItem(MODE, mode); paintAll(); };
     // 설정 창 줄: 기억 방식 (항목마다 · 종류별 하나)
-    const modeRow = () => {
-        const row = document.createElement("div");
-        row.className = "cs-row";
-        const name = Object.assign(document.createElement("span"), { className: "cs-text" });
-        name.appendChild(Object.assign(document.createElement("span"), { className: "cs-name", textContent: "기억 방식" }));
-        name.dataset.tip = "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리 (덱 선택창 등 그 밖의 창은 늘 창 제목마다)";
-        const seg = document.createElement("div");
-        seg.className = "aio-seg";
-        seg.setAttribute("role", "radiogroup");
-        seg.setAttribute("aria-label", "기억 방식");
-        const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.v === mode)));
-        [["item", "항목마다"], ["kind", "종류별 하나"]].forEach(([v, l]) => {
-            const b = Object.assign(document.createElement("button"), { type: "button", textContent: l });
-            b.dataset.v = v;
-            b.setAttribute("role", "radio");
-            b.onclick = () => { setMode(v); sync(); };
-            seg.appendChild(b);
-        });
-        sync();
-        row.append(name, seg);
-        return row;
-    };
+    const modeRow = () => aioSegRow("기억 방식", "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리 (덱 선택창 등 그 밖의 창은 늘 창 제목마다)", [["item", "항목마다"], ["kind", "종류별 하나"]], () => mode, setMode);
     const setEnabled = on => { if (on) { bindJq(); inject(); } else document.querySelectorAll(".r20wm-pin").forEach(b => b.remove()); };
     return { inject, setEnabled, modeRow, info, watch: ".ui-dialog" };
 })();
@@ -10633,7 +10573,7 @@ const scenNav = (() => {
     const folded = b => { try { const o = JSON.parse(ls(FOLD) || "{}"); return o[b] ?? b === "scn"; } catch (e) { return b === "scn"; } };
     const setFold = (b, v) => { try { const o = JSON.parse(ls(FOLD) || "{}"); o[b] = v; ls(FOLD, JSON.stringify(o)); } catch (e) { ls(FOLD, JSON.stringify({ [b]: v })); } };
     const $ = q => win.querySelector(q);
-    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+    const ls = (k, v) => { try { if (v === undefined) return aioPref.get(k); localStorage.setItem(k, v); } catch (e) { return null; } };
     const sep = () => ls(MODE) !== "cont";        // 기본: 따로 (한 장씩)
     const recent = () => { try { const a = JSON.parse(ls(REC) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
     const remember = (path, extra) => {
@@ -11573,7 +11513,7 @@ const bulkEditor = (() => {
     // 서식 편집: Roll20 핸드아웃 편집기와 같은 Summernote (Roll20 이 이미 불러 둔 jQuery 플러그인을 빌려 쓴다)
     const hasNote = () => typeof window.jQuery?.fn?.summernote === "function";
     // 편집 방식 rich(서식) · text(글자) · html — 마지막에 고른 방식으로 연다. rich · html 은 n.cur 에 HTML 을 둔다
-    const docMode = () => { const m = localStorage.getItem("r20be_doc_mode") || "rich"; return m === "rich" && !hasNote() ? "text" : m; };
+    const docMode = () => { const m = aioPref.get("r20be_doc_mode") || "rich"; return m === "rich" && !hasNote() ? "text" : m; };
     // 표가 있는 내용은 '파트'(표 칸의 글자만 고치기)로 연다
     const TABLE_RE = /<table[\s>]/i;
     const initMode = (n, k) => { n.mode[k] = TABLE_RE.test(n.raw[k] || "") ? "part" : docMode(); n.htmlMode[k] = n.mode[k] !== "text"; };
@@ -11639,8 +11579,8 @@ const bulkEditor = (() => {
     const S = { tab: "journal", journal: null, bgm: null, macros: null, decks: null, tables: null, images: null, pages: null, links: null };
     // 핸드아웃·캐릭터만 볼 때 아이콘(포트레이트) 보기 · 아이콘 크기 — 이 브라우저에 기억
     const VIEW = {
-        icons: localStorage.getItem("r20be_icons") !== "0",
-        size: Math.max(56, Math.min(140, parseInt(localStorage.getItem("r20be_icon_size"), 10) || 84))
+        icons: aioPref.get("r20be_icons") !== "0",
+        size: Math.max(56, Math.min(140, parseInt(aioPref.get("r20be_icon_size"), 10) || 84))
     };
     let ui = null, dragId = null, saving = false;
     const cur = () => S[S.tab];
@@ -12727,7 +12667,7 @@ const bulkEditor = (() => {
                 + (isT ? "'🎲 굴리기' · '🤫 몰래 굴리기'" : `'${name}'`)));
         if (isT && /\s/.test(name)) ui.tl.append(el("p", { class: "warn" }, "표 이름에 띄어쓰기가 있어 Roll20 굴림(1t[…])이 안 될 수 있어요 — 이름에서 띄어쓰기를 빼고 저장한 뒤 연결해 주세요."));
         // 매크로: 부르기(#) · 내용 복사 고르기 + 토큰 쪽 내용이 지금 매크로와 다르면 알림
-        let mode = localStorage.getItem(TL_MODE_KEY) === "copy" ? "copy" : "call", stale = null;
+        let mode = aioPref.get(TL_MODE_KEY) === "copy" ? "copy" : "call", stale = null;
         const actFor = () => mode === "call" ? "#" + name : String(n.model?.get("action") || "");
         if (!isT) {
             const ab = mc?.abilities?.models?.find(m => m.get("istokenaction"));
@@ -15107,7 +15047,7 @@ const bulkEditor = (() => {
     const bindPanel = head => {
         const p = ui.root;
         try {
-            const r = JSON.parse(localStorage.getItem("r20be_rect") || "null");
+            const r = JSON.parse(aioPref.get("r20be_rect") || "null");
             if (r) Object.assign(p.style, { left: r.left, top: r.top, width: r.width, height: r.height });
         } catch (e) {}
         if (!p.style.left) Object.assign(p.style, { left: "60px", top: "60px" });
@@ -15198,7 +15138,7 @@ const bulkEditor = (() => {
     const bindSplit = col => {
         const KEY = "r20be_tree_w";
         const set = w => { w = Math.round(Math.max(200, w)); col.style.flexBasis = w + "px"; return w; };
-        const saved = parseInt(localStorage.getItem(KEY), 10);
+        const saved = parseInt(aioPref.get(KEY), 10);
         if (saved) set(saved);
         const bar = el("div", { class: "r20be-split", role: "separator", "aria-orientation": "vertical", "aria-label": "목록 폭 조절", tabindex: "0", title: "끌어서 목록 폭 조절" });
         bar.addEventListener("pointerdown", e => {
@@ -15812,8 +15752,8 @@ const valueBoard = (() => {
     const hide = () => { box?.remove(); box = null; };
     // 모든 캐릭터 공통 값 (포트레이트 설정 창에서 · 이 브라우저에만) → 캐릭터마다 고른 값(📊)은 그 뒤에
     const CKEY = "r20_vb_common", MAX = 6;
-    const common = () => { try { const v = JSON.parse(localStorage.getItem(CKEY) || "[]"); return Array.isArray(v) ? v.filter(x => Array.isArray(x)).slice(0, MAX).map(x => [String(x[0] || ""), String(x[1] || "")]) : []; } catch (e) { return []; } };
-    const setCommon = rows => { try { localStorage.setItem(CKEY, JSON.stringify(rows.slice(0, MAX))); } catch (e) { /* 저장 못 함 */ } show(true); };
+    const common = () => { try { const v = JSON.parse(aioPref.get(CKEY) || "[]"); return Array.isArray(v) ? v.filter(x => Array.isArray(x)).slice(0, MAX).map(x => [String(x[0] || ""), String(x[1] || "")]) : []; } catch (e) { return []; } };
+    const setCommon = rows => { aioPref.set(CKEY, JSON.stringify(rows.slice(0, MAX))); show(true); };
     const rowsOf = c => {
         const out = [], seen = new Set();
         [...common().filter(r => r[0].trim()).map(([a, l]) => [a.trim(), l.trim() || a.trim()]), ...list(c)].forEach(r => { const k = r[0].toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(r); } });
@@ -15851,7 +15791,7 @@ const valueBoard = (() => {
     const place = () => {
         if (!box) return;
         let p = null;
-        try { p = JSON.parse(localStorage.getItem(POS) || "null"); } catch (e) { /* 기본 자리 */ }
+        try { p = JSON.parse(aioPref.get(POS) || "null"); } catch (e) { /* 기본 자리 */ }
         const me = p ? null : document.querySelector(`#avatarContainer #player_${CSS.escape(String(window.currentPlayer?.id || ""))}`), r = me?.getBoundingClientRect();
         if (r?.width && r.height) {
             const col = document.body.classList.contains("r20pz-col"), top = r.top < innerHeight / 2, h = box.offsetHeight;
@@ -15910,11 +15850,11 @@ const attrWatch = (() => {
     const read = () => {
         if (cfg) return cfg;
         let o = {};
-        try { o = JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch (e) { /* 깨진 설정은 새로 */ }
+        try { o = JSON.parse(aioPref.get(key()) || "{}") || {}; } catch (e) { /* 깨진 설정은 새로 */ }
         return (cfg = { on: o.on !== false, how: HOW.some(h => h[0] === o.how) ? o.how : "as", chars: Array.isArray(o.chars) ? o.chars : [], names: o.names && typeof o.names === "object" ? o.names : {},
             rows: Array.isArray(o.rows) ? o.rows.filter(r => r && typeof r.a === "string") : [] });
     };
-    const store = () => { try { localStorage.setItem(key(), JSON.stringify(cfg)); } catch (e) { /* 저장 못 함 */ } sync(); };
+    const store = () => { aioPref.set(key(), JSON.stringify(cfg)); sync(); };
     const lc = s => String(s ?? "").toLowerCase().trim();
     // 이 속성을 알릴 줄 (없으면 null) · id = *id* 자리에 든 글자
     const rowFor = name => {
@@ -16167,8 +16107,8 @@ const autofill = (() => {
     // 홈페이지 PHP 가 Access-Control-Allow-Origin: https://app.roll20.net 을 내야 한다.
     const URL_KEY = "r20_ruledata_url", FILE_KEY = "r20_ruledata_file";       // 주소 · 파일은 둘 중 하나만 (마지막에 넣은 것)
     let status = window.NIRE_RULEDATA ? "ok" : "none";     // none · loading · ok · badkey · fail
-    const getUrl = () => localStorage.getItem(URL_KEY) || "";
-    const fileName = () => { try { return JSON.parse(localStorage.getItem(FILE_KEY) || "null")?.name || ""; } catch (e) { return ""; } };
+    const getUrl = () => aioPref.get(URL_KEY) || "";
+    const fileName = () => { try { return JSON.parse(aioPref.get(FILE_KEY) || "null")?.name || ""; } catch (e) { return ""; } };
     // 'window.NIRE_RULEDATA = {…};' 모양이면 = 뒤만, 아니면 통째로 JSON
     const parseData = text => {
         const at = text.indexOf("window.NIRE_RULEDATA");
@@ -16184,7 +16124,7 @@ const autofill = (() => {
     const load = async () => {
         const url = getUrl();
         if (!url) {
-            const f = localStorage.getItem(FILE_KEY);
+            const f = aioPref.get(FILE_KEY);
             if (!f) return;
             try { window.NIRE_RULEDATA = parseData(JSON.parse(f).text); normCache.clear(); setStatus("ok"); }
             catch (e) { console.warn("[자동완성] 넣어 둔 데이터 파일을 못 읽음:", e); setStatus("fail"); }
@@ -16573,8 +16513,8 @@ const abTok = (() => {
         const KEYS = ["represents", "name", "bar1_link", "bar1_value", "bar1_max", "showplayers_bar1", "playersedit_bar1", "showname", "showplayers_name", "bar1_num_permission"];
         const bars = ["charge"].filter(k => autofill.FIELDS[x.sys]?.[k] && x.row.querySelector(`[name="attr_${x.base}${autofill.FIELDS[x.sys][k]}"]`));
         // 막대 최대값: 최대값이 있어야 Roll20 이 막대를 그린다 (없으면 고를 때 숫자만). 시트에 최대값이 없으면 여기서 적은 값을 넣는다
-        let show = localStorage.getItem("r20_abt_show") !== "false", max = localStorage.getItem("r20_abt_max") ?? "10";
-        let bar = localStorage.getItem("r20_abt_bar") === "none" ? "" : bars[0] || "", pl = localStorage.getItem("r20_abt_pl") !== "false", act = localStorage.getItem("r20_abt_act") !== "false";
+        let show = aioPref.on("r20_abt_show"), max = aioPref.get("r20_abt_max") ?? "10";
+        let bar = aioPref.get("r20_abt_bar") === "none" ? "" : bars[0] || "", pl = aioPref.on("r20_abt_pl"), act = aioPref.on("r20_abt_act");
         const ORD = { on: 0, same: 1, "": 2, other: 3 };
         // 겹친 순서: 페이지의 zorder 에서 뒤에 있을수록 위 (가장 나중에 올린 것)
         const zs = String(pg.get("zorder") || "").split(","), zAt = g => { const i = zs.indexOf(g.id); return i < 0 ? zs.length + toks().indexOf(g) : i; };
@@ -16586,7 +16526,7 @@ const abTok = (() => {
         const TABS = [["map", "맵의 토큰"], ["copy", "복사해서 새로"], ["deck", "덱에서 꺼내기"], ["file", "그림 파일"]];
         const decks = () => (window.Campaign?.decks?.models || []).filter(d => (d.cards?.models || []).some(m => m.get("avatar")));
         const TIP = { map: "지금 페이지 토큰 층의 연결 안 된 토큰에서 고르기", copy: "맵의 토큰과 똑같은 토큰을 그 옆에 하나 더 만들어 연결 (원래 토큰은 그대로)", deck: "카드 그림으로 맵 가운데에 보통 토큰을 만들어 연결 (덱의 카드는 줄지 않아요)", file: "그림 파일 · 캐릭터 그림으로 맵 가운데에 새 토큰을 만들어 연결" };
-        let tab = "map", q = "", src = -1, card = -1, deckId = localStorage.getItem("r20_abt_deck") || "", optOpen = false;
+        let tab = "map", q = "", src = -1, card = -1, deckId = aioPref.get("r20_abt_deck") || "", optOpen = false;
         const thumb = (u, nm) => `<img src="${escAttr(sizedUrl(r20img(u || ""), "thumb"))}" alt="" loading="lazy"><span>${escAttr(nm)}</span>`;
         const draw = () => {
             const list = toks().map(g => ({ g, st: state(g) })).filter(t => t.st === "on" || !t.g.get("represents")).sort((a, b) => ORD[a.st] - ORD[b.st] || zAt(b.g) - zAt(a.g));
@@ -16825,12 +16765,12 @@ const emojiPalette = (() => {
         { k: "symbol", icon: "❤️", name: "기호", list: E("❤️ 하트 빨강|🧡 주황 하트|💛 노랑 하트|💚 초록 하트|💙 파랑 하트|💜 보라 하트|🖤 검은 하트|🤍 흰 하트|💔 깨진 하트|💕 하트 둘|💖 반짝 하트|💯 백점|💢 분노|💥 쾅|💦 땀|💨 휙|💤 쿨쿨|💬 말풍선|💭 생각 풍선|❗ 느낌표|❓ 물음표|‼️ 느낌표 둘|⁉️ 물음 느낌|✅ 체크|❌ 엑스|⭕ 동그라미|🔺 세모|➡️ 화살표|♪ 음표 기호|★ 검은 별|☆ 흰 별|♡ 빈 하트|♥ 하트 기호") }
     ];
     const RECENT = "r20_emo_recent", MINE = "r20_emo_mine", TAB = "r20_emo_tab";
-    const read = k => { try { const v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+    const read = k => { try { const v = JSON.parse(aioPref.get(k) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
     const all = () => GROUPS.filter(g => g.list).flatMap(g => g.list);
     const nameOf = t => (read(MINE).find(x => x[0] === t) || all().find(x => x[0] === t) || [t, ""])[1];
     const isEmoji = t => [...t].length <= 3 && /\p{Extended_Pictographic}/u.test(t);
     const SMILE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>';
-    let pop = null, tab = localStorage.getItem(TAB) || "face", q = "", sel = null, note = "";
+    let pop = null, tab = aioPref.get(TAB) || "face", q = "", sel = null, note = "";
     const ta = () => document.querySelector("#textchat-input textarea");
     const btn = () => document.getElementById("custom-emoji-toggle");
     const isOpen = () => !!pop && !pop.hidden;
@@ -17189,7 +17129,7 @@ const selfCheck = (() => {
                 if (!v || typeof v !== "object" || v instanceof Node) return;
                 try { const h = findIn(v, fid, 4); if (h.length) out.push("win." + k + h.join("|")); } catch (e) { /* 넘어감 */ }
             });
-            try { Object.keys(localStorage).forEach(k => { if (String(localStorage.getItem(k) || "").includes(fid)) out.push("ls." + k.replace(/-?[\w-]{15,}/g, "<id>")); }); } catch (e) { /* 넘어감 */ }
+            try { Object.keys(localStorage).forEach(k => { if (String(aioPref.get(k) || "").includes(fid)) out.push("ls." + k.replace(/-?[\w-]{15,}/g, "<id>")); }); } catch (e) { /* 넘어감 */ }
             const dom = [...document.querySelectorAll("*")].filter(e => [...e.attributes].some(a => a.value === fid)).slice(0, 3).map(e => e.tagName.toLowerCase() + "." + String(e.className || "").split(" ")[0] + "[" + [...e.attributes].filter(a => a.value === fid).map(a => a.name).join(",") + "]");
             const pm = document.querySelector(".vtt-page-card-menu") ? "열림" : "닫힘";
             // 폴더를 다루는 Roll20 자체 기능 찾기: Pinia 스토어의 함수 이름 · 폴더 카드의 Vue 속성 모양
