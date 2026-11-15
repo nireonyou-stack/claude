@@ -23,7 +23,10 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
     window.Jukebox = { playlist: coll([]) }; window.currentPlayer = { id: 'p1', macros: coll([]) }; window.is_gm = true;
   });
   await p.addScriptTag({ content: us }); await p.waitForTimeout(400);
-  await p.click('[name="attr_Ninpo_Name"]'); await p.keyboard.type('접근'); await p.waitForTimeout(100);
+  // 한글 조합이 끊기지 않게: 자동완성 끄기 표시는 칸에 들어갈 때 미리 · 조합 중 입력에는 속성을 바꾸지 않는다
+  await p.click('[name="attr_Ninpo_Name"]'); console.log('칸에 들어가면 autocomplete:', await p.$eval('[name="attr_Ninpo_Name"]', e => e.getAttribute('autocomplete')));
+  console.log('조합 중 입력 때 속성 바뀜:', await p.$eval('[name="attr_Ninpo_Name"]', e => { e.removeAttribute('autocomplete'); let changed = false; const mo = new MutationObserver(() => { changed = true; }); mo.observe(e, { attributes: true }); e.value = '와'; e.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, data: '와' })); mo.takeRecords().length && (changed = true); mo.disconnect(); e.value = ''; return changed; }));
+  await p.keyboard.type('접근'); await p.waitForTimeout(100);
   console.log('후보:', await p.$eval('#r20-ac-box', e => e.classList.contains('show') ? e.textContent : '(없음)'));
   await p.keyboard.press('Enter'); await p.waitForTimeout(100);
   const vals = () => p.$$eval('#sheet [name]', es => es.map(e => e.name.replace('attr_Ninpo_', '') + '=' + (e.value || '∅').slice(0, 8)).join(' '));

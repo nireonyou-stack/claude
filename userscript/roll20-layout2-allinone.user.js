@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.109.1
+// @version      1.109.2
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.109.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.109.2";     // @version 과 같이 올린다
 
 const CONFIG={
     prefix: "/desc ",
@@ -16445,7 +16445,8 @@ const autofill = (() => {
         const found = search(c.sys, norm(e.target.value));
         if (!found.length) return close();
         input = e.target;
-        input.setAttribute("autocomplete", "off");
+        // 브라우저 자동완성 끄기는 칸에 들어갈 때(onFocusIn) 붙인다 — 한글을 조합하는 중에 속성을 바꾸면 크롬이 조합을 끊는다 ('완' → '와ㄴ')
+        if (!e.isComposing && input.getAttribute("autocomplete") !== "off") input.setAttribute("autocomplete", "off");
         items = found; sel = 0;
         render();
     };
@@ -16474,6 +16475,7 @@ const autofill = (() => {
     };
 
     const onFocusOut = e => { if (e.target === input) close(); };
+    const onFocusIn = e => { const t = e.target; if (btnVisible.autofill && t?.name && t.getAttribute("autocomplete") !== "off" && ctx(t)) t.setAttribute("autocomplete", "off"); };
 
     // 캐릭터 시트는 같은 출처의 iframe 안에 그려진다 → 맨 위 문서와 시트 문서 모두에 건다.
     // document.write 로 다시 그려지면 문서는 그대로인데 리스너만 지워지므로, 기록해 두지 않고 매번 다시 건다
@@ -16486,6 +16488,7 @@ const autofill = (() => {
         doc.addEventListener("input", onInput, true);
         doc.addEventListener("keydown", onKey, true);
         doc.addEventListener("focusout", onFocusOut, true);
+        doc.addEventListener("focusin", onFocusIn, true);
         doc.addEventListener("mouseover", e => FEAT.abTok?.over(e), true);        // 어빌리티 이름 칸 → 🎯 (토큰에 연결)
         doc.addEventListener("scroll", onScroll, true);
         doc.defaultView?.addEventListener("resize", close);
