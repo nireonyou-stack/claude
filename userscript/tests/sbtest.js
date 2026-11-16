@@ -27,7 +27,7 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.evaluate(() => { const d = document.getElementById('fr').contentDocument; d.open(); d.write('<html><head></head><body style="margin:0"><div id="in" style="width:160px;height:80px;overflow:scroll"><div style="height:400px;width:400px"></div></div></body></html>'); d.close(); });
   await p.waitForTimeout(300);
   console.log('시트 다시 씀:', await w());
-  // 일괄 편집기는 직접 그린 막대(.r20be-sb) — 같은 6px · 바탕 투명 · 넘칠 때만 손잡이
+  // 일괄 편집기도 브라우저 막대 (v1.113.3 직접 그린 막대를 뺌) — 같은 6px
   const q = await b.newPage({ viewport: { width: 1366, height: 768 } }); q.on('pageerror', e => errs.push(e.message));
   await q.goto('http://127.0.0.1:8766/blank.html');
   await q.evaluate(() => {
@@ -40,6 +40,6 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   });
   await q.addScriptTag({ content: us }); await q.waitForTimeout(400);
   await q.click('#r20-bebtn'); await q.waitForTimeout(400);
-  console.log('일괄 편집기 막대:', await q.evaluate(() => [...document.querySelectorAll('#r20be .r20be-sb')].filter(t => t.getClientRects().length).map(t => { const th = t.querySelector('.r20be-sb-th'), z = +getComputedStyle(document.getElementById('r20be')).zoom || 1; return Math.round(t.getBoundingClientRect().width / z) + 'px · 바탕 ' + getComputedStyle(t).backgroundColor + ' · 손잡이 ' + getComputedStyle(th).visibility; }).join(' | ')));
+  console.log('일괄 편집기 막대:', await q.evaluate(() => ['.r20be-tree', '.r20be-pane'].map(c => { const e = document.querySelector('#r20be ' + c); return c + ' ' + (e.offsetWidth - e.clientWidth) + 'px'; }).join(' · ')), '| 직접 그린 막대 없음:', !(await q.$('.r20be-sb')));
   console.log('errors:', errs); await b.close();
 })();

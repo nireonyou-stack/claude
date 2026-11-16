@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.113.2
+// @version      1.113.3
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.113.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.113.3";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -15371,41 +15371,6 @@ const bulkEditor = (() => {
     };
     // 내용칸은 글 길이만큼 늘리고, 스크롤은 오른쪽 칸 전체가 맡는다
     const autosize = ta => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
-    // 마우스로 끌 수 있는 스크롤바 (Roll20이 휠을 막거나 기본 스크롤바를 숨겨도 동작)
-    const scrollCol = (area, kind) => {
-        const thumb = el("div", { class: "r20be-sb-th" });
-        const track = el("div", { class: "r20be-sb", "aria-hidden": "true" }, thumb);
-        // 넘치지 않으면 손잡이를 숨긴다 (다른 막대와 같게)
-        const sync = () => {
-            const sh = area.scrollHeight, ch = area.clientHeight, tH = track.clientHeight, over = sh > ch + 1;
-            const th = over ? Math.max(24, tH * ch / sh) : tH;
-            thumb.style.visibility = over ? "" : "hidden";
-            thumb.style.height = th + "px";
-            thumb.style.transform = `translateY(${over ? (tH - th) * area.scrollTop / (sh - ch) : 0}px)`;
-        };
-        let raf = 0;
-        const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); };
-        area.addEventListener("scroll", sync);
-        new ResizeObserver(later).observe(area);
-        new MutationObserver(later).observe(area, { childList: true, subtree: true, characterData: true });
-        thumb.addEventListener("mousedown", e => {
-            e.preventDefault(); e.stopPropagation();
-            const sy = e.clientY, st = area.scrollTop;
-            const ratio = (area.scrollHeight - area.clientHeight) / Math.max(1, track.clientHeight - thumb.offsetHeight);
-            thumb.classList.add("drag");
-            const mv = ev => { area.scrollTop = st + (ev.clientY - sy) / aioZoom.get() * ratio; };
-            const up = () => { thumb.classList.remove("drag"); window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); };
-            window.addEventListener("mousemove", mv);
-            window.addEventListener("mouseup", up);
-        });
-        // 막대 빈 곳을 누르면 한 화면씩 이동
-        track.addEventListener("mousedown", e => {
-            if (e.target === thumb) return;
-            e.preventDefault();
-            area.scrollTop += (e.clientY < thumb.getBoundingClientRect().top ? -1 : 1) * area.clientHeight * 0.9;
-        });
-        return el("div", { class: "r20be-col " + kind }, area, track);
-    };
     // 왼쪽 목록 폭: 경계를 끌어서(←/→ 키로도) 바꾸고 기억한다
     const bindSplit = col => {
         const KEY = "r20be_tree_w";
@@ -15526,7 +15491,7 @@ const bulkEditor = (() => {
         ui.foot = el("div", { class: "r20be-foot" }, HINT);
         ui.root = el("section", { id: "r20be", "aria-label": "일괄 편집기" }, head,
             el("div", { class: "r20be-tools" }, ui.search, ui.chips, ui.view, ui.zoom, ui.fold, ui.selTools, el("span", { class: "r20be-flex" }), ui.pagesBtn, ui.bkBtn, ui.newBtn, ui.badge, ui.revert, ui.save, ui.menu, ui.bk, ui.tl, ui.aw),
-            el("div", { class: "r20be-body" }, scrollCol(ui.tree, "tree"), scrollCol(ui.pane, "pane")),
+            el("div", { class: "r20be-body" }, el("div", { class: "r20be-col tree" }, ui.tree), el("div", { class: "r20be-col pane" }, ui.pane)),     // 스크롤 막대는 브라우저 것 (모양 AIO_SCROLL_CSS · 휠은 위 window 처리기)
             ui.setWrap, ui.foot);
         bindTree();
         bindPanel(head);
@@ -15619,15 +15584,9 @@ addCss(`
             & .r20be-split { position:absolute; top:0; bottom:0; right:-4px; z-index:5; width:8px; cursor:col-resize; touch-action:none; }
             & .r20be-split:hover, & .r20be-split:focus-visible, & .r20be-split.on { background:color-mix(in srgb, var(--aio-accent) 22%, transparent); outline:none; }
             & .r20be-col.pane, & .r20be-isend .r20be-chk > .r20be-in:not([type=number]) { flex:1; min-width:0; }
-            /* 기본 스크롤바 대신 직접 만든 스크롤바(.r20be-sb)를 쓴다 */
-            & .r20be-tree, & .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; scrollbar-width:none; }
-            & .r20be-tree::-webkit-scrollbar, & .r20be-pane::-webkit-scrollbar { display:none; }
-            & .r20be-tree { padding-right:14px; }
-            & .r20be-pane { padding:14px 26px 14px 16px; }
-            /* 모양은 화면의 다른 막대(AIO_SCROLL_CSS)와 같게: 6px · 바탕 투명 · 넘칠 때만 손잡이 */
-            & .r20be-sb { position:absolute; top:3px; right:2px; bottom:3px; width:6px; border-radius:3px; background:transparent; cursor:pointer; }
-            & .r20be-sb-th { position:absolute; top:0; left:0; right:0; min-height:24px; border-radius:3px; background:rgba(128,128,128,0.45); cursor:grab; }
-            & .r20be-sb-th:hover, & .r20be-sb-th.drag { background:rgba(128,128,128,0.75); }
+            & .r20be-tree, & .r20be-pane { flex:1; min-width:0; min-height:0; overflow-y:auto; }
+            & .r20be-tree { padding-right:8px; }
+            & .r20be-pane { padding:14px 20px 14px 16px; }
             & .r20be-row { display:flex; align-items:center; gap:3px; min-height:28px; padding-right:6px; border-bottom:1px solid var(--aio-line-4); }
             & .r20be-row:hover, & .r20be-row.chk { background:var(--aio-accent-bg); }
             & .r20be-row.sel { background:var(--aio-accent-soft); }
