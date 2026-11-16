@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.111.1
+// @version      1.112.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.111.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.112.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -82,7 +82,8 @@ const btnVisible = {
     portrait:  aioPref.on("r20_show_portrait"),
     home:      aioPref.on("r20_show_home"),
     abtok:     aioPref.on("r20_show_abtok"),
-    vboard:    aioPref.on("r20_show_vboard")
+    vboard:    aioPref.on("r20_show_vboard"),
+    mapanim:   aioPref.on("r20_show_mapanim")
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -6949,6 +6950,102 @@ const screenUI = (() => {
     return { inject, setEnabled, place };
 })();
 
+// ───────── 움직이는 그림 멈춤: 맵 · 토큰의 webm 은 문서에 붙지 않은 <video> 를 Babylon 이 매 프레임 그래픽 카드로 올린다 ─────────
+// 이 브라우저의 영상만 멈춘다 (방 데이터는 그대로 → 다른 사람 화면은 계속 움직인다). Roll20 은 멈춘 영상을 곧바로 다시 트므로
+// play() 를 가로채 막는다. 멈춘 동안 새로 뜬 영상은 첫 장면이 그려지게 잠깐 틀었다가 멈춘다
+const mapAnim = (() => {
+    const KEY = "r20_mapanim_paused", MP = HTMLMediaElement.prototype, play0 = MP.play;
+    const refs = new Set(), known = new WeakSet(), primed = new WeakSet(), held = new WeakSet();
+    let paused = aioPref.get(KEY) === "true", lastPage, tPaint = 0;
+    const on = () => btnVisible.mapanim && paused;
+    // 맵 영상: 문서에 붙지 않았고 화상 채팅(srcObject)이 아닌 <video> (주크박스는 <audio>, 시트 · 핸드아웃 영상은 문서 안)
+    const isMapVid = v => v instanceof HTMLVideoElement && !v.isConnected && !v.srcObject;
+    const vids = () => {
+        const out = [];
+        refs.forEach(r => { const v = r.deref(); if (!v) refs.delete(r); else if (isMapVid(v) && !v.error && (v.currentSrc || v.getAttribute("src")) && v.readyState > 0) out.push(v); });
+        return out;
+    };
+    const paintSoon = () => { clearTimeout(tPaint); tPaint = setTimeout(paint, 150); };
+    const hold = v => { primed.add(v); held.add(v); if (!v.paused) v.pause(); };
+    const track = v => {
+        if (known.has(v)) return;
+        known.add(v); refs.add(new WeakRef(v));
+        ["loadeddata", "emptied"].forEach(t => v.addEventListener(t, paintSoon));
+        if (!v.paused || v.currentTime > 0) { primed.add(v); if (on()) hold(v); }
+        paintSoon();
+    };
+    MP.play = function () {
+        if (isMapVid(this)) {
+            track(this);
+            if (on()) {
+                if (primed.has(this)) { held.add(this); return Promise.resolve(); }
+                primed.add(this);
+                this.addEventListener("playing", () => setTimeout(() => { if (on()) hold(this); }, 300), { once: true });
+            }
+        }
+        return play0.apply(this, arguments);
+    };
+    // 이 스크립트보다 먼저 틀었거나 autoplay 로 도는 영상은 play() 로 안 잡힌다 → 잠깐 그리기 호출을 엿봐 찾는다
+    const sniff = ms => new Promise(res => {
+        const undo = [];
+        const wrap = (o, n, pick) => {
+            const fn = o?.[n];
+            if (typeof fn !== "function") return;
+            const w = function (...a) { try { const s = pick(a); if (isMapVid(s)) track(s); } catch (e) {} return fn.apply(this, a); };
+            o[n] = w;
+            undo.push(() => { if (o[n] === w) o[n] = fn; });
+        };
+        for (const G of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) for (const n of ["texImage2D", "texSubImage2D"]) wrap(G?.prototype, n, a => a.find(x => x && typeof x === "object"));
+        wrap(CanvasRenderingContext2D.prototype, "drawImage", a => a[0]);
+        setTimeout(() => { undo.forEach(u => u()); res(); }, ms);
+    });
+    const ICON = { pause: '<path d="M9 5v14M15 5v14"/>', play: '<path d="M7 5l12 7-12 7z"/>' };
+    const btn = () => document.querySelector("#vm_zoom_buttons .r20-vpause");
+    // 움직이는 그림이 있을 때만 단추를 보인다
+    const paint = () => {
+        const b = btn();
+        if (!b) return;
+        const n = vids().length, k = paused ? "play" : "pause";
+        if ((b.style.display !== "none") !== n > 0) { b.style.display = n > 0 ? "" : "none"; FEAT.screenUI?.place?.(); }
+        b.setAttribute("aria-pressed", String(paused));
+        b.title = paused ? `움직이는 그림 다시 움직이기 — 지금 ${n}개 멈춤 (내 화면에서만)` : `움직이는 그림 멈춤 — 내 화면에서만, 다른 사람 화면에서는 그대로 움직여요 · ${n}개`;
+        if (b.dataset.k !== k) { b.dataset.k = k; b.innerHTML = `<i class="el-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>`; }
+    };
+    const resume = () => vids().forEach(v => { if (held.has(v)) { held.delete(v); if (v.paused) play0.call(v).catch(() => {}); } });
+    const set = v => {
+        paused = v;
+        aioPref.set(KEY, String(v));
+        if (v) { vids().forEach(hold); sniff(800).then(() => { if (on()) vids().forEach(hold); paint(); }); }
+        else resume();
+        paint();
+    };
+    const inject = () => {
+        if (!btnVisible.mapanim) return;
+        // 페이지가 바뀌면 새 영상을 한 번 찾아본다 (불러오는 시간을 두고)
+        const pg = typeof window.Campaign?.activePage === "function" ? window.Campaign.activePage()?.id : undefined;
+        if (pg && pg !== lastPage) { lastPage = pg; setTimeout(() => sniff(1200).then(paint), 3000); }
+        // 단추는 Roll20 확대 · 축소 묶음 안, 맵 전체보기(없으면 −) 바로 밑. − 단추의 모양 클래스와 Vue 표시를 빌린다
+        const z = document.querySelector("#vm_zoom_buttons .zoomButtonsInner"), minus = z?.querySelector(":scope > .minus");
+        if (!minus || z.querySelector(":scope > .r20-vpause")) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = (minus.className.replace(/\bminus\b/, "") + " r20-vpause").trim();
+        [...minus.attributes].forEach(a => { if (a.name.startsWith("data-v-")) b.setAttribute(a.name, a.value); });
+        b.setAttribute("aria-label", "움직이는 그림 멈춤");
+        b.style.display = "none";
+        b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); set(!paused); });
+        (z.querySelector(":scope > .r20-fitz") || minus).after(b);
+        paint();
+    };
+    const setEnabled = v => {
+        if (v) { if (paused) vids().forEach(hold); return inject(); }
+        resume();
+        btn()?.remove();
+        FEAT.screenUI?.place?.();
+    };
+    return { inject, setEnabled, sniff, count: () => vids().length };
+})();
+
 // ───────── 페이지 폴더 이름: 방 데이터에는 폴더 아이디만 있다(페이지마다 path ",폴더,하위폴더,") ─────────
 // 이름은 Roll20 페이지 메뉴(Vue)가 그린 폴더 카드에서 읽어 이 브라우저에 방마다 기억한다 (메뉴를 한 번 열면 채워진다)
 const pgFolders = (() => {
@@ -7643,9 +7740,11 @@ addCss(`
                 & > .sliderSection { order:3; }
                 & > .minus { order:4; }
                 & > .r20-fitz { order:5; }
+                & > .r20-vpause { order:6; }
             }
         }
         #vm_zoom_buttons .r20-fitz:disabled { cursor:progress; opacity:.4; }
+        #vm_zoom_buttons .r20-vpause[aria-pressed=true] { color:var(--aio-accent) !important; }
         /* 토큰 액션: 위쪽 줄은 숨기고 토큰을 클릭한 자리에 메뉴로 */
         body.r20ta-on #secondary-toolbar.r20ta-hide { visibility:hidden !important; pointer-events:none !important; }
         .r20ta-pop { position:fixed; z-index:calc(var(--aio-z-tip) + 2); min-width:150px; max-width:280px; padding:4px; border-radius:var(--aio-r-lg); background:var(--aio-bg-3); box-shadow:var(--aio-shadow-lg); font-family:inherit; }
@@ -7978,12 +8077,15 @@ addFeature("tokenMenu", tokenMenu);
 addFeature("tokenActs", tokenActs);
 addFeature("deckView", deckView);
 addFeature("screenUI", screenUI);
+addFeature("mapAnim", mapAnim);
 addFeature("pagePanel", pagePanel);
 addFeature("macroBar", macroBar);
 addFeature("tokenSet", tokenSet);
 addBundle({ place: "main", order: 2, group: "view", label: "토큰 · 클릭 메뉴 · 화면 간소화", sub: "토큰 메뉴(면 선택 · 면 순서 · 롤러블로 합치기 · 가운데 정렬) · 면 고르기 창 · 토큰 액션 클릭 메뉴 · 토큰 설정 창 · 덱 창 · 화면 제어 · 페이지 창 · 매크로 줄 (덱 · 매크로는 오른쪽 판 왼쪽 끝 / 원래 자리) · 왼쪽 도구 줄 가늘게",
     members: [["tokmenu", "tokenMenu"], ["sidepick", "sidePicker"], ["tokact", "tokenActs"], ["deckview", "deckView"], ["screenui", "screenUI"], ["pageslim", "pagePanel"], ["macrobar", "macroBar"], ["tokset", "tokenSet"]],
     extra: () => [edgeDock.modeRow(), leftBar.modeRow()] });
+addBundle({ place: "main", order: 2.05, group: "view", label: "움직이는 그림 멈춤 단추", sub: "맵 · 토큰의 움직이는 그림(webm)이 있으면 확대 · 축소 단추 밑에 ⏸ — 누르면 내 화면에서만 멈춰 브라우저가 가벼워져요 (다른 사람 화면은 그대로 움직임) · 멈춘 상태는 새로고침해도 기억",
+    members: [["mapanim", "mapAnim"]] });
 
 // ══════════ 묶음 4 · 이미지 · 매크로&저널 뷰어 ══════════
 

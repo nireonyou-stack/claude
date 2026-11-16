@@ -162,6 +162,10 @@
 - MutationObserver는 좁은 범위만, 몰아서 처리.
 - 그림은 `loading="lazy"`, 썸네일 우선.
 - 큰 목록은 보일 때만 그린다.
+- 움직이는 그림(v1.112.0 `mapAnim`): 맵 · 토큰 webm 은 문서 밖 `<video>` 를 Babylon(`#babylonCanvas`)이 매 프레임 `texImage2D` 로 올린다
+  (실제 방 13~14개 · 3초에 약 1,150회). 멈추면 Roll20 이 곧바로 `play()` 를 다시 부르므로 `HTMLMediaElement.prototype.play` 를 가로채 막는다
+  → 3초에 1회. 이 브라우저에서만 멈추고 방 데이터는 그대로. 스크립트보다 먼저 튼 영상은 페이지가 바뀐 3초 뒤 1.2초 동안 그리기 호출을 엿봐 찾는다.
+  문서 안 영상(시트 · 핸드아웃) · 화상 채팅(srcObject) · `<audio>` 는 건드리지 않는다.
 
 ## 6. 검증 · 배포
 
