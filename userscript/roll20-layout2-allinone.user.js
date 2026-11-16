@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.112.5
+// @version      1.113.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.112.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.113.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -78,6 +78,7 @@ const btnVisible = {
     winmem:    aioPref.on("r20_show_winmem"),
     scen:      aioPref.on("r20_show_scen"),
     jbdrawer:  aioPref.on("r20_show_jbdrawer"),
+    jndrawer:  aioPref.on("r20_show_jndrawer"),
     jbmini:    aioPref.on("r20_show_jbmini"),
     portrait:  aioPref.on("r20_show_portrait"),
     home:      aioPref.on("r20_show_home"),
@@ -1323,6 +1324,16 @@ const CORE_CSS = `
             &.sm > button { width:var(--aio-h-sm); height:var(--aio-h-sm); font-size:var(--aio-fs-lg); }
             & > button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         }
+        /* 스크롤 막대: 화면의 모든 막대를 6px 가는 막대로 (화살표 없음 · 바탕 투명) — 일부러 숨긴 막대(display:none · scrollbar-width:none)는 그대로
+           Chrome · Edge 는 ::-webkit-scrollbar (요소에 scrollbar-width 가 있으면 그 요소는 브라우저의 thin), 그 밖의 브라우저는 thin */
+        @supports selector(::-webkit-scrollbar) {
+            html ::-webkit-scrollbar { width:6px; height:6px; }
+            html ::-webkit-scrollbar-thumb { border-radius:3px; background:rgba(128,128,128,0.45); }
+            html ::-webkit-scrollbar-thumb:hover { background:rgba(128,128,128,0.75); }
+            html ::-webkit-scrollbar-track, html ::-webkit-scrollbar-corner { background:transparent; }
+            html ::-webkit-scrollbar-button { display:none; }
+        }
+        @supports not selector(::-webkit-scrollbar) { html :where(*) { scrollbar-width:thin; } }
         /* 공용 부품: 글자 단추 .aio-btn (26px · .sm 22px · .lg 30px · .pri 강조) · 칩 .aio-chip (22px 알약 · .on / aria-pressed 면 강조색 옅게) */
         .aio-btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; height:var(--aio-h); margin:0; padding:0 10px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-2); font-size:var(--aio-fs-md); line-height:1; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .aio-btn:hover:not(:disabled) { background:var(--aio-bg-3); color:var(--aio-ink); }
@@ -2348,16 +2359,34 @@ addFeature("jbBackup", jbBackup);
 addBundle({ place: "main", order: 1, group: "view", label: "주크박스 · 저널 목록 간소화", sub: "BGM 미리듣기 · BGM 태그 보기 · 목록 한 줄 보기 · 탭 단추 모양 통일 · 주크박스 폴더 자동 백업",
     members: [["bgm", "bgmPreview"], ["jbrow", "jukeboxRow"], ["jbrow", "jbBackup"]] });
 
-// ───────── 주크박스 서랍: ♪ 탭을 눌러도 탭을 바꾸지 않고, 주크박스 칸을 채팅 판 왼쪽에 펼친다 ─────────
-// Roll20 주크박스 칸(#jukebox)은 제자리(오른쪽 판 안)에 둔 채 화면에만 띄운다 → 재생 · 볼륨 · 오디오 관리와 올인원 미리듣기 · 페이드가 그대로
-// [½] 전체 높이 ↔ 반쪽(아래쪽만, 위 끝을 끌어 높이 조절) · 머리줄 곡 찾기(빠른 찾기와 같은 맞추기, Enter 재생 · 정지)
-// 다시 ♪ · ✕ · Esc · 다른 데 누르기(📌 면 그대로)로 닫기 · 왼쪽 끝을 끌어 폭 조절(기억) · 전체 높이면 단추줄도 서랍 왼쪽으로 밀린다
-// 화면 구조 때문에 띄우지 못하면(부모가 transform 등) 원래대로 탭을 바꾼다
-const jbDrawer = (() => {
-    const W_KEY = "r20_jbd_w", PIN_KEY = "r20_jbd_pin", MODE_KEY = "r20_jbd_mode", H_KEY = "r20_jbd_h", HD_H = 62;      // 머리줄 높이 (제목 줄 + 찾기 줄) — CSS 의 --jbd-hh 와 같게
+// ───────── 옆 서랍 (주크박스 · 저널): 탭을 눌러도 탭을 바꾸지 않고, 그 칸을 채팅 판 왼쪽에 펼친다 ─────────
+// Roll20 칸(#jukebox · #journal)은 제자리(오른쪽 판 안)에 둔 채 화면에만 띄운다 → 재생 · 볼륨 · 오디오 관리 · 저널 찾기 · 끌어다 놓기가 그대로
+// [½] 전체 높이 ↔ 반쪽(아래쪽만, 위 끝을 끌어 높이 조절) · 주크박스는 머리줄 곡 찾기(빠른 찾기와 같은 맞추기, Enter 재생 · 정지)
+// 다시 탭 · ✕ · Esc · 다른 데 누르기(📌 면 그대로)로 닫기 · 왼쪽 끝을 끌어 폭 조절(기억) · 전체 높이면 단추줄도 서랍 왼쪽으로 밀린다
+// 같은 자리라 한 번에 하나만 (하나를 열면 다른 서랍은 닫힘) · 화면 구조 때문에 띄우지 못하면(부모가 transform 등) 원래대로 탭을 바꾼다
+// cfg: p 이름표(jbd · jnd — 저장 키 r20_<p>_* · 요소 r20-<p>-* · body.r20<p>-open · CSS 변수 --<p>-*) · pane 칸 id · title · search(곡 찾기)
+//      flag 켜고 끄는 btnVisible 키 · tab() 탭 요소 · tabSel 탭 고르기 · keep 눌러도 안 닫히는 곳 · label 오류 이름
+// 서랍 틀 CSS (P 이름표 · pane 칸 id · hh 머리줄 높이)
+const drawerCss = (P, pane, hh) => `
+        body.r20${P}-open #${pane} { display:block !important; position:fixed !important; top:calc(var(--${P}-t, 0px) + ${hh}px) !important; right:var(--${P}-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--${P}-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:var(--aio-z-win) !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; }
+        #r20-${P}-hd, #r20-${P}-grip, #r20-${P}-hgrip { display:none; }
+        body.r20${P}-open #r20-${P}-hd { position:fixed; z-index:calc(var(--aio-z-win) + 1); display:flex; align-items:center; gap:2px; top:var(--${P}-t, 0px); right:var(--${P}-r, 300px); width:var(--${P}-w, 300px); height:${hh}px; padding:4px 4px 4px 8px; flex-wrap:wrap; align-content:space-between; row-gap:4px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
+        body.r20${P}-half #r20-${P}-hd { border-top:1px solid var(--aio-line-3); box-shadow:-6px -4px 14px rgba(0,0,0,0.16); }
+        body.r20${P}-open #r20-${P}-hd {
+            & .tt { color:var(--aio-ink-2); font-size:var(--aio-fs-md); white-space:nowrap; }
+            & .sp { flex:1; }
+            & .aio-dock { margin-right:2px; }
+            & .pin { filter:grayscale(1); opacity:.6; } & .pin[aria-pressed="true"] { filter:none; opacity:1; }
+        }
+        body.r20${P}-open #r20-${P}-grip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:var(--${P}-t, 0px); bottom:0; right:calc(var(--${P}-r, 300px) + var(--${P}-w, 300px) - 3px); width:6px; cursor:ew-resize; }
+        body.r20${P}-half #r20-${P}-hgrip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:calc(var(--${P}-t, 0px) - 3px); right:var(--${P}-r, 300px); width:var(--${P}-w, 300px); height:6px; cursor:ns-resize; }
+        .r20${P}-on > a { background:var(--aio-accent) !important; color:var(--aio-ink-inv) !important; border-radius:var(--aio-r-sm); }`;
+const DRAWERS = [];
+const makeDrawer = cfg => {
+    const P = cfg.p, W_KEY = `r20_${P}_w`, PIN_KEY = `r20_${P}_pin`, MODE_KEY = `r20_${P}_mode`, H_KEY = `r20_${P}_h`, HD_H = cfg.search ? 62 : 34;      // 머리줄 높이 (제목 줄 + 찾기 줄) — CSS 와 같게
     let on = false, hd = null, grip = null, hgrip = null, res = null, pass = false, ro = null, hits = [], at = 0;
-    const tab = () => document.getElementById("jukeboxtab");
-    const pane = () => document.getElementById("jukebox");
+    const tab = cfg.tab;
+    const pane = () => document.getElementById(cfg.pane);
     const width = () => Math.max(240, Math.min(600, parseInt(aioPref.get(W_KEY) || "300", 10) || 300));
     const pinned = () => aioPref.get(PIN_KEY) === "true";
     const half = () => aioPref.get(MODE_KEY) === "half";
@@ -2375,10 +2404,10 @@ const jbDrawer = (() => {
         if (!on) return;
         if (!r) return close();
         const st = document.documentElement.style;
-        st.setProperty("--jbd-w", width() + "px");
-        st.setProperty("--jbd-r", Math.round(innerWidth - r.left) + "px");
-        st.setProperty("--jbd-t", topOf(r) + "px");
-        document.body.classList.toggle("r20jbd-half", half());
+        st.setProperty(`--${P}-w`, width() + "px");
+        st.setProperty(`--${P}-r`, Math.round(innerWidth - r.left) + "px");
+        st.setProperty(`--${P}-t`, topOf(r) + "px");
+        document.body.classList.toggle(`r20${P}-half`, half());
     };
     const drag = (el, mv) => el.addEventListener("pointerdown", e => {
         if (e.button !== 0) return;
@@ -2396,11 +2425,11 @@ const jbDrawer = (() => {
     };
     const build = () => {
         hd = document.createElement("div");
-        hd.id = "r20-jbd-hd";
-        // 공용 창 틀: ♪ 주크박스 · (빈칸) · 자리(붙임 · ½) · 📌 · ✕ — 찾기 칸은 아랫줄 (CSS 에서 줄바꿈)
-        hd.innerHTML = '<b class="tt">♪ 주크박스</b><span class="sp"></span><span class="dkw"></span>'
+        hd.id = `r20-${P}-hd`;
+        // 공용 창 틀: 제목 · (빈칸) · 자리(붙임 · ½) · 📌 · ✕ — 주크박스 찾기 칸은 아랫줄 (CSS 에서 줄바꿈)
+        hd.innerHTML = `<b class="tt">${cfg.title}</b><span class="sp"></span><span class="dkw"></span>`
             + '<button type="button" data-a="pin" class="pin aio-ib" title="다른 데를 눌러도 열어 두기" aria-pressed="false">📌</button><button type="button" data-a="x" class="aio-ib" aria-label="닫기" title="닫기 (Esc)">✕</button>'
-            + '<input type="search" class="q aio-in sm" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 모두에게 재생 · 정지, Shift+Enter 로 미리듣기" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">';
+            + (cfg.search ? '<input type="search" class="q aio-in sm" placeholder="곡 찾기 · 초성 · #태그" aria-label="곡 찾기 — Enter 로 모두에게 재생 · 정지, Shift+Enter 로 미리듣기" role="combobox" aria-controls="r20-jbd-res" aria-expanded="false" autocomplete="off" spellcheck="false">' : "");
         dkSeg = aioDockSeg([["dock", "붙임"], ["half", "½"]], half() ? "half" : "dock", v => setMode(v === "half"));
         hd.querySelector(".dkw").replaceWith(dkSeg);
         hd.addEventListener("click", e => {
@@ -2408,6 +2437,16 @@ const jbDrawer = (() => {
             if (a === "x") close();
             else if (a === "pin") { const p = !pinned(); localStorage.setItem(PIN_KEY, String(p)); b.setAttribute("aria-pressed", String(p)); }
         });
+        grip = document.createElement("div");
+        grip.id = `r20-${P}-grip`;
+        grip.title = "끌어서 폭 조절";
+        drag(grip, ev => { const r = sideRect(); if (!r) return; localStorage.setItem(W_KEY, String(Math.round(Math.max(240, Math.min(600, r.left - ev.clientX))))); place(); FEAT.screenUI?.place(); });
+        hgrip = document.createElement("div");
+        hgrip.id = `r20-${P}-hgrip`;
+        hgrip.title = "끌어서 높이 조절";
+        drag(hgrip, ev => { localStorage.setItem(H_KEY, String(Math.round(Math.max(160, innerHeight - ev.clientY)))); place(); });
+        document.body.append(hd, grip, hgrip);
+        if (!cfg.search) return;
         const q = hd.querySelector(".q");
         q.addEventListener("input", () => { at = 0; find(); });
         q.addEventListener("keydown", e => {
@@ -2425,15 +2464,7 @@ const jbDrawer = (() => {
         res.addEventListener("mousedown", e => e.preventDefault());       // 입력칸 포커스 그대로
         res.addEventListener("click", e => { const r = e.target.closest("[data-id]"); if (r) { at = +r.dataset.i; (e.target.closest(".pv") ? preview : play)(r.dataset.id); } });
         FEAT.bgmPreview?.onChange(syncPv);
-        grip = document.createElement("div");
-        grip.id = "r20-jbd-grip";
-        grip.title = "끌어서 폭 조절";
-        drag(grip, ev => { const r = sideRect(); if (!r) return; localStorage.setItem(W_KEY, String(Math.round(Math.max(240, Math.min(600, r.left - ev.clientX))))); place(); FEAT.screenUI?.place(); });
-        hgrip = document.createElement("div");
-        hgrip.id = "r20-jbd-hgrip";
-        hgrip.title = "끌어서 높이 조절";
-        drag(hgrip, ev => { localStorage.setItem(H_KEY, String(Math.round(Math.max(160, innerHeight - ev.clientY)))); place(); });
-        document.body.append(hd, res, grip, hgrip);
+        document.body.append(res);
     };
     // ── 곡 찾기: 빠른 찾기와 같은 맞추기 (FEAT.quickFind.findTracks) · Enter = 재생 ↔ 정지 ──
     const find = () => {
@@ -2485,15 +2516,16 @@ const jbDrawer = (() => {
         const p = pane();
         if (!p || !sideRect()) return false;
         if (!hd?.isConnected) build();
+        DRAWERS.forEach(d => d !== self && d.close());          // 같은 자리 — 다른 서랍은 닫는다
         on = true;
         place();
-        document.body.classList.add("r20jbd-open");
-        tab()?.classList.add("r20jbd-on");
+        document.body.classList.add(`r20${P}-open`);
+        tab()?.classList.add(`r20${P}-on`);
         hd.querySelector(".pin").setAttribute("aria-pressed", String(pinned()));
         dkSeg?.set(half() ? "half" : "dock");
         // 제대로 떴는지: 서랍 오른쪽 끝이 채팅 판 왼쪽에 붙어 있어야 한다
         const pr = p.getBoundingClientRect(), r = sideRect();
-        if (!pr.width || Math.abs(pr.right - r.left) > 6) { close(); aioErr("주크박스 서랍", "주크박스 칸을 화면에 띄우지 못함 — 원래대로 탭을 바꿈"); return false; }
+        if (!pr.width || Math.abs(pr.right - r.left) > 6) { close(); aioErr(cfg.label, cfg.label.replace(" 서랍", "") + " 칸을 화면에 띄우지 못함 — 원래대로 탭을 바꿈"); return false; }
         FEAT.screenUI?.place();
         if (!ro && window.ResizeObserver) { ro = new ResizeObserver(() => { if (on) { place(); FEAT.screenUI?.place(); } }); ro.observe(document.getElementById("rightsidebar")); }
         return true;
@@ -2501,8 +2533,8 @@ const jbDrawer = (() => {
     function close() {
         if (!on) return;
         on = false;
-        document.body.classList.remove("r20jbd-open", "r20jbd-half");
-        tab()?.classList.remove("r20jbd-on");
+        document.body.classList.remove(`r20${P}-open`, `r20${P}-half`);
+        tab()?.classList.remove(`r20${P}-on`);
         if (res) res.hidden = true;
         FEAT.screenUI?.place();
     }
@@ -2515,19 +2547,20 @@ const jbDrawer = (() => {
         li.classList.add("r20jbd-flash");
         setTimeout(() => li.classList.remove("r20jbd-flash"), 1200);
     };
-    // ♪ 탭: 이미 주크박스 탭이 열려 있으면 Roll20 그대로 · 아니면 서랍
+    // 탭: 이미 그 탭이 열려 있으면 Roll20 그대로 · 아니면 서랍
     document.addEventListener("click", e => {
-        if (pass || !btnVisible.jbdrawer) return;
-        const t = e.target.closest?.("#jukeboxtab");
+        if (pass || !btnVisible[cfg.flag]) return;
+        const t = e.target.closest?.(cfg.tabSel);
         if (!t || t.classList.contains("ui-tabs-active") || t.classList.contains("ui-state-active")) return;
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         if (on) return close();
         if (!open()) { pass = true; try { t.querySelector("a")?.click(); } finally { pass = false; } }
     }, true);
-    // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정)과 올인원 주크박스 말풍선 · 미니 재생 줄은 빼고
+    // 다른 데 누르면 닫기 (📌 면 그대로) — Roll20 창(오디오 관리 · 곡 설정 · 시트 · 핸드아웃) · 메뉴와 올인원 말풍선 · 미니 재생 줄은 빼고
+    const KEEP = `#${cfg.pane}, #r20-${P}-hd, #r20-${P}-res, #r20-${P}-grip, #r20-${P}-hgrip, ${cfg.keep}, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jb-menu, #aio-toasts`;
     document.addEventListener("pointerdown", e => {
         if (!on || pinned() || !e.isTrusted) return;        // 스크립트가 보낸 누르기(⛶ 화면 맞춤이 배율 메뉴를 닫을 때 등)는 무시
-        if (e.target.closest?.("#jukebox, #r20-jbd-hd, #r20-jbd-res, #r20-jbd-grip, #r20-jbd-hgrip, #r20-jbm, #jukeboxtab, .ui-dialog, .ui-widget-overlay, .ui-menu, .ui-autocomplete, .r20jb-tip, .r20jb-menu, #aio-toasts")) return;      // body 의 r20jb- 꼬리표는 안 봄
+        if (e.target.closest?.(KEEP)) return;
         close();
     }, true);
     document.addEventListener("keydown", e => {
@@ -2539,31 +2572,31 @@ const jbDrawer = (() => {
     window.addEventListener("resize", () => { if (on) { place(); FEAT.screenUI?.place(); } });
     const setEnabled = v => { if (!v) close(); };
     const halfTop = () => { if (!on || !half()) return null; const r = sideRect(); return r ? topOf(r) : null; };
-    return { setEnabled, leftEdge, halfTop, dockBottom, isOpen: () => on, open, close, show };
-})();
+    const self = { setEnabled, leftEdge, halfTop, dockBottom, isOpen: () => on, open, close, show };
+    DRAWERS.push(self);
+    return self;
+};
+const jbDrawer = makeDrawer({ p: "jbd", pane: "jukebox", title: "♪ 주크박스", search: true, flag: "jbdrawer", label: "주크박스 서랍",
+    tab: () => document.getElementById("jukeboxtab"), tabSel: "#jukeboxtab", keep: "#r20-jbm, #jukeboxtab" });
+// 저널 탭: Roll20 은 탭 li 에 id 가 없을 수 있어 a[href="#journal"] 로도 찾는다
+const jnDrawer = makeDrawer({ p: "jnd", pane: "journal", title: "📒 저널", flag: "jndrawer", label: "저널 서랍",
+    tab: () => document.getElementById("journaltab") || document.querySelector('#rightsidebar a[href="#journal"]')?.closest("li"),
+    tabSel: '#journaltab, #rightsidebar li:has(> a[href="#journal"])', keep: '#journaltab, #rightsidebar a[href="#journal"], .context-menu, .ui-draggable-dragging' });
 addFeature("jbDrawer", jbDrawer);
 addBundle({ place: "main", order: 1.05, group: "play", label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그 · 🎧 나만 미리듣기 · 곡 이름 = 모두에게 재생 · Enter 재생 · Shift+Enter 미리듣기) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
     members: [["jbdrawer", "jbDrawer"]] });
+addFeature("jnDrawer", jnDrawer);
+addBundle({ place: "main", order: 1.06, group: "play", label: "저널 서랍 (📒 를 누르면 채팅 왼쪽에)", sub: "저널 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — Roll20 저널이 채팅 판 왼쪽에 펼쳐져요 (찾기 · 폴더 · 맵으로 끌어다 놓기 그대로) · [½] 반쪽 ↔ 전체 높이 · 다시 📒 · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절 · 주크박스 서랍과는 하나씩",
+    members: [["jndrawer", "jnDrawer"]] });
 addCss(`
-        /* 주크박스 서랍: Roll20 주크박스 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) */
+        /* 옆 서랍: Roll20 칸을 채팅 판 왼쪽에 띄운다 (제자리에 둔 채) — 주크박스 · 저널이 같은 틀 */
+        ${drawerCss("jbd", "jukebox", 62)}
+        ${drawerCss("jnd", "journal", 34)}
         body.r20jbd-open {
-            & #jukebox { display:block !important; position:fixed !important; top:calc(var(--jbd-t, 0px) + 62px) !important; right:var(--jbd-r, 300px) !important; bottom:0 !important; left:auto !important; width:var(--jbd-w, 300px) !important; height:auto !important; max-height:none !important; margin:0 !important; padding:6px 8px 10px !important; overflow-y:auto !important; overscroll-behavior:contain; z-index:var(--aio-z-win) !important; background:var(--aio-bg) !important; border-left:1px solid var(--aio-line-3); box-shadow:-6px 0 18px rgba(0,0,0,0.22); box-sizing:border-box; scrollbar-width:thin; }
             & #jukebox#jukebox { padding-left:0 !important; padding-right:0 !important; }
             & #jukebox :is(#jukeboxfolderroot, #jukeboxfolderroot > .dd-list) { margin-left:0 !important; margin-right:0 !important; padding-left:0 !important; padding-right:0 !important; list-style:none !important; }
         }
-        #r20-jbd-hd, #r20-jbd-grip, #r20-jbd-hgrip { display:none; }
-        body.r20jbd-open #r20-jbd-hd { position:fixed; z-index:calc(var(--aio-z-win) + 1); display:flex; align-items:center; gap:2px; top:var(--jbd-t, 0px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:62px; padding:4px 4px 4px 8px; flex-wrap:wrap; align-content:space-between; row-gap:4px; border-left:1px solid var(--aio-line-3); border-bottom:1px solid var(--aio-line-4); border-radius:var(--aio-r-lg) 0 0 0; background:var(--aio-bg); color:var(--aio-ink-2); font:12px/1 sans-serif; box-sizing:border-box; }
-        body.r20jbd-half #r20-jbd-hd { border-top:1px solid var(--aio-line-3); box-shadow:-6px -4px 14px rgba(0,0,0,0.16); }
-        body.r20jbd-open #r20-jbd-hd {
-            & .q { flex:1; min-width:0; width:auto; margin:0 4px; }
-            & .tt { color:var(--aio-ink-2); font-size:var(--aio-fs-md); white-space:nowrap; }
-            & .sp { flex:1; }
-            & .aio-dock { margin-right:2px; }
-            & .q { order:9; flex:1 0 100% !important; margin:0 !important; }
-            & .pin { filter:grayscale(1); opacity:.6; } & .pin[aria-pressed="true"] { filter:none; opacity:1; }
-        }
-        body.r20jbd-open #r20-jbd-grip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:var(--jbd-t, 0px); bottom:0; right:calc(var(--jbd-r, 300px) + var(--jbd-w, 300px) - 3px); width:6px; cursor:ew-resize; }
-        body.r20jbd-half #r20-jbd-hgrip { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:block; top:calc(var(--jbd-t, 0px) - 3px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); height:6px; cursor:ns-resize; }
+        body.r20jbd-open #r20-jbd-hd .q { order:9; flex:1 0 100% !important; min-width:0; width:auto; margin:0 !important; }
         #r20-jbd-res { position:fixed; z-index:calc(var(--aio-z-win) + 3); top:calc(var(--jbd-t, 0px) + 62px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); max-height:236px; overflow-y:auto; padding:3px; border:1px solid var(--aio-line-3); border-top:0; background:var(--aio-bg); box-shadow:var(--aio-shadow-md); color:var(--aio-ink-2); font:12px/1.4 sans-serif; box-sizing:border-box; }
         #r20-jbd-res {
             & .r { display:flex; align-items:center; gap:6px; height:var(--aio-h); padding:0 6px; border-radius:var(--aio-r-sm); cursor:pointer; }
@@ -2581,7 +2614,6 @@ addCss(`
             & .msg { padding:8px; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); text-align:center; }
         }
         #jukebox li.jukeboxitem.r20jbd-flash > .dd-content { background:var(--aio-accent-bg) !important; transition:background 0.3s; }
-        #jukeboxtab.r20jbd-on > a { background:var(--aio-accent) !important; color:var(--aio-ink-inv) !important; border-radius:var(--aio-r-sm); }
 `);
 
 // ───────── 주크박스 미니 재생 줄 (GM): 채팅 판 맨 위에 지금 나오는 곡 — 정지 · 페이드 · 볼륨을 한 줄에서 ─────────
@@ -6844,7 +6876,7 @@ const screenUI = (() => {
         const hb = document.getElementById("sidebarcontrol");
         if (!hb) return;
         const r = hb.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
-        const edge = FEAT.jbDrawer?.leftEdge?.() ?? (side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right);       // 대화 판(· 주크박스 서랍) 안쪽을 덮지 않게
+        const edge = FEAT.jbDrawer?.leftEdge?.() ?? FEAT.jnDrawer?.leftEdge?.() ?? (side && side.width > 0 && side.left < innerWidth - 1 ? side.left : r.right);       // 대화 판(· 주크박스 서랍) 안쪽을 덮지 않게
         let y = r.bottom + 4;
         const els = btnVisible.screenui ? [document.getElementById("page-button"), document.getElementById("vm_zoom_buttons")] : [];
         els.push(document.getElementById("r20-mapshot"), document.getElementById("r20-bebtn"), document.getElementById("r20-snbtn"), document.getElementById("r20-mscnbtn"), document.getElementById("r20-qfbtn"));
@@ -7168,7 +7200,7 @@ const edgeDock = (() => {
         B.classList.toggle("r20edge-mb", act && btnVisible.macrobar);
         if (!act) return;
         const st = document.documentElement.style, top = last.y + 4;          // 위 끝: 단추줄 밑
-        const ht = FEAT.jbDrawer?.halfTop?.(), bot = Math.round(ht != null ? innerHeight - ht + 6 : 8);      // 아래 끝: 반쪽 주크박스 서랍이 열려 있으면 그 위
+        const ht = FEAT.jbDrawer?.halfTop?.() ?? FEAT.jnDrawer?.halfTop?.(), bot = Math.round(ht != null ? innerHeight - ht + 6 : 8);      // 아래 끝: 반쪽 주크박스 서랍이 열려 있으면 그 위
         st.setProperty("--r20e-r", Math.round(innerWidth - last.edge) + "px");
         st.setProperty("--r20e-mb", bot + "px");
         const sd = document.getElementById("showndecks"), hasDeck = btnVisible.deckview && shown(sd) && !!sd.querySelector(".adeck");
@@ -7687,7 +7719,7 @@ addCss(`
         .r20tm-tip { position:fixed; z-index:calc(var(--aio-z-tip) + 6); padding:3px 8px; border-radius:var(--aio-r-sm); background:var(--aio-tip); color:var(--aio-ink-inv); font:11px/1.4 sans-serif; white-space:nowrap; pointer-events:none; }
         /* 덱 창: 반투명 판에 카드 더미만 (폭 70px, 높이는 그림 비율대로). 메뉴(이름 + 돌리기·선택·회수·섞기·숨기기)는 마우스를 올릴 때 카드 왼쪽에 띄운다 */
         /* Roll20 은 메뉴를 판 안 40px 폭에 넣어서 글자가 한 자씩 꺾였다 → position:fixed 로 판 밖에 (자리는 deckView 가 잡는다) */
-        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:var(--aio-r-lg); box-sizing:border-box; scrollbar-width:thin; }
+        #showndecks.r20dk-on { width:auto !important; padding:6px !important; overflow-x:hidden !important; overflow-y:auto !important; background:rgba(255,255,255,0.22) !important; border-radius:var(--aio-r-lg); box-sizing:border-box; }
         #showndecks.r20dk-on {
             & .adeck { width:auto !important; height:auto !important; margin:0 0 6px !important; padding:0 !important; float:none !important; }
             & .adeck:last-child { margin-bottom:0 !important; }
@@ -7706,7 +7738,7 @@ addCss(`
         }
         /* 매크로 줄: 두 줄로 쌓고 넘치면 줄 안에서 세로 스크롤 · 길게 누르면 들림 */
         body.r20mb-on {
-            & #macrobar { height:auto !important; max-height:66px !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:thin; }
+            & #macrobar { height:auto !important; max-height:66px !important; overflow-x:hidden !important; overflow-y:auto !important; }
             /* flex 로 하면 jQuery UI 가 세로 목록으로 여겨 옆으로 끌어도 안 바뀐다 → inline-block 을 줄바꿈 */
             & #macrobar_macros { display:block !important; width:auto !important; white-space:normal !important; padding:2px 0 0; }
             & #macrobar_macros .macrobox { display:inline-block !important; vertical-align:top; width:auto !important; margin:0 4px 4px 0 !important; float:none !important; }
@@ -8859,7 +8891,7 @@ const quickJournal = (() => {
             return;
         }
         if (!side || !side.width) return close();
-        const edge = FEAT.jbDrawer?.leftEdge?.() ?? side.left, ht = FEAT.jbDrawer?.halfTop?.();
+        const edge = FEAT.jbDrawer?.leftEdge?.() ?? FEAT.jnDrawer?.leftEdge?.() ?? side.left, ht = FEAT.jbDrawer?.halfTop?.() ?? FEAT.jnDrawer?.halfTop?.();
         const bottom = ht != null ? innerHeight - ht : 0, top = (FEAT.jbDrawer?.dockBottom?.() || 0) + 6, room = Math.max(160, innerHeight - bottom - top), dh = parseInt(ls(DH), 10);
         Object.assign(pop.style, { right: (innerWidth - edge) / z + "px", bottom: bottom / z + "px", left: "auto", top: "auto", width: dockW() + "px", height: dh > 0 ? Math.min(dh, room / z) + "px" : "", maxHeight: room / z + "px" });
     };
@@ -9495,6 +9527,7 @@ const quickFind = (() => {
             add("🔗", "링크 점검 열기", "안 열리는 · 너무 큰 그림 주소 찾아 고치기 — 일괄 편집기", () => FEAT.bulkEditor.open("links"));
         }
         if (isGM() && btnVisible.jbdrawer && FEAT.jbDrawer?.open) add("♪", "주크박스 서랍 열기", "채팅 왼쪽에 펼치기", () => FEAT.jbDrawer.open());
+        if (btnVisible.jndrawer && FEAT.jnDrawer?.open) add("📒", "저널 서랍 열기", "채팅 왼쪽에 펼치기", () => FEAT.jnDrawer.open());
         if (isGM() && window.Jukebox?.playlist?.models) add("■", "주크박스 모두 멈춤", "지금 나오는 곡을 모두 멈추기", () => {
             const on = window.Jukebox.playlist.models.filter(m => m.get("playing"));
             on.forEach(m => m.save({ playing: false, softstop: false }));
@@ -17182,7 +17215,7 @@ addCss(`
             & .tabs button { flex:1; min-width:0; padding:0; font-size:var(--aio-fs-xl); }
             & .tabs button.txt { font-size:var(--aio-fs-sm); }
             & .head { flex-shrink:0; padding:4px 10px 2px; font-size:var(--aio-fs-sm); font-weight:700; color:var(--aio-ink-4); }
-            & .grid { flex:1; min-height:0; overflow-y:auto; padding:2px 6px 8px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:2px; scrollbar-width:thin; }
+            & .grid { flex:1; min-height:0; overflow-y:auto; padding:2px 6px 8px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:2px; }
             & .it { margin:0; border:0; border-radius:var(--aio-r); background:none; color:var(--aio-ink-2); cursor:pointer; }
             & .it.e { width:34px; height:34px; padding:0; font-size:21px; line-height:34px; }
             & .it.t { height:28px; padding:0 8px; background:var(--aio-bg-3); font-size:var(--aio-fs-lg); white-space:nowrap; }
