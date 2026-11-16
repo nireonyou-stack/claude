@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.110.8
+// @version      1.110.9
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.110.8";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.110.9";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -7500,30 +7500,58 @@ addCss(`
                 & .pagename-top { display:grid !important; grid-template-columns:minmax(0, 1.3fr) minmax(0, 1fr) !important; gap:8px !important; padding:6px 0 4px !important; }
                 & .pagename-top > div { width:auto !important; min-width:0 !important; }
                 & .pagename-top .el-input, & .pagename-top .el-select { width:100% !important; }
-                & .el-input__wrapper, & .el-select__wrapper { min-height:0 !important; height:28px !important; padding:0 8px !important; border-radius:var(--aio-r) !important; box-shadow:0 0 0 1px var(--aio-line-2) inset !important; background:var(--aio-bg) !important; font-size:var(--aio-fs-md) !important; }
-                & .el-input__inner, & .el-select__selected-item { height:26px !important; font-size:var(--aio-fs-md) !important; line-height:26px !important; }
+                & .el-input__wrapper, & .el-select__wrapper { min-height:0 !important; height:var(--aio-h) !important; box-sizing:border-box !important; padding:0 8px !important; border-radius:var(--aio-r) !important; box-shadow:0 0 0 1px var(--aio-line-2) inset !important; background:var(--aio-bg) !important; font-size:var(--aio-fs-md) !important; }
+                & .el-input__inner, & .el-select__selected-item { height:24px !important; font-size:var(--aio-fs-md) !important; line-height:24px !important; }
                 & .flex-wrapper { flex:1 1 0 !important; min-width:0 !important; width:auto !important; }
                 & .flex-wrapper.disabled { flex:0.8 1 0 !important; }
                 & .flex-wrapper .__container, & .flex-wrapper .label { width:100% !important; min-width:0 !important; margin:0 !important; }
-                & .pillBox { display:flex !important; align-items:center !important; width:100% !important; min-width:0 !important; height:28px !important; margin:0 !important; padding:0 !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r) !important; background:var(--aio-bg) !important; box-shadow:none !important; overflow:hidden; }
+                & .pillBox { display:flex !important; align-items:center !important; width:100% !important; min-width:0 !important; height:var(--aio-h) !important; box-sizing:border-box !important; margin:0 !important; padding:0 !important; border:1px solid var(--aio-line-2) !important; border-radius:var(--aio-r) !important; background:var(--aio-bg) !important; box-shadow:none !important; overflow:hidden; }
                 & .pillBox.disabled { background:var(--aio-bg-3) !important; }
-                & .pillBox .__box { flex:1 1 auto !important; width:100% !important; min-width:0 !important; height:26px !important; margin:0 !important; padding:0 4px !important; border:0 !important; background:transparent !important; font-size:var(--aio-fs-md) !important; text-align:right !important; box-shadow:none !important; }
+                & .pillBox .__box { flex:1 1 auto !important; width:100% !important; min-width:0 !important; height:24px !important; margin:0 !important; padding:0 4px !important; border:0 !important; background:transparent !important; font-size:var(--aio-fs-md) !important; text-align:right !important; box-shadow:none !important; }
                 & .pillBox.disabled .__box { color:var(--aio-ink-5) !important; }
                 & .pillBox .append { flex-shrink:0 !important; height:auto !important; margin:0 !important; padding:0 7px 0 2px !important; border:0 !important; background:transparent !important; color:var(--aio-ink-4) !important; font-size:var(--aio-fs-xs) !important; white-space:nowrap; }
                 & .rowspacer > .el-button.is-link { border:0 !important; background:transparent !important; box-shadow:none !important; flex:0 0 14px !important; width:14px !important; min-width:0 !important; height:auto !important; margin:0 !important; padding:0 !important; opacity:.6; }
                 & .rowspacer > .el-button.is-link img { width:12px !important; height:12px !important; }
-                & .block-submenu-divider, & .divider-svg { margin:8px 0 !important; border-color:var(--aio-line-4) !important; background:var(--aio-bg-3); }
-                & .hug-edges { width:100% !important; min-height:0 !important; margin:0 !important; padding-top:4px !important; padding-bottom:4px !important; align-items:center !important; font-size:var(--aio-fs-md) !important; }
+                & .block-submenu-body .block-submenu-divider { display:none !important; }
+                & .divider-svg { width:100% !important; height:1px !important; margin:8px 0 !important; border:0 !important; background:var(--aio-line-4) !important; }
+                & .hug-edges { width:100% !important; min-height:0 !important; margin:0 !important; padding-top:2px !important; padding-bottom:2px !important; align-items:center !important; font-size:var(--aio-fs-md) !important; }
                 & .text-tool-color { display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; gap:8px !important; width:100% !important; margin:0 !important; padding:2px 0 !important; }
                 & .text-tool-color h5, & .switch-label h5 { font-size:var(--aio-fs-md) !important; color:var(--aio-ink-2) !important; }
                 & .color-picker-trigger { width:22px !important; height:22px !important; border-radius:var(--aio-r-sm) !important; box-shadow:0 0 0 1px var(--aio-line-2) !important; }
                 & .el-switch { height:22px !important; transform:scale(0.8); transform-origin:right center; }
-                & .vtt-button, & .button--delete-archive { height:28px !important; min-height:0 !important; padding:0 10px !important; border-radius:var(--aio-r) !important; font-size:var(--aio-fs-md) !important; }
+                & .vtt-button, & .button--delete-archive { height:var(--aio-h) !important; min-height:0 !important; padding:0 10px !important; border-radius:var(--aio-r-sm) !important; font-size:var(--aio-fs-md) !important; }
                 & .horizontal-slider-labels, & .horizontal-slider-input-units { font-size:var(--aio-fs-xs) !important; }
                 & .horizontal-slider-input-box { height:26px !important; font-size:var(--aio-fs-md) !important; }
-                & .block-submenu-footer { min-height:0 !important; height:48px !important; padding:0 12px !important; border-top:1px solid var(--aio-line-4) !important; background:var(--aio-bg-2) !important; }
+                & .block-submenu-footer { min-height:0 !important; height:auto !important; padding:8px 14px !important; border-top:1px solid var(--aio-line-4) !important; background:var(--aio-bg) !important; }
                 & .block-submenu-footer-content { gap:6px !important; align-items:center !important; }
-                & .block-submenu-footer .grimoire__button { height:28px !important; min-height:0 !important; padding:0 14px !important; border-radius:var(--aio-r) !important; font-size:var(--aio-fs-md) !important; }
+                & .block-submenu-footer .grimoire__button { height:var(--aio-h) !important; min-height:0 !important; padding:0 12px !important; border-radius:var(--aio-r-sm) !important; font-size:var(--aio-fs-md) !important; }
+                & .block-submenu-footer-content { height:auto !important; min-height:0 !important; padding:0 !important; justify-content:flex-end !important; }
+                & .block-submenu-footer .closeStyle { border:1px solid var(--aio-line) !important; background:var(--aio-bg) !important; color:var(--aio-ink-2) !important; }
+                & .block-submenu-footer .el-button--primary { border-color:var(--aio-accent) !important; background:var(--aio-accent) !important; color:var(--aio-ink-inv) !important; }
+                /* 이름을 칸 줄 왼쪽에 — 이름 상자 바로 뒤에 칸 줄이 오는 곳(너비 · 높이 · 셀 크기 · 축척 · 영역 관리): 이름을 띄워 놓고 칸 줄(flex = 새 서식 문맥)이 옆에 선다 */
+                & .title-wrapper:has(+ .rowspacer) { float:left !important; display:flex !important; align-items:center !important; width:56px !important; min-height:var(--aio-h) !important; margin:0 8px 0 0 !important; padding:0 !important; }
+                & .title-wrapper:has(+ .rowspacer) :is(h4, h5) { margin:0 !important; white-space:nowrap !important; }
+                & .title-wrapper:has(+ .rowspacer) h5 { font-size:var(--aio-fs-md) !important; font-weight:400 !important; color:var(--aio-ink-3) !important; }
+                & .title-wrapper:has(+ .rowspacer) + .rowspacer { display:flex !important; margin:0 !important; }
+                & .title-wrapper:has(+ .rowspacer) + .rowspacer + * { clear:both !important; }
+                & .hug-edges > .title-wrapper:has(+ .rowspacer) { float:none !important; width:auto !important; }
+                & .section { display:flow-root !important; }
+                & .wrapper > .section:empty { display:none !important; }
+                & .section-header { min-height:0 !important; height:auto !important; margin:0 !important; padding:0 !important; }
+                & .block-submenu-body.scrollShadows { background:var(--aio-bg) !important; }
+                & .pagename-top .el-input { height:auto !important; margin:0 !important; }
+                & .pillBox .__box { max-width:none !important; text-align:right !important; }
+                & .flex-wrapper .label { max-width:none !important; }
+                /* 격자 유형 · 대각선 측정: 반씩 나눠 이름이 잘리지 않게 */
+                & .rowspacer.widerGap:not(.pagename-top) { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:8px !important; }
+                & .rowspacer.widerGap:not(.pagename-top) .el-select { width:100% !important; }
+                /* '선이 이동을 차단' 처럼 이름 · 고르기가 한 상자에 있는 줄 */
+                & .title-wrapper:has(> h4):has(> .el-select) { display:flex !important; align-items:center !important; gap:6px !important; }
+                & .title-wrapper:has(> h4):has(> .el-select) > .el-select { flex:1 1 auto !important; min-width:0 !important; }
+                & .title-wrapper:has(> h4):has(> .el-select) > h4 { flex:none !important; white-space:nowrap !important; }
+                & .vtt-button { white-space:nowrap !important; }
+                & :is(.vtt-button, .button--delete-archive, .block-submenu-footer .grimoire__button) { display:inline-flex !important; align-items:center !important; justify-content:center !important; }
+                & .horizontal-slider-input-box-container { height:auto !important; }
             }
         }
         /* 면 선택(Choose Side): 슬라이더 대신 썸네일 격자, 번호는 CSS counter 로 붙인다 */
