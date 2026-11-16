@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.110.7
+// @version      1.110.8
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.110.7";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.110.8";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -5608,8 +5608,8 @@ addCss(`
 
 addCss(`
         /* 맵 단추 (화면 제어 줄 맨 아래): 누르면 촬영 · 가져오기 · 페이지 설정 단추가 아래로 펼쳐진다 */
-        #r20-mapshot { position:fixed; z-index:calc(var(--aio-z-dock) + 1); width:var(--aio-h-sm); height:var(--aio-h-sm); }
-        #r20-mapshot button { width:var(--aio-h-sm); height:var(--aio-h-sm); margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:var(--aio-r); background:var(--aio-float); color:var(--aio-ink-3); box-shadow:var(--aio-shadow-sm); cursor:pointer; }
+        #r20-mapshot { position:fixed; z-index:calc(var(--aio-z-dock) + 1); width:var(--aio-h); height:var(--aio-h); }
+        #r20-mapshot button { width:var(--aio-h); height:var(--aio-h); margin:0; padding:0; display:flex; align-items:center; justify-content:center; border:0; border-radius:var(--aio-r); background:var(--aio-float); color:var(--aio-ink-3); box-shadow:var(--aio-shadow-sm); cursor:pointer; }
         #r20-mapshot button:hover, #r20-mapshot.open > .main { color:var(--aio-accent); }
         #r20-mapshot button:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
         #r20-mapshot {
@@ -10485,6 +10485,7 @@ addFeature("winMemory", winMemory);
 // ───────── 창 겹침 순서: 올인원 창도 Roll20 창(시트 · 핸드아웃)처럼 누른 창 · 새로 연 창이 맨 앞으로 ─────────
 // Roll20 창은 누를 때마다 z-index 가 올라가는데 올인원 창은 고정이라 늘 그 뒤에 깔렸다 → 올인원 창도 누르면 지금 가장 높은 값 + 1 을 준다
 // + 저널 탭에서 이미 맨 앞에 열려 있는 시트 · 핸드아웃의 제목을 다시 누르면 닫는다 (뒤에 깔려 있으면 Roll20 이 앞으로 가져오게 둔다)
+// + 모음 탭(매크로 · 덱 · 굴림표)도 같게: 항목을 눌러 새로 뜬 창을 기억해 두고, 그 창이 맨 앞에 있을 때 같은 곳을 다시 누르면 닫는다
 const winOrder = (() => {
     const WINS = "#r20be, #r20-sn, #r20-ccf, #r20-fit, #r20-mscn, #r20-logbak, #custom-journal-popup";
     const zOf = e => parseInt(getComputedStyle(e).zIndex, 10) || 0;
@@ -10505,8 +10506,25 @@ const winOrder = (() => {
         const w = e.target.closest?.(WINS);
         if (w) raise(w); else if (e.target.closest?.(".ui-dialog")) setTimeout(lift, 0);
     }, true);
+    const COLL = "#existingmacros .macro, #deckstables tr.deck, #deckstables tr.rollabletable";
+    const opened = new Map();       // 항목(+ 누른 단추) → 그 클릭으로 뜬 창
+    const collKey = (row, t) => {
+        const by = t.closest("button, a"), ds = Object.entries(row.dataset).map(([k, v]) => k + "=" + v).join("&");
+        return (row.id || ds || row.textContent.trim().slice(0, 80)) + "|" + (by && row.contains(by) ? by.textContent.trim() : "");
+    };
+    const collClick = (e, row) => {
+        const k = collKey(row, e.target), d = opened.get(k);
+        if (d?.isConnected && shown(d) && zOf(d) >= topZ(d)) {
+            const x = d.querySelector(".ui-dialog-titlebar-close");
+            if (x) { e.preventDefault(); e.stopImmediatePropagation(); opened.delete(k); x.click(); return; }
+        }
+        const before = new Set(dialogs());
+        [300, 800, 1500].forEach(ms => setTimeout(() => { const nd = dialogs().find(x => !before.has(x)); if (nd) opened.set(k, nd); }, ms));
+    };
     document.addEventListener("click", e => {
         if (!btnVisible.winmem || !e.isTrusted || e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+        const row = e.target.closest?.(COLL);
+        if (row) { if (!e.target.closest("input, select, textarea")) collClick(e, row); return; }
         const li = e.target.closest?.("#journal li.journalitem");
         if (!li || e.target.closest("button, a, input")) return;
         const id = li.dataset.itemid, name = (li.querySelector(".namecontainer, .name")?.textContent || "").trim();
@@ -10527,7 +10545,7 @@ addFeature("winOrder", winOrder);
 addBundle({ place: "main", order: 3.1, group: "play", label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
-addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "저널 탭에서 맨 앞에 열려 있는 시트 · 핸드아웃 제목을 다시 누르면 닫기 · 캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
+addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "저널 탭에서 맨 앞에 열려 있는 시트 · 핸드아웃, 모음 탭의 매크로 · 덱 · 굴림표 제목을 다시 누르면 닫기 · 캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
 
