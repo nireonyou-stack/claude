@@ -66,6 +66,9 @@ const GM = { h1: escape('<p>하루카는 PC가 편지를 꺼내기 전까지 모
   // ☰ 접기 · 가리기 단추 없음
   await p.click('#r20-sn [data-a="toc"]'); console.log('☰ 접기 →', await geo());
   await p.click('#r20-sn [data-a="toc"]'); console.log('☰ 펴기 →', await geo(), '| 가리기 단추:', !!(await p.$('#r20-sn [data-a="veil"]')));
+  const tocSt = () => p.evaluate(() => { const w = document.querySelector('#r20-sn'), t = w.querySelector('.tsw'); return (w.classList.contains('notoc') ? '접힘' : '펼침') + ' · 탭 ' + getComputedStyle(t, '::before').content + ' @' + Math.round(t.getBoundingClientRect().left - w.getBoundingClientRect().left) + ' · ☰ ' + w.querySelector('.tg').getAttribute('aria-pressed'); });
+  await p.click('#r20-sn .tsw'); console.log('옆 탭 ‹ 누름 →', await tocSt());
+  await p.click('#r20-sn .tsw'); console.log('옆 탭 › 누름 →', await tocSt());
   await p.click('#r20-sn [data-a="warn"]');
   // 이어서 보기: 모든 장 · 스크롤하면 목차가 따라감 · 찾기는 장을 넘어
   await p.click('#r20-sn .md [data-m="cont"]'); await p.waitForTimeout(100);

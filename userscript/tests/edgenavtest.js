@@ -91,7 +91,7 @@ const NOTES = {
   r = await p.$eval('#r20-sn .tgr', e => e.getBoundingClientRect().toJSON());
   await p.mouse.move(r.x + 3, 300); await p.mouse.down(); await p.mouse.move(r.x + 63, 300, { steps: 4 }); await p.mouse.up(); await p.waitForTimeout(100);
   console.log('목차 +60 →', await R('#r20-sn .toc'), '| 저장:', await p.evaluate(() => localStorage.getItem('r20_sn_tw')));
-  await p.dblclick('#r20-sn .tgr'); await p.waitForTimeout(100);
+  await p.dblclick('#r20-sn .tgr', { position: { x: 3, y: 10 } }); await p.waitForTimeout(100);
   console.log('목차 두 번 →', await R('#r20-sn .toc'));
   // 4) 보는 사람 칩
   await p.click('#r20-sn .ls .tr.ch:has-text("로쿠분기시")'); await p.waitForTimeout(150);

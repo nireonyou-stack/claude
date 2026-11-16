@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.112.3
+// @version      1.112.4
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.112.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.112.4";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -7173,6 +7173,8 @@ const edgeDock = (() => {
         st.setProperty("--r20e-mb", bot + "px");
         const sd = document.getElementById("showndecks"), hasDeck = btnVisible.deckview && shown(sd) && !!sd.querySelector(".adeck");
         const mb = document.getElementById("macrobar"), hasMac = btnVisible.macrobar && shown(mb);
+        // 매크로 단추 폭 = 덱 판 폭 (덱이 없으면 100px) — 이름이 한눈에 읽히게 (v1.112.4, 예전 62px)
+        st.setProperty("--r20e-mw", Math.max(100, hasDeck ? Math.round(sd.getBoundingClientRect().width) : 0) + "px");
         // 덱이 먼저 자리를 잡고(카드는 작다), 매크로는 남은 높이 안에서 스크롤
         const dh = hasDeck ? sd.getBoundingClientRect().height : 0;
         st.setProperty("--r20e-mmax", Math.max(60, Math.round(innerHeight - bot - top - (dh ? dh + 6 : 0))) + "px");
@@ -7515,9 +7517,9 @@ addCss(`
             & #macrobar_macros { display:block !important; width:auto !important; margin:0 !important; padding:0 !important; white-space:normal !important; text-align:right; pointer-events:none; }
             & #macrobar #macrobar_macros {
                 & .macrobox, & .macrobox:hover { display:block !important; width:auto !important; min-width:0 !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; background:none !important; border:0 !important; box-shadow:none !important; }
-                /* 폭: 이모지 + 글자 3자까지 (62px) · 넘치는 이름은 마우스를 올리면 왼쪽으로 펼쳐져 다 보인다 */
-                & .macrobox > button { pointer-events:auto; width:62px !important; max-width:none; height:24px !important; padding:0 3px 0 7px !important; border-radius:12px 0 0 12px !important; font-size:var(--aio-fs-md) !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:clip; }
-                & .macrobox > button:hover, & .macrobox > button:focus-visible { width:auto !important; min-width:62px; padding-right:8px !important; }
+                /* 폭: 덱 판 폭(--r20e-mw, 적어도 100px) · 넘치는 이름은 마우스를 올리면 왼쪽으로 펼쳐져 다 보인다 */
+                & .macrobox > button { pointer-events:auto; width:var(--r20e-mw, 100px) !important; max-width:none; height:24px !important; padding:0 3px 0 7px !important; border-radius:12px 0 0 12px !important; font-size:var(--aio-fs-md) !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:clip; }
+                & .macrobox > button:hover, & .macrobox > button:focus-visible { width:auto !important; min-width:var(--r20e-mw, 100px); padding-right:8px !important; }
             }
             & #macrobar_macros > .ui-sortable-placeholder { display:block !important; width:auto !important; min-width:0; height:3px !important; margin:0 0 3px !important; }
             & #macrobar_macros > .ui-sortable-helper { pointer-events:auto; }
@@ -11060,7 +11062,8 @@ const scenNav = (() => {
             + '<p>실행하면 열기 = ▶ + 이름 칸, 닫기 = 그 장면 ■ · 닫은 뒤 다시 닫으면 다음 열기 전까지 마지막 닫기가 끝</p></div>'
             + '<div class="sp"><div class="toc" role="tree" aria-label="목차"><div class="br" data-b="scen" hidden role="button" aria-expanded="true"><i></i><span class="bn">📖 시나리오</span></div><div class="ls"></div>'
             + '<div class="br sc" data-b="scn" hidden role="button" aria-expanded="false"><i></i><span class="bn">🎬 장면</span><span class="dot" hidden></span></div><div class="lc" hidden></div></div>'
-            + '<div class="tgr" role="separator" aria-orientation="vertical" aria-label="목차 너비" title="끌어서 목차 너비 · 두 번 누르면 기본"></div><div class="pane">'
+            + '<div class="tgr" role="separator" aria-orientation="vertical" aria-label="목차 너비" title="끌어서 목차 너비 · 두 번 누르면 기본"></div>'
+            + '<button type="button" data-a="toc" class="tsw" title="목차 접기 · 펴기" aria-label="목차 접기 · 펴기"></button><div class="pane">'
             + '<div class="tb"><input type="search" class="q aio-in sm" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
             + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
             + '<span class="md aio-seg" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
@@ -11114,7 +11117,7 @@ const scenNav = (() => {
                 ls(TOCK, on ? "on" : "off");
                 if (!docked()) win.style.width = Math.max(200, Math.min(win.offsetWidth + (on ? tocW() : -tocW()), innerWidth / z - 16)) + "px";
                 win.classList.toggle("notoc", !on);
-                b.setAttribute("aria-pressed", String(on));
+                win.querySelectorAll('[data-a="toc"]').forEach(x => x.setAttribute("aria-pressed", String(on)));
                 return keep();
             }
             if (a === "pin") { const on = !pinned(); ls(PIN, String(on)); b.setAttribute("aria-pressed", String(on)); return on ? keep() : place(); }
@@ -11504,7 +11507,7 @@ const scenNav = (() => {
         win.hidden = false;
         win.classList.remove("aio-min");
         win.classList.toggle("notoc", !tocOn());
-        $(".tg").setAttribute("aria-pressed", String(tocOn()));
+        win.querySelectorAll('[data-a="toc"]').forEach(x => x.setAttribute("aria-pressed", String(tocOn())));
         $(".pin").setAttribute("aria-pressed", String(pinned()));
         $(".pin").hidden = docked();
         place();
@@ -11560,7 +11563,13 @@ addCss(`
             & .tg[aria-pressed="true"] { background:var(--aio-bg-3); }
             & .pin { filter:grayscale(1); opacity:.6; } & .pin[aria-pressed="true"] { filter:none; opacity:1; }
             & .warn { color:var(--aio-warn); }
-            & .sp { display:flex; flex:1; min-height:0; }
+            & .sp { position:relative; display:flex; flex:1; min-height:0; }
+            /* 목차 옆 접기 탭: 경계 가운데 ‹ (접으면 본문 왼쪽 끝에 ›) */
+            & .tsw { position:absolute; z-index:3; top:50%; left:calc(var(--sn-tw, 112px) - 1px); width:12px; height:36px; margin:-18px 0 0; padding:0; border:1px solid var(--aio-line-3); border-left:0; border-radius:0 var(--aio-r) var(--aio-r) 0; background:var(--aio-bg-2); box-shadow:none; color:var(--aio-ink-4); font:700 12px/34px sans-serif; text-align:center; cursor:pointer; }
+            & .tsw::before { content:"‹"; }
+            & .tsw:hover { background:var(--aio-accent-bg); color:var(--aio-accent); }
+            &.notoc .tsw { left:0; }
+            &.notoc .tsw::before { content:"›"; }
             & .toc { flex:0 0 var(--sn-tw, 112px); overflow-y:auto; overscroll-behavior:contain; padding:3px 2px; border-right:1px solid var(--aio-line-4); background:var(--aio-bg-2); }
             &.notoc :is(.toc, .tgr) { display:none; }
             & .tgr { position:relative; z-index:2; flex:none; width:6px; margin:0 -3px; cursor:col-resize; touch-action:none; }
@@ -16723,7 +16732,22 @@ const abTok = (() => {
         const TABS = [["map", "맵의 토큰"], ["copy", "복사해서 새로"], ["deck", "덱에서 꺼내기"], ["file", "그림 파일"]];
         const decks = () => (window.Campaign?.decks?.models || []).filter(d => (d.cards?.models || []).some(m => m.get("avatar")));
         const TIP = { map: "지금 페이지 토큰 층의 연결 안 된 토큰에서 고르기", copy: "맵의 토큰과 똑같은 토큰을 그 옆에 하나 더 만들어 연결 (원래 토큰은 그대로)", deck: "카드 그림으로 맵 가운데에 보통 토큰을 만들어 연결 (덱의 카드는 줄지 않아요)", file: "그림 파일 · 캐릭터 그림으로 맵 가운데에 새 토큰을 만들어 연결" };
-        let tab = "map", q = "", src = -1, card = -1, deckId = aioPref.get("r20_abt_deck") || "", optOpen = false;
+        // 마지막에 쓴 탭 · 복사 원본(그림 주소)을 기억 → 다음 줄은 🎯 → [복사해서 연결] 두 번이면 끝
+        let tab = TABS.some(([k]) => k === aioPref.get("r20_abt_tab")) ? aioPref.get("r20_abt_tab") : "map", q = "", src = -1, card = -1, deckId = aioPref.get("r20_abt_deck") || "", optOpen = false;
+        const srcKey = g => String(g?.get("imgsrc") || "").replace(/\?.*$/, "");
+        let lastSrc = aioPref.get("r20_abt_src") || "";
+        // 이 시트 전부: 같은 시트 · 같은 종류의 이름 칸 중 이름이 있는 줄 (이름이 같은 줄은 하나로) — 아직 연결 안 된 줄을 미리 체크
+        let bulk = false;
+        const rowsAll = (() => {
+            const seen = new Set(), out = [];
+            x.inp.ownerDocument.querySelectorAll("input[name], textarea[name]").forEach(el => {
+                const y = autofill.ctx(el), nm = String(el.value || "").trim();
+                if (!y || y.sys !== x.sys || !nm || seen.has(nm)) return;
+                seen.add(nm); out.push({ ...y, inp: el, c: x.c, nm });
+            });
+            return out;
+        })();
+        const bpick = new Map(rowsAll.map(r => [r.nm, !linked(x.c, r.nm).length]));
         const thumb = (u, nm) => `<img src="${escAttr(sizedUrl(r20img(u || ""), "thumb"))}" alt="" loading="lazy"><span>${escAttr(nm)}</span>`;
         const draw = () => {
             const list = toks().map(g => ({ g, st: state(g) })).filter(t => t.st === "on" || !t.g.get("represents")).sort((a, b) => ORD[a.st] - ORD[b.st] || zAt(b.g) - zAt(a.g));
@@ -16734,8 +16758,15 @@ const abTok = (() => {
             const kinds = new Map();
             toks().forEach(g => { const k = String(g.get("imgsrc") || "").replace(/\?.*$/, ""), v = kinds.get(k) || { g, n: 0 }; v.n++; if (zAt(g) > zAt(v.g)) v.g = g; kinds.set(k, v); });       // 원본은 그 종류의 맨 위 것
             const n = list.filter(t => picked.get(t.g)).length, all = [...kinds.values()].sort((a, b) => b.n - a.n), ds = decks(), dk = ds.find(d => d.id === deckId) || ds[0], cards = (dk?.cards?.models || []).filter(m => m.get("avatar"));
+            if (src < 0 && lastSrc) src = all.findIndex(k => srcKey(k.g) === lastSrc);
             let body = "", go = "";
-            if (tab === "map") {
+            const tiles = () => all.length ? `<div class="grid">${all.map((k, i) => `<button type="button" class="tile cp${i === src ? " sel" : ""}" data-i="${i}" aria-pressed="${i === src}">${thumb(k.g.get("imgsrc"), k.n > 1 ? `${k.n}개` : k.g.get("name") || "이름 없음")}</button>`).join("")}</div>` : `<p>이 페이지 토큰 층에 토큰이 없어요.</p>`;
+            if (bulk) {
+                const k = rowsAll.filter(r => bpick.get(r.nm)).length;
+                body = `<p>연결할 줄 — 아직 연결 안 된 줄을 미리 골랐어요</p><div class="bl">${rowsAll.map((r, i) => { const ln = linked(x.c, r.nm).length; return `<label class="aio-chip lg${bpick.get(r.nm) ? " on" : ""}"><input type="checkbox" data-b="${i}"${bpick.get(r.nm) ? " checked" : ""}>${escAttr(r.nm)}${ln ? `<small class="on">연결됨</small>` : ""}</label>`; }).join("")}</div>`
+                    + `<p>복사할 토큰 — 원본 오른쪽으로 나란히 (6개마다 줄 바꿈)</p>` + tiles();
+                go = `<button type="button" class="aio-btn pri mk" data-mk="bulk"${src < 0 || !k ? " disabled" : ""}>${k}개 복사해서 연결</button>`;
+            } else if (tab === "map") {
                 body = (list.length > 5 ? `<input type="search" class="q aio-in sm" placeholder="토큰 찾기 — 이름" aria-label="토큰 찾기" value="${escAttr(q)}">` : "")
                     + `<div class="list">` + (list.length ? list.map((t, i) => `<label class="row"><input type="checkbox" data-i="${i}"${picked.get(t.g) ? " checked" : ""}>`
                     + `<img class="aio-th" src="${escAttr(sizedUrl(t.g.get("imgsrc") || "", "thumb"))}" alt="" loading="lazy"><span>${escAttr(t.g.get("name") || "이름 없는 토큰")}<i>${Math.floor((Number(t.g.get("left")) || 0) / 70) + 1}열 ${Math.floor((Number(t.g.get("top")) || 0) / 70) + 1}행</i></span>`
@@ -16754,8 +16785,9 @@ const abTok = (() => {
             } else {
                 body = `<div class="ft"><button type="button" class="aio-btn mk" data-mk="file">그림 파일 고르기</button><button type="button" class="aio-btn mk" data-mk="avatar">캐릭터 그림으로</button><span></span></div>`;
             }
-            pop.innerHTML = `<div class="hd"><b title="${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층">'${escAttr(x.nm)}' 을 토큰에 연결</b><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>`
-                + `<div class="tabs aio-tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" role="tab" data-tab="${k}" title="${TIP[k]}" aria-selected="${k === tab}" aria-pressed="${k === tab}">${t}</button>`).join("")}</div>`
+            pop.innerHTML = `<div class="hd"><b title="${escAttr(x.c.get("name") || "")} · 지금 페이지 '${escAttr(pg.get("name") || "?")}' · 토큰 층">${bulk ? `${escAttr(x.c.get("name") || "")} — 시트 전부 토큰에 연결` : `'${escAttr(x.nm)}' 을 토큰에 연결`}</b><button type="button" class="x aio-ib" aria-label="닫기">✕</button></div>`
+                + (rowsAll.length > 1 ? `<div class="aio-seg" role="radiogroup" aria-label="연결할 줄"><button type="button" role="radio" data-bulk="0" aria-checked="${!bulk}">이 줄만</button><button type="button" role="radio" data-bulk="1" aria-checked="${bulk}" title="이 시트의 같은 종류 줄을 한 번에 — 고른 토큰을 줄마다 하나씩 복사해 연결">이 시트 전부 ${rowsAll.length}</button></div>` : "")
+                + (bulk ? "" : `<div class="tabs aio-tabs" role="tablist">${TABS.map(([k, t]) => `<button type="button" role="tab" data-tab="${k}" title="${TIP[k]}" aria-selected="${k === tab}" aria-pressed="${k === tab}">${t}</button>`).join("")}</div>`)
                 + body
                 + `<div class="opts"${optOpen ? "" : " hidden"}>`
                 + (bars.length ? `<label class="opt">막대 1 <select class="bar aio-in sm"><option value="">(없음)</option>${bars.map(k => `<option value="${k}"${k === bar ? " selected" : ""}>${LABEL[k]} — 지금 ${escAttr(String(aioAttrs.find(x.c, attrName(x, k))?.get("current") ?? "빈칸"))}</option>`).join("")}</select></label>`
@@ -16772,15 +16804,15 @@ const abTok = (() => {
         // 탭을 바꾸면 높이가 달라진다 → 화면 아래로 넘치지 않게 다시 맞춘다
         const fit = () => { const r = pop.getBoundingClientRect(); if (r.bottom > innerHeight - 4) pop.style.top = zpx(Math.max(4, innerHeight - r.height - 4)); };
         // 막대에 연결할 속성 (없으면 만든다 · 시트에 최대값이 없을 때만 채운다)
-        const barAttr = () => {
-            if (!bar) return null;
-            if (!aioAttrs.find(x.c, attrName(x, bar))) { try { x.c.attribs.create({ name: attrName(x, bar), current: "0", max: "" }); } catch (e) { aioErr("어빌리티 토큰", e); } }
-            const a = aioAttrs.find(x.c, attrName(x, bar));
+        const barAttr = (r = x) => {
+            if (!bar || !r.row.querySelector(`[name="attr_${r.base}${autofill.FIELDS[r.sys]?.[bar]}"]`)) return null;
+            if (!aioAttrs.find(r.c, attrName(r, bar))) { try { r.c.attribs.create({ name: attrName(r, bar), current: "0", max: "" }); } catch (e) { aioErr("어빌리티 토큰", e); } }
+            const a = aioAttrs.find(r.c, attrName(r, bar));
             if (a && max !== "" && String(a.get("max") ?? "") === "") a.save({ max });
             return a;
         };
         // 토큰에 넣을 연결 값. numOk: 막대 숫자 보이기(숨김 · 편집자 · 모두) 칸이 있는 화면인지 (없는 옛 화면에서는 건드리지 않는다)
-        const linkAttrs = (a, numOk) => ({ represents: x.c.id, name: x.nm, bar1_link: a?.id || "",
+        const linkAttrs = (a, numOk, r = x) => ({ represents: r.c.id, name: r.nm, bar1_link: a?.id || "",
             ...(a ? { bar1_value: a.get("current") ?? "", bar1_max: a.get("max") ?? "", showplayers_bar1: pl, playersedit_bar1: pl, ...(show && numOk ? { bar1_num_permission: pl ? "everyone" : "editors" } : {}) } : {}),
             ...(show ? { showname: true, showplayers_name: true } : {}) });
         const numOk = g => typeof g?.get("bar1_num_permission") === "string";
@@ -16844,8 +16876,30 @@ const abTok = (() => {
             }
         };
         const make = async how => {
+            if (how === "bulk") return makeBulk();
             const a = barAttr(), g = await makers[how](ok => linkAttrs(a, ok));
             if (g && pop) done(1, 0, [], g);
+        };
+        // 시트 전부: 고른 원본을 줄마다 하나씩 복사해 원본 오른쪽으로 나란히 (6개마다 다음 줄) · 되돌리기 = 새 토큰 모두 지우기
+        const makeBulk = async () => {
+            const g = pop._all[src]?.g, rows = rowsAll.filter(r => bpick.get(r.nm));
+            if (!g || !rows.length) return;
+            const base = { ...(g.attributes || {}) };
+            ["id", "_id", "_type", "_pageid", "lastmove", "bar2_link", "bar3_link"].forEach(k => delete base[k]);
+            const w = Number(base.width) || 70, h = Number(base.height) || 70, L = Number(base.left) || 0, T = Number(base.top) || 0, made = [];
+            await aioAttrs.load(x.c);
+            const newAct = act ? rows.filter(r => !x.c.abilities?.models?.some(m => m.get("name") === ACT + r.nm)) : [];
+            rows.forEach((r, i) => {
+                const m = pg.thegraphics.create({ ...base, page_id: pg.id, left: L + (i % 6 + 1) * w, top: T + Math.floor(i / 6) * h, ...linkAttrs(barAttr(r), numOk(g), r) });
+                if (m) made.push(m);
+                if (act) try { setAct(r, true); } catch (e) { aioErr("어빌리티 토큰 액션", e); }
+            });
+            close();
+            aioToast(`${made.length}개 줄 — 새 토큰을 만들어 연결했어요`, { kind: "ok", id: "abt", undo: () => {
+                made.forEach(m => { try { m.destroy(); } catch (e) { /* 이미 지운 토큰 */ } });
+                newAct.forEach(r => { try { setAct(r, false); } catch (e) { /* 그대로 둠 */ } });
+                setTimeout(() => aioToast("새 토큰을 지웠어요", { kind: "ok", id: "abt" }), 0);
+            } });
         };
         const swap = async g => {
             const file = await pickFile();
@@ -16866,8 +16920,9 @@ const abTok = (() => {
             if (b.classList.contains("x") || b.classList.contains("no")) return close();
             if (b.classList.contains("go")) return apply();
             if (b.classList.contains("gear")) { optOpen = !optOpen; return draw(); }
-            if (b.dataset.tab) { tab = b.dataset.tab; return draw(); }
-            if (b.classList.contains("cp")) { src = +b.dataset.i; return draw(); }
+            if (b.dataset.bulk) { bulk = b.dataset.bulk === "1"; return draw(); }
+            if (b.dataset.tab) { tab = b.dataset.tab; aioPref.set("r20_abt_tab", tab); return draw(); }
+            if (b.classList.contains("cp")) { src = +b.dataset.i; lastSrc = srcKey(pop._all[src]?.g); aioPref.set("r20_abt_src", lastSrc); return draw(); }
             if (b.classList.contains("cd")) { card = +b.dataset.i; return draw(); }
             if (b.dataset.mk) return make(b.dataset.mk).catch(err => aioErr("어빌리티 토큰 만들기", err));
             if (b.classList.contains("im")) return swap(pop._list[+b.dataset.i].g).catch(err => aioErr("토큰 그림 바꾸기", err));
@@ -16875,6 +16930,7 @@ const abTok = (() => {
         pop.addEventListener("change", e => {
             const t = e.target;
             if (t.classList.contains("deck")) { deckId = t.value; card = -1; localStorage.setItem("r20_abt_deck", deckId); return draw(); }
+            if (t.dataset.b) { bpick.set(rowsAll[+t.dataset.b].nm, t.checked); return draw(); }
             if (t.dataset.i) picked.set(pop._list[+t.dataset.i].g, t.checked);
             else if (t.classList.contains("bar")) { bar = t.value; localStorage.setItem("r20_abt_bar", bar || "none"); }
             else if (t.classList.contains("pl")) { pl = t.checked; localStorage.setItem("r20_abt_pl", String(pl)); }
@@ -16891,7 +16947,7 @@ const abTok = (() => {
         const { width: w, height: h } = pop.getBoundingClientRect();
         pop.style.left = zpx(Math.max(4, Math.min(at.right + 6, innerWidth - w - 4)));
         pop.style.top = zpx(Math.max(4, Math.min(at.top - 20, innerHeight - h - 4)));
-        pop.querySelector(".go")?.focus();
+        pop.querySelector(".go, .mk[data-mk=copy]:not(:disabled)")?.focus();
     };
     document.addEventListener("pointerdown", e => { if (pop && !pop.contains(e.target)) close(); }, true);
     document.addEventListener("keydown", e => { if (pop && e.key === "Escape") { e.stopPropagation(); close(); } }, true);
@@ -16929,6 +16985,10 @@ addCss(`
             & .max { width:56px; }
             & .ft { display:flex; align-items:center; gap:6px; }
             & .ft span { flex:1; }
+            /* 시트 전부: 줄 칩 (체크) */
+            & .bl { display:flex; flex-wrap:wrap; gap:4px; max-height:150px; overflow-y:auto; }
+            & .bl input { margin:0 2px 0 0; }
+            & .bl small { margin-left:4px; }
         }
 `);
 addFeature("abTok", abTok);
