@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.112.1
+// @version      1.112.2
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.112.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.112.2";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -8580,6 +8580,72 @@ const queryPicker = (() => {
         return b;
     };
 
+    // 질문 종류: 그림 고르기(그림 항목 2개 이상 · 구분선 빼고 절반 이상) · 글 선택지 · 입력칸
+    const kindOf = dlg => {
+        const sel = dlg.querySelector(".ui-dialog-content select");
+        if (!sel) return "칸";
+        const opts = [...sel.options].filter(o => !isDivider(o)), imgs = opts.filter(o => imgOf(o.value)).length;
+        return imgs >= 2 && imgs * 2 >= opts.length ? "그림" : opts.length >= 2 ? "글" : "칸";
+    };
+    // 글 선택지: 칩으로 다 펼쳐 놓고 한 번 누르면 바로 보낸다 (드롭다운은 그대로 — Submit 때 Roll20 이 그 값을 읽는다)
+    // ——— 구분선은 묶음 나눔 · '네온———' 처럼 줄표가 붙은 줄은 묶음 제목 · 9개 이상이면 찾기 칸 (Enter = 첫 칩)
+    const norm = t => t.replace(/\s+/g, "").toLowerCase();
+    const enhanceText = (dlg, sel) => {
+        dlg.classList.add("r20qt");
+        dlg._r20qpSel = sel;
+        const opts = [...sel.options], many = opts.filter(o => !isDivider(o)).length > 8;
+        const box = document.createElement("div");
+        box.className = "r20qt-box";
+        box.innerHTML = (many ? '<input type="search" class="aio-in" placeholder="이름으로 찾기 — Enter 로 첫 칩 보내기" aria-label="선택지 찾기">' : "")
+            + '<div class="r20qt-list" role="group" aria-label="선택지 — 누르면 바로 보내기"></div>';
+        const list = box.querySelector(".r20qt-list"), q = box.querySelector("input");
+        let sec = null;
+        const newSec = () => { sec = document.createElement("div"); sec.className = "r20qt-sec"; list.appendChild(sec); };
+        newSec();
+        opts.forEach((o, i) => {
+            if (isDivider(o)) { if (sec.childElementCount) newSec(); return; }
+            const lb = labelOf(o), t = trimDash(lb);
+            if (t && t !== lb) { if (sec.childElementCount) newSec(); sec.appendChild(Object.assign(document.createElement("div"), { className: "r20qp-cap", textContent: t })); return; }
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "aio-chip lg r20qt-c"; b.dataset.i = i; b.textContent = lb || "(빈 값)"; b.title = lb;
+            sec.appendChild(b);
+        });
+        list.querySelectorAll(".r20qt-sec").forEach(x => { if (!x.querySelector(".r20qt-c")) x.remove(); });
+        const mark = () => list.querySelectorAll(".r20qt-c").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.i === sel.selectedIndex)));
+        list.addEventListener("click", e => {
+            const b = e.target.closest(".r20qt-c");
+            if (!b) return;
+            sel.selectedIndex = +b.dataset.i;
+            sel.dispatchEvent(new Event("change", { bubbles: true }));
+            choose(dlg);
+        });
+        sel.addEventListener("change", mark);
+        if (q) {
+            q.addEventListener("keydown", e => {
+                e.stopPropagation();        // Roll20 단축키 · Enter 제출 막기
+                if (e.key === "Enter") { e.preventDefault(); [...list.querySelectorAll(".r20qt-c")].find(b => !b.hidden)?.click(); }
+            });
+            q.addEventListener("input", () => {
+                const v = norm(q.value);
+                list.querySelectorAll(".r20qt-sec").forEach(x => {
+                    const cap = x.querySelector(".r20qp-cap"), whole = !!v && !!cap && norm(cap.textContent).includes(v);
+                    let any = false;
+                    x.querySelectorAll(".r20qt-c").forEach(b => { b.hidden = !!v && !whole && !norm(b.textContent).includes(v); any ||= !b.hidden; });
+                    x.hidden = !any;
+                });
+            });
+        }
+        (dlg.querySelector(".ui-dialog-content") || dlg).appendChild(box);
+        mark();
+        // 좁은 창이면 칩이 한 줄에 몇 개는 들어가게 넓힌다
+        if (dlg.offsetWidth < 420) {
+            const w = Math.min(460, innerWidth - 40);
+            dlg.style.width = w + "px";
+            dlg.style.left = Math.max(10, Math.min(dlg.offsetLeft, innerWidth - w - 10)) + "px";
+        }
+        dlg.style.top = Math.max(10, Math.min(dlg.offsetTop, innerHeight - dlg.offsetHeight - 10)) + "px";
+    };
+
     const enhance = (dlg, sel) => {
         dlg.classList.add("r20qp");
         dlg._r20qpSel = sel;
@@ -8687,14 +8753,15 @@ const queryPicker = (() => {
                 && dlg.querySelector(".ui-dialog-title")?.textContent.trim() !== "Macro Options") return;
             const sel = dlg.querySelector(".ui-dialog-content select");
             if (!sel || dlg._r20qpSel === sel || dlg._r20qpNo === sel) return;
-            // 이미지 고르기가 아닌 질문은 그대로: 그림 항목이 2개 이상이고 (구분선 빼고) 절반 이상일 때만
-            const opts = [...sel.options].filter(o => !isDivider(o)), imgs = opts.filter(o => imgOf(o.value)).length;
-            if (imgs < 2 || imgs * 2 < opts.length) { dlg._r20qpNo = sel; return; }
-            dlg.querySelector(".r20qp-box")?.remove();      // Roll20 이 창을 다른 질문에 다시 쓴 경우
-            enhance(dlg, sel);
+            // 그림 고르기 → 그림 격자 · 글 선택지 → 칩 · 선택지가 하나뿐이면 그대로
+            const k = kindOf(dlg);
+            if (k === "칸") { dlg._r20qpNo = sel; return; }
+            dlg.querySelectorAll(".r20qp-box, .r20qt-box").forEach(x => x.remove());      // Roll20 이 창을 다른 질문에 다시 쓴 경우
+            dlg.classList.remove("r20qp", "r20qt");
+            if (k === "그림") enhance(dlg, sel); else enhanceText(dlg, sel);
         });
     };
-    return { inject, watch: ".ui-dialog" };
+    return { inject, kindOf, watch: ".ui-dialog" };
 })();
 
 // ───────── 말하는 사람 고르기 (빠른 저널 합침): 입력칸 왼쪽 ▼(포트레이트)를 누르면 채팅 판 왼쪽 끝에 붙은 선택창 ─────────
@@ -9007,6 +9074,17 @@ addCss(`
             &.float :is(.cj-gw, .cj-gh) { display:none; }
             & .cj-ft { display:flex; align-items:center; justify-content:flex-end; gap:3px; flex-shrink:0; padding:2px 8px; border-top:1px solid var(--aio-line-4); color:var(--aio-ink-5); font-size:var(--aio-fs-sm); }
         }
+        /* 글 선택지 칩 (v1.112.2) — 한 번 누르면 보냄 */
+        .ui-dialog.r20qt {
+            & .r20qt-box { margin:6px 0 2px; }
+            & .r20qt-box > input { width:100%; margin:0 0 6px; }
+            & .r20qt-list { max-height:min(50vh, 420px); overflow-y:auto; padding:2px; }
+            & .r20qt-sec { display:flex; flex-wrap:wrap; gap:4px; }
+            & .r20qt-sec + .r20qt-sec { margin-top:6px; padding-top:6px; border-top:1px solid var(--aio-line-2); }
+            & :is(.r20qt-sec, .r20qt-c)[hidden] { display:none !important; }
+            & .r20qp-cap { flex:1 1 100%; padding:2px 2px 0; color:var(--aio-ink-3); font-size:var(--aio-fs-sm); font-weight:700; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            & .r20qt-c { max-width:100%; overflow:hidden; text-overflow:ellipsis; font-size:var(--aio-fs-md); }
+        }
         .ui-dialog.r20qp {
             & .r20qp-bar { display:flex; align-items:center; gap:6px; margin:6px 0 8px; }
             & .r20qp-bar input { flex:1; min-width:0; }
@@ -9099,7 +9177,7 @@ addCss(`
 addFeature("roomImages", roomImages);    // @share-cut-line
 addFeature("queryPicker", queryPicker);
 addFeature("quickJournal", quickJournal);
-addBundle({ place: "main", order: 3, group: "play", label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택 썸네일 · 말하는 사람 고르기(입력칸 왼쪽 ▼ → 채팅 판 왼쪽에 최근 5명 + 목록 · ▦ 크게 보기 · 이름 · 초성 찾기 · 끌어서 순서)",
+addBundle({ place: "main", order: 3, group: "play", label: "이미지 · 매크로&저널 뷰어", sub: "이 방의 이미지 전체 보기 · 매크로 선택지 한눈에(그림은 썸네일 격자 · 글은 칩, 누르면 바로 보내기) · 말하는 사람 고르기(입력칸 왼쪽 ▼ → 채팅 판 왼쪽에 최근 5명 + 목록 · ▦ 크게 보기 · 이름 · 초성 찾기 · 끌어서 순서)",
     members: [["artroom", "roomImages"], ["qpick", "queryPicker"], ["journal", "quickJournal"]] });
 
 // ══════════ 묶음 5 · 저널 · BGM · 매크로 일괄 편집기 ══════════
@@ -10325,6 +10403,7 @@ const winMemory = (() => {
     let mem = (() => { try { const o = JSON.parse(aioPref.get(KEY) || "{}"); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; } })();
     let mode = aioPref.get(MODE) === "kind" ? "kind" : "item";
     const keep = () => { aioPref.set(KEY, JSON.stringify(mem)); };
+    if (mem["dlg:Macro Options"]) { mem["dlg:Macro Options·칸"] ??= mem["dlg:Macro Options"]; delete mem["dlg:Macro Options"]; keep(); }       // v1.112.2 종류별로 나눔
     const content = dlg => dlg.querySelector(":scope > .ui-dialog-content");
     const titleOf = dlg => (dlg.querySelector(":scope > .ui-dialog-titlebar .ui-dialog-title")?.textContent || "").trim();
     // 어떤 창인지: 캐릭터 시트는 .characterdialog, 핸드아웃은 handout 표시 또는 제목이 핸드아웃 이름
@@ -10340,6 +10419,8 @@ const winMemory = (() => {
         const hid = c.dataset.handoutid || c.querySelector("[data-handoutid]")?.dataset.handoutid;
         const byName = !hid && t && (C?.handouts?.models || []).find(m => m.get("name") === t);
         if (hid || byName || (/\bhandout/i.test(c.className) && t)) return { kind: "handout", id: hid || byName?.id || t };
+        // Macro Options 는 질문마다 같은 제목 → 그림 고르기 · 글 칩 · 입력칸을 따로 기억 (작은 입력칸 크기가 그림 창에 씌워지지 않게)
+        if (t === "Macro Options" && FEAT.queryPicker?.kindOf) return { kind: "dlg", id: t + "·" + FEAT.queryPicker.kindOf(dlg) };
         return t ? { kind: "dlg", id: t } : null;
     };
     const keyOf = f => mode === "kind" && f.kind !== "dlg" ? f.kind : f.kind + ":" + f.id;
