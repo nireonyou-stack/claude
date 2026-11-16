@@ -76,6 +76,8 @@ const NOTES = {
   const pz = () => p.$eval('#playerzone', e => Math.round(e.getBoundingClientRect().left));
   console.log('« 단추:', await R('.collapse-toggle'), '| 머리줄 왼쪽 여백:', await p.$eval('#r20-sn .hd', h => h.style.paddingLeft), '| ☰ 위치:', await R('#r20-sn .hd .tg'));
   console.log('도구 줄 위에 뜸:', await p.evaluate(() => !!document.elementFromPoint(10, 300)?.closest('#r20-sn')), '| 밀려 나옴:', await p.$eval('#r20-sn', e => getComputedStyle(e).animationName));
+  const bar = () => p.evaluate(() => { const b = document.querySelector('.master-toolbar-outer').getBoundingClientRect(), w = document.querySelector('#r20-sn'); return '도구 줄 왼쪽 ' + Math.round(b.left) + ' · 창 오른쪽 ' + (w.hidden ? '(닫힘)' : Math.round(w.getBoundingClientRect().right)); });
+  console.log('도구 줄은 창 오른쪽 끝으로:', await bar());
   console.log('붙임:', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')), '| 📌 숨김:', await p.$eval('#r20-sn .pin', b => b.hidden), '| playerzone left:', await pz());
   // ½ 반쪽 · 아래 끝 끌기 · 두 번 → 반쪽
   await p.click('#r20-sn .aio-dock [data-v="half"]'); await p.waitForTimeout(100);
@@ -135,6 +137,7 @@ const NOTES = {
   console.log('줄 📢 →', await p.evaluate(() => JSON.stringify(window.__bc)));
   // 7) 붙인 채 닫기 → 손잡이 → 다시 펴기
   await p.click('#r20-sn [data-a="x"]'); await p.waitForTimeout(100);
+  console.log('닫으면 도구 줄 제자리:', await bar());
   console.log('닫음 → 손잡이 없음:', !(await p.$('#r20-sn-tab')), '| playerzone left:', await pz());
   await p.click('#r20-snbtn'); await p.waitForTimeout(150);
   console.log('📖 로 다시 → 창:', await R('#r20-sn'));

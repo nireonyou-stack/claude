@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.114.0
+// @version      1.114.1
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.114.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.114.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -10554,7 +10554,8 @@ const winMemory = (() => {
         if (!btnVisible.winmem) return;
         dlg.r20wmTouched = false;
         apply(dlg);
-        setTimeout(() => { if (!dlg.r20wmTouched) apply(dlg); }, 300);
+        // Roll20 이 자리 · 크기를 늦게 다시 잡는다(시트를 다시 열면 불러온 뒤 높이를 원래대로) → 2초 동안 몇 번 더 (그사이 손대면 그만)
+        [300, 1000, 2000].forEach(ms => setTimeout(() => { if (!dlg.r20wmTouched) apply(dlg); }, ms));
     };
     const toast = (dlg, msg) => {
         const b = dlg.querySelector(".r20wm-pin");
@@ -11084,10 +11085,12 @@ const scenNav = (() => {
         if (docked()) {
             // 높이는 % (화면 기준) — 글자 크기(배율)를 바꿔도 위아래 끝이 그대로
             const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
-            Object.assign(win.style, { left: "0px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });      // 브라우저 왼쪽 끝 서랍 (도구 줄 위)
+            Object.assign(win.style, { left: "0px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });      // 브라우저 왼쪽 끝 서랍
+            shiftBar();
             padBadge();
             return;
         }
+        shiftBar();
         $(".hd").style.paddingLeft = "";
         let g = null;
         if (pinned()) try { g = JSON.parse(ls(GEO) || "null"); } catch (e) { /* 없음 */ }
@@ -11113,6 +11116,13 @@ const scenNav = (() => {
         if (right > r.left) hd.style.paddingLeft = Math.round((right - r.left) / aioZoom.get() + 4) + "px";
     };
     const reDock = () => { if (docked() && isOpen()) place(); };
+    // 붙여 연 동안 Roll20 왼쪽 도구 줄(레이어 고르기 등)을 창 오른쪽 끝으로 옮긴다 — 포트레이트는 덮어도 됨
+    // 도구 줄을 감싼 고정 틀을 옮긴다 (도구 줄 자체는 가늘게 모드에서 zoom 이 걸려 옮기는 거리도 같이 줄어든다)
+    const shiftBar = () => {
+        const bar = document.querySelector(".master-toolbar-outer"), box = bar?.parentElement;
+        if (!box || box === document.body) return;
+        box.style.transform = isOpen() && docked() ? `translateX(${Math.round(win.getBoundingClientRect().width)}px)` : "";
+    };
     let rdT = 0;
     addEventListener("resize", () => { clearTimeout(rdT); rdT = setTimeout(reDock, 150); });
     FEAT.leftBar?.onChange?.(reDock);
@@ -11257,7 +11267,7 @@ const scenNav = (() => {
             hd.addEventListener("pointercancel", up);
         });
         let rt = 0;
-        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); }).observe(win);
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); if (docked()) shiftBar(); }).observe(win);
         const setTw = () => win.style.setProperty("--sn-tw", tocW() + "px");
         dragX($(".tgr"), ev => { const z = aioZoom.get(); ls(TW, String(Math.round(Math.max(70, Math.min(420, (ev.clientX - $(".toc").getBoundingClientRect().left) / z))))); setTw(); }, null,
             () => { try { localStorage.removeItem(TW); } catch (e) { /* 없음 */ } setTw(); });
@@ -11613,7 +11623,7 @@ const scenNav = (() => {
         else if (noPick || (gmScn() && !folders().length)) { showPick(false); $(".ls").innerHTML = '<div class="msg">📁 로 시나리오(저널 폴더)를 고르세요</div>'; }       // 시나리오 폴더가 없으면 GM 은 장면 갈래를 바로
         else showPick(true);
     };
-    function close() { if (!win) return; keep(); ppOff(); win.hidden = true; $(".fl").hidden = true; }
+    function close() { if (!win) return; keep(); ppOff(); win.hidden = true; $(".fl").hidden = true; shiftBar(); }
     // 단추줄: 장면 목차와 🔍 사이 (플레이어도 — 자기에게 보이는 핸드아웃만)
     const inject = () => {
         if (!btnVisible.scen || document.getElementById("r20-snbtn") || !document.getElementById("sidebarcontrol")) return;

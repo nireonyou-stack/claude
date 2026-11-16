@@ -59,6 +59,14 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await close('마녀의 편지'); await p.click('#jukeboxtab a'); await p.waitForTimeout(200);
   await p.evaluate(() => __open('handout', 'h1', '마녀의 편지')); await p.waitForTimeout(500);
   console.log('서랍 열림 → 서랍 왼쪽 끝:', await g('마녀의 편지'), '| 서랍 왼쪽', await p.$eval('#jukebox', e => Math.round(e.getBoundingClientRect().left)));
+  // 같은 시트를 닫았다 다시 열면 Roll20 이 불러온 뒤(0.8초) 높이를 원래대로 → 되돌린다
+  await p.click('#jukeboxtab a'); await p.waitForTimeout(150);
+  await p.evaluate(() => { const $c = $('<div class="dialog characterdialog" data-characterid="c3"><div style="height:900px">시트</div></div>');
+    window.__c3 = $c; $c.dialog({ title: '캄파넬라', width: 420, height: 320, position: { my: 'left top', at: 'left+40 top+40', of: window } }); });
+  await p.waitForTimeout(2300);
+  const h1 = await g('캄파넬라');
+  await p.evaluate(() => { __c3.dialog('close'); __c3.dialog('open'); setTimeout(() => __c3.dialog('option', 'height', 320), 800); }); await p.waitForTimeout(2600);
+  console.log('같은 시트 다시 열기 (Roll20 이 늦게 높이를 되돌림) →', await g('캄파넬라'), '| 처음', h1);
   // 그 밖의 Roll20 창은 그대로
   await p.evaluate(() => $('<div>설정</div>').dialog({ title: '토큰 설정', width: 300, position: { my: 'left top', at: 'left+40 top+40', of: window } })); await p.waitForTimeout(400);
   console.log('토큰 설정 창 → 그대로:', await g('토큰 설정'), '| ◨ 없음:', !(await p.$(dlg('토큰 설정') + ' .r20wm-dock')));
