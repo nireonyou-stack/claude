@@ -27,5 +27,19 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.evaluate(() => { const d = document.getElementById('fr').contentDocument; d.open(); d.write('<html><head></head><body style="margin:0"><div id="in" style="width:160px;height:80px;overflow:scroll"><div style="height:400px;width:400px"></div></div></body></html>'); d.close(); });
   await p.waitForTimeout(300);
   console.log('시트 다시 씀:', await w());
+  // 일괄 편집기는 직접 그린 막대(.r20be-sb) — 같은 6px · 바탕 투명 · 넘칠 때만 손잡이
+  const q = await b.newPage({ viewport: { width: 1366, height: 768 } }); q.on('pageerror', e => errs.push(e.message));
+  await q.goto('http://127.0.0.1:8766/blank.html');
+  await q.evaluate(() => {
+    localStorage.clear();
+    document.body.innerHTML = '<div id="rightsidebar" style="position:fixed;right:0;top:0;width:300px;height:100%;background:#fff"><div id="textchat"><div class="content"></div></div></div><div id="sidebarcontrol" style="position:fixed;right:300px;top:6px;width:28px;height:28px"></div>';
+    const coll = arr => ({ models: arr, get: id => arr.find(x => x.id === id), on() {}, off() {}, forEach: f => arr.forEach(f), filter: f => arr.filter(f), map: f => arr.map(f), length: arr.length });
+    const hs = Array.from({ length: 80 }, (_, i) => ({ id: 'h' + i, attributes: { name: '핸드아웃 ' + i }, get(k) { return this.attributes[k]; } }));
+    window.Campaign = { get: () => '[]', save() {}, on() {}, handouts: coll(hs), characters: coll([]), rollabletables: coll([]), decks: coll([]), pages: coll([]) };
+    window.Jukebox = { playlist: coll([]) }; window.currentPlayer = { id: 'p1', macros: coll([]) }; window.is_gm = true;
+  });
+  await q.addScriptTag({ content: us }); await q.waitForTimeout(400);
+  await q.click('#r20-bebtn'); await q.waitForTimeout(400);
+  console.log('일괄 편집기 막대:', await q.evaluate(() => [...document.querySelectorAll('#r20be .r20be-sb')].filter(t => t.getClientRects().length).map(t => { const th = t.querySelector('.r20be-sb-th'), z = +getComputedStyle(document.getElementById('r20be')).zoom || 1; return Math.round(t.getBoundingClientRect().width / z) + 'px · 바탕 ' + getComputedStyle(t).backgroundColor + ' · 손잡이 ' + getComputedStyle(th).visibility; }).join(' | ')));
   console.log('errors:', errs); await b.close();
 })();

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.113.1
+// @version      1.113.2
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.113.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.113.2";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -15375,10 +15375,11 @@ const bulkEditor = (() => {
     const scrollCol = (area, kind) => {
         const thumb = el("div", { class: "r20be-sb-th" });
         const track = el("div", { class: "r20be-sb", "aria-hidden": "true" }, thumb);
-        // 넘치지 않을 때도 막대는 보이게 둔다 (손잡이가 막대를 꽉 채움)
+        // 넘치지 않으면 손잡이를 숨긴다 (다른 막대와 같게)
         const sync = () => {
             const sh = area.scrollHeight, ch = area.clientHeight, tH = track.clientHeight, over = sh > ch + 1;
             const th = over ? Math.max(24, tH * ch / sh) : tH;
+            thumb.style.visibility = over ? "" : "hidden";
             thumb.style.height = th + "px";
             thumb.style.transform = `translateY(${over ? (tH - th) * area.scrollTop / (sh - ch) : 0}px)`;
         };
@@ -15623,9 +15624,10 @@ addCss(`
             & .r20be-tree::-webkit-scrollbar, & .r20be-pane::-webkit-scrollbar { display:none; }
             & .r20be-tree { padding-right:14px; }
             & .r20be-pane { padding:14px 26px 14px 16px; }
-            & .r20be-sb { position:absolute; top:3px; right:3px; bottom:3px; width:10px; border-radius:var(--aio-r-sm); background:var(--aio-bg-4); cursor:pointer; }
-            & .r20be-sb-th { position:absolute; top:0; left:1px; right:1px; min-height:24px; border-radius:var(--aio-r-sm); background:var(--aio-bg-5); cursor:grab; }
-            & .r20be-sb-th:hover, & .r20be-sb-th.drag { background:var(--aio-ink-5); }
+            /* 모양은 화면의 다른 막대(AIO_SCROLL_CSS)와 같게: 6px · 바탕 투명 · 넘칠 때만 손잡이 */
+            & .r20be-sb { position:absolute; top:3px; right:2px; bottom:3px; width:6px; border-radius:3px; background:transparent; cursor:pointer; }
+            & .r20be-sb-th { position:absolute; top:0; left:0; right:0; min-height:24px; border-radius:3px; background:rgba(128,128,128,0.45); cursor:grab; }
+            & .r20be-sb-th:hover, & .r20be-sb-th.drag { background:rgba(128,128,128,0.75); }
             & .r20be-row { display:flex; align-items:center; gap:3px; min-height:28px; padding-right:6px; border-bottom:1px solid var(--aio-line-4); }
             & .r20be-row:hover, & .r20be-row.chk { background:var(--aio-accent-bg); }
             & .r20be-row.sel { background:var(--aio-accent-soft); }
