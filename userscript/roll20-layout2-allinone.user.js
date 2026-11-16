@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.110.9
+// @version      1.111.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.110.9";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.111.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -82,7 +82,8 @@ const btnVisible = {
     portrait:  aioPref.on("r20_show_portrait"),
     home:      aioPref.on("r20_show_home"),
     abtok:     aioPref.on("r20_show_abtok"),
-    vboard:    aioPref.on("r20_show_vboard")
+    vboard:    aioPref.on("r20_show_vboard"),
+    chatlite:  aioPref.on("r20_show_chatlite")
 };
 // GM 인지: Roll20 이 편집기에 심어 두는 is_gm. 방 데이터를 고치거나 플레이어에게 숨긴 것을 보여 줄 수 있는 기능은
 // 이것이 true 일 때만 단추를 낸다. 아직 안 뜬 동안(gmKnown 거짓)은 정하지 않고 다음 inject 때 다시 본다
@@ -10569,6 +10570,19 @@ const winOrder = (() => {
     };
 })();
 addFeature("winOrder", winOrder);
+
+// ───────── 채팅 가볍게: 화면 밖 메시지는 그리지 않는다 ─────────
+// Roll20 은 세션 동안 메시지를 모두 쌓아 둔다 → 보이는 메시지만 그리게 해서(content-visibility) 처음 그리기 · 새 메시지 · 스크롤이 가벼워진다
+// (메시지 2,050개 시험: 처음 그리기 약 230 → 30ms, 새 메시지 약 3.5 → 1.4ms). 모양은 그대로 — 높이를 모르는 메시지는 40px 로 어림하고 한 번 그린 크기는 기억한다
+const chatLite = (() => {
+    const apply = on => document.body?.classList.toggle("r20cv-on", !!on);
+    return { inject() { apply(btnVisible.chatlite); }, setEnabled: apply };
+})();
+addCss(`
+        body.r20cv-on #textchat .content > .message { content-visibility:auto; contain-intrinsic-size:auto 40px; }
+`);
+addFeature("chatLite", chatLite);
+addBundle({ place: "main", order: 3.3, group: "view", label: "채팅 가볍게 (화면 밖 메시지는 그리지 않기)", sub: "세션이 길어져 메시지가 쌓여도 보이는 것만 그려서 채팅 · 스크롤이 가볍게 · 모양은 그대로", members: [["chatlite", "chatLite"]] });
 
 addBundle({ place: "main", order: 3.1, group: "play", label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
     members: [["qfind", "quickFind"]],
