@@ -47,5 +47,12 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   console.log('이제 맨 앞이라 다시 누르면 닫힘:', await z());
   await p.click('#journal li[data-itemid="h2"] .namecontainer'); await p.waitForTimeout(100);
   console.log('안 열린 것:', await p.evaluate(() => __opened.join(',')));
+  // v1.114.3 옆에 붙은 내비게이터(z 가 더 높아도 겹치지 않음)가 열려 있어도 맨 앞 창 제목을 다시 누르면 닫힘
+  await p.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<div id="r20-sn" class="dock" style="position:fixed;left:0;top:0;width:60px;height:100%;z-index:20000;background:#eee"></div>'));
+  if (!(await p.$eval('#d-h1', d => d.getClientRects().length > 0))) { await p.click('#journal li[data-itemid="h1"] .namecontainer'); await p.waitForTimeout(100); }
+  await p.$eval('#d-h1', d => d.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))); await p.waitForTimeout(50);
+  console.log('내비게이터가 옆에 열린 채 단서 창 맨 앞:', await z());
+  await p.click('#journal li[data-itemid="h1"] .namecontainer'); await p.waitForTimeout(100);
+  console.log('내비게이터가 옆에 열린 채 다시 누름 → 닫힘:', await z());
   console.log('errors:', errs); await b.close();
 })();

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.114.2
+// @version      1.114.3
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.114.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.114.3";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -10822,6 +10822,9 @@ const winOrder = (() => {
     const shown = e => e.getClientRects().length > 0;
     const dialogs = () => [...document.querySelectorAll("body > .ui-dialog")].filter(shown);
     const topZ = skip => Math.max(0, ...[...dialogs(), ...document.querySelectorAll(WINS)].filter(e => e !== skip && shown(e)).map(zOf));
+    // 맨 앞인지: 그 창과 겹치는 창들 가운데서만 본다 (옆에 붙은 내비게이터 · 떨어진 편집기는 가리지 않으니 상관없음)
+    const front = d => { const r = d.getBoundingClientRect(); return zOf(d) >= Math.max(0, ...[...dialogs(), ...document.querySelectorAll(WINS)]
+        .filter(e => e !== d && shown(e)).filter(e => { const q = e.getBoundingClientRect(); return q.left < r.right && r.left < q.right && q.top < r.bottom && r.top < q.bottom; }).map(zOf)); };
     // 펼침 창 · 편집기의 말풍선 층(--aio-z-pop)은 늘 모든 창 위에
     const lift = () => document.documentElement.style.setProperty("--aio-z-pop", String(Math.max(10010, topZ() + 10)));
     const raise = w => {
@@ -10844,7 +10847,7 @@ const winOrder = (() => {
     };
     const collClick = (e, row) => {
         const k = collKey(row, e.target), d = opened.get(k);
-        if (d?.isConnected && shown(d) && zOf(d) >= topZ(d)) {
+        if (d?.isConnected && shown(d) && front(d)) {
             const x = d.querySelector(".ui-dialog-titlebar-close");
             if (x) { e.preventDefault(); e.stopImmediatePropagation(); opened.delete(k); x.click(); return; }
         }
@@ -10859,7 +10862,7 @@ const winOrder = (() => {
         if (!li || e.target.closest("button, a, input")) return;
         const id = li.dataset.itemid, name = (li.querySelector(".namecontainer, .name")?.textContent || "").trim();
         const dlg = dialogs().find(d => { const i = winMemory.info(d); return i && (i.id === id || (name && i.id === name)); });
-        if (!dlg || zOf(dlg) < topZ(dlg)) return;
+        if (!dlg || !front(dlg)) return;
         const x = dlg.querySelector(".ui-dialog-titlebar-close");
         if (!x) return;
         e.preventDefault(); e.stopImmediatePropagation();
@@ -11116,7 +11119,15 @@ const scenNav = (() => {
     const shiftBar = () => {
         const bar = document.querySelector(".master-toolbar-outer"), box = bar?.parentElement;
         if (!box || box === document.body) return;
-        box.style.transform = isOpen() && docked() ? `translateX(${Math.round(win.getBoundingClientRect().width)}px)` : "";
+        const on = isOpen() && docked(), st = box.style;
+        // transform 은 틀을 새 쌓임 층으로 만들어 도구 줄의 z-index 가 틀 안에 갇힌다 → 틀이 맵 층 밑으로 숨지 않게 도구 줄의 z-index 를 틀에 준다
+        // 틀의 원래 값(Roll20 이 준 인라인 값)은 처음 옮길 때 적어 두었다가 그대로 되돌린다
+        if (on && !box.r20snWas) box.r20snWas = { transform: st.transform, zIndex: st.zIndex, position: st.position };
+        if (on) {
+            st.transform = `translateX(${Math.round(win.getBoundingClientRect().width)}px)`;
+            st.zIndex = getComputedStyle(bar).zIndex;
+            if (getComputedStyle(box).position === "static") st.position = "relative";
+        } else if (box.r20snWas) { Object.assign(st, box.r20snWas); box.r20snWas = null; }
     };
     let rdT = 0;
     addEventListener("resize", () => { clearTimeout(rdT); rdT = setTimeout(reDock, 150); });
@@ -11669,8 +11680,8 @@ addCss(`
             & .eg { position:absolute; z-index:3; top:0; right:0; bottom:0; width:6px; cursor:col-resize; touch-action:none; display:none; }
             & .hg { position:absolute; z-index:3; left:0; right:0; bottom:0; height:6px; cursor:row-resize; touch-action:none; display:none; }
             &.dock.half .hg { display:block; }
-            /* 붙임: 브라우저 왼쪽 끝에서 밀려 나오는 서랍 — Roll20 왼쪽 도구 줄(z 10602) 위 */
-            &.dock { z-index:calc(var(--aio-z-win) + 700); resize:none; min-height:0; border-width:0 1px 0 0; border-radius:0; box-shadow:3px 0 10px rgba(0,0,0,0.18); animation:r20sn-in .18s ease-out; }
+            /* 붙임: 브라우저 왼쪽 끝에서 밀려 나오는 서랍 — 도구 줄은 서랍 오른쪽으로 비켜서므로(shiftBar) 보통 창 높이 그대로 */
+            &.dock { resize:none; min-height:0; border-width:0 1px 0 0; border-radius:0; box-shadow:3px 0 10px rgba(0,0,0,0.18); animation:r20sn-in .18s ease-out; }
             &.dock .eg { display:block; }
             &.dock .hd { cursor:default; }
             &.dock.half { border-bottom-width:1px; border-bottom-right-radius:var(--aio-r-lg); }

@@ -16,7 +16,8 @@ const NOTES = {
     localStorage.clear(); localStorage.setItem('r20_aio_zoom', '1.1');
     document.body.style.cssText = 'margin:0;height:100vh;background:#26262b;font:13px sans-serif';
     const btn = (lb) => `<div class="toolbar-button-outer" style="position:relative;display:flex;justify-content:center"><div class="toolbar-button-mid" style="display:flex;flex-direction:column;align-items:center"><div class="toolbar-button-inner" style="width:42px;height:34px;display:flex;align-items:center;justify-content:center"><div class="icon-slot" style="width:34px;height:34px;border-radius:12px;background:#ddd" title="${lb}"></div></div><div class="label" style="font-size:8px">${lb}</div></div></div>`;
-    document.body.innerHTML = `<div id="vm-master-toolbar" style="position:fixed;left:0;top:0;bottom:0;width:0;z-index:10602">
+    // 도구 줄 틀에는 z-index 가 없고(도구 줄 자체가 10602), 맵 쪽에는 그 위에 그리는 층(z 100)이 있다 — Roll20 처럼
+    document.body.innerHTML = `<div id="maplayer" style="position:fixed;left:0;top:0;bottom:0;right:300px;z-index:100"></div><div id="vm-master-toolbar" style="position:fixed;left:0;top:0;bottom:0;width:0">
         <div class="master-toolbar-outer" style="position:absolute;left:0;top:0;width:44px;height:100%;padding-top:18px;padding-bottom:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;align-items:center;background:#fff;z-index:10602;transition:left 200ms">
           <div class="top"><div class="spacer-header" style="font-size:8px">도구</div>${btn('선택')}${btn('손')}${btn('그리기')}
             <div class="toolbar-button-outer" style="position:relative"><div class="toolbar-button-inner" style="width:42px;height:34px"><div class="icon-slot" style="width:34px;height:34px"></div></div><div class="drawer-outer" style="position:absolute;left:2.938rem;bottom:0.188rem;width:40px;min-height:44px;background:#f0f;"></div></div></div>
@@ -77,7 +78,7 @@ const NOTES = {
   console.log('« 단추:', await R('.collapse-toggle'), '| 머리줄 왼쪽 여백:', await p.$eval('#r20-sn .hd', h => h.style.paddingLeft), '| ☰ 위치:', await R('#r20-sn .hd .tg'));
   console.log('도구 줄 위에 뜸:', await p.evaluate(() => !!document.elementFromPoint(10, 300)?.closest('#r20-sn')), '| 밀려 나옴:', await p.$eval('#r20-sn', e => getComputedStyle(e).animationName));
   const bar = () => p.evaluate(() => { const b = document.querySelector('.master-toolbar-outer').getBoundingClientRect(), w = document.querySelector('#r20-sn'); return '도구 줄 왼쪽 ' + Math.round(b.left) + ' · 창 오른쪽 ' + (w.hidden ? '(닫힘)' : Math.round(w.getBoundingClientRect().right)); });
-  console.log('도구 줄은 창 오른쪽 끝으로:', await bar());
+  console.log('도구 줄은 창 오른쪽 끝으로:', await bar(), '| 맵 층 위에 보임:', await p.evaluate(() => { const b = document.querySelector('.master-toolbar-outer').getBoundingClientRect(); return !!document.elementFromPoint(b.left + b.width / 2, 300)?.closest('.master-toolbar-outer'); }));
   console.log('머리줄 단추 보임 (밀려 나오는 동안 여백이 잘못 들어가던 것):', await p.$eval('#r20-sn .hd', h => 'pad ' + (h.style.paddingLeft || '0') + ' · ✕ ' + Math.round(h.querySelector('[data-a="x"]').getBoundingClientRect().right) + ' / 창 ' + Math.round(h.getBoundingClientRect().right)));
   console.log('붙임:', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')), '| 📌 숨김:', await p.$eval('#r20-sn .pin', b => b.hidden), '| playerzone left:', await pz());
   // ½ 반쪽 · 아래 끝 끌기 · 두 번 → 반쪽
