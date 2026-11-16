@@ -66,7 +66,6 @@ const NOTES = {
   await p.click('#r20-snbtn'); await p.waitForTimeout(150);
   await p.click('#r20-sn .pl [data-p]'); await p.waitForTimeout(400);
   console.log('목차:', await p.$$eval('#r20-sn .ls .tr', ts => ts.map(t => (t.classList.contains('h1') ? '  ' : t.classList.contains('h2') ? '    ' : '') + (t.querySelector('.tn') || t).textContent.trim()).map((x, i, a) => x).join('\n')));
-  console.log('들여쓰기 px h1/h2:', await p.evaluate(() => ['.tr.h1', '.tr.h2'].map(s => getComputedStyle(document.querySelector('#r20-sn ' + s)).paddingLeft).join(' / ')));
   console.log('띄운 창:', await R('#r20-sn'));
   await p.evaluate(() => { localStorage.setItem('r20_sn_tw', '70'); document.querySelector('#r20-sn').style.setProperty('--sn-tw', '70px'); });
   console.log('갈래 머리 (목차 70px):', await p.$$eval('#r20-sn .br:not([hidden])', bs => bs.map(b => b.textContent + ' h=' + Math.round(b.getBoundingClientRect().height)).join(' | ')));
@@ -108,8 +107,11 @@ const NOTES = {
   console.log('모두인데 캄파넬라 → 빼기:', await share('h1'), '|', await chips(), '|', await who('h1'));
   console.log('글자 크기: ▶ 본문', await p.evaluate(() => { const k = document.querySelector('#r20-sn .bd section.key .cb p'), n = document.querySelector('#r20-sn .bd section.on .cb p'); return [k, n].map(e => getComputedStyle(e.closest('.cz')).zoom + ' · 높이 ' + Math.round(e.getBoundingClientRect().height)).join(' | 일반 '); }));
   if (SHOT) await p.screenshot({ path: SHOT + '/edgenav-small.png', clip: { x: 0, y: 0, width: 560, height: 420 } });
-  console.log('창 폭 카드 (일반 핸드아웃):', await p.evaluate(async () => { const sec = document.querySelector('#r20-sn .bd section.ch[data-id="h2"]'); sec.classList.add('on'); const r = sec.querySelector('.cb > div').getBoundingClientRect().width, w = document.querySelector('#r20-sn .bd').clientWidth * 1.1; sec.classList.remove('on'); return Math.round(r) + ' / 본문 칸 ' + Math.round(w) + ' = ' + Math.round(r / w * 100) + '%'; }));
-  console.log('500px 카드:', await p.evaluate(() => { const sec = document.querySelector('#r20-sn .bd section.ch[data-id="h3"]'); sec.classList.add('on'); const cb = sec.querySelector('.cb'), c = cb.querySelector('.cz > div').getBoundingClientRect(), r = cb.getBoundingClientRect(); const out = '카드 ' + Math.round(c.left - r.left) + '~' + Math.round(c.right - r.left) + ' / 칸 ' + Math.round(r.width) + ' · 칸 넘침 ' + (cb.scrollWidth - cb.clientWidth); sec.classList.remove('on'); return out; }));
+  // v1.112.3 일반 핸드아웃은 내용 폭으로 배치해 본문 칸 폭에 맞춰 통째로 줄임 (최대 100%) — 목차로 골라서 잰다
+  const card = async id => { await p.click(`#r20-sn .ls .tr.ch[data-c="${id}"]`); await p.waitForTimeout(150); return p.evaluate(id => { const sec = document.querySelector(`#r20-sn .bd section.ch[data-id="${id}"]`), cb = sec.querySelector('.cb'), z = cb.querySelector('.cz'), c = z.firstElementChild.getBoundingClientRect(), r = cb.getBoundingClientRect(); return '카드 ' + Math.round(c.left - r.left) + '~' + Math.round(c.right - r.left) + ' / 칸 ' + Math.round(r.width) + ' · 배율 ' + (+getComputedStyle(z).zoom).toFixed(2) + ' · 칸 넘침 ' + (cb.scrollWidth - cb.clientWidth); }, id); };
+  console.log('창 폭 카드 (일반 핸드아웃):', await card('h2'));
+  console.log('500px 카드:', await card('h3'));
+  await p.click('#r20-sn .ls .tr.ch[data-c="h1"]'); await p.waitForTimeout(150);
   console.log('가로 넘침: 본문 칸', await p.$eval('#r20-sn .bd', e => e.scrollWidth - e.clientWidth), '| 내용 칸', await p.$eval('#r20-sn .bd section.on .cb', e => e.scrollWidth > e.clientWidth));
   console.log('⚠ 보임:', await p.$eval('#r20-sn .warn', b => !b.hidden));
   // 머리 붙어 있음 (스크롤해도)

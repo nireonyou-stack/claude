@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.112.2
+// @version      1.112.3
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.112.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.112.3";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -6636,7 +6636,14 @@ const tokenActs = (() => {
     const close = () => { pop?.remove(); pop = null; };
     const wait = ms => new Promise(r => setTimeout(r, ms));
     // 판 위를 눌렀는지: Roll20 맵 판(#tabletop-wrapper · 캔버스, 예전 화면은 #editor-wrapper)
-    const onBoard = t => !!t && (t.id === "tabletop-wrapper" || t.tagName === "CANVAS" || !!t.closest?.("#editor-wrapper"));
+    const onBoard = t => !!t && !t.closest?.("input, textarea, select, button, [contenteditable]") && (t.id === "tabletop-wrapper" || t.tagName === "CANVAS" || !!t.closest?.("#editor-wrapper"));
+    // 막대 숫자(토큰 위 동그라미)를 누르면 Roll20 이 그 자리에 숫자 입력칸을 띄운다 → 그때는 메뉴를 띄우지 않는다 (토큰 그림을 눌렀을 때만)
+    const editing = at => {
+        const a = document.activeElement;
+        if (!a || !/^(INPUT|TEXTAREA)$/.test(a.tagName) && !a.isContentEditable) return false;
+        const r = a.getBoundingClientRect();
+        return Math.hypot(Math.max(r.left - at.x, 0, at.x - r.right), Math.max(r.top - at.y, 0, at.y - r.bottom)) < 160;
+    };
     // ── 그 자리에 마우스 동작을 흉내 낸다 — Roll20 은 스크립트가 보낸 우클릭 · 더블클릭도 받는다(실제 진단 11-04) ──
     const fire = (at, type, btn, extra) => at.el.dispatchEvent(new (type.startsWith("pointer") ? PointerEvent : MouseEvent)(type,
         { bubbles: true, cancelable: true, composed: true, clientX: at.x, clientY: at.y, button: btn, buttons: btn === 2 ? 2 : 1, pointerId: 1, pointerType: "mouse", isPrimary: true, view: window, ...extra }));
@@ -6680,6 +6687,7 @@ const tokenActs = (() => {
     };
     // 토큰을 눌렀으면: 숨긴 우클릭 메뉴로 무엇이 되는지 읽고 닫은 뒤 메뉴를 띄운다(토큰이 아니면 토큰 액션만 — 없으면 안 띄움)
     const show = at => solo(async () => {
+        if (editing(at)) return;
         let info = null;
         const m = await probe(at);
         if (m) { try { info = tokenMenu.info(m); } finally { await unprobe(at, m, 0); } }
@@ -10938,26 +10946,29 @@ const scenNav = (() => {
         copy(doc.body, frag);
         return frag;
     };
-    // 제목 줄 깊이: 1 = 큰 제목 (H1~H2 · 【…】 로 시작 · 큰 글씨), 2 = 작은 제목 (H3~H5 · 기호 · 번호 · 장면 줄 · 굵은 글씨만 있는 짧은 줄), 0 = 제목 아님
-    // 「대사」 처럼 따옴표로 시작하는 줄은 굵거나 커도 제목이 아니다 (본문 속 대사가 목차를 채우던 것)
-    const HEAD_RE = /^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4}\s|\[[^\]]+\]\s*$|\d{1,2}[.)．]\s?\S|第.+[章節話幕]|제\s*\d+\s*[장절화막]|\d+\s*장\b|(장면|씬|シーン|scene|phase|페이즈)\s*\d*\b)/i;
-    const QUOTE_RE = /^[「『“"‘']/, BIG_RE = /^【[^】]+】[^.。!?！？]{0,24}$/;          // 【…】 뒤에 짧은 이름까지만 (【단서】 계산대 밑의 … . 같은 문장은 아님)
-    const bigText = el => {
-        let px = parseFloat(el.style?.fontSize) || 0;
-        el.querySelectorAll("[style*='font-size'], font[size]").forEach(x => { px = Math.max(px, parseFloat(x.style.fontSize) || (+x.getAttribute("size") >= 5 ? 20 : 0)); });
-        return px >= 16;
+    // ▶ 아닌 핸드아웃: 필요한 폭(내용의 최소 폭 · 적어도 320px)보다 본문 칸이 좁으면 그 폭으로 배치해 칸에 맞춰 통째로 줄인다
+    // 칸이 넓으면 칸 폭 그대로 100% (창 폭 카드는 꽉 차게) → 창을 넓히면 커지고 좁히면 작아진다 · 카드 · 표 모양은 그대로
+    // 필요한 폭은 처음 보일 때 한 번 재고(그림이 불러와지면 다시), 배율만 그때그때
+    const REF_MIN = 320;
+    const fitZoom = () => {
+        const bd = win && $(".bd");
+        if (!bd) return;
+        const A = aioZoom.get() || 1;
+        const vis = chs.filter(c => !c.key && c.sec.getClientRects().length).map(c => c.sec.querySelector(":scope > .cb > .cz")).filter(Boolean);
+        const todo = vis.filter(z => !z.dataset.rw);
+        if (todo.length) {
+            todo.forEach(z => { z.style.zoom = "1"; z.style.width = "min-content"; });
+            const mn = todo.map(z => z.getBoundingClientRect().width);
+            todo.forEach((z, i) => {
+                z.dataset.rw = Math.max(REF_MIN, Math.ceil(mn[i] / A));
+                z.querySelectorAll("img").forEach(im => { if (!im.complete) im.addEventListener("load", () => { delete z.dataset.rw; fitSoon(); }, { once: true }); });
+            });
+        }
+        const cw = (vis[0]?.parentElement.getBoundingClientRect().width || 0) / A;        // 본문 칸 폭 (CSS px)
+        if (cw) vis.forEach(z => { const w = Math.max(+z.dataset.rw, cw); z.style.width = w + "px"; z.style.zoom = String(Math.max(0.3, cw / w)); });
     };
-    const headLv = el => {
-        const t = el.textContent.trim();
-        if (t.length < 2 || t.length > 40 || /^[\d\s.,·:/-]+$/.test(t) || el.querySelector("img, table")) return 0;      // 숫자뿐인 칸(표 번호)은 아님
-        if (/^H[12]$/.test(el.tagName)) return 1;
-        if (/^H[3-5]$/.test(el.tagName)) return 2;
-        if (QUOTE_RE.test(t)) return 0;
-        if (BIG_RE.test(t) || bigText(el)) return 1;
-        if (HEAD_RE.test(t)) return 2;
-        const b = [...el.querySelectorAll("b, strong")].map(x => x.textContent).join("").trim();
-        return b.length >= 2 && b === t && !/^(LI|TD)$/.test(el.tagName) ? 2 : 0;       // 목록 · 표 칸의 굵은 글씨는 강조일 뿐
-    };
+    let fitT = 0;
+    const fitSoon = () => { clearTimeout(fitT); fitT = setTimeout(fitZoom, 120); };
     const getBlob = (m, f) => new Promise(ok => {
         const t = setTimeout(() => ok(""), 8000);
         try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
@@ -11155,7 +11166,7 @@ const scenNav = (() => {
             hd.addEventListener("pointercancel", up);
         });
         let rt = 0;
-        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); }).observe(win);
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); fitSoon(); }).observe(win);
         const setTw = () => win.style.setProperty("--sn-tw", tocW() + "px");
         dragX($(".tgr"), ev => { const z = aioZoom.get(); ls(TW, String(Math.round(Math.max(70, Math.min(420, (ev.clientX - $(".toc").getBoundingClientRect().left) / z))))); setTw(); }, null,
             () => { try { localStorage.removeItem(TW); } catch (e) { /* 없음 */ } setTw(); });
@@ -11244,28 +11255,14 @@ const scenNav = (() => {
             }
         }));
         if (cur !== f) return;
-        // 목차: 장 이름 + 그 안의 제목 줄 (따로 보기면 고른 장의 제목 줄만)
+        // 목차: 장 이름만 (v1.112.3 — 본문에서 제목 줄을 뽑던 것은 핸드아웃마다 서식이 달라 자주 어긋나서 뺐다)
         heads = [];
         let n = 0;
         secs.forEach(sec => {
             if (sec.className === "grp") { sec.id = "sn-h" + n++; heads.push({ el: sec, grp: true, t: sec.textContent }); return; }
-            const h = sec.querySelector(".cht"), c = sec.dataset.id;
+            const h = sec.querySelector(".cht");
             h.id = "sn-h" + n++;
-            heads.push({ el: h, ch: true, c, key: sec.classList.contains("key"), t: h.querySelector(".cn").textContent });
-            // 이 장의 제목 줄: 같은 이름이 거듭되면 처음 한 번만 · 큰 제목이 있으면 첫 큰 제목 앞의 작은 줄(머리말 · 지은이)은 뺀다
-            const found = [], seen = new Set();
-            sec.querySelectorAll(".cb :is(h1, h2, h3, h4, h5, p, div, center, li, td):not(.cz)").forEach(el => {
-                if (el.querySelector("p, div, h1, h2, h3, h4, h5, li, table")) return;      // 다른 줄을 품은 칸은 빼고
-                const lv = headLv(el), t = lv && el.textContent.trim().replace(/^(■|□|●|◆|◇|▶|▷|★|☆|#{1,4})\s*/, "");
-                if (!lv || seen.has(t)) return;
-                seen.add(t);
-                found.push({ el, c, t, lv });
-            });
-            const first = found.findIndex(x => x.lv === 1);
-            found.filter((x, i) => first < 0 || i >= first || x.lv === 1).forEach(x => {
-                x.el.id = "sn-h" + n++;
-                heads.push({ ...x, lv: first < 0 ? 1 : x.lv });          // 큰 제목이 하나도 없으면 모두 한 단계
-            });
+            heads.push({ el: h, ch: true, c: sec.dataset.id, key: sec.classList.contains("key"), t: h.querySelector(".cn").textContent });
         });
         $(".ls").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h h" + h.lv}${h.key ? " key" : ""}${h.ch && isGM() ? " pmx" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${rowInner(h)}</div>`).join("")
             || '<div class="msg">핸드아웃이 없어요</div>';
@@ -11290,6 +11287,7 @@ const scenNav = (() => {
         if (pos != null) bd.scrollTop = pos * (bd.scrollHeight - bd.clientHeight);
         else if (!s) { const sec = chs.find(c => c.id === selId)?.sec; bd.scrollTop = sec ? yOf(sec) : 0; }
         else bd.scrollTop = 0;
+        fitZoom();
         spy();
     };
     // 본문 안 위치 (표 칸 안이어도) — offsetTop 은 칸 기준이라 쓰지 않는다
@@ -11548,7 +11546,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃 본문은 65% 크기) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(장 › 큰 제목 › 작은 제목, 「대사」 줄은 뺌 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃은 창 폭에 맞춰 통째로 줄었다 커졌다 · 최대 100%) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(핸드아웃 이름 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -11634,12 +11632,8 @@ addCss(`
             & .bd.sep section:not(.on) { display:none; }
             & .bd { overflow-x:hidden; }
             & .bd :is(.cb, .gm) { overflow-x:auto; }
-            /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 (GM 메모는 그대로) — 브라우저 축소처럼 칸 폭은 다 쓰고 글 · 그림만 작게
-               (폭까지 65% 로 줄이면 목차를 넓힌 좁은 본문에서 카드가 가는 띠가 되어 몇 글자마다 줄이 바뀐다)
-               창 폭에 맞춘 그림(max-width:100%)은 그대로면 도로 창 폭만큼 커진다 → 그림만 65% 로 묶는다 */
-            /* 고정 폭 카드(예: 500px)는 안쪽 겹(.cz)이 내용의 최소 폭보다 좁아지지 않게 · 창보다 넓으면 본문 칸(.cb) 안에서만 옆으로 넘긴다 */
-            & .bd section.ch:not(.key) > .cb > .cz { zoom:0.65; min-width:min-content; }
-            & .bd section.ch:not(.key) > .cb > .cz img { max-width:65%; }
+            /* ▶ 시나리오 본문 말고 다른 핸드아웃: 폭 · 배율은 fitZoom 이 정한다 (내용 폭으로 배치 → 칸 폭에 맞춰 통째로 줄임). 남는 폭이면 가운데 */
+            & .bd section.ch:not(.key) > .cb > .cz { margin-left:auto; margin-right:auto; }
             & .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
             & .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
             & .bd .cht .cn { flex:1 1 100%; min-width:0; }

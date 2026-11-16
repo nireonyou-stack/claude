@@ -49,14 +49,14 @@ const GM = { h1: escape('<p>하루카는 PC가 편지를 꺼내기 전까지 모
   console.log('하루카 고리 → 보이는 장:', await p.$$eval('#r20-sn .bd section.ch', ss => ss.filter(x => getComputedStyle(x).display !== 'none').map(x => x.querySelector('.cht').textContent).join(',')));
   await p.click('#r20-sn .toc .tr.ch:has-text("본편")'); await p.waitForTimeout(100);
   console.log('안전: script·onclick 빠짐 · 글씨 크기 남음 —', await p.evaluate(() => { const bd = document.querySelector('#r20-sn .bd'); return { script: !!bd.querySelector('script'), onclick: [...bd.querySelectorAll('*')].some(e => [...e.attributes].some(a => a.name.startsWith('on'))), fontsize: [...bd.querySelectorAll('[style]')].map(e => e.getAttribute('style')).join(';'), x: window.__x ?? null, img: bd.querySelector('img')?.getAttribute('src'), gm: bd.querySelector('.gm')?.textContent }; }));
-  // 목차 누르기 → 그 자리 · 머리줄
-  await p.click('#r20-sn .toc .tr:has-text("꽃집")'); await p.waitForTimeout(200);
-  console.log('꽃집 누름 →', await p.$eval('#r20-sn .mt', e => e.textContent), '| 목차 표시:', await p.$eval('#r20-sn .toc .tr.on', e => e.textContent));
+  // v1.112.3 목차는 핸드아웃 이름만 (본문 제목 줄은 뽑지 않음)
+  console.log('목차 줄:', await p.$$eval('#r20-sn .toc .ls .tr', ts => ts.map(t => t.textContent.trim()).join(' / ')), '| 제목 줄 없음:', await p.$$eval('#r20-sn .toc .ls .tr.h1, #r20-sn .toc .ls .tr.h2', t => t.length === 0));
   if (SHOT) await p.screenshot({ path: SHOT + '/nav.png' });
   // 찾기
   await p.fill('#r20-sn .q', '편지'); await p.waitForTimeout(60); await p.press('#r20-sn .q', 'Enter'); await p.press('#r20-sn .q', 'Enter');
   console.log('찾기 편지 →', await p.$eval('#r20-sn .qn', e => e.textContent), '| 칠하기 API:', await p.evaluate(() => !!(window.CSS?.highlights?.get('r20sn-hit'))));
-  // 글 고르기 → 입력칸에 넣기
+  // 글 고르기 → 입력칸에 넣기 (찾기가 다른 장으로 옮겼을 수 있어 본편으로)
+  await p.click('#r20-sn .toc .tr.ch:has-text("본편")'); await p.waitForTimeout(100);
   await p.evaluate(() => { const el = [...document.querySelectorAll('#r20-sn .bd p')].find(x => x.textContent.startsWith('“어서')); const r = document.createRange(); r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); });
   await p.waitForTimeout(60);
   console.log('고르면 뜸:', await p.$eval('#r20-sn .fl', e => !e.hidden));
