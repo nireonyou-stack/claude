@@ -11,6 +11,7 @@ const SHOT = process.env.SHOT;
   await p.addScriptTag({ url: '/sn/jquery.min.js' }); await p.addScriptTag({ url: '/sn/jquery-ui.min.js' });
   await p.evaluate(() => {
     localStorage.clear(); window.__log = [];
+    localStorage.setItem("r20_win_open", JSON.stringify({ f: { "char:c1": 1, "char:c2": 1, "handout:h1": 1 } }));      // 📌 기억 시험 — 여기 창들은 ❐ 떠 있기로 (붙임은 owtest)
     document.body.style.cssText = 'margin:0;height:100vh;background:#3c4a3a';
     document.body.insertAdjacentHTML('beforeend', `<div id="journal"><div class="content"></div></div>
       <div id="jukebox"><div class="content"><ol id="jukeboxfolderroot"><li class="dd-item dd-folder"><ol class="dd-list">

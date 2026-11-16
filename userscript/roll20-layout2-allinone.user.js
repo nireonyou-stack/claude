@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.113.3
+// @version      1.114.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.113.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.114.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -6921,6 +6921,7 @@ const screenUI = (() => {
             y += el.getBoundingClientRect().height + 4;
         });
         FEAT.quickFind?.dockAt?.(y, edge);         // ▶ 로 붙인 빠른 찾기는 단추줄 바로 밑
+        FEAT.winMemory?.dockAt?.(y, edge);         // 시트 · 핸드아웃을 여는 자리도 같은 곳
         FEAT.edgeDock?.place?.(y, edge);           // 그 밑에 덱 · 매크로 (왼쪽 끝 모드)
         FEAT.quickJournal?.place?.();               // 열린 말하는 사람 고르기 창도 (주크박스 서랍을 열고 닫으면 자리가 바뀜)
     };
@@ -10499,15 +10500,29 @@ const winMemory = (() => {
     };
     const keyOf = f => mode === "kind" && f.kind !== "dlg" ? f.kind : f.kind + ":" + f.id;
     const geom = dlg => ({ l: Math.round(dlg.offsetLeft), t: Math.round(dlg.offsetTop), w: Math.round(dlg.offsetWidth), h: Math.round(dlg.offsetHeight) });
+    // 시트 · 핸드아웃은 단추줄 바로 밑(빠른 찾기를 붙이는 자리)에서 열린다 — 여는 자리만 그곳, 열린 뒤엔 자유롭게 옮김 · 📌 로 기억한 자리가 먼저
+    // 제목줄 [◨ 붙임 | ❐ 떠 있기] 로 창마다 고른다(기억 방식을 따름 · 떠 있기만 적어 둔다) · 폭은 크기를 바꾸면 시트 · 핸드아웃 따로 기억
+    const OPEN = "r20_win_open";
+    const op = (() => { try { const o = JSON.parse(aioPref.get(OPEN) || "{}") || {}; return { f: o.f || {}, w: o.w || {} }; } catch (e) { return { f: {}, w: {} }; } })();
+    const keepOp = () => aioPref.set(OPEN, JSON.stringify(op));
+    const dockable = f => f?.kind === "char" || f?.kind === "handout";
+    const opensDocked = f => dockable(f) && !op.f[keyOf(f)];
+    let dockY = null, dockEdge = null;
+    const dockAt = (y, edge) => { dockY = y; dockEdge = edge; };        // 화면 배치(screenUI)가 단추줄을 쌓을 때마다
+    const dockGeom = (f, dlg) => {
+        const b = document.getElementById("r20-qfbtn")?.getBoundingClientRect(), side = document.getElementById("rightsidebar")?.getBoundingClientRect();
+        const y = dockY ?? (b ? b.bottom + 4 : 60), edge = dockEdge ?? (side?.width ? side.left : innerWidth), w = Math.min(op.w[f.kind] || dlg.offsetWidth, edge - 8);
+        return { l: edge - w, t: y, w, h: innerHeight - y - 8 };
+    };
     const save = dlg => {
         const f = info(dlg);
-        if (!f || !mem[keyOf(f)] || !dlg.getClientRects().length || dlg.classList.contains("aio-min")) return;
-        mem[keyOf(f)] = { g: geom(dlg) };
-        keep();
+        if (!f || !dlg.getClientRects().length || dlg.classList.contains("aio-min")) return;
+        if (mem[keyOf(f)]) { mem[keyOf(f)] = { g: geom(dlg) }; keep(); }
+        else if (opensDocked(f) && op.w[f.kind] !== dlg.offsetWidth) { op.w[f.kind] = Math.round(dlg.offsetWidth); keepOp(); }
     };
     // 기억한 자리 · 크기로: jQuery UI 창이면 그 옵션으로(안쪽 높이까지 같이 맞춰진다), 아니면 직접
     const apply = dlg => {
-        const f = info(dlg), g = f && mem[keyOf(f)]?.g;
+        const f = info(dlg), g = f && (mem[keyOf(f)]?.g || (opensDocked(f) ? dockGeom(f, dlg) : null));
         if (!g) return;
         const W = innerWidth, H = innerHeight;
         const w = Math.min(g.w, W - 8), h = Math.min(g.h, H - 8);
@@ -10586,6 +10601,21 @@ const winMemory = (() => {
                 const after = bar.querySelector(".r20shot") || bar.querySelector(".ui-dialog-title");
                 after ? after.after(b) : bar.prepend(b);
                 paint(b, dlg);
+                if (dockable(info(dlg))) {
+                    const sg = aioDockSeg([["dock", "붙임"], ["float", "떠 있기"]], opensDocked(info(dlg)) ? "dock" : "float", v => {
+                        const f = info(dlg);
+                        if (!f) return;
+                        if (v === "dock") delete op.f[keyOf(f)]; else op.f[keyOf(f)] = 1;
+                        keepOp();
+                        if (v === "dock") apply(dlg);
+                        document.querySelectorAll(".ui-dialog .r20wm-dock").forEach(x => { const f2 = info(x.closest(".ui-dialog")); if (f2) x.set(opensDocked(f2) ? "dock" : "float"); });
+                    });
+                    sg.classList.add("r20wm-dock");
+                    sg.querySelector('[data-v="dock"]').title = "붙임 — 단추줄 바로 밑에서 열기 (열린 뒤엔 자유롭게 옮김)";
+                    sg.querySelector('[data-v="float"]').title = "떠 있기 — Roll20 이 정한 자리에서 열기";
+                    sg.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
+                    b.after(sg);
+                }
             }
             if (!dlg.r20wmSeen) { dlg.r20wmSeen = true; opened(dlg); }
         });
@@ -10625,8 +10655,8 @@ const winMemory = (() => {
     const setMode = m => { mode = m === "kind" ? "kind" : "item"; localStorage.setItem(MODE, mode); paintAll(); };
     // 설정 창 줄: 기억 방식 (항목마다 · 종류별 하나)
     const modeRow = () => aioSegRow("기억 방식", "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리 (덱 선택창 등 그 밖의 창은 늘 창 제목마다)", [["item", "항목마다"], ["kind", "종류별 하나"]], () => mode, setMode);
-    const setEnabled = on => { if (on) { bindJq(); inject(); } else document.querySelectorAll(".r20wm-pin").forEach(b => b.remove()); };
-    return { inject, setEnabled, modeRow, info, watch: ".ui-dialog" };
+    const setEnabled = on => { if (on) { bindJq(); inject(); } else document.querySelectorAll(".r20wm-pin, .r20wm-dock").forEach(b => b.remove()); };
+    return { inject, setEnabled, modeRow, info, dockAt, watch: ".ui-dialog" };
 })();
 
 addCss(`
@@ -10758,8 +10788,10 @@ addCss(`
             & .r20wm-pin.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); filter:none; opacity:1; }
             & .r20wm-pin.flash { animation:r20wm-flash 0.4s ease-in-out 3 alternate; }
             & .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+            & .r20wm-dock { float:left; margin:10px 0 0 2px; }
         }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
+        @keyframes r20sn-in { from { transform:translateX(-100%); } }
         /* 제목줄 두 번 누르면 접기 (올인원 창 · Roll20 창) */
         :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min { height:auto !important; min-height:0 !important; resize:none !important; }
         :is(#r20be, #custom-journal-popup, #r20-logbak, #r20-ccf, #r20-fit, #r20-mscn, #r20-sn, #r20-qf .qf-box, .ui-dialog).aio-min > :not(.r20be-head, .cj-hd, .hd, .qf-head, .qf-qrow, .ui-dialog-titlebar) { display:none !important; }
@@ -10830,7 +10862,7 @@ addFeature("winOrder", winOrder);
 addBundle({ place: "main", order: 3.1, group: "play", label: "빠른 찾기 (Ctrl+F)", sub: "핸드아웃 · 캐릭터 · BGM 곡 · 매크로를 이름 일부 · 초성 · #태그로 찾아 바로 열기 · 재생 · 실행 (Shift+Enter = 일괄 편집기에서) · 핸드아웃 본문 · 채팅 로그 전체도 낱말로 (채팅만 켜면 앞뒤 n개 함께) · 장면(GM): 채팅에서 구간을 찍어 목차 · 장면 로그 창",
     members: [["qfind", "quickFind"]],
     extra: row => { row.querySelector(".cs-text").after(quickFind.openButton()); } });
-addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "저널 탭에서 맨 앞에 열려 있는 시트 · 핸드아웃, 모음 탭의 매크로 · 덱 · 굴림표 제목을 다시 누르면 닫기 · 캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
+addBundle({ place: "main", order: 3.2, group: "view", label: "창 자리 · 크기 기억 · 접기", sub: "캐릭터 시트 · 핸드아웃은 단추줄 바로 밑에서 열림(제목줄 ◨ 붙임 / ❐ 떠 있기 · 열린 뒤엔 자유롭게 옮김 · 크기를 바꾸면 폭 기억) · 저널 탭에서 맨 앞에 열려 있는 시트 · 핸드아웃, 모음 탭의 매크로 · 덱 · 굴림표 제목을 다시 누르면 닫기 · 캐릭터 시트 · 핸드아웃 · 덱 선택창 등 Roll20 창 제목줄의 📌 를 켠 창만 (시트 · 핸드아웃 말고는 제목줄에 마우스를 올리면 📌) · 화면 밖이면 안으로 당겨 열어요 · 📌 길게 누르면 기본 자리로 · 올인원 창과 Roll20 창은 제목줄을 두 번 누르면 접기",
     members: [["winmem", "winMemory"]],
     extra: () => [winMemory.modeRow()] });
 
@@ -11052,7 +11084,7 @@ const scenNav = (() => {
         if (docked()) {
             // 높이는 % (화면 기준) — 글자 크기(배율)를 바꿔도 위아래 끝이 그대로
             const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
-            Object.assign(win.style, { left: tr / z + "px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });
+            Object.assign(win.style, { left: "0px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });      // 브라우저 왼쪽 끝 서랍 (도구 줄 위)
             padBadge();
             return;
         }
@@ -11605,7 +11637,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃은 [− +] 로 크기 · 기본 65%) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(핸드아웃 이름 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃은 [− +] 로 크기 · 기본 65%) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(핸드아웃 이름 · 경계를 끌어 너비) · ◧ 브라우저 왼쪽 끝에 서랍처럼 붙이기(도구 줄 위 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -11632,7 +11664,8 @@ addCss(`
             & .eg { position:absolute; z-index:3; top:0; right:0; bottom:0; width:6px; cursor:col-resize; touch-action:none; display:none; }
             & .hg { position:absolute; z-index:3; left:0; right:0; bottom:0; height:6px; cursor:row-resize; touch-action:none; display:none; }
             &.dock.half .hg { display:block; }
-            &.dock { resize:none; min-height:0; border-width:0 1px 0 0; border-radius:0; box-shadow:3px 0 10px rgba(0,0,0,0.18); }
+            /* 붙임: 브라우저 왼쪽 끝에서 밀려 나오는 서랍 — Roll20 왼쪽 도구 줄(z 10602) 위 */
+            &.dock { z-index:calc(var(--aio-z-win) + 700); resize:none; min-height:0; border-width:0 1px 0 0; border-radius:0; box-shadow:3px 0 10px rgba(0,0,0,0.18); animation:r20sn-in .18s ease-out; }
             &.dock .eg { display:block; }
             &.dock .hd { cursor:default; }
             &.dock.half { border-bottom-width:1px; border-bottom-right-radius:var(--aio-r-lg); }
