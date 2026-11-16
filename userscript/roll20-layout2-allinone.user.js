@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.113.0
+// @version      1.113.1
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.113.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.113.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -1284,6 +1284,21 @@ const aioZoom = (() => {
 })();
 const zpx = v => v / aioZoom.get() + "px";
 
+// 스크롤 막대: 화면의 모든 막대를 6px 가는 막대로 (화살표 없음 · 바탕 투명) — 일부러 숨긴 막대(display:none · scrollbar-width:none)는 그대로
+// Chrome · Edge 는 ::-webkit-scrollbar 인데, 요소에 scrollbar-width · scrollbar-color 가 있으면 그 요소는 브라우저 기본 막대(화살표 · 10px)가 된다
+// → scrollbar-color 는 물려받으므로(Roll20 창 .ui-dialog 가 정함) 모든 요소에서 auto 로 끊고, Roll20 이 thin 을 준 곳은 이름을 짚어 auto 로
+// 시트(iframe 안 문서)에도 같은 글을 넣는다 (sbFrames) · 그 밖의 브라우저는 thin
+const AIO_SCROLL_CSS = `
+        @supports selector(::-webkit-scrollbar) {
+            :where(*) { scrollbar-color:auto; }
+            :is(.ui-dialog, .ui-dialog .ui-dialog-content, .el-splitter-panel, .el-textarea__inner) { scrollbar-width:auto !important; scrollbar-color:auto !important; }
+            ::-webkit-scrollbar { width:6px; height:6px; }
+            ::-webkit-scrollbar-thumb { border-radius:3px; background:rgba(128,128,128,0.45); }
+            ::-webkit-scrollbar-thumb:hover { background:rgba(128,128,128,0.75); }
+            ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background:transparent; }
+            ::-webkit-scrollbar-button { display:none; }
+        }
+        @supports not selector(::-webkit-scrollbar) { :where(*) { scrollbar-width:thin; } }`;
 const CORE_CSS = `
         /* 색 · 모서리 이름표 — 강조색은 Roll20 핫핑크(Roll20 자체 팔레트 값). 바꿀 땐 여기만 */
         :root { --aio-accent:#e10085; --aio-accent-dark:#b4006a; --aio-accent-bg:#fce6f3; --aio-accent-soft:#f9cce7; --aio-accent-mid:#f399ce; --aio-ink:#222; --aio-ink-2:#333; --aio-ink-3:#555; --aio-ink-4:#666; --aio-ink-5:#767676; --aio-line:#ccc; --aio-line-2:#ddd; --aio-line-3:#e6e6e6; --aio-line-4:#f0f0f0; --aio-bg:#fff; --aio-bg-2:#fafafa; --aio-bg-3:#f4f4f6; --aio-bg-4:#ebebeb; --aio-bg-5:#ccc; --aio-r-sm:4px; --aio-r:6px; --aio-r-lg:8px; --aio-r-pill:999px; --aio-ok:#15803d; --aio-ok-bg:#e7f6ec; --aio-warn:#b45309; --aio-warn-ink:#92400e; --aio-warn-bg:#fff4e5; --aio-bad:#c62828; --aio-bad-bg:#fdecec; --aio-float:rgba(245,245,247,0.94); --aio-tip:rgba(20,20,22,0.94); --aio-ink-inv:#fff; --aio-scrim:rgba(0,0,0,0.55); --aio-tip-bad:rgba(92,20,20,0.96); --aio-alt:#8a3d9e; --aio-shadow-sm:0 1px 3px rgba(0,0,0,0.2); --aio-shadow-md:0 4px 12px rgba(0,0,0,0.2); --aio-shadow-lg:0 8px 24px rgba(0,0,0,0.25); --aio-mark:inset 3px 0 0 var(--aio-accent); --aio-ring:0 0 0 2px var(--aio-accent); --aio-ring-in:inset 0 0 0 2px var(--aio-accent); --aio-drop-top:inset 0 2px 0 var(--aio-accent); --aio-drop-bottom:inset 0 -2px 0 var(--aio-accent); --aio-z-dock:2999; --aio-z-win:10003; --aio-z-pop:10010; --aio-z-tip:100000; --aio-z-toast:100050; --aio-h-sm:22px; --aio-h:26px; --aio-h-lg:30px; --aio-fs-xs:10px; --aio-fs-sm:11px; --aio-fs-md:12px; --aio-fs-lg:13px; --aio-fs-xl:15px; }
@@ -1324,16 +1339,7 @@ const CORE_CSS = `
             &.sm > button { width:var(--aio-h-sm); height:var(--aio-h-sm); font-size:var(--aio-fs-lg); }
             & > button:hover { background:var(--aio-bg-3); color:var(--aio-ink); }
         }
-        /* 스크롤 막대: 화면의 모든 막대를 6px 가는 막대로 (화살표 없음 · 바탕 투명) — 일부러 숨긴 막대(display:none · scrollbar-width:none)는 그대로
-           Chrome · Edge 는 ::-webkit-scrollbar (요소에 scrollbar-width 가 있으면 그 요소는 브라우저의 thin), 그 밖의 브라우저는 thin */
-        @supports selector(::-webkit-scrollbar) {
-            html ::-webkit-scrollbar { width:6px; height:6px; }
-            html ::-webkit-scrollbar-thumb { border-radius:3px; background:rgba(128,128,128,0.45); }
-            html ::-webkit-scrollbar-thumb:hover { background:rgba(128,128,128,0.75); }
-            html ::-webkit-scrollbar-track, html ::-webkit-scrollbar-corner { background:transparent; }
-            html ::-webkit-scrollbar-button { display:none; }
-        }
-        @supports not selector(::-webkit-scrollbar) { html :where(*) { scrollbar-width:thin; } }
+        ${AIO_SCROLL_CSS}
         /* 공용 부품: 글자 단추 .aio-btn (26px · .sm 22px · .lg 30px · .pri 강조) · 칩 .aio-chip (22px 알약 · .on / aria-pressed 면 강조색 옅게) */
         .aio-btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; height:var(--aio-h); margin:0; padding:0 10px; border:1px solid var(--aio-line); border-radius:var(--aio-r-sm); background:var(--aio-bg); box-shadow:none; color:var(--aio-ink-2); font-size:var(--aio-fs-md); line-height:1; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .aio-btn:hover:not(:disabled) { background:var(--aio-bg-3); color:var(--aio-ink); }
@@ -2586,6 +2592,26 @@ addFeature("jbDrawer", jbDrawer);
 addBundle({ place: "main", order: 1.05, group: "play", label: "주크박스 서랍 (♪ 를 누르면 채팅 왼쪽에)", sub: "주크박스 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — 주크박스가 채팅 판 왼쪽에 펼쳐져요 · [½] 반쪽(아래쪽만 · 위 끝을 끌어 높이) ↔ 전체 높이 · 머리줄 곡 찾기(초성 · #태그 · 🎧 나만 미리듣기 · 곡 이름 = 모두에게 재생 · Enter 재생 · Shift+Enter 미리듣기) · 다시 ♪ · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절",
     members: [["jbdrawer", "jbDrawer"]] });
 addFeature("jnDrawer", jnDrawer);
+// 시트(iframe) 안 문서에도 가는 스크롤 막대 — 같은 출처 문서만 (다른 출처는 건드릴 수 없음). 문서를 새로 쓰면(load) 다시 넣는다
+const sbFrames = (() => {
+    const seen = new WeakSet();
+    const put = f => {
+        try {
+            const d = f.contentDocument;
+            if (!d?.head || d.getElementById("aio-sb")) return;
+            const st = d.createElement("style");
+            st.id = "aio-sb";
+            st.textContent = AIO_SCROLL_CSS;
+            d.head.appendChild(st);
+        } catch (e) { /* 다른 출처 */ }
+    };
+    const inject = () => document.querySelectorAll("iframe").forEach(f => {
+        if (!seen.has(f)) { seen.add(f); f.addEventListener("load", () => put(f)); }
+        put(f);
+    });
+    return { inject, watch: "iframe" };
+})();
+addFeature("sbFrames", sbFrames);
 addBundle({ place: "main", order: 1.06, group: "play", label: "저널 서랍 (📒 를 누르면 채팅 왼쪽에)", sub: "저널 탭을 눌러도 탭이 바뀌지 않고 채팅은 그대로 — Roll20 저널이 채팅 판 왼쪽에 펼쳐져요 (찾기 · 폴더 · 맵으로 끌어다 놓기 그대로) · [½] 반쪽 ↔ 전체 높이 · 다시 📒 · ✕ · Esc · 다른 데 누르기로 닫기 (📌 면 열어 둠) · 왼쪽 끝을 끌어 폭 조절 · 주크박스 서랍과는 하나씩",
     members: [["jndrawer", "jnDrawer"]] });
 addCss(`
@@ -2597,6 +2623,11 @@ addCss(`
             & #jukebox :is(#jukeboxfolderroot, #jukeboxfolderroot > .dd-list) { margin-left:0 !important; margin-right:0 !important; padding-left:0 !important; padding-right:0 !important; list-style:none !important; }
         }
         body.r20jbd-open #r20-jbd-hd .q { order:9; flex:1 0 100% !important; min-width:0; width:auto; margin:0 !important; }
+        /* 저널 서랍 좌우 여백 = 주크박스 서랍 (칸 좌우 여백 0 · 목록 뿌리의 Roll20 들여쓰기 0) */
+        body.r20jnd-open {
+            & #journal#journal { padding-left:0 !important; padding-right:0 !important; }
+            & #journal :is(#journalfolderroot, #journalfolderroot > .dd-list) { margin-left:0 !important; margin-right:0 !important; padding-left:0 !important; padding-right:0 !important; list-style:none !important; }
+        }
         #r20-jbd-res { position:fixed; z-index:calc(var(--aio-z-win) + 3); top:calc(var(--jbd-t, 0px) + 62px); right:var(--jbd-r, 300px); width:var(--jbd-w, 300px); max-height:236px; overflow-y:auto; padding:3px; border:1px solid var(--aio-line-3); border-top:0; background:var(--aio-bg); box-shadow:var(--aio-shadow-md); color:var(--aio-ink-2); font:12px/1.4 sans-serif; box-sizing:border-box; }
         #r20-jbd-res {
             & .r { display:flex; align-items:center; gap:6px; height:var(--aio-h); padding:0 6px; border-radius:var(--aio-r-sm); cursor:pointer; }

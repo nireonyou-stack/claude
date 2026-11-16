@@ -17,8 +17,8 @@ const SHOT = process.env.SHOT;
     document.body.innerHTML = `<div id="rightsidebar" style="position:fixed;right:0;top:0;width:300px;height:100%;background:#fff">
         <ul class="tabmenu"><li><a href="#textchat">💬</a></li><li><a href="#journal">📒</a></li><li id="jukeboxtab"><a href="#jukebox">♪</a></li></ul>
         <div id="textchat"><div class="content"><div class="message general">안녕</div></div></div>
-        <div id="journal"><div class="content searchbox"><input class="search" placeholder="Search"></div><ol class="dd-list">${items}</ol></div>
-        <div id="jukebox"><h3>Jukebox</h3></div></div>
+        <div id="journal"><div class="content searchbox"><input class="search" placeholder="Search"></div><div id="journalfolderroot"><ol class="dd-list">${items}</ol></div></div>
+        <div id="jukebox"><h3>Jukebox</h3><ol id="jukeboxfolderroot"><li class="dd-item dd-folder"><ol class="dd-list"><li class="dd-item jukeboxitem" data-itemid="t1"><div class="dd-content">곡 1</div></li></ol></li></ol></div></div>
       <div id="sidebarcontrol" style="position:fixed;right:300px;top:6px;width:28px;height:28px;background:#eee"></div>`;
     $('#rightsidebar').tabs();
     $('#rightsidebar').on('click', '.journalitem .name', function () { window.__log.push('OPEN ' + $(this).closest('li').data('itemid')); });
@@ -38,7 +38,10 @@ const SHOT = process.env.SHOT;
   console.log('📒 누름 →', await state(), '| 머리줄:', await p.$eval('#r20-jnd-hd .tt', e => e.textContent), '| 탭 표시:', await p.$eval(jt, a => a.parentElement.classList.contains('r20jnd-on')));
   if (SHOT) await p.screenshot({ path: SHOT + '/jnd.png' });
   await p.click('#journal li[data-itemid="h3"] .name'); console.log('항목 누름 →', await p.evaluate(() => window.__log.join(',')), '| 열린 채:', await p.evaluate(() => document.body.classList.contains('r20jnd-open')));
+  const inset = (pane, item) => p.evaluate(([pane, item]) => { const d = document.getElementById(pane).getBoundingClientRect(), i = document.querySelector(item).getBoundingClientRect(); return '왼 ' + Math.round(i.left - d.left) + ' · 오른 ' + Math.round(d.right - i.right); }, [pane, item]);
+  const jnIn = await inset('journal', '#journal li.journalitem');
   await p.click('#jukeboxtab a'); await p.waitForTimeout(120); console.log('♪ 누름 → 저널 닫히고 주크박스:', await state());
+  console.log('좌우 여백 — 저널 줄', jnIn, '| 주크박스 줄', await inset('jukebox', '#jukebox li.jukeboxitem'));
   await p.click(jt); await p.waitForTimeout(120); console.log('📒 다시 → 주크박스 닫히고 저널:', await state());
   await p.click(jt); await p.waitForTimeout(80); console.log('📒 또 → 닫힘:', await state());
   await p.click(jt); await p.waitForTimeout(80);

@@ -165,8 +165,8 @@
 - 옆 서랍(v1.113.0 `makeDrawer`): 주크박스(`jbDrawer`, p=jbd) · 저널(`jnDrawer`, p=jnd)이 같은 틀 — 저장 키 `r20_<p>_*`, 요소 `r20-<p>-*`,
   `body.r20<p>-open`, CSS 는 `drawerCss(p, pane, 머리줄 높이)`. 같은 자리라 한 번에 하나만(`DRAWERS`). 단추줄 · 매크로 · 말하는 사람 고르기는
   `FEAT.jbDrawer?.leftEdge?.() ?? FEAT.jnDrawer?.leftEdge?.()` 로 열린 서랍을 따른다.
-- 스크롤 막대(v1.113.0): CORE_CSS 의 `html ::-webkit-scrollbar` 6px 하나로. 요소에 `scrollbar-width` 를 주면 그 요소만 브라우저 thin 이 되므로 쓰지 않는다
-  (숨길 때만 `none`). 시트(iframe) 안은 따로 문서라 그대로.
+- 스크롤 막대(v1.113.1): `AIO_SCROLL_CSS`(::-webkit-scrollbar 6px · 물려받는 scrollbar-color 를 auto 로 끊음 · Roll20 이 thin 을 준 .ui-dialog 등은 auto) 하나로. 요소에 `scrollbar-width` 를 주면 그 요소만 브라우저 thin 이 되므로 쓰지 않는다
+  (숨길 때만 `none`). 시트(iframe) 안 문서에는 `sbFrames` 가 같은 글을 넣는다.
 - 움직이는 그림(v1.112.0 `mapAnim`): 맵 · 토큰 webm 은 문서 밖 `<video>` 를 Babylon(`#babylonCanvas`)이 매 프레임 `texImage2D` 로 올린다
   (실제 방 13~14개 · 3초에 약 1,150회). 멈추면 Roll20 이 곧바로 `play()` 를 다시 부르므로 `HTMLMediaElement.prototype.play` 를 가로채 막는다
   → 3초에 1회. 이 브라우저에서만 멈추고 방 데이터는 그대로. 스크립트보다 먼저 튼 영상은 페이지가 바뀐 3초 뒤 1.2초 동안 그리기 호출을 엿봐 찾는다.
