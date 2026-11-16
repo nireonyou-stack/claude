@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.114.1
+// @version      1.114.2
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.114.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.114.2";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -10527,6 +10527,7 @@ const winMemory = (() => {
         const W = innerWidth, H = innerHeight;
         const w = Math.min(g.w, W - 8), h = Math.min(g.h, H - 8);
         const l = Math.max(0, Math.min(g.l, W - w)), t = Math.max(0, Math.min(g.t, H - h));
+        if ([dlg.offsetWidth - w, dlg.offsetHeight - h, dlg.offsetLeft - l, dlg.offsetTop - t].every(d => Math.abs(d) < 2)) return;      // 이미 그 자리 · 크기
         const c = content(dlg), $ = window.jQuery;
         let done = false;
         // jQuery UI 의 width 는 안쪽 너비(테두리 · 여백 빼고), height 는 바깥 높이다
@@ -10554,8 +10555,13 @@ const winMemory = (() => {
         if (!btnVisible.winmem) return;
         dlg.r20wmTouched = false;
         apply(dlg);
-        // Roll20 이 자리 · 크기를 늦게 다시 잡는다(시트를 다시 열면 불러온 뒤 높이를 원래대로) → 2초 동안 몇 번 더 (그사이 손대면 그만)
-        [300, 1000, 2000].forEach(ms => setTimeout(() => { if (!dlg.r20wmTouched) apply(dlg); }, ms));
+        // Roll20 이 자리 · 크기를 늦게 다시 잡는다(시트를 다시 열면 불러온 뒤 높이를 원래대로) → 2.5초 동안은 그 바뀜을 그리기 전에 되돌린다
+        // (MutationObserver 는 화면을 그리기 전에 불린다 → 깜빡임 없음 · 그사이 손대면 그만)
+        dlg.r20wmGuard?.disconnect();
+        let n = 0;          // 크기를 못 맞추는 창(최소 높이 등)에서 되돌리기가 끝없이 돌지 않게
+        const mo = dlg.r20wmGuard = new MutationObserver(() => { if (dlg.r20wmTouched || ++n > 20) mo.disconnect(); else apply(dlg); });
+        [dlg, content(dlg)].forEach(el => el && mo.observe(el, { attributes: true, attributeFilter: ["style"] }));
+        setTimeout(() => mo.disconnect(), 2500);
     };
     const toast = (dlg, msg) => {
         const b = dlg.querySelector(".r20wm-pin");
@@ -10617,6 +10623,7 @@ const winMemory = (() => {
                     sg.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
                     b.after(sg);
                 }
+                if (dlg.r20wmSeen && !dlg.r20wmTouched) apply(dlg);         // 단추가 들어가 제목줄이 높아진 만큼 다시 맞춤
             }
             if (!dlg.r20wmSeen) { dlg.r20wmSeen = true; opened(dlg); }
         });
@@ -10636,8 +10643,13 @@ const winMemory = (() => {
         if (bound || !$) return;
         bound = true;
         $(document).on("dialogdragstop.r20wm dialogresizestop.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d?.querySelector(".r20wm-pin")) setTimeout(() => save(d), 0); });
-        // 닫았던 창을 Roll20 이 다시 여는 경우(새로 만들지 않고)
-        $(document).on("dialogopen.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d) setTimeout(() => { d.r20wmSeen = false; inject(); }, 0); });
+        // 창이 열리는 그 순간(그리기 전)에 자리를 잡는다 — 새 창 · 닫았던 창을 다시 여는 경우 모두 (본체 감시는 늦어서 원래 자리가 한 번 보였다)
+        $(document).on("dialogopen.r20wm", e => {
+            const d = e.target.closest?.(".ui-dialog");
+            if (!d) return;
+            if (btnVisible.winmem && info(d)) { d.r20wmSeen = true; opened(d); } else d.r20wmSeen = false;
+            setTimeout(inject, 0);          // 📌 · ◨ 단추
+        });
     };
     bindJq();
     // ── 제목줄을 두 번 누르면 접기(제목줄만 남김) · 다시 두 번 누르면 펴기 ──
@@ -11087,11 +11099,9 @@ const scenNav = (() => {
             const w = Math.min(Math.max(240, parseFloat(ls(DW)) || TXT_W + tocW()), Math.round(W * 0.75));
             Object.assign(win.style, { left: "0px", top: "0px", width: w + "px", height: (half() ? dhFrac() * 100 : 100) + "%" });      // 브라우저 왼쪽 끝 서랍
             shiftBar();
-            padBadge();
             return;
         }
         shiftBar();
-        $(".hd").style.paddingLeft = "";
         let g = null;
         if (pinned()) try { g = JSON.parse(ls(GEO) || "null"); } catch (e) { /* 없음 */ }
         const w = Math.min(Math.max(200, g?.w || TXT_W + (tocOn() ? tocW() : 0)), W - 16), h = Math.min(Math.max(160, g?.h || Math.min(600, Math.round(H * 0.7))), H - 16);
@@ -11099,22 +11109,7 @@ const scenNav = (() => {
         const t = g?.t != null ? Math.max(0, Math.min(g.t, H - 40)) : 40;
         Object.assign(win.style, { left: l + "px", top: t + "px", width: w + "px", height: h + "px" });
     };
-    // 붙인 창은 포트레이트 위에 뜬다 (포트레이트 줄은 그대로) · 닫고 열기는 오른쪽 판 단추줄의 📖
-    // Roll20 도구 줄의 축소 · 확장(« ») 단추가 머리줄 위에 겹치면 그만큼 비운다 — 창보다 위에 그려진 작은 요소만 잰다
-    const padBadge = () => {
-        const hd = $(".hd");
-        hd.style.paddingLeft = "";
-        const r = hd.getBoundingClientRect(), y = r.top + r.height / 2;
-        let right = 0;
-        for (let x = r.left + 2; x < r.left + 90; x += 6) {
-            for (const el of document.elementsFromPoint(x, y)) {
-                if (el === win || win.contains(el)) break;
-                const er = el.getBoundingClientRect();
-                if (er.width && er.width < 90 && er.height < 90) right = Math.max(right, er.right);
-            }
-        }
-        if (right > r.left) hd.style.paddingLeft = Math.round((right - r.left) / aioZoom.get() + 4) + "px";
-    };
+    // 붙인 창은 포트레이트 위에 뜬다 · 닫고 열기는 오른쪽 판 단추줄의 📖
     const reDock = () => { if (docked() && isOpen()) place(); };
     // 붙여 연 동안 Roll20 왼쪽 도구 줄(레이어 고르기 등)을 창 오른쪽 끝으로 옮긴다 — 포트레이트는 덮어도 됨
     // 도구 줄을 감싼 고정 틀을 옮긴다 (도구 줄 자체는 가늘게 모드에서 zoom 이 걸려 옮기는 거리도 같이 줄어든다)

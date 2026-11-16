@@ -67,6 +67,12 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   const h1 = await g('캄파넬라');
   await p.evaluate(() => { __c3.dialog('close'); __c3.dialog('open'); setTimeout(() => __c3.dialog('option', 'height', 320), 800); }); await p.waitForTimeout(2600);
   console.log('같은 시트 다시 열기 (Roll20 이 늦게 높이를 되돌림) →', await g('캄파넬라'), '| 처음', h1);
+  // 깜빡임: 그려지는 프레임마다 창 높이를 적어 둔다 (처음 열기 · 다시 열기 + Roll20 이 0.8초 뒤 높이를 되돌림)
+  const rec = async fn => p.evaluate(async fn => { const hs = []; let on = true; const loop = () => { const d = [...document.querySelectorAll('.ui-dialog')].find(x => x.textContent.includes('모르간')); if (d && d.offsetHeight) hs.push(d.offsetHeight); if (on) requestAnimationFrame(loop); };
+    requestAnimationFrame(loop); eval(fn); await new Promise(r => setTimeout(r, 1800)); on = false; const last = hs[hs.length - 1]; return '프레임 ' + hs.length + ' · 다른 높이로 그려진 프레임 ' + hs.filter(h => Math.abs(h - last) > 2).length + ' (' + [...new Set(hs)].join('/') + ')'; }, fn);
+  console.log('처음 열기 깜빡임:', await rec("window.__c4 = $('<div class=\"dialog characterdialog\" data-characterid=\"c4\"><div style=\"height:900px\">시트</div></div>'); __c4.dialog({ title: '모르간', width: 420, height: 320, position: { my: 'left top', at: 'left+40 top+40', of: window } });"));
+  await p.evaluate(() => __c4.dialog('close')); await p.waitForTimeout(200);
+  console.log('다시 열기 깜빡임:', await rec("__c4.dialog('open'); setTimeout(() => __c4.dialog('option', 'height', 320), 800);"));
   // 그 밖의 Roll20 창은 그대로
   await p.evaluate(() => $('<div>설정</div>').dialog({ title: '토큰 설정', width: 300, position: { my: 'left top', at: 'left+40 top+40', of: window } })); await p.waitForTimeout(400);
   console.log('토큰 설정 창 → 그대로:', await g('토큰 설정'), '| ◨ 없음:', !(await p.$(dlg('토큰 설정') + ' .r20wm-dock')));

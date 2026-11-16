@@ -78,6 +78,7 @@ const NOTES = {
   console.log('도구 줄 위에 뜸:', await p.evaluate(() => !!document.elementFromPoint(10, 300)?.closest('#r20-sn')), '| 밀려 나옴:', await p.$eval('#r20-sn', e => getComputedStyle(e).animationName));
   const bar = () => p.evaluate(() => { const b = document.querySelector('.master-toolbar-outer').getBoundingClientRect(), w = document.querySelector('#r20-sn'); return '도구 줄 왼쪽 ' + Math.round(b.left) + ' · 창 오른쪽 ' + (w.hidden ? '(닫힘)' : Math.round(w.getBoundingClientRect().right)); });
   console.log('도구 줄은 창 오른쪽 끝으로:', await bar());
+  console.log('머리줄 단추 보임 (밀려 나오는 동안 여백이 잘못 들어가던 것):', await p.$eval('#r20-sn .hd', h => 'pad ' + (h.style.paddingLeft || '0') + ' · ✕ ' + Math.round(h.querySelector('[data-a="x"]').getBoundingClientRect().right) + ' / 창 ' + Math.round(h.getBoundingClientRect().right)));
   console.log('붙임:', await R('#r20-sn'), '| 자리:', await p.$eval('#r20-sn .aio-dock [aria-pressed="true"]', b => b.getAttribute('aria-label')), '| 📌 숨김:', await p.$eval('#r20-sn .pin', b => b.hidden), '| playerzone left:', await pz());
   // ½ 반쪽 · 아래 끝 끌기 · 두 번 → 반쪽
   await p.click('#r20-sn .aio-dock [data-v="half"]'); await p.waitForTimeout(100);
