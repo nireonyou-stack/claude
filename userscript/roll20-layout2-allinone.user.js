@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.112.4
+// @version      1.112.5
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.112.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.112.5";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -7518,7 +7518,7 @@ addCss(`
             & #macrobar #macrobar_macros {
                 & .macrobox, & .macrobox:hover { display:block !important; width:auto !important; min-width:0 !important; margin:0 0 3px !important; padding:0 !important; float:none !important; text-align:right; pointer-events:none; background:none !important; border:0 !important; box-shadow:none !important; }
                 /* 폭: 덱 판 폭(--r20e-mw, 적어도 100px) · 넘치는 이름은 마우스를 올리면 왼쪽으로 펼쳐져 다 보인다 */
-                & .macrobox > button { pointer-events:auto; width:var(--r20e-mw, 100px) !important; max-width:none; height:24px !important; padding:0 3px 0 7px !important; border-radius:12px 0 0 12px !important; font-size:var(--aio-fs-md) !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:clip; }
+                & .macrobox > button { pointer-events:auto; box-sizing:border-box !important; width:var(--r20e-mw, 100px) !important; max-width:none; height:24px !important; padding:0 3px 0 7px !important; border-radius:12px 0 0 12px !important; font-size:var(--aio-fs-md) !important; line-height:22px !important; text-align:left !important; white-space:nowrap; overflow:hidden; text-overflow:clip; }
                 & .macrobox > button:hover, & .macrobox > button:focus-visible { width:auto !important; min-width:var(--r20e-mw, 100px); padding-right:8px !important; }
             }
             & #macrobar_macros > .ui-sortable-placeholder { display:block !important; width:auto !important; min-width:0; height:3px !important; margin:0 0 3px !important; }
@@ -10948,29 +10948,19 @@ const scenNav = (() => {
         copy(doc.body, frag);
         return frag;
     };
-    // ▶ 아닌 핸드아웃: 필요한 폭(내용의 최소 폭 · 적어도 320px)보다 본문 칸이 좁으면 그 폭으로 배치해 칸에 맞춰 통째로 줄인다
-    // 칸이 넓으면 칸 폭 그대로 100% (창 폭 카드는 꽉 차게) → 창을 넓히면 커지고 좁히면 작아진다 · 카드 · 표 모양은 그대로
-    // 필요한 폭은 처음 보일 때 한 번 재고(그림이 불러와지면 다시), 배율만 그때그때
-    const REF_MIN = 320;
-    const fitZoom = () => {
-        const bd = win && $(".bd");
-        if (!bd) return;
-        const A = aioZoom.get() || 1;
-        const vis = chs.filter(c => !c.key && c.sec.getClientRects().length).map(c => c.sec.querySelector(":scope > .cb > .cz")).filter(Boolean);
-        const todo = vis.filter(z => !z.dataset.rw);
-        if (todo.length) {
-            todo.forEach(z => { z.style.zoom = "1"; z.style.width = "min-content"; });
-            const mn = todo.map(z => z.getBoundingClientRect().width);
-            todo.forEach((z, i) => {
-                z.dataset.rw = Math.max(REF_MIN, Math.ceil(mn[i] / A));
-                z.querySelectorAll("img").forEach(im => { if (!im.complete) im.addEventListener("load", () => { delete z.dataset.rw; fitSoon(); }, { once: true }); });
-            });
-        }
-        const cw = (vis[0]?.parentElement.getBoundingClientRect().width || 0) / A;        // 본문 칸 폭 (CSS px)
-        if (cw) vis.forEach(z => { const w = Math.max(+z.dataset.rw, cw); z.style.width = w + "px"; z.style.zoom = String(Math.max(0.3, cw / w)); });
+    // ▶ 아닌 핸드아웃 크기: 고정 배율을 [− +] 로 (기억 · 기본 65%) — 브라우저 축소처럼 칸 폭은 다 쓰고 글 · 그림만 작게/크게
+    const SZ = "r20_sn_sz", SZS = [0.35, 0.5, 0.65, 0.8, 1, 1.25, 1.5];
+    const szNow = () => { const v = parseFloat(ls(SZ)); return SZS.includes(v) ? v : 0.65; };
+    const applySz = () => {
+        if (!win) return;
+        const v = szNow(), i = SZS.indexOf(v);
+        win.style.setProperty("--sn-z", String(v));
+        const pm = $(".sz");
+        if (!pm) return;
+        pm.querySelector(".szv").textContent = Math.round(v * 100) + "%";
+        pm.querySelector('[data-z="-1"]').disabled = i <= 0;
+        pm.querySelector('[data-z="1"]').disabled = i >= SZS.length - 1;
     };
-    let fitT = 0;
-    const fitSoon = () => { clearTimeout(fitT); fitT = setTimeout(fitZoom, 120); };
     const getBlob = (m, f) => new Promise(ok => {
         const t = setTimeout(() => ok(""), 8000);
         try { m._getLatestBlob(f, v => { clearTimeout(t); ok(v ?? ""); }); } catch (e) { clearTimeout(t); ok(""); }
@@ -11066,7 +11056,8 @@ const scenNav = (() => {
             + '<button type="button" data-a="toc" class="tsw" title="목차 접기 · 펴기" aria-label="목차 접기 · 펴기"></button><div class="pane">'
             + '<div class="tb"><input type="search" class="q aio-in sm" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
             + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
-            + '<span class="md aio-seg" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span></div>'
+            + '<span class="md aio-seg" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span>'
+            + '<span class="sz aio-pm" title="핸드아웃 크기 (▶ 본문 빼고)"><button type="button" data-z="-1" aria-label="핸드아웃 작게">−</button><span class="szv"></span><button type="button" data-z="1" aria-label="핸드아웃 크게">+</button></span></div>'
             + '<div class="bd" tabindex="-1"></div><div class="lg" tabindex="-1" hidden></div></div></div>'
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>'
             + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>'
@@ -11098,6 +11089,7 @@ const scenNav = (() => {
             const srow = e.target.closest(".lc .tr");
             if (srow) return scnRowClick(e, srow);
             const b = e.target.closest("button, [data-p], .tr"), a = b?.dataset.a;
+            if (b?.dataset.z) { const i = SZS.indexOf(szNow()) + +b.dataset.z; if (SZS[i]) { ls(SZ, String(SZS[i])); applySz(); } return; }
             if (!b) { const img = e.target.closest(".bd img"); if (img && !img.closest("a")) zoomImg(img.src); return; }
             const hid = b.dataset.hid || b.closest("[data-c]")?.dataset.c;
             if (a === "pm") return setSee(hid, b.dataset.pid);
@@ -11169,7 +11161,7 @@ const scenNav = (() => {
             hd.addEventListener("pointercancel", up);
         });
         let rt = 0;
-        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); fitSoon(); }).observe(win);
+        new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); }).observe(win);
         const setTw = () => win.style.setProperty("--sn-tw", tocW() + "px");
         dragX($(".tgr"), ev => { const z = aioZoom.get(); ls(TW, String(Math.round(Math.max(70, Math.min(420, (ev.clientX - $(".toc").getBoundingClientRect().left) / z))))); setTw(); }, null,
             () => { try { localStorage.removeItem(TW); } catch (e) { /* 없음 */ } setTw(); });
@@ -11290,7 +11282,6 @@ const scenNav = (() => {
         if (pos != null) bd.scrollTop = pos * (bd.scrollHeight - bd.clientHeight);
         else if (!s) { const sec = chs.find(c => c.id === selId)?.sec; bd.scrollTop = sec ? yOf(sec) : 0; }
         else bd.scrollTop = 0;
-        fitZoom();
         spy();
     };
     // 본문 안 위치 (표 칸 안이어도) — offsetTop 은 칸 기준이라 쓰지 않는다
@@ -11507,6 +11498,7 @@ const scenNav = (() => {
         win.hidden = false;
         win.classList.remove("aio-min");
         win.classList.toggle("notoc", !tocOn());
+        applySz();
         win.querySelectorAll('[data-a="toc"]').forEach(x => x.setAttribute("aria-pressed", String(tocOn())));
         $(".pin").setAttribute("aria-pressed", String(pinned()));
         $(".pin").hidden = docked();
@@ -11549,7 +11541,7 @@ const scenNav = (() => {
     return { inject, setEnabled, open: () => open(), openScene, sceneMade };
 })();
 addFeature("scenNav", scenNav);
-addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃은 창 폭에 맞춰 통째로 줄었다 커졌다 · 최대 100%) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(핸드아웃 이름 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
+addBundle({ place: "main", order: 3.15, group: "play", label: "시나리오 내비게이터 (📖)", sub: "저널 폴더 하나를 시나리오로 — 안의 핸드아웃이 장 · GM 은 목차 아래 🎬 장면(채팅에서 찍은 구간 · 그 장면 로그 · 장면 매크로 ⚙) · 이름이 ▶ 로 시작하는 핸드아웃(▶시나리오 본문 · ▶장면표)을 맨 앞에 (나머지 핸드아웃은 [− +] 로 크기 · 기본 65%) · [따로] 한 장씩 / [이어서] 모두 · 핸드아웃 서식 그대로 · 왼쪽 목차(핸드아웃 이름 · 경계를 끌어 너비) · ⇤ Roll20 도구 줄 오른쪽에 붙이기(포트레이트 위에 뜸 · ½ 반쪽 · 끝을 끌어 너비 · 높이) · GM: 장마다 보는 사람 칩 · 📢 보여주기 · 목차 줄에 볼 수 있는 사람 · 이 시나리오에서 찾기 · 읽던 자리 기억 · 고른 글 [입력칸에 넣기] · 플레이어에게 공개된 핸드아웃이면 ⚠",
     members: [["scen", "scenNav"]] });
 addCss(`
         /* 시나리오 내비게이터: 14인치에서도 방해되지 않게 — 목차 112px | 본문 268px */
@@ -11641,8 +11633,12 @@ addCss(`
             & .bd.sep section:not(.on) { display:none; }
             & .bd { overflow-x:hidden; }
             & .bd :is(.cb, .gm) { overflow-x:auto; }
-            /* ▶ 시나리오 본문 말고 다른 핸드아웃: 폭 · 배율은 fitZoom 이 정한다 (내용 폭으로 배치 → 칸 폭에 맞춰 통째로 줄임). 남는 폭이면 가운데 */
-            & .bd section.ch:not(.key) > .cb > .cz { margin-left:auto; margin-right:auto; }
+            /* ▶ 시나리오 본문 말고 다른 핸드아웃: [− +] 배율(--sn-z)로 — 칸 폭은 다 쓰고 글 · 그림만 줄고 는다
+               창 폭에 맞춘 그림(max-width:100%)은 그대로면 도로 창 폭만큼 커진다 → 그림도 같은 배율로 묶는다 · 고정 폭 카드가 넓으면 본문 칸(.cb) 안에서만 옆으로 */
+            & .bd section.ch:not(.key) > .cb > .cz { zoom:var(--sn-z, 0.65); min-width:min-content; }
+            & .bd section.ch:not(.key) > .cb > .cz img { max-width:calc(var(--sn-z, 0.65) * 100%); }
+            & .sz { flex:none; display:inline-flex; align-items:center; }
+            & .szv { min-width:30px; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); text-align:center; }
             & .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
             & .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
             & .bd .cht .cn { flex:1 1 100%; min-width:0; }

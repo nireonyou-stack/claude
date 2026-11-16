@@ -69,6 +69,12 @@ const GM = { h1: escape('<p>하루카는 PC가 편지를 꺼내기 전까지 모
   const tocSt = () => p.evaluate(() => { const w = document.querySelector('#r20-sn'), t = w.querySelector('.tsw'); return (w.classList.contains('notoc') ? '접힘' : '펼침') + ' · 탭 ' + getComputedStyle(t, '::before').content + ' @' + Math.round(t.getBoundingClientRect().left - w.getBoundingClientRect().left) + ' · ☰ ' + w.querySelector('.tg').getAttribute('aria-pressed'); });
   await p.click('#r20-sn .tsw'); console.log('옆 탭 ‹ 누름 →', await tocSt());
   await p.click('#r20-sn .tsw'); console.log('옆 탭 › 누름 →', await tocSt());
+  // v1.112.5 핸드아웃 크기 [− +] (▶ 본문 빼고 · 기억)
+  const sz = () => p.evaluate(() => { const w = document.querySelector('#r20-sn'), z = w.querySelector('.bd section.ch:not(.key) .cz'), k = w.querySelector('.bd section.key .cz'); return w.querySelector('.szv').textContent + ' · 일반 ' + getComputedStyle(z).zoom + ' · ▶ ' + getComputedStyle(k).zoom + ' · 기억 ' + localStorage.getItem('r20_sn_sz'); });
+  console.log('크기 처음:', await sz());
+  await p.click('#r20-sn .sz [data-z="1"]'); await p.click('#r20-sn .sz [data-z="1"]'); console.log('+ 두 번:', await sz());
+  for (let i = 0; i < 6; i++) await p.click('#r20-sn .sz [data-z="-1"]', { force: true }); console.log('− 여섯 번 (끝에서 멈춤):', await sz(), '| − 꺼짐:', await p.$eval('#r20-sn .sz [data-z="-1"]', b => b.disabled));
+  await p.click('#r20-sn .sz [data-z="1"]'); await p.click('#r20-sn .sz [data-z="1"]');
   await p.click('#r20-sn [data-a="warn"]');
   // 이어서 보기: 모든 장 · 스크롤하면 목차가 따라감 · 찾기는 장을 넘어
   await p.click('#r20-sn .md [data-m="cont"]'); await p.waitForTimeout(100);
