@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.112.0
+// @version      1.112.1
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.112.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.112.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -11553,11 +11553,12 @@ addCss(`
             & .bd.sep section:not(.on) { display:none; }
             & .bd { overflow-x:hidden; }
             & .bd :is(.cb, .gm) { overflow-x:auto; }
-            /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 (GM 메모는 그대로)
-               zoom 만 주면 창 폭에 맞춘 그림(max-width:100%)이 도로 창 폭만큼 커진다 → 폭도 65% 로 (안쪽 배치는 100% 때와 같고 보이는 크기만 줄어듦) */
-            /* 고정 폭 카드(예: 500px)는 65% 칸에서 다시 넘친다 → 안쪽 겹(.cz)이 내용의 최소 폭보다 좁아지지 않게 (카드 전체가 65% 로 보임)
-               그래도 창보다 넓으면 본문 칸(.cb) 안에서만 옆으로 넘긴다 (위에 붙은 장 머리는 그대로) */
-            & .bd section.ch:not(.key) > .cb > .cz { zoom:0.65; width:65%; min-width:min-content; margin-left:auto; margin-right:auto; }
+            /* ▶ 시나리오 본문 말고 다른 핸드아웃은 본문(그림 · 글)을 65% 로 (GM 메모는 그대로) — 브라우저 축소처럼 칸 폭은 다 쓰고 글 · 그림만 작게
+               (폭까지 65% 로 줄이면 목차를 넓힌 좁은 본문에서 카드가 가는 띠가 되어 몇 글자마다 줄이 바뀐다)
+               창 폭에 맞춘 그림(max-width:100%)은 그대로면 도로 창 폭만큼 커진다 → 그림만 65% 로 묶는다 */
+            /* 고정 폭 카드(예: 500px)는 안쪽 겹(.cz)이 내용의 최소 폭보다 좁아지지 않게 · 창보다 넓으면 본문 칸(.cb) 안에서만 옆으로 넘긴다 */
+            & .bd section.ch:not(.key) > .cb > .cz { zoom:0.65; min-width:min-content; }
+            & .bd section.ch:not(.key) > .cb > .cz img { max-width:65%; }
             & .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
             & .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
             & .bd .cht .cn { flex:1 1 100%; min-width:0; }
