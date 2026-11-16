@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.114.3
+// @version      1.114.4
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.114.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.114.4";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -11122,12 +11122,18 @@ const scenNav = (() => {
         const on = isOpen() && docked(), st = box.style;
         // transform 은 틀을 새 쌓임 층으로 만들어 도구 줄의 z-index 가 틀 안에 갇힌다 → 틀이 맵 층 밑으로 숨지 않게 도구 줄의 z-index 를 틀에 준다
         // 틀의 원래 값(Roll20 이 준 인라인 값)은 처음 옮길 때 적어 두었다가 그대로 되돌린다
+        const was = st.transform;
         if (on && !box.r20snWas) box.r20snWas = { transform: st.transform, zIndex: st.zIndex, position: st.position };
         if (on) {
             st.transform = `translateX(${Math.round(win.getBoundingClientRect().width)}px)`;
             st.zIndex = getComputedStyle(bar).zIndex;
             if (getComputedStyle(box).position === "static") st.position = "relative";
         } else if (box.r20snWas) { Object.assign(st, box.r20snWas); box.r20snWas = null; }
+        if (st.transform === was) return;
+        // 포트레이트 자리는 Roll20 이 도구 줄 자리를 보고 다시 잡는데 옮긴 것만으로는 늦게(다른 일이 있을 때) 따라온다 → 화면 크기 바뀜을 알려 바로 다시 잡게
+        // (옮긴 거리가 바뀔 때만 — 우리 resize 처리기가 다시 이리로 와도 같은 값이면 여기서 멈춤)
+        clearTimeout(box.r20snRz);
+        box.r20snRz = setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
     };
     let rdT = 0;
     addEventListener("resize", () => { clearTimeout(rdT); rdT = setTimeout(reDock, 150); });
