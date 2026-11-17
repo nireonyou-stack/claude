@@ -51,6 +51,12 @@ const GM = { h1: escape('<p>하루카는 PC가 편지를 꺼내기 전까지 모
   console.log('안전: script·onclick 빠짐 · 글씨 크기 남음 —', await p.evaluate(() => { const bd = document.querySelector('#r20-sn .bd'); return { script: !!bd.querySelector('script'), onclick: [...bd.querySelectorAll('*')].some(e => [...e.attributes].some(a => a.name.startsWith('on'))), fontsize: [...bd.querySelectorAll('[style]')].map(e => e.getAttribute('style')).join(';'), x: window.__x ?? null, img: bd.querySelector('img')?.getAttribute('src'), gm: bd.querySelector('.gm')?.textContent }; }));
   // v1.112.3 목차는 핸드아웃 이름만 (본문 제목 줄은 뽑지 않음)
   console.log('목차 줄:', await p.$$eval('#r20-sn .toc .ls .tr', ts => ts.map(t => t.textContent.trim()).join(' / ')), '| 제목 줄 없음:', await p.$$eval('#r20-sn .toc .ls .tr.h1, #r20-sn .toc .ls .tr.h2', t => t.length === 0));
+  // v1.115.1 하위 폴더 줄 누르면 접기 · 펴기 (목차만 · 시나리오마다 기억)
+  const vis = () => p.$$eval('#r20-sn .toc .ls .tr', ts => ts.filter(t => t.offsetParent).map(t => t.textContent.trim() + (t.dataset.n || '')).join(' / '));
+  await p.click('#r20-sn .toc .ls .tr.grp[title="자료"]'); await p.waitForTimeout(80);
+  console.log('자료 접음 →', await vis(), '| 저장:', await p.evaluate(() => localStorage.getItem('r20_sn_gfold')), '| 본문 그대로:', await p.$$eval('#r20-sn .bd section.ch', s => s.filter(x => x.offsetParent).length));
+  await p.click('#r20-sn .toc .ls .tr.grp[title="자료"]'); await p.waitForTimeout(80);
+  console.log('자료 폄 →', await vis(), '| 저장:', await p.evaluate(() => localStorage.getItem('r20_sn_gfold')));
   if (SHOT) await p.screenshot({ path: SHOT + '/nav.png' });
   // 찾기
   await p.fill('#r20-sn .q', '편지'); await p.waitForTimeout(60); await p.press('#r20-sn .q', 'Enter'); await p.press('#r20-sn .q', 'Enter');

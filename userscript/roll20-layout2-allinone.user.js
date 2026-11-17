@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.115.0
+// @version      1.115.1
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.115.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.115.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -10869,6 +10869,7 @@ const winOrder = (() => {
         x.click();
     }, true);
     return {
+        front,
         // 새로 연 창도 맨 앞으로 (보이기 시작한 때)
         inject() { document.querySelectorAll(WINS).forEach(w => { const on = shown(w); if (on && !w._aioShown) raise(w); w._aioShown = on; }); }
     };
@@ -10933,8 +10934,14 @@ const scenNav = (() => {
         return `<div class="pm" data-hid="${id}"><span class="pm-l" title="보기 권한 — 누르면 켜고 끔">👁</span>`
             + chip("all", "모두", "#777", A, "모든 플레이어가 보기")
             + show.map(p => chip(p.id, pnm(p), pcol(p), A || v.includes(p.id), (p.get("online") ? "접속 중 · " : "") + (A ? "누르면 이 사람만 빼기" : "누르면 보기 권한 켜고 끔"))).join("")
-            + (more > 0 ? `<button type="button" class="pm-c" data-a="pmore" data-hid="${id}" title="접속하지 않은 플레이어 ${more}명 더">+${more}</button>` : "")
-            + `<i class="pm-g"></i><button type="button" class="pm-b" data-a="bc" data-hid="${id}" title="Roll20 Show to Players">📢 보여주기</button><button type="button" class="pm-b gh" data-a="ro" data-hid="${id}" title="Roll20 핸드아웃 창으로 열기 (고치기 등)" aria-label="Roll20 창으로 열기">↗</button></div>`;
+            + (more > 0 ? `<button type="button" class="pm-c" data-a="pmore" data-hid="${id}" title="접속하지 않은 플레이어 ${more}명 더">+${more}</button>` : "") + "</div>";
+    };
+    // 장 머리줄 (한 줄): 보는 사람 점(마우스를 올리면 이름 · 누르면 고르기 창) · 📢 보여주기 · ↗ Roll20 창 열기/닫기
+    const headHtml = m => {
+        const id = escAttr(m.id);
+        return `<span class="ph" data-hid="${id}"><button type="button" class="pw" data-a="see" data-hid="${id}" aria-label="보는 사람 고르기">${whoHtml(m) || '<span class="who" title="아무에게도 공개 안 됨"><i>○</i></span>'}</button>`
+            + `<button type="button" class="pm-b" data-a="bc" data-hid="${id}" title="보여주기 (Roll20 Show to Players)" aria-label="보여주기">📢</button>`
+            + `<button type="button" class="pm-b gh" data-a="ro" data-hid="${id}" title="Roll20 핸드아웃 창 — 열려 있고 맨 앞이면 닫기" aria-label="Roll20 창으로 열기 · 닫기">↗</button></span>`;
     };
     // 칩 누르기: 모두 ↔ 끄기 · 사람 하나 켜고 끔 (모두인데 한 사람을 누르면 '그 사람만 빼고')
     const setSee = (hid, pid) => {
@@ -10949,7 +10956,7 @@ const scenNav = (() => {
     };
     const permSync = hid => {
         if (!win || !cur) return;
-        win.querySelectorAll(".pm[data-hid]").forEach(el => { const m = (!hid || el.dataset.hid === hid) && H(el.dataset.hid); if (m) el.outerHTML = stripHtml(m); });
+        win.querySelectorAll(".pm[data-hid], .ph[data-hid]").forEach(el => { const m = (!hid || el.dataset.hid === hid) && H(el.dataset.hid); if (m) el.outerHTML = (el.classList.contains("ph") ? headHtml : stripHtml)(m); });
         win.querySelectorAll(".ls .tr.pmx[data-c]").forEach(r => {
             const m = (!hid || r.dataset.c === hid) && H(r.dataset.c);
             if (!m) return;
@@ -10962,7 +10969,7 @@ const scenNav = (() => {
     const broadcast = async (hid, btn) => {
         const m = H(hid);
         if (!m || !isGM()) return;
-        const say = t => { if (!btn?.isConnected) return; const o = btn.dataset.t ?? (btn.dataset.t = btn.textContent); btn.textContent = btn.classList.contains("pm-b") ? t : t[0]; setTimeout(() => { if (btn.isConnected) btn.textContent = o; }, 1500); };
+        const say = t => { if (!btn?.isConnected) return; const o = btn.dataset.t ?? (btn.dataset.t = btn.textContent); btn.textContent = [...o].length > 2 ? t : t[0]; setTimeout(() => { if (btn.isConnected) btn.textContent = o; }, 1500); };
         const vis = () => [...document.querySelectorAll(".ui-dialog")].filter(d => d.getClientRects().length && d.querySelector(".broadcasthandout"));
         const name = String(m.get("name") || "").trim(), mine = list => list.find(d => d.querySelector(".ui-dialog-title")?.textContent.trim() === name);
         const before = vis(), had = mine(before);
@@ -10977,7 +10984,7 @@ const scenNav = (() => {
     };
     // 목차 줄 👁: 그 줄 옆에 칩 상자
     const seePop = row => {
-        const m = row && H(row.dataset.c);
+        const m = row && H(row.dataset.c || row.dataset.hid);          // 목차 줄(data-c) 또는 머리줄 점(data-hid)
         if (!m) return;
         let pp = $(".pp");
         if (!pp) { pp = Object.assign(document.createElement("div"), { className: "pp" }); win.append(pp); }
@@ -11213,13 +11220,17 @@ const scenNav = (() => {
             if (a === "pm") return setSee(hid, b.dataset.pid);
             if (a === "pmore") { pmAll.add(hid); return permSync(hid); }
             if (a === "bc") return broadcast(hid, b);
-            if (a === "ro") return H(hid)?.view?.showDialog?.();
-            if (a === "see") return seePop(b.closest(".tr"));
+            if (a === "ro") {         // 열려 있고 맨 앞이면 닫기 (저널 탭과 같게) · 아니면 열기
+                const d = [...document.querySelectorAll("body > .ui-dialog")].find(x => x.getClientRects().length && FEAT.winMemory?.info?.(x)?.id === hid);
+                if (d && FEAT.winOrder?.front?.(d)) return d.querySelector(".ui-dialog-titlebar-close")?.click();
+                return H(hid)?.view?.showDialog?.();
+            }
+            if (a === "see") return seePop(b.closest(".tr") || b);
             if (a === "cfg") return showCfg(b);
             if (a === "lcopy") { copyText(SA()?.text(lgRows) || "").then(ok => { b.textContent = ok ? "✓" : "못 함"; setTimeout(() => { b.textContent = "복사"; }, 1500); }); return; }
             if (b.dataset.p != null) return openPath(b.dataset.p);
             if (b.dataset.m) { ls(MODE, b.dataset.m); applyMode(); return; }
-            if (b.classList.contains("tr")) return jump(b);
+            if (b.classList.contains("tr")) return b.classList.contains("grp") ? toggleGfold(b) : jump(b);
             if (a === "x") return close();
             if (a === "pick") return showPick($(".pk").hidden);
             if (a === "toc") {
@@ -11344,7 +11355,7 @@ const scenNav = (() => {
             const h = document.createElement("h3");
             h.className = "cht";
             h.append(Object.assign(document.createElement("span"), { className: "cn", textContent: it.m.get("name") || "(이름 없음)" }));
-            if (isGM()) h.insertAdjacentHTML("beforeend", stripHtml(it.m));
+            if (isGM()) h.insertAdjacentHTML("beforeend", headHtml(it.m));
             sec.append(h);
             chs.push({ id: it.id, sec, key: !!it.key, name: it.m.get("name") || "" });
             return sec;
@@ -11379,6 +11390,7 @@ const scenNav = (() => {
         });
         $(".ls").innerHTML = heads.map((h, i) => `<div class="tr${h.ch ? " ch" : h.grp ? " grp" : " h h" + h.lv}${h.key ? " key" : ""}${h.ch && isGM() ? " pmx" : ""}" role="treeitem" data-i="${i}"${h.c ? ` data-c="${escAttr(h.c)}"` : ""} title="${escAttr(h.t)}">${rowInner(h)}</div>`).join("")
             || '<div class="msg">핸드아웃이 없어요</div>';
+        applyGfold();
         const r = recent().find(x => x.path === path);
         selId = chs.some(c => c.id === r?.sel) ? r.sel : chs[0]?.id || null;
         applyMode(r?.pos);
@@ -11405,6 +11417,28 @@ const scenNav = (() => {
     // 본문 안 위치 (표 칸 안이어도) — offsetTop 은 칸 기준이라 쓰지 않는다
     const yOf = el => { const bd = $(".bd"); return (el.getBoundingClientRect().top - bd.getBoundingClientRect().top) / aioZoom.get() + bd.scrollTop; };
     // 목차 줄 누르기: 장이면 그 장으로, 제목 줄이면 그 장을 고르고 그 자리로
+    // 하위 폴더(목차의 묶음 줄) 접기 · 펴기 — 시나리오마다 접은 묶음 이름을 기억 · 목차에서만 (본문은 그대로)
+    const GF = "r20_sn_gfold";
+    const gfAll = () => { try { return JSON.parse(ls(GF) || "{}") || {}; } catch (e) { return {}; } };
+    const applyGfold = () => {
+        const f = gfAll()[cur?.path] || [];
+        let g = null, n = 0;
+        const close = () => { if (g) g.dataset.n = g.getAttribute("aria-expanded") === "false" ? ` (${n})` : ""; };
+        win.querySelectorAll(".ls .tr").forEach(r => {
+            if (r.classList.contains("grp")) { close(); g = r; n = 0; r.setAttribute("aria-expanded", String(!f.includes(r.title))); return; }
+            const hide = !!g && g.getAttribute("aria-expanded") === "false";
+            r.classList.toggle("gf", hide);
+            if (hide) n++;
+        });
+        close();
+    };
+    const toggleGfold = row => {
+        const o = gfAll(), f = new Set(o[cur?.path] || []);
+        f.has(row.title) ? f.delete(row.title) : f.add(row.title);
+        if (f.size) o[cur.path] = [...f]; else delete o[cur.path];
+        ls(GF, JSON.stringify(o));
+        applyGfold();
+    };
     const jump = row => {
         const h = heads[+row.dataset.i];
         if (!h) return;
@@ -11701,7 +11735,11 @@ addCss(`
             & .tr.ch { margin-top:2px; color:var(--aio-ink-3); font-weight:700; font-size:var(--aio-fs-sm); }
             & .tr.ch.key { color:var(--aio-accent-dark); }
             & .tr.ch.cur { background:var(--aio-bg-3); }
-            & .tr.grp { margin-top:6px; color:var(--aio-ink-5); font-weight:700; font-size:var(--aio-fs-xs); }
+            & .tr.grp { margin-top:6px; color:var(--aio-ink-5); font-weight:700; font-size:var(--aio-fs-xs); cursor:pointer; }
+            & .tr.grp::before { content:"▾ "; }
+            & .tr.grp[aria-expanded=false]::before { content:"▸ "; }
+            & .tr.grp[data-n]::after { content:attr(data-n); font-weight:400; }
+            & .ls .tr.gf { display:none; }
             & .tr.on { background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
             /* 목차 두 갈래 (GM): 📖 시나리오 · 🎬 장면 */
             & .br { display:flex; align-items:center; gap:2px; height:var(--aio-h-sm); margin:0 0 2px; padding:0 4px 0 0; border-bottom:1px solid var(--aio-line-3); color:var(--aio-ink-2); font-size:var(--aio-fs-md); font-weight:700; white-space:nowrap; overflow:hidden; cursor:pointer; user-select:none; }
@@ -11760,7 +11798,11 @@ addCss(`
             & .szv { min-width:30px; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); text-align:center; }
             & .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
             & .bd .cht { position:sticky; top:-4px; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:2px 4px; margin:12px -10px 6px; padding:3px 10px; background:var(--aio-bg-3); color:var(--aio-ink-3); font:700 11px/1.6 sans-serif; }
-            & .bd .cht .cn { flex:1 1 100%; min-width:0; }
+            & .bd .cht .cn { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+            & .ph { display:inline-flex; flex:none; align-items:center; gap:3px; font-weight:400; }
+            & .pw { margin:0; padding:0 3px; border:0; border-radius:var(--aio-r-sm); background:none; box-shadow:none; line-height:20px; cursor:pointer; }
+            & .pw:hover { background:var(--aio-bg-4); }
+            & .ph .pm-b { padding:0 6px; }
             & .pm { display:flex; flex:1 1 100%; flex-wrap:wrap; align-items:center; gap:3px; padding:1px 0 2px; font:400 10.5px/1.4 sans-serif; user-select:none; }
             & .pm-l { color:var(--aio-ink-4); }
             & .pm-c { display:inline-flex; align-items:center; gap:3px; height:var(--aio-h-sm); margin:0; padding:0 7px 0 3px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-pill); background:var(--aio-bg); color:var(--aio-ink-4); font:inherit; cursor:pointer; box-shadow:none; }

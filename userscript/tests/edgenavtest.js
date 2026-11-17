@@ -34,7 +34,7 @@ const NOTES = {
       _getLatestBlob(f, cb) { setTimeout(() => cb(f === 'notes' ? NOTES[id] : ''), 10); },
       view: { showDialog() {
         const d = document.createElement('div'); d.className = 'ui-dialog'; d.style.cssText = 'position:fixed;left:500px;top:100px;width:300px;height:200px;background:#fff;z-index:20000';
-        d.innerHTML = `<div class="ui-dialog-titlebar"><span class="ui-dialog-title">${name}</span><button class="ui-dialog-titlebar-close">x</button></div><div class="dialog"><button class="btn broadcasthandout">Show to Players</button></div>`;
+        d.innerHTML = `<div class="ui-dialog-titlebar"><span class="ui-dialog-title">${name}</span><button class="ui-dialog-titlebar-close">x</button></div><div class="dialog ui-dialog-content" data-handoutid="${id}"><button class="btn broadcasthandout">Show to Players</button></div>`;
         d.querySelector('.broadcasthandout').onclick = () => { window.__bc = (window.__bc || []).concat(id); };
         d.querySelector('.ui-dialog-titlebar-close').onclick = () => d.remove();
         document.body.appendChild(d); window.__dlg = (window.__dlg || 0) + 1;
@@ -100,16 +100,21 @@ const NOTES = {
   console.log('목차 두 번 →', await R('#r20-sn .toc'));
   // 4) 보는 사람 칩
   await p.click('#r20-sn .ls .tr.ch:has-text("로쿠분기시")'); await p.waitForTimeout(150);
-  const chips = () => p.$$eval('#r20-sn .bd section.on .pm .pm-c', cs => cs.map(c => c.textContent + (c.classList.contains('on') ? '✓' : '') + (c.classList.contains('via') ? '~' : '')).join(' '));
+  // v1.115.1 머리는 한 줄: 공개 점(누르면 보는 사람 상자) · 📢 · ↗
+  console.log('머리 한 줄:', await p.$eval('#r20-sn .bd section.on .cht', h => { const r = h.getBoundingClientRect(), ph = h.querySelector('.ph'); return 'cht 높이 ' + Math.round(r.height) + ' · ph ' + (ph ? [...ph.children].map(c => c.dataset.a).join(',') : '없음') + ' · 점 ' + h.querySelectorAll('.ph .who i').length; }));
+  await p.click('#r20-sn .bd section.on .ph .pw'); await p.waitForTimeout(100);
+  const chips = () => p.$$eval('#r20-sn .pp .pm-c', cs => cs.map(c => c.textContent + (c.classList.contains('on') ? '✓' : '') + (c.classList.contains('via') ? '~' : '')).join(' '));
   const who = id => p.$eval(`#r20-sn .ls .tr.ch[data-c="${id}"] .who`, w => [...w.children].map(u => u.style.color || u.textContent).join(' ') + ' «' + w.title + '»').catch(() => '(없음)');
   const share = id => p.evaluate(id => Campaign.handouts.get(id).get('inplayerjournals'), id);
   console.log('칩:', await chips(), '| 목차 동그라미:', await who('h1'));
-  await p.click('#r20-sn .bd section.on .pm-c[data-pid="p3"]'); await p.waitForTimeout(100);
+  await p.click('#r20-sn .pp .pm-c[data-pid="p3"]'); await p.waitForTimeout(100);
   console.log('키어런 끔 →', await share('h1'), '|', await chips(), '|', await who('h1'));
-  await p.click('#r20-sn .bd section.on .pm-c[data-pid="all"]'); await p.waitForTimeout(100);
+  await p.click('#r20-sn .pp .pm-c[data-pid="all"]'); await p.waitForTimeout(100);
   console.log('모두 켬 →', await share('h1'), '|', await chips(), '|', await who('h1'));
-  await p.click('#r20-sn .bd section.on .pm-c[data-pid="p4"]'); await p.waitForTimeout(100);
+  await p.click('#r20-sn .pp .pm-c[data-pid="p4"]'); await p.waitForTimeout(100);
   console.log('모두인데 캄파넬라 → 빼기:', await share('h1'), '|', await chips(), '|', await who('h1'));
+  console.log('머리 점 (모두에서 캄파넬라 뺌):', await p.$eval('#r20-sn .bd section.on .ph .who', w => [...w.children].length + ' «' + w.title + '»'));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(50);
   console.log('글자 크기: ▶ 본문', await p.evaluate(() => { const k = document.querySelector('#r20-sn .bd section.key .cb p'), n = document.querySelector('#r20-sn .bd section.on .cb p'); return [k, n].map(e => getComputedStyle(e.closest('.cz')).zoom + ' · 높이 ' + Math.round(e.getBoundingClientRect().height)).join(' | 일반 '); }));
   if (SHOT) await p.screenshot({ path: SHOT + '/edgenav-small.png', clip: { x: 0, y: 0, width: 560, height: 420 } });
   // v1.112.3 일반 핸드아웃은 내용 폭으로 배치해 본문 칸 폭에 맞춰 통째로 줄임 (최대 100%) — 목차로 골라서 잰다
@@ -125,6 +130,13 @@ const NOTES = {
   // 5) 📢 보여주기
   await p.click('#r20-sn .bd section.on .pm-b[data-a="bc"]'); await p.waitForTimeout(400);
   console.log('📢 →', await p.evaluate(() => JSON.stringify(window.__bc)), '| 열린 창 남음:', await p.$$eval('.ui-dialog', d => d.length), '| 단추 글:', await p.$eval('#r20-sn .bd section.on .pm-b[data-a="bc"]', b => b.textContent));
+  // 5-2) ↗ 한 번 → Roll20 창 열림 · 한 번 더 (맨 앞) → 닫힘
+  const nd = () => p.$$eval('body > .ui-dialog', d => d.filter(x => x.getClientRects().length).length);
+  const nd0 = await nd();
+  await p.click('#r20-sn .bd section.on .pm-b[data-a="ro"]'); await p.waitForTimeout(200);
+  const nd1 = await nd();
+  await p.click('#r20-sn .bd section.on .pm-b[data-a="ro"]'); await p.waitForTimeout(200);
+  console.log('↗ 열기 · 닫기:', nd0, '→', nd1, '→', await nd());
   // 6) 목차 줄 마우스 → 👁 📢
   await p.hover('#r20-sn .ls .tr.ch[data-c="h2"]'); await p.waitForTimeout(80);
   console.log('줄 위 단추 보임:', await p.$eval('#r20-sn .ls .tr.ch[data-c="h2"] .ta', e => getComputedStyle(e).display));
