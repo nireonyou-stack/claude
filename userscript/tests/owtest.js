@@ -11,6 +11,7 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.addStyleTag({ content: '.ui-dialog .ui-dialog-title{width:auto}' });       // Roll20 은 제목 폭을 정하지 않는다 (jQuery UI 기본 90% 를 지움)
   await p.evaluate(() => {
     localStorage.clear();
+    localStorage.setItem('r20_win_open', JSON.stringify({ f: {}, w: { handout: 900, char: 500 } }));      // v1.115.2 전의 잘못 적힌 핸드아웃 폭
     document.body.style.cssText = 'margin:0;height:100vh;background:#3c4a3a';
     document.body.innerHTML = `<div id="rightsidebar" style="position:fixed;right:0;top:0;width:300px;height:100%;background:#fff">
         <ul class="tabmenu"><li><a href="#textchat">💬</a></li><li><a href="#journal">📒</a></li><li id="jukeboxtab"><a href="#jukebox">♪</a></li></ul>
@@ -36,7 +37,12 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.evaluate(() => __open('char', 'c1', '리버트')); await p.waitForTimeout(500);
   console.log('시트 열기 →', await g('리버트'), '| 제목줄:', await p.$eval(dlg('리버트'), d => [...d.querySelectorAll('.r20wm-pin, .r20wm-dock button')].map(x => x.textContent + (x.getAttribute('aria-pressed') === 'true' ? '✓' : '')).join(' ')));
   await p.evaluate(() => __open('handout', 'h1', '마녀의 편지')); await p.waitForTimeout(500);
-  console.log('핸드아웃도 같은 자리(겹침) →', await g('마녀의 편지'));
+  console.log('핸드아웃도 같은 자리(겹침) →', await g('마녀의 편지'), '| 옛 핸드아웃 폭 지움:', await p.evaluate(() => localStorage.getItem('r20_win_open')));
+  // 제목줄 단추(Roll20 Edit 등)를 누른 뒤 넓어져도 여는 폭으로 적지 않음
+  await front('마녀의 편지');
+  await p.evaluate(() => { const d = [...document.querySelectorAll('.ui-dialog')].find(x => x.textContent.includes('마녀의 편지')), b = document.createElement('button'); b.className = 'btn editbtn'; b.textContent = 'Edit'; b.onclick = () => $(d).find('.ui-dialog-content').dialog('option', 'width', 700); d.querySelector('.ui-dialog-titlebar').append(b); });
+  await p.click(dlg('마녀의 편지') + ' .editbtn'); await p.waitForTimeout(200);
+  console.log('제목줄 Edit 눌러 넓어짐 → 폭 기억 그대로:', await p.evaluate(() => JSON.parse(localStorage.getItem('r20_win_open')).w.handout ?? '없음'));
   await front('리버트'); const t = await (await p.$(dlg('리버트') + ' .ui-dialog-titlebar')).boundingBox();
   await p.mouse.move(t.x + 200, t.y + 10); await p.mouse.down(); await p.mouse.move(t.x - 300, t.y + 110, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(400);
   console.log('끌어 옮김 → 자유롭게:', await g('리버트'));

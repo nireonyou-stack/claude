@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.115.1
+// @version      1.115.2
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.115.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.115.2";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -10503,8 +10503,10 @@ const winMemory = (() => {
     // 시트 · 핸드아웃은 단추줄 바로 밑(빠른 찾기를 붙이는 자리)에서 열린다 — 여는 자리만 그곳, 열린 뒤엔 자유롭게 옮김 · 📌 로 기억한 자리가 먼저
     // 제목줄 [◨ 붙임 | ❐ 떠 있기] 로 창마다 고른다(기억 방식을 따름 · 떠 있기만 적어 둔다) · 폭은 크기를 바꾸면 시트 · 핸드아웃 따로 기억
     const OPEN = "r20_win_open";
-    const op = (() => { try { const o = JSON.parse(aioPref.get(OPEN) || "{}") || {}; return { f: o.f || {}, w: o.w || {} }; } catch (e) { return { f: {}, w: {} }; } })();
+    const op = (() => { try { const o = JSON.parse(aioPref.get(OPEN) || "{}") || {}; return { f: o.f || {}, w: o.w || {}, v: o.v }; } catch (e) { return { f: {}, w: {} }; } })();
     const keepOp = () => aioPref.set(OPEN, JSON.stringify(op));
+    // v1.115.2 전에는 제목줄 단추(Edit · Show to Players)를 누른 뒤 넓어진 폭도 '핸드아웃 여는 폭'으로 적혔다 → 한 번 지워 Roll20 폭으로
+    if (!op.v) { delete op.w.handout; op.v = 2; keepOp(); }
     const dockable = f => f?.kind === "char" || f?.kind === "handout";
     const opensDocked = f => dockable(f) && !op.f[keyOf(f)];
     let dockY = null, dockEdge = null;
@@ -10514,11 +10516,11 @@ const winMemory = (() => {
         const y = dockY ?? (b ? b.bottom + 4 : 60), edge = dockEdge ?? (side?.width ? side.left : innerWidth), w = Math.min(op.w[f.kind] || dlg.offsetWidth, edge - 8);
         return { l: edge - w, t: y, w, h: innerHeight - y - 8 };
     };
-    const save = dlg => {
+    const save = (dlg, resized) => {        // 여는 폭은 크기를 바꿨을 때만 (옮기기만 했으면 그대로)
         const f = info(dlg);
         if (!f || !dlg.getClientRects().length || dlg.classList.contains("aio-min")) return;
         if (mem[keyOf(f)]) { mem[keyOf(f)] = { g: geom(dlg) }; keep(); }
-        else if (opensDocked(f) && op.w[f.kind] !== dlg.offsetWidth) { op.w[f.kind] = Math.round(dlg.offsetWidth); keepOp(); }
+        else if (resized && opensDocked(f) && op.w[f.kind] !== dlg.offsetWidth) { op.w[f.kind] = Math.round(dlg.offsetWidth); keepOp(); }
     };
     // 기억한 자리 · 크기로: jQuery UI 창이면 그 옵션으로(안쪽 높이까지 같이 맞춰진다), 아니면 직접
     const apply = dlg => {
@@ -10629,20 +10631,22 @@ const winMemory = (() => {
         });
     };
     // 옮기기 · 크기 바꾸기가 끝나면 저장 (jQuery UI 이벤트가 오면 그걸로, 아니면 손 뗄 때)
-    let moving = null;
+    // 제목줄의 단추(Roll20 Edit · Show to Players · 📌 등)를 누른 것은 옮기기가 아니다 — Edit 로 넓어진 폭이 적히던 원인
+    let moving = null, resized = false;
     document.addEventListener("pointerdown", e => {
         const dlg = btnVisible.winmem && e.target.closest?.(".ui-dialog");
         if (!dlg || !dlg.querySelector(".r20wm-pin")) return;
         dlg.r20wmTouched = true;
-        if (e.target.closest(".ui-dialog-titlebar, .ui-resizable-handle") && !e.target.closest(".r20wm-pin")) moving = dlg;
+        resized = !!e.target.closest(".ui-resizable-handle");
+        if (resized || (e.target.closest(".ui-dialog-titlebar") && !e.target.closest("button, a, input, select, label"))) moving = dlg;
     }, true);
-    document.addEventListener("pointerup", () => { const d = moving; moving = null; if (d) setTimeout(() => save(d), 60); }, true);
+    document.addEventListener("pointerup", () => { const d = moving, rz = resized; moving = null; if (d) setTimeout(() => save(d, rz), 60); }, true);
     let bound = false;
     const bindJq = () => {
         const $ = window.jQuery;
         if (bound || !$) return;
         bound = true;
-        $(document).on("dialogdragstop.r20wm dialogresizestop.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d?.querySelector(".r20wm-pin")) setTimeout(() => save(d), 0); });
+        $(document).on("dialogdragstop.r20wm dialogresizestop.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d?.querySelector(".r20wm-pin")) setTimeout(() => save(d, e.type === "dialogresizestop"), 0); });
         // 창이 열리는 그 순간(그리기 전)에 자리를 잡는다 — 새 창 · 닫았던 창을 다시 여는 경우 모두 (본체 감시는 늦어서 원래 자리가 한 번 보였다)
         $(document).on("dialogopen.r20wm", e => {
             const d = e.target.closest?.(".ui-dialog");
@@ -16399,6 +16403,7 @@ addFeature("attrWatch", attrWatch);
 
 // ───────── 자동완성: 시트 인법/마법 · 어빌리티 · 아이템 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
 // 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…], bloodmoon_follower:[…] }
+//   레코드에 enemy:1 이 있으면 에너미 전용 (같은 목록 · 같은 주소 — 고르는 목록에 표시만)
 //   (홈페이지 쪽 입력기 · 내보내는 주소는 homepage/PROMPT-ruledata-npc.md)
 //   — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 오거나, 홈페이지가 없으면 '파일'로 고른 데이터 파일(같은 모양)을 브라우저에 넣어 둔다
 // 레코드 키: name, group(유파 · 그룹), type, skill, range, target, cost, charge, effect, flavor, recite, kind(아이템 분류)
@@ -16568,7 +16573,7 @@ const autofill = (() => {
             const b = document.createElement("b");
             b.textContent = r.name;
             const s = document.createElement("small");
-            s.textContent = [r.group, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
+            s.textContent = [r.enemy && "에너미 전용", r.group, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
             it.append(b, s);
             box.appendChild(it);
         });

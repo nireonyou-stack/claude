@@ -8,7 +8,7 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.addScriptTag({ url: '/sn/jquery.min.js' });
   await p.evaluate(() => {
     localStorage.clear(); window.__model = {};
-    window.NIRE_RULEDATA = { shinobigami: [{ name: '접근전 공격', group: '하스바', type: '공격', skill: '체술', range: '1', cost: '없음', effect: '근접 공격. 명중하면 접근전 대미지 1점.' }] };
+    window.NIRE_RULEDATA = { shinobigami: [{ name: '접근전 공격', group: '하스바', type: '공격', skill: '체술', range: '1', cost: '없음', effect: '근접 공격. 명중하면 접근전 대미지 1점.' }, { name: '접근전 강타', group: '하스바', type: '공격', skill: '괴력', enemy: 1, effect: '에너미 전용' }] };
     document.body.innerHTML = `<div id="sheet" style="position:absolute;left:20px;top:20px;width:600px"><div class="repitem">
       <input type="text" name="attr_Ninpo_Name"> <input type="text" name="attr_Ninpo_Clan"> <select name="attr_Ninpo_Types"><option value="">-</option><option value="공격">공격</option><option value="서포트">서포트</option></select>
       <input type="text" name="attr_Ninpo_Assigned_Skill"> <input type="text" name="attr_Ninpo_Range"> <input type="text" name="attr_Ninpo_Cost"><textarea name="attr_Ninpo_Effect"></textarea></div></div>
