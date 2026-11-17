@@ -121,6 +121,23 @@ const NOTES = {
   const card = async id => { await p.click(`#r20-sn .ls .tr.ch[data-c="${id}"]`); await p.waitForTimeout(150); return p.evaluate(id => { const sec = document.querySelector(`#r20-sn .bd section.ch[data-id="${id}"]`), cb = sec.querySelector('.cb'), z = cb.querySelector('.cz'), c = z.firstElementChild.getBoundingClientRect(), r = cb.getBoundingClientRect(); return '카드 ' + Math.round(c.left - r.left) + '~' + Math.round(c.right - r.left) + ' / 칸 ' + Math.round(r.width) + ' · 배율 ' + (+getComputedStyle(z).zoom).toFixed(2) + ' · 칸 넘침 ' + (cb.scrollWidth - cb.clientWidth); }, id); };
   console.log('창 폭 카드 (일반 핸드아웃):', await card('h2'));
   console.log('500px 카드:', await card('h3'));
+  // v1.116.0 ⤢ 맞춤: 넓은 카드만 칸 폭에 맞게 · [− +] 누르면 맞춤 끄고 그 배율 · ▶ 본문이면 [− +] 가 글자 크기
+  const szv = () => p.$eval('#r20-sn .szv', e => e.textContent + ' «' + e.parentElement.title + '»');
+  await p.click('#r20-sn .fit'); await p.waitForTimeout(250);
+  console.log('⤢ 맞춤 → 500px 카드:', await card('h3'), '| 표시:', await szv(), '| 눌림:', await p.$eval('#r20-sn .fit', e => e.getAttribute('aria-pressed')));
+  console.log('   창 폭 카드:', await card('h2'));
+  const egDrag = async dx => { const r2 = await p.$eval('#r20-sn .eg', e => e.getBoundingClientRect().toJSON()); await p.mouse.move(r2.x + 3, 300); await p.mouse.down(); await p.mouse.move(r2.x + 3 + dx, 300, { steps: 4 }); await p.mouse.up(); await p.waitForTimeout(400); };
+  const snW = () => p.$eval('#r20-sn', e => e.offsetWidth), w0 = await snW();
+  await card('h3'); await egDrag(80);
+  console.log('   창 넓힘 → 500px 카드:', await p.evaluate(() => { const z = document.querySelector('#r20-sn .bd section[data-id="h3"] .cz'), cb = z.parentElement; return '칸 ' + cb.clientWidth + ' · 배율 ' + (+getComputedStyle(z).zoom).toFixed(2) + ' · 넘침 ' + (cb.scrollWidth - cb.clientWidth); }));
+  await egDrag(w0 - await snW());
+  await p.click('#r20-sn .sz [data-z="1"]'); await p.waitForTimeout(150);
+  console.log('맞춤 중 + → 맞춤 끔:', await szv(), '|', await card('h3'), '| 눌림:', await p.$eval('#r20-sn .fit', e => e.getAttribute('aria-pressed')));
+  await p.click('#r20-sn .ls .tr.ch[data-c="k1"]'); await p.waitForTimeout(150);
+  const kz = () => p.$eval('#r20-sn .bd section[data-id="k1"] .cz', z => (+getComputedStyle(z).zoom).toFixed(3) + ' · 글 높이 ' + Math.round(z.getBoundingClientRect().height));
+  console.log('▶ 본문 고름 →', await szv(), '|', await kz());
+  await p.click('#r20-sn .sz [data-z="1"]'); await p.click('#r20-sn .sz [data-z="1"]'); await p.waitForTimeout(150);
+  console.log('▶ 본문 + 두 번 →', await szv(), '|', await kz(), '| 저장:', await p.evaluate(() => localStorage.getItem('r20_sn_fs')), '| 핸드아웃 배율 그대로:', await p.evaluate(() => localStorage.getItem('r20_sn_sz')));
   await p.click('#r20-sn .ls .tr.ch[data-c="h1"]'); await p.waitForTimeout(150);
   console.log('가로 넘침: 본문 칸', await p.$eval('#r20-sn .bd', e => e.scrollWidth - e.clientWidth), '| 내용 칸', await p.$eval('#r20-sn .bd section.on .cb', e => e.scrollWidth > e.clientWidth));
   console.log('⚠ 보임:', await p.$eval('#r20-sn .warn', b => !b.hidden));

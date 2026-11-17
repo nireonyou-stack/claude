@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.115.2
+// @version      1.116.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.115.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.116.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -5663,7 +5663,7 @@ addCss(`
             & .margin input { width:52px; }
             & .grid { display:flex; flex-direction:column; gap:3px; padding:5px 7px; border-radius:var(--aio-r-sm); background:var(--aio-warn-bg); color:var(--aio-warn-ink); font-size:var(--aio-fs-sm); }
             & .grid:empty { display:none; }
-            & .grid button { height:20px; margin-left:4px; padding:0 7px; font-size:var(--aio-fs-sm); line-height:18px; }
+            & .grid button { margin-left:4px; }
             & .sum { padding:5px 7px; border-radius:var(--aio-r-sm); background:var(--aio-bg-3); color:var(--aio-ink-3); font-size:var(--aio-fs-sm); }
             & .sum:empty { display:none; }
             & .prog { color:var(--aio-ok); font-size:var(--aio-fs-sm); } & .prog.bad { color:var(--aio-bad); } & .prog:empty { display:none; }
@@ -10934,18 +10934,18 @@ const scenNav = (() => {
     const stripHtml = m => {
         const v = seeList(m), A = v.includes("all"), ps = people();
         const show = pmAll.has(m.id) || ps.length <= 8 ? ps : ps.filter(p => p.get("online") || v.includes(p.id)), more = ps.length - show.length, id = escAttr(m.id);
-        const chip = (pid, label, col, on, tip) => `<button type="button" class="pm-c${on ? " on" : ""}${A && pid !== "all" ? " via" : ""}" data-a="pm" data-pid="${escAttr(pid)}" data-hid="${id}" aria-pressed="${on}" title="${escAttr(tip)}"><i style="background:${col}"></i>${escAttr(label)}</button>`;
+        const chip = (pid, label, col, on, tip) => `<button type="button" class="aio-chip pm-c${on ? " on" : ""}${A && pid !== "all" ? " via" : ""}" data-a="pm" data-pid="${escAttr(pid)}" data-hid="${id}" aria-pressed="${on}" title="${escAttr(tip)}"><i style="background:${col}"></i>${escAttr(label)}</button>`;
         return `<div class="pm" data-hid="${id}"><span class="pm-l" title="보기 권한 — 누르면 켜고 끔">👁</span>`
             + chip("all", "모두", "#777", A, "모든 플레이어가 보기")
             + show.map(p => chip(p.id, pnm(p), pcol(p), A || v.includes(p.id), (p.get("online") ? "접속 중 · " : "") + (A ? "누르면 이 사람만 빼기" : "누르면 보기 권한 켜고 끔"))).join("")
-            + (more > 0 ? `<button type="button" class="pm-c" data-a="pmore" data-hid="${id}" title="접속하지 않은 플레이어 ${more}명 더">+${more}</button>` : "") + "</div>";
+            + (more > 0 ? `<button type="button" class="aio-chip pm-c" data-a="pmore" data-hid="${id}" title="접속하지 않은 플레이어 ${more}명 더">+${more}</button>` : "") + "</div>";
     };
     // 장 머리줄 (한 줄): 보는 사람 점(마우스를 올리면 이름 · 누르면 고르기 창) · 📢 보여주기 · ↗ Roll20 창 열기/닫기
     const headHtml = m => {
         const id = escAttr(m.id);
         return `<span class="ph" data-hid="${id}"><button type="button" class="pw" data-a="see" data-hid="${id}" aria-label="보는 사람 고르기">${whoHtml(m) || '<span class="who" title="아무에게도 공개 안 됨"><i>○</i></span>'}</button>`
-            + `<button type="button" class="pm-b" data-a="bc" data-hid="${id}" title="보여주기 (Roll20 Show to Players)" aria-label="보여주기">📢</button>`
-            + `<button type="button" class="pm-b gh" data-a="ro" data-hid="${id}" title="Roll20 핸드아웃 창 — 열려 있고 맨 앞이면 닫기" aria-label="Roll20 창으로 열기 · 닫기">↗</button></span>`;
+            + `<button type="button" class="aio-ib pm-b" data-a="bc" data-hid="${id}" title="보여주기 (Roll20 Show to Players)" aria-label="보여주기">📢</button>`
+            + `<button type="button" class="aio-ib pm-b" data-a="ro" data-hid="${id}" title="Roll20 핸드아웃 창 — 열려 있고 맨 앞이면 닫기" aria-label="Roll20 창으로 열기 · 닫기">↗</button></span>`;
     };
     // 칩 누르기: 모두 ↔ 끄기 · 사람 하나 켜고 끔 (모두인데 한 사람을 누르면 '그 사람만 빼고')
     const setSee = (hid, pid) => {
@@ -11074,15 +11074,47 @@ const scenNav = (() => {
     // ▶ 아닌 핸드아웃 크기: 고정 배율을 [− +] 로 (기억 · 기본 65%) — 브라우저 축소처럼 칸 폭은 다 쓰고 글 · 그림만 작게/크게
     const SZ = "r20_sn_sz", SZS = [0.35, 0.5, 0.65, 0.8, 1, 1.25, 1.5];
     const szNow = () => { const v = parseFloat(ls(SZ)); return SZS.includes(v) ? v : 0.65; };
+    // ⤢ 맞춤: 칸보다 넓은 핸드아웃만 그 장마다 칸 폭에 맞게 줄인다 (넘치지 않으면 100%) — .cz 에 --sn-z 를 따로 줘 배율 · 그림 폭이 같이 따른다
+    // ▶ 본문은 배율 대신 글자 크기(px, 13~21) — [− +] 는 지금 보고 있는 장에 따라 둘 중 하나를 바꾼다
+    const FIT = "r20_sn_fit", FS = "r20_sn_fs";
+    const fitOn = () => ls(FIT) === "1";
+    const fsNow = () => { const v = parseInt(ls(FS), 10); return v >= 13 && v <= 21 ? v : 15; };
+    const keyNow = () => !!chs.find(c => c.id === selId)?.key;
+    const fitAll = () => {
+        win?.querySelectorAll(".bd section.ch:not(.key) > .cb > .cz").forEach(z => {
+            if (!fitOn()) return z.style.removeProperty("--sn-z");
+            const cb = z.parentElement, cs = getComputedStyle(cb), room = cb.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            if (room <= 0) return;          // 안 보이는 장 (따로 보기) — 보일 때 다시
+            z.style.setProperty("--sn-z", "1");
+            const need = Math.max(z.offsetWidth, z.scrollWidth);
+            z.style.setProperty("--sn-z", String(need > room + 1 ? Math.max(0.2, room / need) : 1));
+        });
+    };
+    let fitT = 0;
+    const fitSoon = () => { if (fitOn()) { clearTimeout(fitT); fitT = setTimeout(fitAll, 120); } };
+    const szLabel = () => {
+        const pm = win && $(".sz");
+        if (!pm) return;
+        const key = keyNow(), fit = !key && fitOn(), v = szNow(), i = SZS.indexOf(v), f = fsNow();
+        pm.title = key ? "▶ 본문 글자 크기" : "핸드아웃 크기";
+        pm.querySelector(".szv").textContent = key ? f + "px" : fit ? "맞춤" : Math.round(v * 100) + "%";
+        pm.querySelector('[data-z="-1"]').disabled = key ? f <= 13 : !fit && i <= 0;
+        pm.querySelector('[data-z="1"]').disabled = key ? f >= 21 : !fit && i >= SZS.length - 1;
+        $(".fit")?.setAttribute("aria-pressed", String(fitOn()));
+    };
     const applySz = () => {
         if (!win) return;
-        const v = szNow(), i = SZS.indexOf(v);
-        win.style.setProperty("--sn-z", String(v));
-        const pm = $(".sz");
-        if (!pm) return;
-        pm.querySelector(".szv").textContent = Math.round(v * 100) + "%";
-        pm.querySelector('[data-z="-1"]').disabled = i <= 0;
-        pm.querySelector('[data-z="1"]').disabled = i >= SZS.length - 1;
+        win.style.setProperty("--sn-z", String(szNow()));
+        win.style.setProperty("--sn-fs", String(fsNow()));
+        fitAll();
+        szLabel();
+    };
+    // [− +]: ▶ 본문이면 글자 크기 · 핸드아웃이면 배율 (맞춤 중이면 맞춤을 끄고 그 배율로)
+    const stepSz = d => {
+        if (keyNow()) { const f = fsNow() + d; if (f >= 13 && f <= 21) ls(FS, String(f)); }
+        else if (fitOn()) ls(FIT, "");
+        else { const i = SZS.indexOf(szNow()) + d; if (SZS[i]) ls(SZ, String(SZS[i])); }
+        applySz();
     };
     const getBlob = (m, f) => new Promise(ok => {
         const t = setTimeout(() => ok(""), 8000);
@@ -11186,7 +11218,8 @@ const scenNav = (() => {
             + '<div class="tb"><input type="search" class="q aio-in sm" placeholder="이 시나리오에서 찾기" aria-label="이 시나리오에서 찾기" spellcheck="false" autocomplete="off"><span class="qn"></span>'
             + '<button type="button" data-a="lcopy" class="cp" hidden title="이 장면 채팅 전체 복사">복사</button>'
             + '<span class="md aio-seg" role="radiogroup" aria-label="보기"><button type="button" data-m="sep" role="radio" title="핸드아웃을 한 장씩">따로</button><button type="button" data-m="cont" role="radio" title="핸드아웃을 모두 이어서">이어서</button></span>'
-            + '<span class="sz aio-pm" title="핸드아웃 크기 (▶ 본문 빼고)"><button type="button" data-z="-1" aria-label="핸드아웃 작게">−</button><span class="szv"></span><button type="button" data-z="1" aria-label="핸드아웃 크게">+</button></span></div>'
+            + '<span class="sz aio-pm" title="핸드아웃 크기"><button type="button" data-z="-1" aria-label="작게">−</button><span class="szv"></span><button type="button" data-z="1" aria-label="크게">+</button></span>'
+            + '<button type="button" data-a="fit" class="fit aio-ib" title="맞춤 — 칸보다 넓은 핸드아웃을 칸 폭에 맞게 줄이기" aria-label="핸드아웃 칸 폭에 맞춤" aria-pressed="false">⤢</button></div>'
             + '<div class="bd" tabindex="-1"></div><div class="lg" tabindex="-1" hidden></div></div></div>'
             + '<div class="fl" hidden><button type="button" data-a="put">입력칸에 넣기</button><button type="button" data-a="copy">복사</button></div>'
             + '<div class="eg" role="separator" aria-orientation="vertical" aria-label="창 너비" title="끌어서 너비 · 두 번 누르면 기본"></div>'
@@ -11218,7 +11251,8 @@ const scenNav = (() => {
             const srow = e.target.closest(".lc .tr");
             if (srow) return scnRowClick(e, srow);
             const b = e.target.closest("button, [data-p], .tr"), a = b?.dataset.a;
-            if (b?.dataset.z) { const i = SZS.indexOf(szNow()) + +b.dataset.z; if (SZS[i]) { ls(SZ, String(SZS[i])); applySz(); } return; }
+            if (b?.dataset.z) return stepSz(+b.dataset.z);
+            if (a === "fit") { ls(FIT, fitOn() ? "" : "1"); return applySz(); }
             if (!b) { const img = e.target.closest(".bd img"); if (img && !img.closest("a")) zoomImg(img.src); return; }
             const hid = b.dataset.hid || b.closest("[data-c]")?.dataset.c;
             if (a === "pm") return setSee(hid, b.dataset.pid);
@@ -11295,6 +11329,8 @@ const scenNav = (() => {
         });
         let rt = 0;
         new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(keep, 300); if (docked()) shiftBar(); }).observe(win);
+        new ResizeObserver(fitSoon).observe($(".bd"));            // 목차 · 창 폭이 바뀌면 맞춤 다시
+        $(".bd").addEventListener("load", e => { if (e.target.tagName === "IMG") fitSoon(); }, true);       // 그림이 늦게 오면 폭이 바뀐다
         const setTw = () => win.style.setProperty("--sn-tw", tocW() + "px");
         dragX($(".tgr"), ev => { const z = aioZoom.get(); ls(TW, String(Math.round(Math.max(70, Math.min(420, (ev.clientX - $(".toc").getBoundingClientRect().left) / z))))); setTw(); }, null,
             () => { try { localStorage.removeItem(TW); } catch (e) { /* 없음 */ } setTw(); });
@@ -11413,6 +11449,7 @@ const scenNav = (() => {
         $(".toc").classList.toggle("sep", s);
         chs.forEach(c => c.sec.classList.toggle("on", c.id === selId));
         win.querySelectorAll(".toc .tr[data-c]").forEach(t => t.classList.toggle("cur", t.dataset.c === selId));
+        if (fitOn()) fitAll();
         if (pos != null) bd.scrollTop = pos * (bd.scrollHeight - bd.clientHeight);
         else if (!s) { const sec = chs.find(c => c.id === selId)?.sec; bd.scrollTop = sec ? yOf(sec) : 0; }
         else bd.scrollTop = 0;
@@ -11473,6 +11510,7 @@ const scenNav = (() => {
         const ch = chs.find(c => c.id === selId)?.name || "", sub = k >= 0 && !heads[k].ch ? heads[k].t : "";
         const max = bd.scrollHeight - bd.clientHeight, pos = max > 0 ? bd.scrollTop / max : 0;
         $(".mt").textContent = [ch, sub].filter(Boolean).join(" › ") + (max > 0 ? ` · ${Math.round(pos * 100)}%` : "");
+        szLabel();
         clearTimeout(posT);
         posT = setTimeout(() => remember(cur.path, { pos, sel: selId, where: [ch, sub].filter(Boolean).join(" › ") }), 600);
     };
@@ -11798,6 +11836,8 @@ addCss(`
                창 폭에 맞춘 그림(max-width:100%)은 그대로면 도로 창 폭만큼 커진다 → 그림도 같은 배율로 묶는다 · 고정 폭 카드가 넓으면 본문 칸(.cb) 안에서만 옆으로 */
             & .bd section.ch:not(.key) > .cb > .cz { zoom:var(--sn-z, 0.65); min-width:min-content; }
             & .bd section.ch:not(.key) > .cb > .cz img { max-width:calc(var(--sn-z, 0.65) * 100%); }
+            /* ▶ 본문 글자 크기: 핸드아웃 글 속 크기 지정까지 같이 커지게 배율로 (기본 15px = 1) */
+            & .bd section.key > .cb > .cz { zoom:calc(var(--sn-fs, 15) / 15); }
             & .sz { flex:none; display:inline-flex; align-items:center; }
             & .szv { min-width:30px; color:var(--aio-ink-4); font-size:var(--aio-fs-sm); text-align:center; }
             & .bd img { max-width:100%; height:auto !important; cursor:zoom-in; }
@@ -11806,17 +11846,12 @@ addCss(`
             & .ph { display:inline-flex; flex:none; align-items:center; gap:3px; font-weight:400; }
             & .pw { margin:0; padding:0 3px; border:0; border-radius:var(--aio-r-sm); background:none; box-shadow:none; line-height:20px; cursor:pointer; }
             & .pw:hover { background:var(--aio-bg-4); }
-            & .ph .pm-b { padding:0 6px; }
             & .pm { display:flex; flex:1 1 100%; flex-wrap:wrap; align-items:center; gap:3px; padding:1px 0 2px; font:400 10.5px/1.4 sans-serif; user-select:none; }
             & .pm-l { color:var(--aio-ink-4); }
-            & .pm-c { display:inline-flex; align-items:center; gap:3px; height:var(--aio-h-sm); margin:0; padding:0 7px 0 3px; border:1px solid var(--aio-line-2); border-radius:var(--aio-r-pill); background:var(--aio-bg); color:var(--aio-ink-4); font:inherit; cursor:pointer; box-shadow:none; }
+            & .pm-c { padding:0 7px 0 3px; }          /* 칩 모양은 .aio-chip — 여기는 색 점 자리 · 점선(모두로 켜짐)만 */
             & .pm-c i { width:11px; height:11px; border-radius:50%; opacity:.6; }
-            & .pm-c.on { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent-dark); font-weight:700; }
             & .pm-c.on i { opacity:1; }
             & .pm-c.via { border-style:dashed; font-weight:400; }
-            & .pm-g { flex:1; }
-            & .pm-b { height:var(--aio-h-sm); margin:0; padding:0 8px; border:1px solid var(--aio-accent); border-radius:var(--aio-r-pill); background:var(--aio-accent); color:var(--aio-ink-inv); font:700 var(--aio-fs-sm)/20px sans-serif; white-space:nowrap; cursor:pointer; box-shadow:none; }
-            & .pm-b.gh { padding:0 6px; border-color:var(--aio-line-2); background:var(--aio-bg); color:var(--aio-ink-3); }
             & .pp { position:absolute; z-index:4; width:250px; padding:6px 8px; font-size:var(--aio-fs-sm); }
             & .pp > b { display:block; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
             & .tr.pmx { --tr-bg:var(--aio-bg-3); position:relative; display:flex; align-items:center; gap:3px; }
