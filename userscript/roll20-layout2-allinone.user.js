@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.114.4
+// @version      1.115.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.114.4";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.115.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -16356,7 +16356,8 @@ addFeature("attrWatch", attrWatch);
 // ══════════ 묶음 6 · 기본시트 데이터 자동완성 ══════════
 
 // ───────── 자동완성: 시트 인법/마법 · 어빌리티 · 아이템 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
-// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…] }
+// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…], bloodmoon_follower:[…] }
+//   (홈페이지 쪽 입력기 · 내보내는 주소는 homepage/PROMPT-ruledata-npc.md)
 //   — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 오거나, 홈페이지가 없으면 '파일'로 고른 데이터 파일(같은 모양)을 브라우저에 넣어 둔다
 // 레코드 키: name, group(유파 · 그룹), type, skill, range, target, cost, charge, effect, flavor, recite, kind(아이템 분류)
 // type/skill 은 시트 드롭다운에 보이는 글자(예: "공격", "폭력")로 적으면 된다.
@@ -16370,7 +16371,9 @@ const autofill = (() => {
         // 블러드문 시트: 반복 줄의 칸 이름이 그대로(name …), 팔로워 어빌리티는 ab1_ ~ ab3_ 이 앞에 붙는다
         // 레벨(lv · level)은 데이터에 있을 때만 — 시트에 Lv 칸이 생긴 판부터 채워진다
         bloodmoon:      { name: "name", group: "group", type: "type", lv: "lv", level: "lv", skill: "skill", cost: "cost", effect: "effect", flavor: "flavor" },
-        bloodmoon_item: { name: "name", kind: "kind", effect: "effect" }
+        bloodmoon_item: { name: "name", kind: "kind", effect: "effect" },
+        // 팔로워 종별: 팔로워 줄의 종별 칸(kind)에 치면 특수능력 칸을 채운다 · 상위특수능력(upper)은 LV 6 이상일 때만 아랫줄에 (apply)
+        bloodmoon_follower: { name: "kind", special: "special" }
     };
     // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
     const NAME_RE = /^attr_((?:Ninpo|Magic)_(?:\d+_)?)Name$/;
@@ -16484,6 +16487,7 @@ const autofill = (() => {
     };
     const ctx = el => {
         if (BM_RE.test(el.name || "")) return el.disabled ? null : bmCtx(el);
+        if (el.name === "attr_kind") { const row = !el.disabled && el.closest(".bm") && el.closest('.repcontainer[data-groupname="repeating_followers"] .repitem'); return row ? { base: "", row, sys: "bloodmoon_follower" } : null; }
         const m = el.name?.match(NAME_RE);
         if (!m || el.disabled) return null;
         const base = m[1];
@@ -16522,7 +16526,7 @@ const autofill = (() => {
             const b = document.createElement("b");
             b.textContent = r.name;
             const s = document.createElement("small");
-            s.textContent = [r.group, r.type, r.skill, r.kind].filter(Boolean).join(" · ");
+            s.textContent = [r.group, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
             it.append(b, s);
             box.appendChild(it);
         });
@@ -16578,6 +16582,7 @@ const autofill = (() => {
         const el = field => c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
         // 플레이버 칸이 없는 시트 · 줄(팔로워 어빌리티 · 아이템)은 효과 뒤에 붙인다
         if (data.flavor && !(map.flavor && el(map.flavor))) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
+        if (c.sys === "bloodmoon_follower" && data.upper && (parseInt(el("lv")?.value, 10) || 0) >= 6) data.special = [data.special, "상위특수능력: " + data.upper].filter(Boolean).join("\n");
         filling = true;
         for (const [key, field] of Object.entries(map)) {
             if (data[key] == null || data[key] === "") continue;
@@ -16747,7 +16752,7 @@ const abTok = (() => {
     const hide = () => { chip?.remove(); chip = null; };
     const over = e => {
         if (!btnVisible.abtok || !isGM() || pop) return;
-        const inp = e.target, x = inp?.name && autofill.ctx(inp);
+        const inp = e.target, x0 = inp?.name && autofill.ctx(inp), x = x0?.sys === "bloodmoon_follower" ? null : x0;      // 팔로워 종별 칸은 어빌리티가 아님
         if (!x) { if (chip && !hideT) hideT = setTimeout(() => { hideT = 0; hide(); }, 350); return; }
         clearTimeout(hideT); hideT = 0;
         const c = charOf(inp), nm = String(inp.value || "").trim();
@@ -16817,7 +16822,7 @@ const abTok = (() => {
         const rowsAll = (() => {
             const seen = new Set(), out = [];
             x.inp.ownerDocument.querySelectorAll("input[name], textarea[name]").forEach(el => {
-                const y = autofill.ctx(el), nm = String(el.value || "").trim();
+                const y = autofill.ctx(el), nm = String(el.value || "").trim();          // (팔로워 종별 칸은 sys 가 달라 빠진다)
                 if (!y || y.sys !== x.sys || !nm || seen.has(nm)) return;
                 seen.add(nm); out.push({ ...y, inp: el, c: x.c, nm });
             });
