@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.116.0
+// @version      1.116.1
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.116.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.116.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -11087,7 +11087,7 @@ const scenNav = (() => {
             if (room <= 0) return;          // 안 보이는 장 (따로 보기) — 보일 때 다시
             z.style.setProperty("--sn-z", "1");
             const need = Math.max(z.offsetWidth, z.scrollWidth);
-            z.style.setProperty("--sn-z", String(need > room + 1 ? Math.max(0.2, room / need) : 1));
+            z.style.setProperty("--sn-z", String(need > room + 1 ? Math.max(0.2, Math.floor(room / need * 100) / 100) : 1));     // 내림 — 반올림으로 1~2px 넘치지 않게
         });
     };
     let fitT = 0;
@@ -11836,6 +11836,11 @@ addCss(`
                창 폭에 맞춘 그림(max-width:100%)은 그대로면 도로 창 폭만큼 커진다 → 그림도 같은 배율로 묶는다 · 고정 폭 카드가 넓으면 본문 칸(.cb) 안에서만 옆으로 */
             & .bd section.ch:not(.key) > .cb > .cz { zoom:var(--sn-z, 0.65); min-width:min-content; }
             & .bd section.ch:not(.key) > .cb > .cz img { max-width:calc(var(--sn-z, 0.65) * 100%); }
+            /* Roll20 새 편집기는 표 · 그림을 <figure class="table|image"> 로 싸 보낸다 — class 를 빼므로 브라우저 기본 좌우 여백 40px 가 붙어
+               width:100% 표가 칸을 뚫고 나간다(배율로 줄여도 그만큼 다시 넓어짐) → 편집기와 같게: 좌우 여백 없이 가운데 · 표는 figure 폭대로 */
+            & .bd figure { margin:.9em auto; }
+            & .bd figure:has(> table) { display:table; }
+            & .bd figure > table { width:100%; }
             /* ▶ 본문 글자 크기: 핸드아웃 글 속 크기 지정까지 같이 커지게 배율로 (기본 15px = 1) */
             & .bd section.key > .cb > .cz { zoom:calc(var(--sn-fs, 15) / 15); }
             & .sz { flex:none; display:inline-flex; align-items:center; }
