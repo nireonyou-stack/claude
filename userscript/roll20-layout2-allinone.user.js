@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.116.1
+// @version      1.116.2
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.116.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.116.2";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -3422,8 +3422,8 @@ const sheetShot = (() => {
 // @share-cut-start home — 홈페이지로 보내기 (배포판에서 뺌: 홈페이지 전용)
 // ───────── 홈페이지로 보내기: 캐릭터 시트 창 머리줄 🏠 → 홈페이지 캐릭터 게시판 SHEET 글 (sheet/import.roll20.php) ─────────
 // 보내는 것: 시트 속성 전부(반복 줄 · 차례 포함) · 바이오 · GM 메모(GM 만) · 초상 — 룰별 짝표 변환과 원본 보관은 홈페이지가 한다
-// 홈페이지: 이름 · 룰이 같은 시트가 있으면 '새 판', 없으면 새 비밀 시트(관리자만) · 같은 이름 프로필에 잇기 · 짝표가 없는 룰은 원본만
-// 주소 · 열쇠는 ⚙ 설정(이 브라우저에만 저장) · 열쇠는 홈페이지 import.roll20.config.php 와 같은 값
+// 홈페이지: 이름 · 룰이 같은 시트가 있으면 '새 판', 없으면 새 시트(공개) · 같은 이름 프로필에 잇기 · 짝표가 없는 룰은 원본만
+// 주소 · 열쇠는 ⚙ 설정(이 브라우저에만 저장) · 열쇠는 홈페이지 룰 데이터 화면 › ROLL20 의 '보내기 열쇠'
 const homeExport = (() => {
     const URL_KEY = "r20_home_url", KEY_KEY = "r20_home_key";
     const ls = (k, v) => { try { if (v === undefined) return aioPref.get(k) || ""; localStorage.setItem(k, v); } catch (e) { return ""; } };
@@ -3463,7 +3463,7 @@ const homeExport = (() => {
     };
     const say = (name, res) => {
         const nm = `<b>${escAttr(name)}</b>`, open = res.url ? ` · <a href="${escAttr(res.url)}" target="_blank" rel="noopener">열기 ↗</a>` : "";
-        if (res.mode === "new") return toast(`🏠 ${nm} — 홈페이지에 <b>새 시트</b>로 보냈어요 (관리자만 보임)${res.pc ? " · 프로필에 이음" : ""}${open}`);
+        if (res.mode === "new") return toast(`🏠 ${nm} — 홈페이지에 <b>새 시트</b>로 보냈어요 (공개)${res.pc ? " · 프로필에 이음" : ""}${open}`);
         if (res.mode === "ver") return toast(`🏠 ${nm} — 같은 이름 · 같은 룰 시트에 <b>새 판</b>으로 넣었어요 (${escAttr(res.label || "")})${open}`);
         toast(`🏠 ${nm} — ${escAttr(res.msg || "원본만 보관했어요")}`);
     };
@@ -3492,7 +3492,7 @@ const homeExport = (() => {
             b.type = "button";
             b.className = "r20home";
             b.textContent = "🏠";
-            b.title = "홈페이지로 보내기 — 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(관리자만)";
+            b.title = "홈페이지로 보내기 — 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(공개)";
             b.setAttribute("aria-label", "홈페이지로 보내기");
             b.classList.toggle("off", !ready());
             b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
@@ -3516,7 +3516,7 @@ const homeExport = (() => {
             return { row, inp };
         };
         const u = mk("홈페이지 주소", URL_KEY, "url", "https://…/skin/board/character/sheet/import.roll20.php", "홈페이지에 올린 import.roll20.php 의 주소 (https)");
-        const k = mk("열쇠", KEY_KEY, "password", "홈페이지 import.roll20.config.php 의 key", "홈페이지 import.roll20.config.php 의 key 와 같은 값 · 이 브라우저에만 저장");
+        const k = mk("열쇠", KEY_KEY, "password", "홈페이지 룰 데이터 화면 › ROLL20 의 '보내기 열쇠'", "홈페이지 룰 데이터 화면 › ROLL20 의 '보내기 열쇠'와 같은 값 · 이 브라우저에만 저장");
         const st = Object.assign(document.createElement("span"), { className: "r20home-st" });
         const b = Object.assign(document.createElement("button"), { type: "button", className: "r20pz-open", textContent: "연결 확인" });
         b.onclick = async e => {
@@ -3527,7 +3527,7 @@ const homeExport = (() => {
             try {
                 const r = await post({ op: "ping" });
                 if (!r?.ok) throw new Error(r?.error || "받지 않음");
-                st.textContent = `✓ 연결됨 — 짝표: ${(r.rules || []).join(" · ") || "없음"} (틀 ${(r.tpls || []).length}종)`; st.className = "r20home-st ok";
+                st.textContent = `✓ 연결됨 — 짝표: ${(r.rules || []).join(" · ") || "없음"} (틀 ${(r.tpls || []).length}종)${r.npc != null ? ` · NPC 보관 ${r.npc}` : ""}`; st.className = "r20home-st ok";
             } catch (err) { st.textContent = "✗ " + (err.message || err); st.className = "r20home-st bad"; }
         };
         k.row.append(b);
@@ -3540,7 +3540,7 @@ const homeExport = (() => {
     return { inject, setEnabled, rows, send, watch: ".ui-dialog" };
 })();
 addFeature("homeExport", homeExport);
-addBundle({ place: "main", order: 6.1, group: "prep", label: "홈페이지로 보내기 (캐릭터 시트 🏠)", sub: "캐릭터 시트 창 머리줄 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(관리자만) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
+addBundle({ place: "main", order: 6.1, group: "prep", label: "홈페이지로 보내기 (캐릭터 시트 🏠)", sub: "캐릭터 시트 창 머리줄 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(공개) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
     members: [["home", "homeExport"]], extra: () => homeExport.rows() });
 addCss(`
         .ui-dialog-titlebar {

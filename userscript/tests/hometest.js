@@ -14,7 +14,7 @@ const SHOT = process.env.SHOT;
       const res = await r.fetch({ url: 'http://127.0.0.1:8777/skin/board/character/sheet/import.roll20.php', headers: { ...r.request().headers(), origin: 'https://app.roll20.net' } });
       return r.fulfill({ status: res.status(), contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: await res.text() });
     }
-    const res = body.op === 'ping' ? { ok: true, rules: ['bloodmoon'], tpls: ['bloodmoon', 'shinobigami'] }
+    const res = body.op === 'ping' ? { ok: true, rules: ['bloodmoon'], tpls: ['bloodmoon', 'shinobigami'], npc: 3 }
       : body.key !== 'test-key-1234567890' ? { ok: false, error: '열쇠가 맞지 않습니다.' }
       : ++n === 1 ? { ok: true, mode: 'new', wr_id: 2, pc: 1, label: 'Roll20 2026-11-08 20:00', url: 'https://home.test/bbs/board.php?bo_table=character&wr_id=2' }
       : { ok: true, mode: 'ver', wr_id: 2, label: 'Roll20 2026-11-08 20:05', url: 'https://home.test/bbs/board.php?bo_table=character&wr_id=2' };
