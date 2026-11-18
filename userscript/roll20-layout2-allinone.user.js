@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.116.2
+// @version      1.117.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.116.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.117.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -3467,6 +3467,110 @@ const homeExport = (() => {
         if (res.mode === "ver") return toast(`🏠 ${nm} — 같은 이름 · 같은 룰 시트에 <b>새 판</b>으로 넣었어요 (${escAttr(res.label || "")})${open}`);
         toast(`🏠 ${nm} — ${escAttr(res.msg || "원본만 보관했어요")}`);
     };
+
+    // ── NPC 보관소: 같은 주소 · 같은 열쇠 · 게시판 글은 안 만든다 ──
+    // 📇 = 시트 통째로 보관 (같은 룰 · 이름이면 덮어씀) · 다른 방에서 새 시트 이름 칸(attr_character_name)에 치면 골라 불러온다 (autofill)
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const hint = () => window.Campaign?.get?.("charactersheetname") || "";
+    const npcReady = () => ready() && isGM() && !!btnVisible.home;
+    // 어빌리티(매크로) · 기본 토큰까지 실어야 시트를 통째로 되살린다 (🏠 PC 보내기에는 싣지 않음)
+    const collectNpc = async m => {
+        const base = await collect(m), ab = m.abilities;
+        if (ab && !ab.models?.length && typeof ab.fetch === "function") { try { ab.fetch(ab); } catch (e) { /* 이미 읽음 */ } await sleep(600); }
+        const abilities = (ab?.models || []).map(a => ({ name: a.get("name") || "", action: a.get("action") || "", istokenaction: !!a.get("istokenaction"), description: a.get("description") || "" }));
+        return { ...base, abilities, defaulttoken: await blob(m, "defaulttoken") };
+    };
+    let npcCache = null, npcFailAt = 0;            // 목록은 60초 동안 한 번만 (치는 동안 매번 묻지 않게)
+    const npcList = () => {
+        if (Date.now() - npcFailAt < 60000) return Promise.resolve([]);
+        if (!npcCache || Date.now() - npcCache.at > 60000) {
+            const p = post({ op: "npc_list", hint: hint() }).then(r => { if (!r?.ok) throw new Error(r?.msg || r?.error || "목록을 못 받았어요"); return r.items || []; });
+            npcCache = { at: Date.now(), p };
+            p.catch(e => { npcCache = null; npcFailAt = Date.now(); toast(`📇 NPC 보관소 목록을 못 받았어요: ${escAttr(e.message || e)}`, 8000); });
+        }
+        return npcCache.p;
+    };
+    const npcSend = async m => {
+        if (!ready()) return toast("📇 ⚙ 설정의 <b>홈페이지로 보내기</b>에 주소 · 열쇠를 먼저 넣어 주세요");
+        const r = await post({ op: "npc_save", char: await collectNpc(m) });
+        if (!r?.ok) throw new Error(r?.msg || r?.error || "보관소가 받지 않았어요");
+        npcCache = null;
+        toast(`📇 <b>${escAttr(r.name || m.get("name") || "")}</b> — NPC 보관소에 ${r.mode === "update" ? "<b>덮어썼어요</b>" : "<b>새로</b> 넣었어요"}${r.rule ? ` (${escAttr(r.rule)})` : ""}`);
+    };
+    // 반복 줄 새 id — Roll20 generateRowID 와 같은 꼴 (시간 8자 + 무작위 12자 · '_' → 'Z'). 보관된 줄 id 는 다시 쓰지 않는다
+    const rowId = (() => {
+        const A = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
+        let last = 0, rnd = [];
+        return () => {
+            let t = Date.now();
+            const same = t === last, out = [];
+            last = t;
+            for (let i = 7; i >= 0; i--) { out[i] = A.charAt(t % 64); t = Math.floor(t / 64); }
+            if (same) { let i = 11; for (; i > 0 && rnd[i] === 63; i--) rnd[i] = 0; rnd[i]++; }
+            else rnd = Array.from({ length: 12 }, () => Math.floor(Math.random() * 64));
+            return (out.join("") + rnd.map(n => A.charAt(n)).join("")).replace(/_/g, "Z");
+        };
+    })();
+    const REP = /^repeating_([^_]+)_(-[A-Za-z0-9_-]{19})_(.+)$/;
+    // 시트 이름 칸에서 고른 NPC 로 그 시트를 채운다: 같은 시트(hint)인지 보고 · 속성(지금 · 최대) · 반복 줄(새 id · 보관된 차례) · 어빌리티 · 바이오 · GM 메모 · 초상 · 기본 토큰
+    const npcFill = async (inp, rec) => {
+        const dlg = inp.ownerDocument.defaultView?.frameElement?.closest(".ui-dialog"), c = dlg && charOf(dlg);
+        if (!c) return toast("📇 이 시트의 캐릭터를 찾지 못했어요");
+        try {
+            const r = await post({ op: "npc_get", id: rec.id });
+            if (!r?.ok) throw new Error(r?.msg || r?.error || "받지 못했어요");
+            const it = r.item || {}, ch = it.char || {}, here = hint();
+            if (ch.hint && here && ch.hint !== here) return toast(`📇 <b>${escAttr(it.name || "")}</b> — '${escAttr(it.rule_name || ch.hint)}' 시트로 만든 NPC 라 이 방 시트(${escAttr(here)})에는 못 채워요`, 9000);
+            await aioAttrs.load(c);
+            const A = c.attribs;
+            if (!A?.create) throw new Error("시트 속성을 쓸 수 없어요");
+            const secOf = n => String(n || "").match(REP)?.[1].toLowerCase();
+            const sects = new Set((ch.attrs || []).map(a => secOf(a[0])).filter(Boolean));
+            const old = A.models.filter(a => sects.has(secOf(a.get("name"))));
+            if ((old.length || String(await blob(c, "bio")).trim()) && !confirm(`'${c.get("name") || "이 캐릭터"}' 시트에 이미 내용이 있어요.\n보관소의 '${it.name}'(으)로 덮어쓸까요? (같은 반복 칸의 줄은 지우고 새로 넣어요)`)) return;
+            old.forEach(a => { try { a.destroy(); } catch (e) { aioErr("NPC 불러오기", e); } });
+            const ids = new Map(), made = {};
+            const nid = o => { const k = o.toLowerCase(); if (!ids.has(k)) ids.set(k, rowId()); return ids.get(k); };
+            let n = 0;
+            (ch.attrs || []).forEach(([name, cur, max]) => {
+                name = String(name || "");
+                if (!name || /^_reporder_/i.test(name)) return;
+                const v = { current: cur ?? "", max: max ?? "" }, m = name.match(REP);
+                n++;
+                if (m) { const id = nid(m[2]); (made[m[1]] ||= []).push(id); return A.create({ name: `repeating_${m[1]}_${id}_${m[3]}`, ...v }); }
+                const a = aioAttrs.find(c, name);
+                if (a) a.save(v); else A.create({ name, ...v });
+            });
+            // 줄 차례: 보관된 차례(char.order)대로 새 id 를 늘어놓고, 차례에 없던 줄은 뒤에
+            Object.entries(made).forEach(([sec, list]) => {
+                const want = (ch.order?.[sec.toLowerCase()] || []).map(o => ids.get(String(o).toLowerCase())).filter(Boolean);
+                const val = [...new Set([...want, ...list])].join(","), k = `_reporder_repeating_${sec}`, a = aioAttrs.find(c, k);
+                if (a) a.save({ current: val }); else A.create({ name: k, current: val, max: "" });
+            });
+            const ab = c.abilities;
+            if (ch.abilities?.length && ab?.create) {
+                if (!ab.models?.length && typeof ab.fetch === "function") { try { ab.fetch(ab); } catch (e) { /* 이미 읽음 */ } await sleep(600); }
+                ch.abilities.forEach(x => {
+                    if (!x?.name) return;
+                    const v = { name: x.name, action: x.action || "", istokenaction: !!x.istokenaction, description: x.description || "" }, a = ab.models.find(m => m.get("name") === x.name);
+                    if (a) a.save(v); else ab.create(v);
+                });
+            }
+            c.save({ name: it.name || c.get("name"), ...(ch.avatar ? { avatar: ch.avatar } : {}) });
+            const blobs = {};
+            if (ch.bio) blobs.bio = ch.bio;
+            if (ch.gmnotes && isGM()) blobs.gmnotes = ch.gmnotes;
+            // 기본 토큰: 이 캐릭터를 가리키게 · 옛 속성 id 로 이은 막대는 끊는다 (sheetattr_이름 연결은 이름이라 그대로)
+            if (ch.defaulttoken) try {
+                const t = JSON.parse(ch.defaulttoken);
+                t.represents = c.id;
+                ["bar1_link", "bar2_link", "bar3_link"].forEach(k => { if (t[k] && !/^sheetattr_/.test(t[k])) t[k] = ""; });
+                blobs.defaulttoken = JSON.stringify(t);
+            } catch (e) { /* 토큰 모양이 아니면 뺀다 */ }
+            if (Object.keys(blobs).length) c.updateBlobs?.(blobs);
+            toast(`📇 <b>${escAttr(it.name || "")}</b> — NPC 보관소에서 불러왔어요 (속성 ${n} · 반복 줄 ${ids.size} · 어빌리티 ${(ch.abilities || []).length})`);
+        } catch (e) { toast(`📇 불러오지 못했어요: ${escAttr(e.message || String(e))}`, 9000); }
+    };
     // 시트 창 → 캐릭터 (창의 data-characterid, 없으면 제목 = 이름)
     const charOf = dlg => {
         const C = window.Campaign?.characters, id = dlg.querySelector("[data-characterid]")?.dataset.characterid;
@@ -3474,13 +3578,13 @@ const homeExport = (() => {
         const t = dlg.querySelector(".ui-dialog-title")?.textContent.trim();
         return (C?.models || []).find(m => m.get("name") === t) || null;
     };
-    const press = async (dlg, b) => {
-        const m = charOf(dlg);
-        if (!m) return toast("🏠 이 창의 캐릭터를 찾지 못했어요");
+    const press = async (dlg, b, npc) => {
+        const m = charOf(dlg), ic = npc ? "📇" : "🏠";
+        if (!m) return toast(`${ic} 이 창의 캐릭터를 찾지 못했어요`);
         if (b.classList.contains("busy")) return;
         b.classList.add("busy");
-        try { const res = await send(m); if (res) say(m.get("name"), res); }
-        catch (e) { toast(`🏠 <b>${escAttr(m.get("name") || "")}</b> — 못 보냈어요: ${escAttr(e.message || String(e))}`, 9000); }
+        try { if (npc) await npcSend(m); else { const res = await send(m); if (res) say(m.get("name"), res); } }
+        catch (e) { toast(`${ic} <b>${escAttr(m.get("name") || "")}</b> — 못 보냈어요: ${escAttr(e.message || String(e))}`, 9000); }
         finally { b.classList.remove("busy"); }
     };
     const inject = () => {
@@ -3488,17 +3592,22 @@ const homeExport = (() => {
         document.querySelectorAll(".ui-dialog").forEach(dlg => {
             const bar = dlg.querySelector(":scope > .ui-dialog-titlebar");
             if (!bar || bar.querySelector(".r20home") || !dlg.querySelector(".characterdialog iframe")) return;
-            const b = document.createElement("button");
-            b.type = "button";
-            b.className = "r20home";
-            b.textContent = "🏠";
-            b.title = "홈페이지로 보내기 — 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(공개)";
-            b.setAttribute("aria-label", "홈페이지로 보내기");
-            b.classList.toggle("off", !ready());
-            b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
-            b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); press(dlg, b); });
+            const mk = (ic, label, title, npc) => {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = "r20home" + (npc ? " npc" : "");
+                b.textContent = ic;
+                b.title = title;
+                b.setAttribute("aria-label", label);
+                b.classList.toggle("off", !ready());
+                b.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
+                b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); press(dlg, b, npc); });
+                return b;
+            };
+            const home = mk("🏠", "홈페이지로 보내기", "홈페이지로 보내기 (PC) — 캐릭터 게시판에 시트 글 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(공개)");
+            const npc = mk("📇", "NPC 보관소로 보내기", "NPC 보관소로 보내기 — 시트 통째로 (게시판 글은 안 만듦) · 같은 룰 · 이름이면 덮어씀\n다른 방에서는 새 시트 이름 칸에 NPC 이름을 치면 불러와요", true);
             const at = bar.querySelector(".r20shot") || bar.querySelector(".ui-dialog-title");       // 📷 시트 촬영 바로 옆
-            if (at) at.after(b); else bar.prepend(b);
+            if (at) at.after(home, npc); else bar.prepend(home, npc);
         });
     };
     // 설정 창 줄: 주소 · 열쇠 · [연결 확인]
@@ -3537,10 +3646,10 @@ const homeExport = (() => {
         return [u.row, k.row, sr];
     };
     const setEnabled = v => { if (v) return inject(); document.querySelectorAll(".r20home").forEach(b => b.remove()); };
-    return { inject, setEnabled, rows, send, watch: ".ui-dialog" };
+    return { inject, setEnabled, rows, send, npcReady, npcList, npcFill, watch: ".ui-dialog" };
 })();
 addFeature("homeExport", homeExport);
-addBundle({ place: "main", order: 6.1, group: "prep", label: "홈페이지로 보내기 (캐릭터 시트 🏠)", sub: "캐릭터 시트 창 머리줄 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(공개) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
+addBundle({ place: "main", order: 6.1, group: "prep", label: "홈페이지로 보내기 (캐릭터 시트 🏠 · NPC 보관소 📇)", sub: "캐릭터 시트 창 머리줄 📇 — NPC 보관소에 시트 통째로 (다른 방에서 새 시트 이름 칸에 치면 불러옴) · 🏠 — 홈페이지 캐릭터 게시판으로 · 이름 · 룰이 같은 시트가 있으면 새 판, 없으면 새 시트(공개) · 원본도 보관 · 아래에 홈페이지 주소 · 열쇠",
     members: [["home", "homeExport"]], extra: () => homeExport.rows() });
 addCss(`
         .ui-dialog-titlebar {
@@ -16573,6 +16682,8 @@ const autofill = (() => {
         return row ? { base: m[1] || "", row, sys } : null;
     };
     const ctx = el => {
+        // 시트 이름 칸: NPC 보관소에서 골라 시트 통째로 불러오기 (홈페이지 주소 · 열쇠가 있는 GM 만 · homeExport)
+        if (el.name === "attr_character_name") return !el.disabled && !el.closest(".repitem") && FEAT.homeExport?.npcReady?.() ? { sys: "npc" } : null;
         if (BM_RE.test(el.name || "")) return el.disabled ? null : bmCtx(el);
         if (el.name === "attr_kind") { const row = !el.disabled && el.closest(".bm") && el.closest('.repcontainer[data-groupname="repeating_followers"] .repitem'); return row ? { base: "", row, sys: "bloodmoon_follower" } : null; }
         const m = el.name?.match(NAME_RE);
@@ -16603,6 +16714,11 @@ const autofill = (() => {
         return head.concat(mid).slice(0, MAX);
     };
 
+    const npcFind = (list, q) => {
+        const head = [], mid = [];
+        list.forEach(r => { const n = norm(r.name); if (n.startsWith(q)) head.push(r); else if (n.includes(q) || norm(r.tags).includes(q)) mid.push(r); });
+        return head.concat(mid).slice(0, MAX).map(r => ({ ...r, _npc: true }));
+    };
     const render = () => {
         ensureBox().innerHTML = "";
         items.forEach((r, i) => {
@@ -16613,7 +16729,7 @@ const autofill = (() => {
             const b = document.createElement("b");
             b.textContent = r.name;
             const s = document.createElement("small");
-            s.textContent = [r.enemy && "에너미 전용", r.group, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
+            s.textContent = r._npc ? ["📇 NPC 보관소", r.rule_name || r.rule, r.tags].filter(Boolean).join(" · ") : [r.enemy && "에너미 전용", r.group, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
             it.append(b, s);
             box.appendChild(it);
         });
@@ -16662,6 +16778,12 @@ const autofill = (() => {
     };
 
     const apply = rec => {
+        if (rec?._npc) {            // 이름 칸에 이름을 넣고 시트 전체는 보관소에서 (homeExport.npcFill)
+            const inp = input;
+            close();
+            if (inp) { setField(inp, rec.name); FEAT.homeExport?.npcFill?.(inp, rec); }
+            return;
+        }
         const c = rec && input && ctx(input);
         if (!c) return close();
         const map = FIELDS[c.sys];
@@ -16689,6 +16811,19 @@ const autofill = (() => {
         if (!btnVisible.autofill || filling) return;
         const c = ctx(e.target);
         if (!c) return;
+        if (c.sys === "npc") {          // 보관소 목록은 받아 와야 한다 — 받는 사이 글이 바뀌었거나 칸을 떠났으면 버린다
+            const t = e.target, q = norm(t.value);
+            if (!q) return close();
+            if (!e.isComposing && t.getAttribute("autocomplete") !== "off") t.setAttribute("autocomplete", "off");
+            FEAT.homeExport.npcList().then(list => {
+                if (norm(t.value) !== q || t.ownerDocument.activeElement !== t) return;
+                const found = npcFind(list, q);
+                if (!found.length) return close();
+                input = t; items = found; sel = 0;
+                render();
+            }).catch(() => { /* 알림은 npcList 가 */ });
+            return;
+        }
         const found = search(c.sys, norm(e.target.value));
         if (!found.length) return close();
         input = e.target;
@@ -16839,7 +16974,7 @@ const abTok = (() => {
     const hide = () => { chip?.remove(); chip = null; };
     const over = e => {
         if (!btnVisible.abtok || !isGM() || pop) return;
-        const inp = e.target, x0 = inp?.name && autofill.ctx(inp), x = x0?.sys === "bloodmoon_follower" ? null : x0;      // 팔로워 종별 칸은 어빌리티가 아님
+        const inp = e.target, x0 = inp?.name && autofill.ctx(inp), x = x0?.sys === "bloodmoon_follower" || x0?.sys === "npc" ? null : x0;      // 팔로워 종별 · 시트 이름 칸은 어빌리티가 아님
         if (!x) { if (chip && !hideT) hideT = setTimeout(() => { hideT = 0; hide(); }, 350); return; }
         clearTimeout(hideT); hideT = 0;
         const c = charOf(inp), nm = String(inp.value || "").trim();
