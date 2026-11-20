@@ -105,9 +105,9 @@
 .amadeus .ab .ev,.amadeus .ab .dc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-right:1px solid var(--line)}
 .amadeus .ab .dc:last-child{border-right:0}
 .amadeus .ab small{color:var(--sub)}
-.amadeus .ab .g{font:800 19px/1.1 var(--sans);min-height:21px}
-.amadeus .ab .sel{display:flex;gap:3px}
-.amadeus .ab .v{font:700 16px/1.2 var(--sans)}
+.amadeus .ab input.g{width:70px;text-align:center;font:800 19px/1.2 var(--sans);border-bottom:1px dotted var(--line)}
+.amadeus .ab input.v{width:44px;text-align:center;font:700 16px/1.2 var(--sans);border-bottom:1px dotted var(--line)}
+.amadeus .ab .dn{display:flex;align-items:baseline;gap:2px}
 .amadeus .ab .lo{font-size:10px}
 
 /* life */
@@ -117,7 +117,9 @@
 .amadeus .hc .v{font:700 20px/1.3 var(--sans);text-align:left}
 .amadeus .hc .base{display:flex;align-items:center;gap:4px;color:var(--sub)}
 .amadeus .hc .base input[type=number]{width:46px;border-bottom:1px dotted var(--line)}
-.amadeus .dbtn{font-size:13px}
+/* small text buttons: roll, post to chat, eat */
+.amadeus button[type=action].tb,.amadeus button[type=action].use{font:500 11px/1.6 var(--sans);color:var(--sub);border:1px solid var(--line);border-radius:3px;padding:0 6px;white-space:nowrap}
+.amadeus button[type=action].tb:hover,.amadeus button[type=action].use:hover{color:var(--ink);border-color:var(--ink)}
 .amadeus .stp{display:flex;align-items:center;gap:4px}
 .amadeus .stp button[type=action]{width:22px;height:22px;border:1px solid var(--line);border-radius:3px;text-align:center}
 .amadeus .stp input[type=number]{width:52px}
@@ -131,11 +133,10 @@
 .amadeus .rr{border-bottom:1px dotted var(--line);min-height:30px}
 .amadeus .rr>*{padding:3px 5px}
 .amadeus .rr>input.pt{justify-self:center;padding:0}
+.amadeus .rr>.use{justify-self:center}
 .amadeus .rr .c{text-align:center}
 .amadeus .rr>input[type=text]+input[type=text]{text-align:center}
-.amadeus .use{color:var(--sub);font-size:11px;text-align:center}
-.amadeus .use:hover{color:var(--accent)}
-.amadeus .rh.gift,.amadeus .rr.gift{grid-template-columns:24px 140px 54px 56px 54px 60px minmax(0,1fr) 24px}
+.amadeus .rh.gift,.amadeus .rr.gift{grid-template-columns:24px 140px 54px 56px 54px 60px minmax(0,1fr) 44px}
 .amadeus .printed{background:var(--cell)}
 .amadeus .printed .gn{font:800 14px var(--serif)}
 .amadeus .ef{font-size:11.5px;line-height:1.45}
@@ -150,7 +151,7 @@
 .amadeus .cv{display:flex;align-items:flex-end;justify-content:flex-end;gap:6px;padding:26px 10px 10px}
 .amadeus .cv input[type=number]{width:70px;font:700 22px var(--sans);text-align:right;border-bottom:1px dotted var(--line)}
 .amadeus .cv small{font:700 12px var(--serif)}
-.amadeus .rh.item,.amadeus .rr.item{grid-template-columns:minmax(0,1.2fr) 70px 46px minmax(0,2fr) 24px}
+.amadeus .rh.item,.amadeus .rr.item{grid-template-columns:minmax(0,1.2fr) 70px 46px minmax(0,2fr) 44px}
 .amadeus .kind{display:flex;gap:3px;justify-content:center}
 .amadeus label.kd.kdp,.amadeus label.kd.kdc,.amadeus label.sg.sgp,.amadeus label.sg.sgm{display:inline-flex;width:auto;margin:0;font:400 11px var(--sans);cursor:pointer}
 .amadeus .kd input,.amadeus .sg input{display:none}

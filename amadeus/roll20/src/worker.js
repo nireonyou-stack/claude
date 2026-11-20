@@ -1,32 +1,28 @@
-// 아마데우스 시트 워커 — 능력치 평가 계산 · 생명력 최대치 · 굴림 · 채팅 출력(Custom Roll Parsing)
-// DATA(능력치 · 모드 기호 · 생명력 계수 · 부모신의 축복 · 식료 문구)는 build.py 가 아래 줄에 넣는다
+// 아마데우스 시트 워커 — 생명력 기본 · 최대치 · 굴림 · 채팅 출력(Custom Roll Parsing)
+// DATA(능력치 · 생명력 계수 · 부모신의 축복 · 식료 문구)는 build.py 가 아래 줄에 넣는다
 // @DATA
 const num = v => { const n = parseInt(v, 10); return isNaN(n) ? null : n; };
 const KEYS = DATA.abil.map(([k]) => k);
-// 랭크 → 굴리는 다이스 수 (D 는 2개 굴려 낮은 눈 — 룰 1·02·01 · 3·03)
-const DICE = { S: 4, A: 3, B: 2, C: 1, D: 2 };
 const sign = n => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
-const grade = (r, m) => (r ? r + (m > 0 ? '+'.repeat(m) : m < 0 ? '−'.repeat(-m) : '') : '');
-
-// ── 능력치: 랭크 · 모드 → 평가 글자 · 다이스 수 · 수정 (표시 칸). 열 때마다 다시 채운다 — 가져오기 · API 로 랭크만 바뀐 경우도
-const abilAttrs = KEYS.flatMap(k => [`${k}_rank`, `${k}_mode`]);
-const shown = v => {
-  const out = {};
-  KEYS.forEach(k => {
-    const r = v[`${k}_rank`], m = num(v[`${k}_mode`]) || 0;
-    Object.assign(out, { [`${k}_grade`]: grade(r, m), [`${k}_dice`]: r ? `${DICE[r]}개` : '', [`${k}_low`]: r === 'D' ? '낮은 눈' : '', [`${k}_mod`]: r ? sign(m) : '' });
-  });
-  return out;
+// 평가 · 다이스 개수 · 수정은 플레이어가 적는다 (공식 시트처럼). 평가 글자 읽기: 랭크 S~D + 모드(+ 개수 / − 개수)
+const parseGrade = g => {
+  const m = String(g || '').trim().toUpperCase().match(/^([SABCD])\s*([+＋]*|[-−－]*)\s*$/);
+  return m ? { rank: m[1], mode: /[+＋]/.test(m[2]) ? m[2].length : -m[2].length } : null;
 };
-on('sheet:opened', () => getAttrs(abilAttrs.concat('sheet_version'), v => {
-  setAttrs(Object.assign(shown(v), num(v.sheet_version) >= 1 ? {} : { sheet_version: 1 }), { silent: true });
+const parseMod = v => { const n = parseInt(String(v || '').replace(/[−－]/g, '-').replace(/＋/g, '+').replace(/\s/g, ''), 10); return isNaN(n) ? 0 : n; };
+
+on('sheet:opened', () => getAttrs(['sheet_version'], v => {
+  if (num(v.sheet_version) >= 1) return;
+  setAttrs({ sheet_version: 1 }, { silent: true });
 }));
-// 무용 · 영력이 바뀌면 생명력 기본(최대치에서 활력 뺀 값)도 다시 계산
-on(abilAttrs.map(a => `change:${a}`).join(' '), e => getAttrs(abilAttrs, v => {
-  const out = shown(v);
-  const src = (e.sourceAttribute || '').toLowerCase();
-  if (/^(war|spi)_/.test(src) && v.war_rank && v.spi_rank) {
-    const hp = ['war', 'spi'].reduce((t, k) => t + DATA.hpRank[v[`${k}_rank`]] + (DATA.hpMode[v[`${k}_mode`] || '0'] || 0), 0);
+
+// 평가가 D 면 다이스 칸 아래 '낮은 눈' (2개 굴려 낮은 눈 — 룰 3·03). 무용 · 영력 평가가 바뀌면 생명력 기본(최대치에서 활력 뺀 값)을 다시 계산
+on(KEYS.map(k => `change:${k}_grade`).join(' '), e => getAttrs(KEYS.map(k => `${k}_grade`), v => {
+  const out = {};
+  KEYS.forEach(k => { const p = parseGrade(v[`${k}_grade`]); out[`${k}_low`] = p && p.rank === 'D' ? '낮은 눈' : ''; });
+  const src = (e.sourceAttribute || '').toLowerCase(), w = parseGrade(v.war_grade), sp = parseGrade(v.spi_grade);
+  if (/^(war|spi)_/.test(src) && w && sp) {
+    const hp = [w, sp].reduce((t, p) => t + DATA.hpRank[p.rank] + (DATA.hpMode[String(Math.max(-2, Math.min(3, p.mode)))] || 0), 0);
     out.hp_base = Math.max(0, hp);
   }
   setAttrs(out);
@@ -53,18 +49,18 @@ const rows = list => list.filter(([, v]) => v).slice(0, 3).map(([k, v], i) => fi
 const rowOf = (e, sec) => { const m = `${e.sourceAttribute || ''} ${e.triggerName || ''}`.match(new RegExp(`repeating_${sec}_([^_\\s]+)_`, 'i')); return m ? `repeating_${sec}_${m[1]}_` : null; };
 
 // 행위판정 (룰 3·01~3·03):
-//   랭크만큼 D6 (D 는 2개 굴려 가장 낮은 눈) · 액션 다이스는 가장 높은 눈(D 는 가장 낮은 눈)으로 자동
-//   달성치 = 액션 다이스 + 능력치 수정 + 기타 수정 ≥ 목표치(기본 4) → 성공 · 액션 다이스 6 스페셜(성공) · 1 펌블(실패)
+//   적힌 다이스 개수만큼 D6 (평가가 D 면 2개 굴려 가장 낮은 눈) · 액션 다이스는 가장 높은 눈(D 는 가장 낮은 눈)으로 자동
+//   달성치 = 액션 다이스 + 수정 칸 + 기타 수정 ≥ 목표치(기본 4) → 성공 · 액션 다이스 6 스페셜(성공) · 1 펌블(실패)
 //   무드 다이스(인과)는 다이스 2개 이상 · 랭크D 아님일 때만 — 플레이어가 고르니 눈마다 운명의 수레바퀴 색만 보여 준다
-//   ok: 1 성공 · 2 실패 · 3 스페셜 · 4 펌블 (카드 도장)
-DATA.abil.forEach(([k, name]) => on(`clicked:${k}`, () => getAttrs([`${k}_rank`, `${k}_mode`, 'character_name', 'st_rage', 'st_corrupt'], v => {
-  const r = v[`${k}_rank`], m = num(v[`${k}_mode`]) || 0;
-  if (!r) return post(T + field('title', `${name} 판정`) + field('effect', `【${name}】 평가를 먼저 고르세요`) + field('who', v.character_name));
-  const n = DICE[r], low = r === 'D';
+//   ok: 1 성공 · 2 실패 · 3 스페셜 · 4 펌블 (카드 도장). 한 번에 4개까지
+DATA.abil.forEach(([k, name]) => on(`clicked:${k}`, () => getAttrs([`${k}_grade`, `${k}_dice`, `${k}_mod`, 'character_name', 'st_rage', 'st_corrupt'], v => {
+  const g = (v[`${k}_grade`] || '').trim(), p = parseGrade(g), low = !!p && p.rank === 'D', m = parseMod(v[`${k}_mod`]);
+  const n = low ? 2 : Math.min(4, num(v[`${k}_dice`]) || 0);
+  if (!n) return post(T + field('title', `${name} 판정`) + field('effect', `【${name}】 다이스 개수를 먼저 적으세요`) + field('who', v.character_name));
   post(`${T} {{ok=[[0]]}} {{res=[[0]]}} {{sum=[[0]]}} {{calc=[[0]]}} {{tgt=[[0]]}} {{note=[[0]]}} {{a=[[0]]}} {{m=[[0]]}}`
     + ' {{x1=[[0]]}} {{x2=[[0]]}} {{x3=[[0]]}} {{x4=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{d3=[[1d6]]}} {{d4=[[1d6]]}}'
     + ' {{target=[[?{목표치|4}]]}} {{bonus=[[?{기타 수정|0}]]}}'
-    + field('title', `${name} 판정`) + field('sub', `${grade(r, m)} · ${low ? '2D6 낮은 눈' : `${n}D6`}`) + field('who', v.character_name)
+    + field('title', `${name} 판정`) + field('sub', [g, low ? '2D6 낮은 눈' : `${n}D6`].filter(Boolean).join(' · ')) + field('who', v.character_name)
     + (v.st_rage === '1' ? field('st1', '분노: 가장 낮은 눈을 무드 다이스로') : '') + (v.st_corrupt === '1' ? field('st2', '타락: 무드 다이스를 고르려면 【생명력】 1점 감소') : ''),
   x => {
     const ds = [1, 2, 3, 4].map(i => x[`d${i}`].result), use = ds.slice(0, n);

@@ -15,10 +15,7 @@ OUT = SRC.parent / 'sheet'
 # 능력치: (열쇠, 이름, 영문) — 공식 시트 배치대로 두 줄씩 (무용 | 영력, 기술 | 사랑, 두뇌 | 일상)
 ABIL = [('war', '무용', 'WARFARE'), ('spi', '영력', 'SPIRIT'), ('tec', '기술', 'TECHNIQUE'),
         ('lov', '사랑', 'LOVE'), ('bra', '두뇌', 'BRAIN'), ('mun', '일상', 'MUNDANE')]
-RANKS = ['S', 'A', 'B', 'C', 'D']
-# 모드: 값 → 표시 (평가 글자에 붙는 기호)
-MODES = [('3', '+++'), ('2', '++'), ('1', '+'), ('0', '없음'), ('-1', '−'), ('-2', '−−')]
-# 생명력 최대치 = 무용 · 영력의 랭크 계수 + 모드 계수 (룰 1·03·01·01 생명력 산출표)
+# 생명력 기본 = 무용 · 영력의 랭크 계수 + 모드 계수 (룰 1·03·01·01 생명력 산출표). 평가 글자(예: A+)를 읽어 계산
 HP_RANK = {'S': 10, 'A': 7, 'B': 5, 'C': 3, 'D': 1}
 HP_MODE = {'3': 6, '2': 3, '1': 1, '0': 0, '-1': -1, '-2': -2}
 # 공식 캐릭터 시트에 인쇄된 문구 (번역)
@@ -32,18 +29,16 @@ WHEEL = ['흑', '적', '청', '녹', '백', '아무 곳']
 
 
 def abilities():
+    """능력치 칸: 이름(판정 단추) · 평가 · 다이스 개수 · 수정 — 셋 다 직접 입력 (공식 시트처럼). 평가가 D 면 '낮은 눈' 표시는 워커가"""
     out = []
     for k, name, eng in ABIL:
-        ranks = ''.join(f'<option value="{r}">{r}</option>' for r in RANKS)
-        modes = ''.join(f'<option value="{v}">{t}</option>' for v, t in MODES)
         out.append(
             f'      <div class="ab">\n'
             f'        <button type="action" name="act_{k}" class="nm" title="{name} 판정"><b>{name}</b><i>{eng}</i></button>\n'
-            f'        <div class="ev"><small>평가</small><span class="g" name="attr_{k}_grade"></span>'
-            f'<span class="sel"><select name="attr_{k}_rank" title="{name} 랭크"><option value="" selected>-</option>{ranks}</select>'
-            f'<select name="attr_{k}_mode" title="{name} 모드"><option value="" selected>-</option>{modes}</select></span></div>\n'
-            f'        <div class="dc"><small>다이스</small><span class="v" name="attr_{k}_dice"></span><small class="lo" name="attr_{k}_low"></small></div>\n'
-            f'        <div class="dc"><small>수정</small><span class="v" name="attr_{k}_mod"></span></div>\n'
+            f'        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_{k}_grade" title="{name} 평가"></div>\n'
+            f'        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_{k}_dice" min="1" title="{name} 다이스 개수"><i>개</i></span>'
+            f'<small class="lo" name="attr_{k}_low"></small></div>\n'
+            f'        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_{k}_mod" title="{name} 수정"></div>\n'
             f'      </div>')
     return '\n'.join(out)
 
@@ -63,7 +58,7 @@ def rolltemplate():
 
 def data():
     return 'const DATA = ' + json.dumps({
-        'abil': ABIL, 'modes': dict(MODES), 'hpRank': HP_RANK, 'hpMode': HP_MODE, 'blessing': BLESSING, 'food': FOOD,
+        'abil': ABIL, 'hpRank': HP_RANK, 'hpMode': HP_MODE, 'blessing': BLESSING, 'food': FOOD,
     }, ensure_ascii=False) + ';'
 
 

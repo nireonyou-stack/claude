@@ -40,39 +40,39 @@
     <div class="abil">
       <div class="ab">
         <button type="action" name="act_war" class="nm" title="무용 판정"><b>무용</b><i>WARFARE</i></button>
-        <div class="ev"><small>평가</small><span class="g" name="attr_war_grade"></span><span class="sel"><select name="attr_war_rank" title="무용 랭크"><option value="" selected>-</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select><select name="attr_war_mode" title="무용 모드"><option value="" selected>-</option><option value="3">+++</option><option value="2">++</option><option value="1">+</option><option value="0">없음</option><option value="-1">−</option><option value="-2">−−</option></select></span></div>
-        <div class="dc"><small>다이스</small><span class="v" name="attr_war_dice"></span><small class="lo" name="attr_war_low"></small></div>
-        <div class="dc"><small>수정</small><span class="v" name="attr_war_mod"></span></div>
+        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_war_grade" title="무용 평가"></div>
+        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_war_dice" min="1" title="무용 다이스 개수"><i>개</i></span><small class="lo" name="attr_war_low"></small></div>
+        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_war_mod" title="무용 수정"></div>
       </div>
       <div class="ab">
         <button type="action" name="act_spi" class="nm" title="영력 판정"><b>영력</b><i>SPIRIT</i></button>
-        <div class="ev"><small>평가</small><span class="g" name="attr_spi_grade"></span><span class="sel"><select name="attr_spi_rank" title="영력 랭크"><option value="" selected>-</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select><select name="attr_spi_mode" title="영력 모드"><option value="" selected>-</option><option value="3">+++</option><option value="2">++</option><option value="1">+</option><option value="0">없음</option><option value="-1">−</option><option value="-2">−−</option></select></span></div>
-        <div class="dc"><small>다이스</small><span class="v" name="attr_spi_dice"></span><small class="lo" name="attr_spi_low"></small></div>
-        <div class="dc"><small>수정</small><span class="v" name="attr_spi_mod"></span></div>
+        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_spi_grade" title="영력 평가"></div>
+        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_spi_dice" min="1" title="영력 다이스 개수"><i>개</i></span><small class="lo" name="attr_spi_low"></small></div>
+        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_spi_mod" title="영력 수정"></div>
       </div>
       <div class="ab">
         <button type="action" name="act_tec" class="nm" title="기술 판정"><b>기술</b><i>TECHNIQUE</i></button>
-        <div class="ev"><small>평가</small><span class="g" name="attr_tec_grade"></span><span class="sel"><select name="attr_tec_rank" title="기술 랭크"><option value="" selected>-</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select><select name="attr_tec_mode" title="기술 모드"><option value="" selected>-</option><option value="3">+++</option><option value="2">++</option><option value="1">+</option><option value="0">없음</option><option value="-1">−</option><option value="-2">−−</option></select></span></div>
-        <div class="dc"><small>다이스</small><span class="v" name="attr_tec_dice"></span><small class="lo" name="attr_tec_low"></small></div>
-        <div class="dc"><small>수정</small><span class="v" name="attr_tec_mod"></span></div>
+        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_tec_grade" title="기술 평가"></div>
+        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_tec_dice" min="1" title="기술 다이스 개수"><i>개</i></span><small class="lo" name="attr_tec_low"></small></div>
+        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_tec_mod" title="기술 수정"></div>
       </div>
       <div class="ab">
         <button type="action" name="act_lov" class="nm" title="사랑 판정"><b>사랑</b><i>LOVE</i></button>
-        <div class="ev"><small>평가</small><span class="g" name="attr_lov_grade"></span><span class="sel"><select name="attr_lov_rank" title="사랑 랭크"><option value="" selected>-</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select><select name="attr_lov_mode" title="사랑 모드"><option value="" selected>-</option><option value="3">+++</option><option value="2">++</option><option value="1">+</option><option value="0">없음</option><option value="-1">−</option><option value="-2">−−</option></select></span></div>
-        <div class="dc"><small>다이스</small><span class="v" name="attr_lov_dice"></span><small class="lo" name="attr_lov_low"></small></div>
-        <div class="dc"><small>수정</small><span class="v" name="attr_lov_mod"></span></div>
+        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_lov_grade" title="사랑 평가"></div>
+        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_lov_dice" min="1" title="사랑 다이스 개수"><i>개</i></span><small class="lo" name="attr_lov_low"></small></div>
+        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_lov_mod" title="사랑 수정"></div>
       </div>
       <div class="ab">
         <button type="action" name="act_bra" class="nm" title="두뇌 판정"><b>두뇌</b><i>BRAIN</i></button>
-        <div class="ev"><small>평가</small><span class="g" name="attr_bra_grade"></span><span class="sel"><select name="attr_bra_rank" title="두뇌 랭크"><option value="" selected>-</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select><select name="attr_bra_mode" title="두뇌 모드"><option value="" selected>-</option><option value="3">+++</option><option value="2">++</option><option value="1">+</option><option value="0">없음</option><option value="-1">−</option><option value="-2">−−</option></select></span></div>
-        <div class="dc"><small>다이스</small><span class="v" name="attr_bra_dice"></span><small class="lo" name="attr_bra_low"></small></div>
-        <div class="dc"><small>수정</small><span class="v" name="attr_bra_mod"></span></div>
+        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_bra_grade" title="두뇌 평가"></div>
+        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_bra_dice" min="1" title="두뇌 다이스 개수"><i>개</i></span><small class="lo" name="attr_bra_low"></small></div>
+        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_bra_mod" title="두뇌 수정"></div>
       </div>
       <div class="ab">
         <button type="action" name="act_mun" class="nm" title="일상 판정"><b>일상</b><i>MUNDANE</i></button>
-        <div class="ev"><small>평가</small><span class="g" name="attr_mun_grade"></span><span class="sel"><select name="attr_mun_rank" title="일상 랭크"><option value="" selected>-</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select><select name="attr_mun_mode" title="일상 모드"><option value="" selected>-</option><option value="3">+++</option><option value="2">++</option><option value="1">+</option><option value="0">없음</option><option value="-1">−</option><option value="-2">−−</option></select></span></div>
-        <div class="dc"><small>다이스</small><span class="v" name="attr_mun_dice"></span><small class="lo" name="attr_mun_low"></small></div>
-        <div class="dc"><small>수정</small><span class="v" name="attr_mun_mod"></span></div>
+        <div class="ev"><small>평가</small><input type="text" class="g" name="attr_mun_grade" title="일상 평가"></div>
+        <div class="dc"><small>다이스</small><span class="dn"><input type="number" class="v" name="attr_mun_dice" min="1" title="일상 다이스 개수"><i>개</i></span><small class="lo" name="attr_mun_low"></small></div>
+        <div class="dc"><small>수정</small><input type="text" class="v" name="attr_mun_mod" title="일상 수정"></div>
       </div>
     </div>
 
@@ -81,7 +81,7 @@
     <div class="hp">
       <div class="hc"><small>최대치</small><span class="v" name="attr_hp_max"></span>
         <span class="base"><small>기본</small><input type="number" name="attr_hp_base" title="생명력 최대치 (활력 제외)"></span></div>
-      <div class="hc"><small>활력<button type="action" name="act_vigor" class="dbtn" title="활력 굴리기 (레벨D6)">🎲</button></small><input type="number" class="v" name="attr_vigor" min="0" title="활력"></div>
+      <div class="hc"><small>활력<button type="action" name="act_vigor" class="tb" title="활력 굴리기 (레벨D6)">굴림</button></small><input type="number" class="v" name="attr_vigor" min="0" title="활력"></div>
       <div class="hc"><small>현재치</small><span class="stp"><button type="action" name="act_hpdn" title="생명력 1 줄이기">−</button><input type="number" class="v" name="attr_hp" min="0" title="생명력 현재치"><button type="action" name="act_hpup" title="생명력 1 늘리기">+</button></span></div>
       <div class="conds">
         <label class="st stc"><input type="checkbox" name="attr_st_despair" value="1"><span>절망</span></label>
@@ -97,11 +97,11 @@
     <div class="hb">기프트</div>
     <div class="gifts">
       <div class="rh gift"><span></span><span>기프트명</span><span>분류</span><span>조건</span><span>판정</span><span>태그</span><span>효과</span><span></span></div>
-      <div class="rr gift printed"><input type="checkbox" class="pt" name="attr_blessing_seal" value="1" title="봉인"><span class="gn">부모신의 축복</span><span class="c">보조</span><span class="c">※</span><span class="c">없음</span><span></span><span class="ef">자신이 판정을 할 때, 그 판정이 자신의 부모신의 권능에 관한 것이라면 판정의 주사위를 굴리기 전에 사용할 수 있다. 자신의 【생명력】을 2점 소비할 때마다 그 판정의 달성치가 1점 상승한다. 단, 【생명력】은 [자신의 속성과 같은 영역의 각성단계×2]점까지만 소비할 수 있다.</span><button type="action" name="act_blessing" class="use" title="채팅에 출력">▶</button></div>
+      <div class="rr gift printed"><input type="checkbox" class="pt" name="attr_blessing_seal" value="1" title="봉인"><span class="gn">부모신의 축복</span><span class="c">보조</span><span class="c">※</span><span class="c">없음</span><span></span><span class="ef">자신이 판정을 할 때, 그 판정이 자신의 부모신의 권능에 관한 것이라면 판정의 주사위를 굴리기 전에 사용할 수 있다. 자신의 【생명력】을 2점 소비할 때마다 그 판정의 달성치가 1점 상승한다. 단, 【생명력】은 [자신의 속성과 같은 영역의 각성단계×2]점까지만 소비할 수 있다.</span><button type="action" name="act_blessing" class="use" title="채팅에 출력">출력</button></div>
       <fieldset class="repeating_gifts">
         <div class="rr gift"><input type="checkbox" class="pt" name="attr_seal" value="1" title="봉인"><input type="text" name="attr_name" title="기프트명"><input type="text" name="attr_cat" title="분류"><input type="text" name="attr_cond" title="조건"><input type="text" name="attr_check" title="판정"><input type="text" name="attr_tag" title="태그">
           <div class="ae"><span name="attr_eff"></span><textarea name="attr_eff" title="효과"></textarea></div>
-          <button type="action" name="act_use" class="use" title="채팅에 출력">▶</button></div>
+          <button type="action" name="act_use" class="use" title="채팅에 출력">출력</button></div>
       </fieldset>
     </div>
 
@@ -115,11 +115,11 @@
           <div class="rr item"><input type="text" name="attr_name" title="아이템명">
             <span class="kind"><input type="radio" class="none" name="attr_kind" value="" checked><label class="kd kdp"><input type="radio" name="attr_kind" value="p"><span>상</span></label><label class="kd kdc"><input type="radio" name="attr_kind" value="c"><span>소</span></label></span>
             <input type="text" name="attr_power" title="위력"><div class="ae"><span name="attr_spec"></span><textarea name="attr_spec" title="특수기능"></textarea></div>
-            <button type="action" name="act_use" class="use" title="채팅에 출력">▶</button></div>
+            <button type="action" name="act_use" class="use" title="채팅에 출력">출력</button></div>
         </fieldset>
         <div class="rr item food"><span class="fd"><b>식료</b><input type="number" name="attr_food" min="0" max="5" title="식료 개수"><span>개</span></span>
           <span class="kind"><span class="kx">상</span><span class="kx on">소</span></span><span></span><span class="ef">휴식 시에 식사를 하는 것으로 【생명력】을 1점 회복할 수 있다.</span>
-          <button type="action" name="act_eat" class="use" title="식료 1개로 생명력 1점 회복">▶</button></div>
+          <button type="action" name="act_eat" class="use" title="식료 1개로 생명력 1점 회복">먹기</button></div>
       </div>
     </div>
 
@@ -160,35 +160,31 @@
   </div>
 </rolltemplate>
 <script type="text/worker">
-// 아마데우스 시트 워커 — 능력치 평가 계산 · 생명력 최대치 · 굴림 · 채팅 출력(Custom Roll Parsing)
-// DATA(능력치 · 모드 기호 · 생명력 계수 · 부모신의 축복 · 식료 문구)는 build.py 가 아래 줄에 넣는다
-const DATA = {"abil": [["war", "무용", "WARFARE"], ["spi", "영력", "SPIRIT"], ["tec", "기술", "TECHNIQUE"], ["lov", "사랑", "LOVE"], ["bra", "두뇌", "BRAIN"], ["mun", "일상", "MUNDANE"]], "modes": {"3": "+++", "2": "++", "1": "+", "0": "없음", "-1": "−", "-2": "−−"}, "hpRank": {"S": 10, "A": 7, "B": 5, "C": 3, "D": 1}, "hpMode": {"3": 6, "2": 3, "1": 1, "0": 0, "-1": -1, "-2": -2}, "blessing": ["부모신의 축복", "보조", "※", "없음", "자신이 판정을 할 때, 그 판정이 자신의 부모신의 권능에 관한 것이라면 판정의 주사위를 굴리기 전에 사용할 수 있다. 자신의 【생명력】을 2점 소비할 때마다 그 판정의 달성치가 1점 상승한다. 단, 【생명력】은 [자신의 속성과 같은 영역의 각성단계×2]점까지만 소비할 수 있다."], "food": "휴식 시에 식사를 하는 것으로 【생명력】을 1점 회복할 수 있다."};
+// 아마데우스 시트 워커 — 생명력 기본 · 최대치 · 굴림 · 채팅 출력(Custom Roll Parsing)
+// DATA(능력치 · 생명력 계수 · 부모신의 축복 · 식료 문구)는 build.py 가 아래 줄에 넣는다
+const DATA = {"abil": [["war", "무용", "WARFARE"], ["spi", "영력", "SPIRIT"], ["tec", "기술", "TECHNIQUE"], ["lov", "사랑", "LOVE"], ["bra", "두뇌", "BRAIN"], ["mun", "일상", "MUNDANE"]], "hpRank": {"S": 10, "A": 7, "B": 5, "C": 3, "D": 1}, "hpMode": {"3": 6, "2": 3, "1": 1, "0": 0, "-1": -1, "-2": -2}, "blessing": ["부모신의 축복", "보조", "※", "없음", "자신이 판정을 할 때, 그 판정이 자신의 부모신의 권능에 관한 것이라면 판정의 주사위를 굴리기 전에 사용할 수 있다. 자신의 【생명력】을 2점 소비할 때마다 그 판정의 달성치가 1점 상승한다. 단, 【생명력】은 [자신의 속성과 같은 영역의 각성단계×2]점까지만 소비할 수 있다."], "food": "휴식 시에 식사를 하는 것으로 【생명력】을 1점 회복할 수 있다."};
 const num = v => { const n = parseInt(v, 10); return isNaN(n) ? null : n; };
 const KEYS = DATA.abil.map(([k]) => k);
-// 랭크 → 굴리는 다이스 수 (D 는 2개 굴려 낮은 눈 — 룰 1·02·01 · 3·03)
-const DICE = { S: 4, A: 3, B: 2, C: 1, D: 2 };
 const sign = n => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
-const grade = (r, m) => (r ? r + (m > 0 ? '+'.repeat(m) : m < 0 ? '−'.repeat(-m) : '') : '');
-
-// ── 능력치: 랭크 · 모드 → 평가 글자 · 다이스 수 · 수정 (표시 칸). 열 때마다 다시 채운다 — 가져오기 · API 로 랭크만 바뀐 경우도
-const abilAttrs = KEYS.flatMap(k => [`${k}_rank`, `${k}_mode`]);
-const shown = v => {
-  const out = {};
-  KEYS.forEach(k => {
-    const r = v[`${k}_rank`], m = num(v[`${k}_mode`]) || 0;
-    Object.assign(out, { [`${k}_grade`]: grade(r, m), [`${k}_dice`]: r ? `${DICE[r]}개` : '', [`${k}_low`]: r === 'D' ? '낮은 눈' : '', [`${k}_mod`]: r ? sign(m) : '' });
-  });
-  return out;
+// 평가 · 다이스 개수 · 수정은 플레이어가 적는다 (공식 시트처럼). 평가 글자 읽기: 랭크 S~D + 모드(+ 개수 / − 개수)
+const parseGrade = g => {
+  const m = String(g || '').trim().toUpperCase().match(/^([SABCD])\s*([+＋]*|[-−－]*)\s*$/);
+  return m ? { rank: m[1], mode: /[+＋]/.test(m[2]) ? m[2].length : -m[2].length } : null;
 };
-on('sheet:opened', () => getAttrs(abilAttrs.concat('sheet_version'), v => {
-  setAttrs(Object.assign(shown(v), num(v.sheet_version) >= 1 ? {} : { sheet_version: 1 }), { silent: true });
+const parseMod = v => { const n = parseInt(String(v || '').replace(/[−－]/g, '-').replace(/＋/g, '+').replace(/\s/g, ''), 10); return isNaN(n) ? 0 : n; };
+
+on('sheet:opened', () => getAttrs(['sheet_version'], v => {
+  if (num(v.sheet_version) >= 1) return;
+  setAttrs({ sheet_version: 1 }, { silent: true });
 }));
-// 무용 · 영력이 바뀌면 생명력 기본(최대치에서 활력 뺀 값)도 다시 계산
-on(abilAttrs.map(a => `change:${a}`).join(' '), e => getAttrs(abilAttrs, v => {
-  const out = shown(v);
-  const src = (e.sourceAttribute || '').toLowerCase();
-  if (/^(war|spi)_/.test(src) && v.war_rank && v.spi_rank) {
-    const hp = ['war', 'spi'].reduce((t, k) => t + DATA.hpRank[v[`${k}_rank`]] + (DATA.hpMode[v[`${k}_mode`] || '0'] || 0), 0);
+
+// 평가가 D 면 다이스 칸 아래 '낮은 눈' (2개 굴려 낮은 눈 — 룰 3·03). 무용 · 영력 평가가 바뀌면 생명력 기본(최대치에서 활력 뺀 값)을 다시 계산
+on(KEYS.map(k => `change:${k}_grade`).join(' '), e => getAttrs(KEYS.map(k => `${k}_grade`), v => {
+  const out = {};
+  KEYS.forEach(k => { const p = parseGrade(v[`${k}_grade`]); out[`${k}_low`] = p && p.rank === 'D' ? '낮은 눈' : ''; });
+  const src = (e.sourceAttribute || '').toLowerCase(), w = parseGrade(v.war_grade), sp = parseGrade(v.spi_grade);
+  if (/^(war|spi)_/.test(src) && w && sp) {
+    const hp = [w, sp].reduce((t, p) => t + DATA.hpRank[p.rank] + (DATA.hpMode[String(Math.max(-2, Math.min(3, p.mode)))] || 0), 0);
     out.hp_base = Math.max(0, hp);
   }
   setAttrs(out);
@@ -215,18 +211,18 @@ const rows = list => list.filter(([, v]) => v).slice(0, 3).map(([k, v], i) => fi
 const rowOf = (e, sec) => { const m = `${e.sourceAttribute || ''} ${e.triggerName || ''}`.match(new RegExp(`repeating_${sec}_([^_\\s]+)_`, 'i')); return m ? `repeating_${sec}_${m[1]}_` : null; };
 
 // 행위판정 (룰 3·01~3·03):
-//   랭크만큼 D6 (D 는 2개 굴려 가장 낮은 눈) · 액션 다이스는 가장 높은 눈(D 는 가장 낮은 눈)으로 자동
-//   달성치 = 액션 다이스 + 능력치 수정 + 기타 수정 ≥ 목표치(기본 4) → 성공 · 액션 다이스 6 스페셜(성공) · 1 펌블(실패)
+//   적힌 다이스 개수만큼 D6 (평가가 D 면 2개 굴려 가장 낮은 눈) · 액션 다이스는 가장 높은 눈(D 는 가장 낮은 눈)으로 자동
+//   달성치 = 액션 다이스 + 수정 칸 + 기타 수정 ≥ 목표치(기본 4) → 성공 · 액션 다이스 6 스페셜(성공) · 1 펌블(실패)
 //   무드 다이스(인과)는 다이스 2개 이상 · 랭크D 아님일 때만 — 플레이어가 고르니 눈마다 운명의 수레바퀴 색만 보여 준다
-//   ok: 1 성공 · 2 실패 · 3 스페셜 · 4 펌블 (카드 도장)
-DATA.abil.forEach(([k, name]) => on(`clicked:${k}`, () => getAttrs([`${k}_rank`, `${k}_mode`, 'character_name', 'st_rage', 'st_corrupt'], v => {
-  const r = v[`${k}_rank`], m = num(v[`${k}_mode`]) || 0;
-  if (!r) return post(T + field('title', `${name} 판정`) + field('effect', `【${name}】 평가를 먼저 고르세요`) + field('who', v.character_name));
-  const n = DICE[r], low = r === 'D';
+//   ok: 1 성공 · 2 실패 · 3 스페셜 · 4 펌블 (카드 도장). 한 번에 4개까지
+DATA.abil.forEach(([k, name]) => on(`clicked:${k}`, () => getAttrs([`${k}_grade`, `${k}_dice`, `${k}_mod`, 'character_name', 'st_rage', 'st_corrupt'], v => {
+  const g = (v[`${k}_grade`] || '').trim(), p = parseGrade(g), low = !!p && p.rank === 'D', m = parseMod(v[`${k}_mod`]);
+  const n = low ? 2 : Math.min(4, num(v[`${k}_dice`]) || 0);
+  if (!n) return post(T + field('title', `${name} 판정`) + field('effect', `【${name}】 다이스 개수를 먼저 적으세요`) + field('who', v.character_name));
   post(`${T} {{ok=[[0]]}} {{res=[[0]]}} {{sum=[[0]]}} {{calc=[[0]]}} {{tgt=[[0]]}} {{note=[[0]]}} {{a=[[0]]}} {{m=[[0]]}}`
     + ' {{x1=[[0]]}} {{x2=[[0]]}} {{x3=[[0]]}} {{x4=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{d3=[[1d6]]}} {{d4=[[1d6]]}}'
     + ' {{target=[[?{목표치|4}]]}} {{bonus=[[?{기타 수정|0}]]}}'
-    + field('title', `${name} 판정`) + field('sub', `${grade(r, m)} · ${low ? '2D6 낮은 눈' : `${n}D6`}`) + field('who', v.character_name)
+    + field('title', `${name} 판정`) + field('sub', [g, low ? '2D6 낮은 눈' : `${n}D6`].filter(Boolean).join(' · ')) + field('who', v.character_name)
     + (v.st_rage === '1' ? field('st1', '분노: 가장 낮은 눈을 무드 다이스로') : '') + (v.st_corrupt === '1' ? field('st2', '타락: 무드 다이스를 고르려면 【생명력】 1점 감소') : ''),
   x => {
     const ds = [1, 2, 3, 4].map(i => x[`d${i}`].result), use = ds.slice(0, n);

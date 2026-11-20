@@ -11,20 +11,25 @@ const last = s => s.rolls[s.rolls.length - 1];
   eq('new: version', String(s.get('sheet_version')), '1');
   eq('placeholder 없음', /placeholder=/.test(HTML), false);
 
-  // ── 평가 · 다이스 · 수정 · 생명력 기본(무용 · 영력 계수) · 최대치 = 기본 + 활력
-  s.set('war_rank', 'A'); s.set('war_mode', '1'); await s.settle();
-  eq('무용 A+', [s.get('war_grade'), s.get('war_dice'), s.get('war_mod')], ['A+', '3개', '+1']);
+  // ── 평가 · 다이스 · 수정은 직접 입력. 평가 글자로 생명력 기본(무용 · 영력 계수) · D 면 '낮은 눈'
+  eq('입력칸: 평가 · 다이스 · 수정', ['war_grade', 'war_dice', 'war_mod'].map(k => new RegExp(`<input[^>]*name="attr_${k}"`).test(HTML)), [true, true, true]);
+  eq('드롭다운 없음', /<select/.test(HTML), false);
+  eq('이모지 · ▶ 없음', /[\u{1F300}-\u{1FAFF}▶]/u.test(HTML.slice(0, HTML.indexOf('<rolltemplate'))), false);
+  s.set('war_grade', 'A+'); s.set('war_dice', '3'); s.set('war_mod', '+1'); await s.settle();
   eq('영력 없으면 생명력 기본 안 채움', s.get('hp_base'), '');
-  s.set('spi_rank', 'C'); s.set('spi_mode', '0'); await s.settle();
+  s.set('spi_grade', 'C'); s.set('spi_dice', '1'); await s.settle();
   eq('생명력 기본 = 7+1 + 3+0', String(s.get('hp_base')), '11');
   eq('최대치 = 기본', String(s.get('hp_max')), '11');
-  s.set('bra_rank', 'D'); s.set('bra_mode', '-2'); await s.settle();
-  eq('두뇌 D−−', [s.get('bra_grade'), s.get('bra_dice'), s.get('bra_low'), s.get('bra_mod')], ['D−−', '2개', '낮은 눈', '−2']);
+  s.set('bra_grade', 'd−−'); s.set('bra_dice', '1'); s.set('bra_mod', '−2'); await s.settle();
+  eq('두뇌 D 낮은 눈 표시', s.get('bra_low'), '낮은 눈');
   eq('두뇌는 생명력에 안 들어감', String(s.get('hp_base')), '11');
   s.set('hp_base', '9'); await s.settle();
   eq('기본은 손으로 고칠 수 있음', String(s.get('hp_max')), '9');
-  s.set('spi_mode', '2'); await s.settle();
-  eq('영력이 바뀌면 다시 계산', String(s.get('hp_base')), '14');
+  s.set('spi_grade', 'C++'); s.set('spi_mod', '2'); await s.settle();
+  eq('영력 평가가 바뀌면 다시 계산', String(s.get('hp_base')), '14');
+  s.set('war_grade', '잘 모름'); await s.settle();
+  eq('못 읽는 평가면 기본은 그대로', String(s.get('hp_base')), '14');
+  s.set('war_grade', 'A+'); await s.settle();
 
   // ── 활력: 레벨D6 → 활력 · 최대치
   s.set('level', '2'); s.set('character_name', '아스카모리 아오이'); await s.settle();
@@ -61,7 +66,7 @@ const last = s => s.rolls[s.rolls.length - 1];
   eq('4 < 6 실패', [r.computed.ok, r.computed.res], [2, '실패']);
   // 랭크D: 2개 굴려 낮은 눈 · 인과 없음
   r = await chk('bra', [5, 3, 6, 6]);
-  has('랭크D 부제', r.macro, '{{sub=D−− · 2D6 낮은 눈}}');
+  has('랭크D 부제 (적힌 다이스 1개여도 2개 굴림)', r.macro, '{{sub=d−− · 2D6 낮은 눈}}');
   eq('D 5·3 → 액션 3 −2 = 1 실패 · 무드 없음', [r.computed.ok, r.computed.sum, r.computed.a, r.computed.m, r.computed.x1, r.computed.x3], [2, 1, 2, 0, 1, 0]);
   eq('랭크D 안내', r.computed.note, '랭크D — 인과 없음');
   r = await chk('bra', [6, 6, 1, 1]);
@@ -69,9 +74,13 @@ const last = s => s.rolls[s.rolls.length - 1];
   // 랭크C: 1개 · 인과 없음
   r = await chk('spi', [4, 1, 1, 1]);
   eq('C++ 4 → 4+2 = 6 성공 · 다이스 1개 인과 없음', [r.computed.ok, r.computed.sum, r.computed.m, r.computed.note], [1, 6, 0, '다이스 1개 — 인과 없음']);
-  // 평가 없음
+  // 다이스 개수 없음
   s.click('tec'); await s.settle();
-  has('평가 없으면 안내', last(s).macro, '{{effect=【기술】 평가를 먼저 고르세요}}');
+  has('다이스 개수 없으면 안내', last(s).macro, '{{effect=【기술】 다이스 개수를 먼저 적으세요}}');
+  s.set('tec_dice', '6'); await s.settle();
+  r = await chk('tec', [1, 2, 3, 6, 5, 5]);
+  eq('5개 이상 적어도 4개까지', [r.computed.ok, r.computed.x1, r.computed.x4], [3, 1, 0]);
+  s.dice.length = 0;
   // 상태이상 안내
   s.set('st_rage', '1'); s.set('st_corrupt', '1'); await s.settle();
   r = await chk('war', [4, 4, 4, 4]);
