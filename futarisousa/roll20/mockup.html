@@ -1,0 +1,461 @@
+<title>둘이서 수사 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- 둘이서 수사(버디 서스펜스 TRPG) Roll20 시트 목업.
+     실제 시트처럼 폭 860px 고정 · 인쇄본(대형판) 배치를 따른다: 왼쪽(인적 사항 · 기능 · 기벽/멘탈 · 게스트) | 세로 띠 | 오른쪽(액션 · 파트너 · 요약 · 수사 메모).
+     탐정 · 조수 · 아지트·사건은 한 시트에서 종류를 바꾸는 방식(실제 시트는 attr_sheet_type + 형제 선택자).
+     아래 스크립트는 목업용 데모 — 실제 시트에서는 sheet worker · 롤 템플릿으로 옮긴다. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 배치: 인쇄본처럼 흑백 종이 + 검은 머리띠 · 점선 칸. 강조는 회중시계 놋쇠색 하나 */
+:root{
+  --page:#e6e3dc; --paper:#fbfaf6; --ink:#1e1d1a; --sub:#76726a; --line:#c8c3b8; --cell:#f0ede6;
+  --bar:#1e1d1a; --bar-ink:#fbfaf6; --accent:#8a6a2c; --accent-bg:#f3ead8; --card:#ffffff;
+  --serif:'Nanum Myeongjo','Noto Serif KR',serif; --sans:'Noto Sans KR','Pretendard','Malgun Gothic',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#121110; --paper:#1c1b18; --ink:#ebe6dc; --sub:#9b958a; --line:#47433c; --cell:#25231f;
+  --bar:#33302a; --bar-ink:#f2ece0; --accent:#cfa962; --accent-bg:#3a3122; --card:#24221e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#121110; --paper:#1c1b18; --ink:#ebe6dc; --sub:#9b958a; --line:#47433c; --cell:#25231f;
+  --bar:#33302a; --bar-ink:#f2ece0; --accent:#cfa962; --accent-bg:#3a3122; --card:#24221e; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.intro h1{margin:0;font:800 22px/1.3 var(--serif);text-wrap:balance}
+.intro p{margin:4px 0 0;color:var(--sub);max-width:65ch}
+.scroll{overflow-x:auto;border-radius:6px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── 시트 (실제 시트 폭) ── */
+.fs{width:860px;background:var(--paper);color:var(--ink);padding:0 0 14px;border:1px solid var(--line)}
+.fs input[type=text],.fs input[type=number],.fs textarea,.fs select{background:transparent;border:0;border-bottom:1px dotted var(--line);padding:2px 4px;min-width:0;border-radius:0}
+.fs textarea{resize:vertical;width:100%;border:0;line-height:1.5}
+.fs input[type=number]{width:3.2em;text-align:center}
+.band{display:flex;align-items:center;gap:12px;background:var(--bar);color:var(--bar-ink);padding:6px 14px}
+.band .logo{font:800 19px/1 var(--serif);letter-spacing:.06em}
+.band .logo small{display:block;font:500 9px/1.2 var(--sans);letter-spacing:.2em;opacity:.75;margin-bottom:3px}
+.band select{background:var(--bar);color:var(--bar-ink);border:1px solid color-mix(in srgb,var(--bar-ink) 40%,transparent);border-radius:3px;padding:3px 6px}
+.band .die{margin-left:auto;font:700 12px/1 var(--sans);border:1px solid color-mix(in srgb,var(--bar-ink) 40%,transparent);border-radius:999px;padding:4px 10px}
+.hb{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bar);color:var(--bar-ink);font:700 14px/1 var(--serif);letter-spacing:.2em;padding:5px 8px;position:relative}
+.hb .act{position:absolute;right:6px;top:50%;transform:translateY(-50%);letter-spacing:0;font:500 11px/1 var(--sans);background:transparent;color:var(--bar-ink);border:1px solid color-mix(in srgb,var(--bar-ink) 45%,transparent);border-radius:3px;padding:3px 7px;cursor:pointer}
+.hb .act:hover{background:color-mix(in srgb,var(--bar-ink) 15%,transparent)}
+.pc{display:grid;grid-template-columns:420px 40px 1fr;gap:0 12px;padding:12px 14px 0}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+/* 인적 사항 */
+.id{display:grid;grid-template-columns:140px 1fr;gap:10px;border:1px solid var(--ink);padding:8px}
+.portrait{height:184px;border:1px solid var(--ink);transform:rotate(-2deg);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px;background:var(--cell)}
+.fields{display:flex;flex-direction:column}
+.fr{display:flex;align-items:baseline;gap:6px;border-bottom:1px dotted var(--line);padding:2px 0}
+.fr b{flex:none;width:76px;font:700 12px/1.6 var(--serif)}
+.fr input{flex:1;border:0!important}
+.fr.pair b:nth-of-type(2){width:auto;margin-left:8px}
+/* 기능 */
+.skills{display:flex;flex-direction:column;gap:3px}
+.srow{display:grid;grid-template-columns:58px repeat(6,1fr);border:1px solid var(--ink)}
+.srow>b{display:flex;align-items:center;gap:2px;padding:0 4px;font:800 16px/1 var(--serif);border-right:1px solid var(--ink)}
+.srow>b::after{content:"▸";font-size:10px}
+.sk{display:flex;align-items:center;gap:2px;padding:5px 2px 5px 4px;border-right:1px solid var(--line);font-size:12px;white-space:nowrap}
+.sk:last-child{border-right:0}
+.sk input{margin:0;width:13px;height:13px;accent-color:var(--ink)}
+.sk button{border:0;background:none;padding:0;cursor:pointer;letter-spacing:-.02em}
+.sk button:hover{color:var(--accent);text-decoration:underline}
+.sk.on{background:var(--accent-bg)}
+.sk.on button{font-weight:700}
+/* 기벽 · 멘탈 · 게스트 */
+.quirk{display:grid;grid-template-columns:44px 1fr;border-bottom:1px dotted var(--line)}
+.quirk span{font-size:26px;line-height:38px;text-align:center;border-right:1px dotted var(--line)}
+.quirk input{border:0!important;padding:0 8px!important}
+.quirk.hit{background:var(--accent-bg)}
+.mental{border:1px dotted var(--line);padding:6px 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mental .lb{font:700 12px/1 var(--serif)}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:3px}
+.stepper button{border:0;background:none;width:24px;height:24px;cursor:pointer}
+.stepper input{border:0!important;width:2.6em!important;font-weight:700}
+.hearts{margin-left:auto;display:flex;align-items:center;gap:4px;font:700 13px/1 var(--serif)}
+.hearts label{cursor:pointer;font-size:20px;line-height:1;color:var(--sub)}
+.hearts input{position:absolute;opacity:0;pointer-events:none}
+.hearts input:checked+span{color:var(--accent)}
+.hearts input:checked+span::before{content:"♥"}.hearts input:not(:checked)+span::before{content:"♡"}
+.hearts input:focus-visible+span{outline:2px solid var(--accent)}
+table.rep{width:100%;border-collapse:collapse;font-size:12px}
+table.rep th{font:700 12px/1.6 var(--serif);border-bottom:1px solid var(--ink);padding:2px 4px;text-align:center}
+table.rep td{border-bottom:1px dotted var(--line);border-right:1px dotted var(--line);padding:2px;vertical-align:top}
+table.rep td:last-child{border-right:0}
+table.rep input,table.rep textarea{width:100%;border:0!important}
+table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
+.add{align-self:flex-start;border:1px dashed var(--line);background:none;border-radius:3px;padding:2px 10px;cursor:pointer;color:var(--sub);font-size:12px}
+.add:hover{color:var(--ink);border-color:var(--ink)}
+/* 세로 띠 */
+.spine{display:flex;flex-direction:column;align-items:center;gap:10px;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:6px 0}
+.spine .t{writing-mode:vertical-rl;font:800 30px/1 var(--serif);letter-spacing:.05em}
+.spine .t small{font:700 11px/1 var(--serif);letter-spacing:.1em;margin-top:6px}
+.spine .role{writing-mode:vertical-rl;font:800 26px/1 var(--serif);border-block:1px solid var(--line);padding:8px 0}
+.spine .cs{writing-mode:vertical-rl;font:700 18px/1 var(--serif);letter-spacing:.4em}
+.spine .dn{font:700 12px/1.3 var(--serif);text-align:center}
+/* 파트너 · 요약 */
+.partner .names{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:6px 2px}
+.partner .names .fr b{width:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--ink)}
+.two>div{padding:4px 6px}.two>div+div{border-left:1px dotted var(--line)}
+.two h4{margin:0;font:700 12px/1.6 var(--serif)}
+.two h4::before{content:"▼"}
+.two textarea{min-height:120px}
+.bottom{display:grid;grid-template-columns:1.6fr 1fr;gap:8px}
+.box{border:1px solid var(--ink);display:flex;flex-direction:column}
+.rules{padding:6px 8px;font-size:11.5px;line-height:1.55}
+.rules b{display:block;font:700 12.5px/1.6 var(--serif)}
+.rules ul{margin:0 0 4px;padding-left:16px}
+.box textarea{flex:1;min-height:150px;padding:6px 8px!important}
+/* 아지트 · 사건 */
+.tabs{display:flex;gap:2px;padding:10px 14px 0}
+.tabs button{border:1px solid var(--ink);border-bottom:0;background:var(--cell);padding:5px 16px;cursor:pointer;font:700 13px/1 var(--serif)}
+.tabs button[aria-selected=true]{background:var(--bar);color:var(--bar-ink)}
+.pane{border-top:1px solid var(--ink);margin:0 14px;padding-top:12px;display:flex;flex-direction:column;gap:12px}
+.hq{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.note{border:1px solid var(--ink);padding:8px 10px;transform:rotate(-.6deg);background:var(--card);box-shadow:2px 3px 0 color-mix(in srgb,var(--ink) 12%,transparent)}
+.note+.note{transform:rotate(.8deg)}
+.note .fr b{width:auto;margin-right:6px}
+.items{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.item{border:1px solid var(--ink);padding:6px 8px;display:flex;flex-direction:column;gap:2px;background:var(--card)}
+.item label{font:700 11.5px/1.6 var(--serif);color:var(--sub)}
+.item input{border-bottom:1px dotted var(--line)!important}
+.item textarea{min-height:52px;font-size:12px}
+.lower{display:grid;grid-template-columns:1fr 1.25fr;gap:12px}
+.etab{width:100%;border-collapse:collapse;font-size:11.5px}
+.etab caption{background:var(--bar);color:var(--bar-ink);text-align:left;font:700 12px/1 var(--serif);padding:5px 6px;caption-side:top}
+.etab caption button{float:right;font:500 11px/1 var(--sans);background:none;color:var(--bar-ink);border:1px solid color-mix(in srgb,var(--bar-ink) 45%,transparent);border-radius:3px;padding:2px 6px;cursor:pointer;margin-top:-3px}
+.etab td{border:1px solid var(--line);padding:2px 5px}
+.etab td.n{width:26px;text-align:center;color:var(--sub);font-variant-numeric:tabular-nums}
+.etab td.hit,.etab td.hit+td{background:var(--accent-bg);font-weight:700}
+.case{display:grid;grid-template-columns:120px 1fr;border:2px solid var(--ink)}
+.case>b{display:flex;align-items:center;justify-content:center;text-align:center;font:700 15px/1.3 var(--serif);border-bottom:1px solid var(--ink);border-right:1px solid var(--ink);padding:6px}
+.case>.v{border-bottom:1px solid var(--ink);padding:4px 8px;display:flex;gap:8px;align-items:center;min-width:0}
+.case>.v input{flex:1}
+.case textarea{min-height:64px}
+.case .lv{flex:none;display:flex;align-items:center;gap:6px;border-left:1px solid var(--ink);padding-left:8px;font:700 12px/1.3 var(--serif)}
+.case .hint{font-size:11px;color:var(--sub);flex:none}
+.emo{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--ink)}
+.emo h4{grid-column:1/-1;margin:0;text-align:center;font:700 15px/1.8 var(--serif);border-bottom:1px solid var(--ink)}
+.emo>div{padding:4px 8px}.emo>div+div{border-left:1px solid var(--ink)}
+.emo h5{margin:0 0 2px;text-align:center;font:700 13px/1.8 var(--serif);border-bottom:1px solid var(--line)}
+.emo label{display:block;font:700 12px/1.6 var(--serif);margin-top:4px}
+.emo label::before{content:"> "}
+.status{grid-column:1/-1;display:grid;grid-template-columns:40px repeat(3,1fr)}
+.status>b{grid-row:span 2;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;font:700 14px/1 var(--serif);border-right:1px solid var(--ink)}
+.st{display:grid;grid-template-columns:34px 1fr;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.st:nth-child(4),.st:nth-child(7){border-right:0}
+.st:nth-child(n+5){border-bottom:0}
+.st>span{display:flex;align-items:center;justify-content:center;font:700 22px/1 var(--serif);border-right:1px solid var(--line)}
+.st label{display:flex;flex-direction:column;padding:4px 6px;cursor:pointer}
+.st label b{font:700 13px/1.4 var(--serif)}
+.st label b input{margin:0 4px 0 0;accent-color:var(--ink)}
+.st small{font-size:10.5px;line-height:1.4;color:var(--sub)}
+.st.hit{background:var(--accent-bg)}
+.st.on b{color:var(--accent)}
+.secret{display:grid;grid-template-columns:120px 1fr auto;border:2px solid var(--ink);margin-top:6px;border-top-style:dashed}
+.secret b{display:flex;align-items:center;justify-content:center;font:700 15px/1 var(--serif);border-right:1px solid var(--ink)}
+.secret input{border:0!important;padding:8px!important}
+.secret.folded input{filter:blur(5px)}
+.secret button{border:0;border-left:1px solid var(--line);background:none;padding:0 10px;cursor:pointer;font-size:12px}
+.confess{font-size:11.5px;display:grid;grid-template-columns:120px 1fr;gap:8px}
+.confess b{text-align:center;font:700 14px/1.6 var(--serif)}
+.confess ul{margin:0;padding-left:16px}
+/* 종류에 따라 보이기 (실제 시트: attr_sheet_type 형제 선택자) */
+.fs[data-type=det] .as-only,.fs[data-type=asi] .det-only{display:none!important}
+.fs[data-type=base] .pc{display:none}
+.fs:not([data-type=base]) .base-only{display:none!important}
+
+/* ── 채팅 카드 미리보기 (롤 템플릿) ── */
+.chat{display:flex;flex-direction:column;gap:8px}
+.chat h2,.ask h2{margin:0;font:800 16px/1.4 var(--serif)}
+.chat .cards{display:flex;flex-wrap:wrap;gap:8px;min-height:40px}
+.chat .empty{color:var(--sub);font-size:12px}
+.card{width:220px;background:var(--card);border:1px solid var(--ink);font-size:12px}
+.card .ct{background:var(--bar);color:var(--bar-ink);font:700 12.5px/1.3 var(--serif);padding:4px 8px;display:flex;justify-content:space-between;gap:6px}
+.card .ct small{font:500 10.5px/1.4 var(--sans);opacity:.8}
+.card .cb{padding:6px 8px;display:flex;align-items:center;gap:10px}
+.card .dice{font:800 26px/1 var(--serif);min-width:1.6em;text-align:center;border:1px solid var(--ink);border-radius:4px;padding:4px 2px;font-variant-numeric:tabular-nums}
+.card .cb p{margin:0;line-height:1.45}
+.ask{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:12px 16px}
+.ask ol{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:75ch}
+.ask li b{font-weight:700}
+.ask .sub{color:var(--sub)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>둘이서 수사 · Roll20 시트 목업</h1>
+    <p>인쇄본(대형판) 배치를 그대로 옮긴 실제 시트 폭(860px) 목업입니다. 띠의 드롭다운으로 <b>탐정 · 조수 · 아지트·사건</b>을 바꿔 보세요. 기능 이름 · 🎲 단추를 누르면 아래 채팅 카드 미리보기에 굴림이 쌓입니다.</p>
+  </header>
+
+  <div class="scroll">
+  <div class="fs" id="fs" data-type="det">
+    <div class="band">
+      <span class="logo"><small>버디 서스펜스 TRPG</small>둘이서 수사</span>
+      <label>시트
+        <select id="type" aria-label="시트 종류">
+          <option value="det" selected>탐정 캐릭터 시트</option>
+          <option value="asi">조수 캐릭터 시트</option>
+          <option value="base">아지트 · 사건 조사 시트 (둘이 함께)</option>
+        </select>
+      </label>
+      <span class="die" id="die">10면체 사용</span>
+    </div>
+
+    <!-- ── 탐정 · 조수 ── -->
+    <div class="pc">
+      <div class="col">
+        <div class="id">
+          <div class="portrait">초상 (캐릭터 아바타)</div>
+          <div class="fields">
+            <div class="fr"><b>이름</b><input type="text" id="f-name" value="쿠로사와 렌"></div>
+            <div class="fr"><b>클래스</b><input type="text" id="f-class" value="명탐정"></div>
+            <div class="fr"><b>배경</b><input type="text" id="f-bg" value="몰락한 명가의 후계자"></div>
+            <div class="fr pair"><b>나이</b><input type="text" id="f-age" value="27"><b>신장</b><input type="text" id="f-height" value="182cm"></div>
+            <div class="fr"><b>패션 특징</b><input type="text" id="f-fashion" value="낡은 인버네스 코트"></div>
+            <div class="fr"><b>좋아하는 것</b><input type="text" id="f-like" value="단 커피"></div>
+            <div class="fr"><b>싫어하는 것</b><input type="text" id="f-dislike" value="아침 일찍 일어나기"></div>
+            <div class="fr"><b>직업</b><input type="text" id="f-job" value="사립 탐정"></div>
+          </div>
+        </div>
+
+        <div class="skills">
+          <div class="hb">기능</div>
+          <div id="skills"></div>
+        </div>
+
+        <!-- 탐정: 기벽 -->
+        <div class="det-only">
+          <div class="hb">기벽 <button type="button" class="act" id="quirk-roll" aria-label="기벽 1D6 굴리기">🎲 1D6</button></div>
+          <div id="quirks"></div>
+        </div>
+
+        <!-- 조수: 멘탈 · 게스트 -->
+        <div class="as-only">
+          <div class="hb">멘탈</div>
+          <div class="mental">
+            <span class="lb">【여유】</span>
+            <span class="stepper"><button type="button" id="yu-m" aria-label="여유 1 줄이기">−</button><input type="number" id="yu" value="3" aria-label="여유"><button type="button" id="yu-p" aria-label="여유 1 늘리기">+</button></span>
+            <span class="hearts">마음고생 ▸
+              <label><input type="checkbox" id="h1" checked><span aria-hidden="true"></span></label>
+              <label><input type="checkbox" id="h2"><span aria-hidden="true"></span></label>
+              <label><input type="checkbox" id="h3"><span aria-hidden="true"></span></label>
+            </span>
+          </div>
+        </div>
+        <div class="as-only col">
+          <div class="hb">게스트</div>
+          <table class="rep" id="guests"><thead><tr><th style="width:24px"></th><th>이름</th><th style="width:70px">기능</th><th>관계</th><th>메모</th></tr></thead><tbody></tbody></table>
+          <button type="button" class="add" data-add="guest">+ 게스트 추가</button>
+        </div>
+      </div>
+
+      <div class="spine" aria-hidden="true">
+        <span class="t">둘이서 수사<small>버디 서스펜스 TRPG</small></span>
+        <span class="role" id="sp-role">탐정</span>
+        <span class="cs">캐릭터 시트</span>
+        <span class="dn" id="sp-die">10면체<br>사용</span>
+      </div>
+
+      <div class="col">
+        <div class="col">
+          <div class="hb" id="act-head">탐정 액션</div>
+          <table class="rep" id="actions"><thead><tr><th style="width:84px">이름</th><th style="width:46px">타입</th><th style="width:46px">코스트</th><th>효과</th></tr></thead><tbody></tbody></table>
+          <button type="button" class="add" data-add="action">+ 액션 추가</button>
+        </div>
+        <div class="partner">
+          <div class="hb">파트너</div>
+          <div class="names">
+            <div class="fr"><b>이름</b><input type="text" id="p-name" value="히나타 유이"></div>
+            <div class="fr"><b>호칭</b><input type="text" id="p-call" value="조수 군"></div>
+          </div>
+          <div class="two">
+            <div><h4>마음에 드는 점</h4><textarea id="p-good" aria-label="마음에 드는 점">끝까지 따라와 준다</textarea></div>
+            <div><h4>마음에 안 드는 점</h4><textarea id="p-bad" aria-label="마음에 안 드는 점">잔소리가 많다</textarea></div>
+          </div>
+        </div>
+        <div class="bottom">
+          <div class="box">
+            <div class="hb" id="sum-head">탐정 요약</div>
+            <div class="rules" id="sum"></div>
+          </div>
+          <div class="box">
+            <div class="hb">수사 메모</div>
+            <textarea id="memo" aria-label="수사 메모" placeholder="키워드 · 단서 메모"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 아지트 · 사건 조사 (둘이 함께 쓰는 캐릭터) ── -->
+    <div class="base-only">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-tab="hq">아지트 시트</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="case">사건 조사 시트</button>
+      </div>
+      <div class="pane" data-pane="hq">
+        <div class="hq">
+          <div class="note">
+            <div class="fr"><b>아지트는 어떤 곳?</b><input type="text" id="hq-what" value="2층 헌책방 위 다락방"></div>
+            <div class="fr"><b>아지트의 이름</b><input type="text" id="hq-name" value="쿠로사와 탐정 사무소"></div>
+          </div>
+          <div class="note">
+            <div class="fr"><b>간판 탐정</b><input type="text" id="hq-sign" value="쿠로사와 렌"></div>
+          </div>
+        </div>
+        <div class="hb">추억의 물품</div>
+        <div class="items" id="items"></div>
+        <button type="button" class="add" data-add="item">+ 물품 추가</button>
+        <div class="lower">
+          <div class="box"><div class="hb">아이템 상자</div><textarea id="box" aria-label="아이템 상자" placeholder="소모품 · 받은 물건"></textarea></div>
+          <div class="col">
+            <table class="etab" id="tblA"><caption>감정 표A (D66)<button type="button" data-roll="A">🎲 D66</button></caption><tbody></tbody></table>
+            <table class="etab" id="tblB"><caption>감정 표B (D10)<button type="button" data-roll="B">🎲 D10</button></caption><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="pane" data-pane="case" hidden>
+        <div class="case">
+          <b>사건명</b><div class="v"><input type="text" id="c-name" value="안개 낀 시계탑 살인 사건"><span class="hint">날짜</span><input type="text" id="c-date" value="1925. 11. 20" style="flex:0 0 110px"></div>
+          <b>사건 담당자</b><div class="v"><input type="text" id="c-who1" value="오카다 경부"><input type="text" id="c-who2" value=""></div>
+          <b>조사 방해 요인</b><div class="v"><input type="text" id="c-block" value="경찰의 비협조"><span class="lv">수사 곤란<br>레벨 <input type="number" id="c-lv" value="2" aria-label="수사 곤란 레벨"></span></div>
+          <b>사건의<br>등장인물</b><div class="v"><textarea id="c-npc" aria-label="사건의 등장인물">시계 수리공 이토 / 의뢰인 미즈하라 부인</textarea></div>
+          <b>키워드</b><div class="v"><textarea id="c-key" aria-label="키워드">「멈춘 시계」 『사라진 태엽』</textarea></div>
+          <div class="emo">
+            <h4>감정</h4>
+            <div><h5>탐정이 조수에 대해</h5><label>마음에 드는 점</label><textarea aria-label="탐정이 조수에 대해 마음에 드는 점"></textarea><label>마음에 안 드는 점</label><textarea aria-label="탐정이 조수에 대해 마음에 안 드는 점"></textarea></div>
+            <div><h5>조수가 탐정에 대해</h5><label>마음에 드는 점</label><textarea aria-label="조수가 탐정에 대해 마음에 드는 점"></textarea><label>마음에 안 드는 점</label><textarea aria-label="조수가 탐정에 대해 마음에 안 드는 점"></textarea></div>
+          </div>
+          <div class="status" id="status"><b>상태이상 <button type="button" data-roll="S" class="add" style="writing-mode:horizontal-tb;margin-top:6px" aria-label="상태이상 1D6 굴리기">🎲</button></b></div>
+        </div>
+        <div class="secret folded" id="secret"><b>숨겨둔 마음</b><input type="text" id="c-secret" value="사실은 그날 밤 시계탑에 있었다" aria-label="숨겨둔 마음"><button type="button" id="fold">펼치기</button></div>
+        <div class="confess"><b>고백 효과</b><ul>
+          <li>탐정 PC는 위에 적힌 내용을 강렬한 감정으로 획득한다.</li>
+          <li>모든 PC가 파트너에 대한 감정을 1개씩 획득한다.</li>
+          <li>【여유】가 1D10점 상승한다.</li>
+          <li>상태이상을 모두 회복한다.</li>
+          <li>이번 세션 동안 한 번에 한해 판정 결과를 스페셜로 변경할 수 있다. 이때, 주사위를 굴려 6이 나온 것으로 간주한다.</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <section class="chat" aria-live="polite">
+    <h2>채팅 카드 미리보기</h2>
+    <div class="cards" id="cards"><span class="empty">아직 굴린 것이 없어요 — 기능 이름이나 🎲 를 눌러 보세요</span></div>
+  </section>
+
+  <section class="ask">
+    <h2>정해 주실 것</h2>
+    <ol>
+      <li><b>판정 규칙</b> — 기능 이름을 누르면 지금은 <b>탐정 1D10 · 조수 1D6</b> 하나만 굴려요. 목표치 · 성공 조건 · 스페셜(6?) · 펌블, 【유리함】 · 【불리함】을 어떻게 굴리는지 알려 주시면 카드에 성공 · 실패까지 띄울게요. <span class="sub">(습득 안 한 기능으로 판정할 때 규칙도)</span></li>
+      <li><b>아지트 · 사건 조사 시트</b> — 두 PC가 같이 쓰는 <b>캐릭터 하나</b>(시트 종류 ‘아지트 · 사건’)로 두는 안이에요. 탐정 · 조수 시트마다 탭으로 넣으면 둘이 따로 적게 돼요. 이대로 갈까요?</li>
+      <li><b>조수 시트의 액션 머리</b> — 인쇄본은 조수 시트도 ‘탐정 액션’이라고 적혀 있어요. 목업은 ‘조수 액션’으로 바꿨는데, 원본대로 둘까요?</li>
+      <li><b>초상</b> — 블러드문 시트처럼 Roll20 캐릭터 아바타를 그대로 보여 줘요. 따로 그림 주소 칸이 필요하면 말씀해 주세요.</li>
+      <li><b>시트 이름</b> — Roll20 목록 이름은 <b>Futari Sousa (Korean)</b> 으로 할까요?</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+// ── 목업용 데모: 실제 시트에서는 sheet worker · 롤 템플릿 ──
+const $ = s => document.querySelector(s), fs = $('#fs');
+const SKILLS = [['통찰', ['거짓말', '변화', '외견', '물리', '현장', '날씨']], ['감식', ['교통', '정보', '지문', '과학', '법의학', '생물']],
+  ['인간', ['사교', '가사', '소문', '설득', '유행', '비즈니스']], ['육체', ['포박', '방어', '끈기', '체력', '돌파', '추적']]];
+const HAVE = new Set(['거짓말', '현장', '정보', '법의학', '설득', '추적']);
+$('#skills').innerHTML = SKILLS.map(([g, list]) => `<div class="srow"><b>${g}</b>${list.map(n => `<span class="sk${HAVE.has(n) ? ' on' : ''}"><input type="checkbox" aria-label="${n} 습득"${HAVE.has(n) ? ' checked' : ''}><button type="button" data-skill="${n}" data-group="${g}">${n}</button></span>`).join('')}</div>`).join('');
+document.querySelectorAll('.sk input').forEach(c => c.addEventListener('change', () => c.parentElement.classList.toggle('on', c.checked)));
+const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'], QUIRK = ['생각에 빠지면 말을 걸어도 모른다', '단 것을 먹지 않으면 추리가 멈춘다', '현장의 물건을 함부로 만진다', '', '', ''];
+$('#quirks').innerHTML = FACES.map((f, i) => `<div class="quirk" data-q="${i + 1}"><span aria-hidden="true">${f}</span><input type="text" aria-label="기벽 ${i + 1}" value="${QUIRK[i]}"></div>`).join('');
+const ACT = {
+  det: ['둘이서 수사', '보조', '없음', '수사 페이즈에서 장면을 종료할 때 사용할 수 있다. 당신과 파트너는 서로에 대한 감정을 1개 심화함으로써 다음에 여는 장면을 「둘이서 수사 장면」으로 변경할 수 있다.'],
+  asi: ['따라잡다', '보조', '1', '판정의 주사위를 굴린 뒤에 사용할 수 있다. ①②의 효과를 얻는다. ①파트너에 대한 감정을 1개 심화함으로써 판정에 사용한 당신의 주사위를 다시 굴릴 수 있다. ②①의 효과로 주사위를 다시 굴릴 때, 굴리는 주사위를 10면체로 변경할 수 있다.']
+};
+const SUM = {
+  det: '<b>●알고 있었어 카드</b><ul><li>탐정 PC의 플레이어와 게임 마스터만 내용을 볼 수 있다.</li><li>조수 PC의 플레이어에게는 내용을 전달할 수 있다.</li><li>알고 있었어 카드에는 사건의 줄거리와 키워드를 채우는 칸이 있다.</li><li>모든 알고 있었어 카드와 모든 키워드를 모으면 수사 페이즈를 종료한다.</li><li>일반적인 키워드는 「 」 안에 있다. 중요 키워드는 『 』 안에 있다.</li><li>중요 키워드는 【둘이서 수사】를 사용해야만 획득할 수 있다.</li></ul>',
+  asi: '<b>●【여유】를 획득하는 타이밍</b><ul><li>아지트 페이즈에서 획득한다 (+3점)</li><li>판정에서 조수 PC의 플레이어가 주사위를 굴려 4 이상이 나왔다 (+1점)</li><li>판정에서 스페셜이 발생했다 (+1점)</li><li>고백한다 (+1D10점)</li><li>【여유】가 0이 되어 【마음고생】이 상승했을 때 (+2D6점)</li><li>그 밖에 시나리오의 이벤트나 시추에이션 수사 등에 따라</li></ul><b>●【여유】가 감소하는 타이밍</b><ul><li>수사 페이즈에서 사이클을 종료했을 때 (-수사 곤란 레벨만큼의 점수)</li><li>액션을 사용 (-사용하는 액션의 코스트만큼의 점수)</li><li>그 밖에 시나리오의 이벤트나 시추에이션 수사 등으로 감소</li></ul>'
+};
+const row = (cells) => `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
+const actRow = a => row([`<input type="text" aria-label="액션 이름" value="${a[0]}">`, `<input type="text" aria-label="타입" value="${a[1]}">`, `<input type="text" aria-label="코스트" value="${a[2]}">`, `<textarea aria-label="효과">${a[3]}</textarea>`]);
+const guestRow = g => row([`<input type="checkbox" aria-label="게스트 기능 습득"${g[0] ? ' checked' : ''}>`, `<input type="text" aria-label="이름" value="${g[1]}">`, `<input type="text" aria-label="기능" value="${g[2]}">`, `<input type="text" aria-label="관계" value="${g[3]}">`, `<input type="text" aria-label="메모" value="${g[4]}">`]);
+$('#guests tbody').innerHTML = [[1, '오카다 경부', '정보', '옛 상사', '커피를 사 주면 말이 많아진다'], [0, '', '', '', '']].map(guestRow).join('');
+const itemCard = it => `<div class="item"><label>아이템 이름</label><input type="text" aria-label="아이템 이름" value="${it[0]}"><label>어떤 물건?</label><input type="text" aria-label="어떤 물건" value="${it[1]}"><label>아이템 에피소드</label><textarea aria-label="아이템 에피소드">${it[2]}</textarea></div>`;
+$('#items').innerHTML = [['은 회중시계', '멈춘 채 고치지 않는 시계', '첫 사건의 의뢰인이 남기고 간 것'], ['쌍안경', '조수가 늘 들고 다닌다', ''], ['', '', '']].map(itemCard).join('');
+const A = [['11', '얼굴'], ['12', '분위기'], ['13', '외견'], ['14', '수사 방법'], ['15', '행동거지'], ['16', '냄새'], ['22', '존재 자체'], ['23', '말씨'], ['24', '취미'], ['25', '별 이유 없이'], ['26', '남에 대한 태도'], ['33', '금전 감각'], ['34', '생활 습관'], ['35', '기능'], ['36', '복장'], ['44', '말하는 타이밍'], ['45', '윤리관'], ['46', '자신을 향한 태도'], ['55', '거리감'], ['56', '자신과의 관계'], ['66', '생활 관습']];
+const B = [['1', '인간성'], ['2', '취미'], ['3', '기능'], ['4', '별 이유 없이'], ['5', '감각'], ['6', '분위기'], ['7', '자신도 모르는 부분'], ['8', '자신이 잘 아는 부분'], ['9', '자신을 향한 태도'], ['10', '자신과의 관계']];
+const grid = (list, cols) => { const per = Math.ceil(list.length / cols); return Array.from({ length: per }, (_, r) => `<tr>${Array.from({ length: cols }, (_, c) => { const e = list[c * per + r]; return e ? `<td class="n" data-k="${e[0]}">${e[0]}</td><td>${e[1]}</td>` : '<td class="n"></td><td></td>'; }).join('')}</tr>`).join(''); };
+$('#tblA tbody').innerHTML = grid(A, 3); $('#tblB tbody').innerHTML = grid(B, 2);
+const ST = [['엇갈림', '체크가 되어 있는 동안 【마음고생】이 감소하지 않는다.'], ['탐정의 폭주', '체크가 되어 있는 동안 탐정 PC는 모든 판정에 [유리함]을 얻는다. 조수 PC는 모든 판정에 [불리함]을 받는다.'], ['다툼', '체크가 되어 있는 동안 【둘이서 수사】를 사용할 때 【여유】를 1점 감소해야만 한다.'],
+  ['미아', '체크가 되어 있는 동안 「시추에이션 수사」 중에는 장면 플레이어만 판정에 참가할 수 있다.'], ['질 나쁜 소문', '체크가 되어 있는 동안 조수 PC가 게스트를 통해 얻은 기능을 습득하지 않은 것으로 간주한다.'], ['주목받음', '체크가 되어 있는 동안 「수사 곤란 레벨」이 1점 높은 것으로 간주한다.']];
+$('#status').insertAdjacentHTML('beforeend', ST.map((s, i) => `<div class="st" data-s="${i + 1}"><span>${i + 1}</span><label><b><input type="checkbox">${s[0]}</b><small>${s[1]}</small></label></div>`).join(''));
+document.querySelectorAll('.st input').forEach(c => c.addEventListener('change', () => c.closest('.st').classList.toggle('on', c.checked)));
+
+// 종류 바꾸기
+const setType = t => {
+  fs.dataset.type = t;
+  const det = t === 'det';
+  $('#die').textContent = t === 'base' ? '아지트 · 사건' : det ? '10면체 사용' : '6면체 사용';
+  $('#sp-role').textContent = det ? '탐정' : '조수';
+  $('#sp-die').innerHTML = det ? '10면체<br>사용' : '6면체<br>사용';
+  $('#act-head').textContent = det ? '탐정 액션' : '조수 액션';
+  $('#sum-head').textContent = det ? '탐정 요약' : '조수 요약';
+  $('#sum').innerHTML = SUM[det ? 'det' : 'asi'];
+  $('#actions tbody').innerHTML = actRow(ACT[det ? 'det' : 'asi']) + actRow(['', '', '', '']);
+};
+const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
+document.addEventListener('input', e => { if (e.target.matches('table.rep textarea')) grow(e.target); });
+$('#type').addEventListener('change', e => { setType(e.target.value); document.querySelectorAll('table.rep textarea').forEach(grow); });
+setType('det');
+document.querySelectorAll('table.rep textarea').forEach(grow);
+
+// 탭 · 접기 · 여유
+document.querySelectorAll('[role=tab]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[role=tab]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== b.dataset.tab; });
+}));
+$('#fold').addEventListener('click', () => { const f = $('#secret').classList.toggle('folded'); $('#fold').textContent = f ? '펼치기' : '접기'; });
+$('#yu-m').addEventListener('click', () => { $('#yu').value = Math.max(0, +$('#yu').value - 1); });
+$('#yu-p').addEventListener('click', () => { $('#yu').value = +$('#yu').value + 1; });
+document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.add;
+  if (k === 'guest') $('#guests tbody').insertAdjacentHTML('beforeend', guestRow([0, '', '', '', '']));
+  if (k === 'action') $('#actions tbody').insertAdjacentHTML('beforeend', actRow(['', '', '', '']));
+  if (k === 'item') $('#items').insertAdjacentHTML('beforeend', itemCard(['', '', '']));
+}));
+
+// 굴림 → 채팅 카드
+const d = n => 1 + Math.floor(Math.random() * n);
+const card = (title, sub, dice, text) => {
+  const box = $('#cards'); box.querySelector('.empty')?.remove();
+  box.insertAdjacentHTML('afterbegin', `<div class="card"><div class="ct">${title}<small>${sub}</small></div><div class="cb"><span class="dice">${dice}</span><p>${text}</p></div></div>`);
+  while (box.children.length > 6) box.lastElementChild.remove();
+};
+const who = () => $('#f-name').value || '이름 없음';
+document.addEventListener('click', e => {
+  const s = e.target.closest('[data-skill]');
+  if (s) {
+    const det = fs.dataset.type === 'det', n = d(det ? 10 : 6), have = s.parentElement.querySelector('input').checked;
+    return card(`${s.dataset.skill} 판정`, `${s.dataset.group} · ${det ? '1D10' : '1D6'}`, n, `${who()}${have ? '' : ' · <b>미습득</b>'}<br><span style="color:var(--sub)">성공 · 실패는 판정 규칙을 받은 뒤 표시</span>`);
+  }
+  const r = e.target.closest('[data-roll]');
+  if (!r) return;
+  document.querySelectorAll('.hit').forEach(x => x.classList.remove('hit'));
+  if (r.dataset.roll === 'A') {
+    const [a, b] = [d(6), d(6)].sort(), k = `${a}${b}`, cell = $(`#tblA td[data-k="${k}"]`);
+    cell.classList.add('hit'); return card('감정 표A', 'D66', k, A.find(x => x[0] === k)[1]);
+  }
+  if (r.dataset.roll === 'B') { const k = String(d(10)), cell = $(`#tblB td[data-k="${k}"]`); cell.classList.add('hit'); return card('감정 표B', 'D10', k, B.find(x => x[0] === k)[1]); }
+  if (r.dataset.roll === 'S') { const k = d(6); $(`.st[data-s="${k}"]`).classList.add('hit'); return card('상태이상', '1D6', k, ST[k - 1][0] + '<br><span style="color:var(--sub)">' + ST[k - 1][1] + '</span>'); }
+});
+$('#quirk-roll').addEventListener('click', () => {
+  document.querySelectorAll('.quirk.hit').forEach(x => x.classList.remove('hit'));
+  const k = d(6), q = $(`.quirk[data-q="${k}"]`); q.classList.add('hit');
+  card('기벽', '1D6', FACES[k - 1], (q.querySelector('input').value || '(비어 있음)') + `<br><span style="color:var(--sub)">${who()}</span>`);
+});
+</script>
