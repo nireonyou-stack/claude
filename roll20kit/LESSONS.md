@@ -42,6 +42,7 @@
 
 - ✔ 단추 이름(`act_…`)에는 `_` 를 쓰지 않는다 (Roll20 이 반복 줄 이름으로 읽음)
 - ✔ 반복 섹션 이름은 `repeating_` 뒤에 영소문자 · 숫자만
+- ✔ `<table>` 태그를 쓰지 않는다 — Roll20 PR 봇이 Good Code 규정 위반으로 경고. 표는 div 그리드로 (둘이서 수사 감정 표)
 - `:has()` · `color-mix()` 같은 최신 CSS 는 피한다 (Roll20 쪽 처리 확인 안 됨) — ✔ lint 가 경고
 - 시트 종류 · 탭은 숨은 `<input type="hidden" name="attr_…">` + 형제 선택자로 가른다 (Roll20 이 hidden 의 value 속성을 고쳐 줌)
 - 새 시트 기본값(기본 줄 등)은 `sheet:opened` + `sheet_version` 으로 한 번만
@@ -52,3 +53,5 @@
 - ✔ sheet.json: html · css · authors · roll20userid · preview · instructions · legacy
 - 포크 `nireonyou-stack/Blood-Moon-Korean-` 에 upstream master 에서 새 브랜치 → 사용자가 compare 링크로 PR
 - 커밋 제목 꼴: `[시트 이름] New Sheet: …` · `[시트 이름] Bugfix: …`
+- 새 시트 PR 은 `?expand=1&template=new_sheet.md` 를 붙인 compare 링크로 연다 (게임 정보 · 체크리스트 양식). 룰 텍스트 칸은 블러드문 · 둘이서 수사 모두 체크 + 설명(게임 용어만 / 공식 시트 인쇄 문구만)
+- PR 봇의 알림 중 `translation.json 없음` · `새 시트라 DB 등록 필요` 는 정보일 뿐 — 고칠 것 없음

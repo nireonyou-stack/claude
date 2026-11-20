@@ -103,6 +103,9 @@ def check(folder):
                 W(f'HTML: Bootstrap 클래스 이름 {c!r} — Roll20 기본 CSS 가 칠함')
 
     # ── 4. HTML · 워커
+    # <table> 은 Roll20 PR 봇이 경고 (Good Code 규정) — 표는 div 그리드로 (둘이서 수사 감정 표)
+    for m in re.finditer(r'<table\b', html):
+        W(f'HTML: <table> 태그 (줄 {html.count(chr(10), 0, m.start()) + 1}) — Roll20 PR 봇이 경고, div 그리드로')
     # 반복 줄 안 단추 이름의 _ 는 Roll20 이 줄 이름으로 잘못 읽는다 (오류) · 밖은 블러드문 act_chk_* 가 실제로 돌았음 (경고)
     reps = ''.join(re.findall(r'<fieldset.*?</fieldset>', html, flags=re.S))
     for nm in re.findall(r'name="act_([^"]+)"', html):

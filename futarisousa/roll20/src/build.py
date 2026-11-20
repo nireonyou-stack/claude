@@ -73,15 +73,15 @@ def quirks():
 
 
 def table(rows, cols):
-    """감정 표: 열 우선으로 cols 열에 나눠 담는다."""
+    """감정 표: 열 우선으로 cols 열에 나눠 담는다. <table> 은 Roll20 규정(Good Code)상 안 쓰고 div 그리드 (번호 · 글 칸을 줄 순서로)"""
     per = -(-len(rows) // cols)
     out = []
     for r in range(per):
         cells = []
         for c in range(cols):
             k = c * per + r
-            cells.append(f'<td class="n">{rows[k][0]}</td><td>{rows[k][1]}</td>' if k < len(rows) else '<td class="n"></td><td></td>')
-        out.append('            <tr>' + ''.join(cells) + '</tr>')
+            cells.append(f'<span class="n">{rows[k][0]}</span><span>{rows[k][1]}</span>' if k < len(rows) else '<span class="n"></span><span></span>')
+        out.append('            ' + ''.join(cells))
     return '\n'.join(out)
 
 
