@@ -169,6 +169,65 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
 .fs[data-type=base] .pc{display:none}
 .fs:not([data-type=base]) .base-only{display:none!important}
 
+/* 공용 시트 탭 늘림: 사전 조사 · 다툼 · 규격 외 */
+.tabs{flex-wrap:wrap}
+.pre2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.precol{display:flex;flex-direction:column;gap:8px}
+.pre-hd{display:flex;align-items:baseline;gap:8px;border-bottom:1px dashed var(--ink);padding-bottom:4px}
+.pre-hd b{font:800 17px/1.2 var(--serif)}
+.pre-hd span{font:700 15px/1.2 var(--serif)}
+.pre-hd input{margin-left:auto;width:96px}
+.prebox{border:1px solid var(--ink)}
+.prebox h4{margin:0;text-align:center;font:700 13px/2 var(--serif);border-bottom:1px solid var(--ink)}
+.pi{padding:4px 8px;border-bottom:1px dotted var(--line)}
+.pi:last-child{border-bottom:0}
+.pi>label{display:block;font:700 12px/1.6 var(--serif)}
+.pi>label::before{content:"• "}
+.pirow{display:grid;grid-template-columns:18px 1fr;gap:6px;align-items:start}
+.pirow input{margin-top:4px;accent-color:var(--accent)}
+.pirow textarea{min-height:40px}
+.pirow:has(input:checked){background:var(--accent-bg)}
+.arrow,.hand{margin:0;font-size:11.5px;color:var(--sub)}
+.arrow::before{content:"↓ ";font-weight:700;color:var(--ink)}
+.hand{text-align:center;font-family:var(--serif)}
+.usage{border-top:3px double var(--line);padding-top:6px;font-size:11px;display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:start}
+.usage b{font:700 13px/1.5 var(--serif)}
+.usage ul{margin:0;padding-left:14px}
+.usage .use2{grid-column:1/-1;justify-self:start;border:1px solid var(--ink);background:var(--bar);color:var(--bar-ink);border-radius:3px;padding:3px 10px;cursor:pointer;font-size:12px}
+.qbox{border:1px solid var(--ink);padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.qbox.row{flex-direction:row;align-items:center;gap:8px}
+.qbox.row input{flex:1}
+.qbox label{font:700 13px/1.6 var(--serif)}
+.qbox textarea{min-height:64px}
+.qq{margin:0;text-align:center;font:700 16px/1.4 var(--serif)}
+.q2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.q2 h4{margin:0 0 2px;text-align:center;font:700 13px/1.6 var(--serif)}
+.q2 textarea{border:1px solid var(--ink)!important;min-height:52px;padding:4px 6px}
+.q2.res label{display:grid;grid-template-columns:18px 1fr;gap:2px 6px;align-items:baseline;cursor:pointer}
+.q2.res b{font:700 16px/1.4 var(--serif)}
+.q2.res small{grid-column:2;font-size:11.5px;color:var(--sub)}
+.q2.res label:has(input:checked){background:var(--accent-bg)}
+.names2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.names2 .fr b{width:auto;margin-right:6px}
+.confessed{display:flex;align-items:center;gap:8px;cursor:pointer}
+.confessed b{font:700 16px/1.4 var(--serif)}
+.confessed small{color:var(--sub);font-size:11px}
+/* 괴도 시트 (네 번째 종류) */
+.thief{padding:12px 14px 0;display:flex;flex-direction:column;gap:12px}
+.tgrid{display:grid;grid-template-columns:44px 1fr;gap:12px;border:1px solid var(--ink);padding:8px}
+.tgrid .spine{border-left:0}
+.tgrid .hat{font-size:28px;line-height:1}
+.cards2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pcard{border:3px double var(--ink);border-radius:6px;display:flex;flex-direction:column;background:var(--card);min-height:220px}
+.pcard .ph{display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--bar);color:var(--bar-ink);padding:6px 8px;border-radius:3px 3px 0 0}
+.pcard .ph b{font:800 15px/1.2 var(--serif)}
+.pcard .ph input{width:38px;height:38px;border-radius:50%;background:var(--paper)!important;color:var(--ink);border:2px solid var(--bar-ink)!important;text-align:center;font:800 15px/1 var(--serif);padding:0!important}
+.pcard textarea{flex:1;padding:6px 8px!important;font-size:12px}
+.pcard .pf{display:flex;align-items:center;justify-content:space-between;background:var(--bar);color:var(--bar-ink);padding:3px 8px;font:italic 700 12px/1.4 var(--serif)}
+.pcard .pf button{border:1px solid color-mix(in srgb,var(--bar-ink) 45%,transparent);background:none;color:var(--bar-ink);border-radius:3px;padding:1px 6px;cursor:pointer;font:500 11px/1.4 var(--sans)}
+.fs[data-type=thief] .pc{display:none}
+.fs:not([data-type=thief]) .thief-only{display:none!important}
+
 /* ── 채팅 카드 미리보기 (롤 템플릿) ── */
 .chat{display:flex;flex-direction:column;gap:8px}
 .chat h2,.ask h2{margin:0;font:800 16px/1.4 var(--serif)}
@@ -201,7 +260,8 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
         <select id="type" aria-label="시트 종류">
           <option value="det" selected>탐정 캐릭터 시트</option>
           <option value="asi">조수 캐릭터 시트</option>
-          <option value="base">아지트 · 사건 조사 시트 (둘이 함께)</option>
+          <option value="base">둘이서 공용 시트 (아지트 · 사건 · 사전 조사 · 다툼 · 규격 외)</option>
+          <option value="thief">괴도 시트 (GM)</option>
         </select>
       </label>
       <span class="die" id="die">10면체 사용</span>
@@ -297,6 +357,9 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
       <div class="tabs" role="tablist">
         <button type="button" role="tab" aria-selected="true" data-tab="hq">아지트 시트</button>
         <button type="button" role="tab" aria-selected="false" data-tab="case">사건 조사 시트</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="pre">사전 조사 시트</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="fight">다툼 시트</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="extra">규격 외 탐정 시트</button>
       </div>
       <div class="pane" data-pane="hq">
         <div class="hq">
@@ -342,6 +405,57 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
           <li>이번 세션 동안 한 번에 한해 판정 결과를 스페셜로 변경할 수 있다. 이때, 주사위를 굴려 6이 나온 것으로 간주한다.</li>
         </ul></div>
       </div>
+      <div class="pane" data-pane="pre" hidden>
+        <div class="pre2" id="pre"></div>
+      </div>
+      <div class="pane" data-pane="fight" hidden>
+        <div class="qbox"><label>다툼의 원인:</label><textarea aria-label="다툼의 원인">조수가 탐정의 단 과자를 몰래 먹었다</textarea></div>
+        <h3 class="qq">↓ 누구의 잘못인 것 같나요?</h3>
+        <div class="q2"><div><h4>⏱ 탐정의 견해</h4><textarea aria-label="탐정의 견해">명백히 조수 군이다</textarea></div><div><h4>🔭 조수의 견해</h4><textarea aria-label="조수의 견해">이름을 안 써 둔 탐정님</textarea></div></div>
+        <div class="qbox row"><label>다툼 키워드:</label><input type="text" aria-label="다툼 키워드" value="「사라진 마카롱」"></div>
+        <div class="qbox"><label>해결 방법:</label><textarea aria-label="해결 방법"></textarea></div>
+        <h3 class="qq">다툼은 해결되었나요?</h3>
+        <div class="q2 res">
+          <label><input type="radio" name="fight-res"><b>네</b><small>임의의 「둘이서 액션」을 하나 선택한다. 이 세션 동안 선택한 둘이서 액션을 습득한다.</small></label>
+          <label><input type="radio" name="fight-res"><b>아니오</b><small>「추억의 물품」을 1개 획득한다.</small></label>
+        </div>
+      </div>
+      <div class="pane" data-pane="extra" hidden>
+        <div class="names2"><div class="fr"><b>탐정의 이름</b><input type="text" aria-label="탐정의 이름" value="쿠로사와 렌"></div><div class="fr"><b>조수의 이름</b><input type="text" aria-label="조수의 이름" value="히나타 유이"></div></div>
+        <label class="confessed"><input type="checkbox"><b>고백했다</b><small>고백했다를 체크했다면 규격 외 액션을 습득한 것으로 취급한다</small></label>
+        <div class="hb">⏱ 탐정 PC의 규격 외 액션</div>
+        <table class="rep" id="xdet"><thead><tr><th style="width:110px">이름</th><th style="width:56px">타입</th><th style="width:56px">코스트</th><th>효과</th></tr></thead><tbody></tbody></table>
+        <div class="hb">🔭 조수 PC의 규격 외 액션</div>
+        <table class="rep" id="xasi"><thead><tr><th style="width:110px">이름</th><th style="width:56px">타입</th><th style="width:56px">코스트</th><th>효과</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <!-- ── 괴도 시트 (GM — 라이벌 괴도) ── -->
+    <div class="thief thief-only">
+      <div class="tgrid">
+        <div class="spine" aria-hidden="true"><span class="t">둘이서 수사<small>버디 서스펜스 TRPG</small></span><span class="hat">🎩</span><span class="role">괴도</span><span class="cs">시트</span></div>
+        <div class="col">
+          <div class="id">
+            <div class="portrait">초상 (캐릭터 아바타)</div>
+            <div class="fields">
+              <div class="fr"><b>괴도 이름</b><input type="text" aria-label="괴도 이름" value="괴도 미드나이트"></div>
+              <div class="fr"><b>배경</b><input type="text" aria-label="배경" value="사라진 마술단의 마지막 단원"></div>
+              <div class="fr"><b>진짜 이름</b><input type="text" aria-label="진짜 이름" value="???"></div>
+              <div class="fr pair"><b>나이</b><input type="text" aria-label="나이" value="불명"><b>신장</b><input type="text" aria-label="신장" value="175cm"></div>
+              <div class="fr"><b>패션 특징</b><input type="text" aria-label="패션 특징" value="실크 해트 · 은빛 가면"></div>
+              <div class="fr"><b>좋아하는 것</b><input type="text" aria-label="좋아하는 것" value="보름달"></div>
+              <div class="fr"><b>싫어하는 것</b><input type="text" aria-label="싫어하는 것" value="시계 소리"></div>
+              <div class="fr"><b>직업</b><input type="text" aria-label="직업" value="골동품 감정사"></div>
+            </div>
+          </div>
+          <div class="hb">탐정에 대해</div>
+          <div class="two"><div><h4>마음에 드는 점</h4><textarea aria-label="탐정에 대해 마음에 드는 점">끝까지 쫓아온다</textarea></div><div><h4>마음에 안 드는 점</h4><textarea aria-label="탐정에 대해 마음에 안 드는 점"></textarea></div></div>
+          <div class="hb">조수에 대해</div>
+          <div class="two"><div><h4>마음에 드는 점</h4><textarea aria-label="조수에 대해 마음에 드는 점"></textarea></div><div><h4>마음에 안 드는 점</h4><textarea aria-label="조수에 대해 마음에 안 드는 점">눈치가 너무 빠르다</textarea></div></div>
+        </div>
+      </div>
+      <div class="cards2" id="pcards"></div>
+      <button type="button" class="add" data-add="pcard">+ 괴도 카드 추가</button>
     </div>
   </div>
   </div>
@@ -354,11 +468,9 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
   <section class="ask">
     <h2>정해 주실 것</h2>
     <ol>
-      <li><b>판정 규칙</b> — 기능 이름을 누르면 지금은 <b>탐정 1D10 · 조수 1D6</b> 하나만 굴려요. 목표치 · 성공 조건 · 스페셜(6?) · 펌블, 【유리함】 · 【불리함】을 어떻게 굴리는지 알려 주시면 카드에 성공 · 실패까지 띄울게요. <span class="sub">(습득 안 한 기능으로 판정할 때 규칙도)</span></li>
-      <li><b>아지트 · 사건 조사 시트</b> — 두 PC가 같이 쓰는 <b>캐릭터 하나</b>(시트 종류 ‘아지트 · 사건’)로 두는 안이에요. 탐정 · 조수 시트마다 탭으로 넣으면 둘이 따로 적게 돼요. 이대로 갈까요?</li>
-      <li><b>조수 시트의 액션 머리</b> — 인쇄본은 조수 시트도 ‘탐정 액션’이라고 적혀 있어요. 목업은 ‘조수 액션’으로 바꿨는데, 원본대로 둘까요?</li>
-      <li><b>초상</b> — 블러드문 시트처럼 Roll20 캐릭터 아바타를 그대로 보여 줘요. 따로 그림 주소 칸이 필요하면 말씀해 주세요.</li>
-      <li><b>시트 이름</b> — Roll20 목록 이름은 <b>Futari Sousa (Korean)</b> 으로 할까요?</li>
+      <li><b>괴도 시트</b> — 띠의 드롭다운에 네 번째 종류 <b>괴도 시트 (GM)</b>로 넣었어요. GM 이 라이벌 괴도 캐릭터에 써요. 괴도 카드는 줄을 더할 수 있고 ▶ 공개 로 채팅에 내요. 원본에 없는 <b>괴도 이름</b> 칸(= Roll20 캐릭터 이름)을 맨 위에 더했어요.</li>
+      <li><b>사전 조사 · 다툼 · 규격 외 탐정 시트</b> — 두 사람이 같이 쓰거나 서로 건네는 시트라 <b>둘이서 공용 시트</b>의 탭으로 넣었어요. 사전 조사는 탐정 · 조수 두 장을 나란히, ▶ 사용 은 체크한 항목을 채팅에 내요.</li>
+      <li><b>조수 시트의 액션 머리</b> — 지금은 ‘조수 액션’. 인쇄본처럼 ‘탐정 액션’으로 둘까요?</li>
     </ol>
   </section>
 </div>
@@ -396,11 +508,30 @@ const ST = [['엇갈림', '체크가 되어 있는 동안 【마음고생】이 
 $('#status').insertAdjacentHTML('beforeend', ST.map((s, i) => `<div class="st" data-s="${i + 1}"><span>${i + 1}</span><label><b><input type="checkbox">${s[0]}</b><small>${s[1]}</small></label></div>`).join(''));
 document.querySelectorAll('.st input').forEach(c => c.addEventListener('change', () => c.closest('.st').classList.toggle('on', c.checked)));
 
+const PRE = {
+  det: [['어떤 탐정인가요?', '이 캐릭터를 대표하는 행동', '탐정으로서 하고 싶은 일'], ['파트너가 해주기를 바라는 대우'],
+    ['사건 발생 페이즈 이후, 언제든지 사용할 수 있다.', '사용을 선언하고, 이 시트에 준비된 임의의 항목을 골라 체크 박스를 체크한다.', '【여유】를 3점 소비하고, 파트너가 체크한 항목에 적혀 있는 내용에 따라 행동한다. 그 후, 파트너는 다음 판정에서 유리함을 얻는다.']],
+  asi: [['어떤 조수인가요?', '이 캐릭터를 대표하는 행동'], ['파트너가 해주기를 바라는 대우', '탐정을 위해 하고 싶은 일'],
+    ['사건 발생 페이즈 이후, 언제든지 사용할 수 있다.', '사용을 선언하고, 이 시트에 준비된 임의의 항목을 골라 체크 박스를 체크한다.', '파트너가 체크된 항목에 적혀 있는 내용에 따라 행동한다. 그 후, 【여유】를 1점 획득한다.']]
+};
+const piHtml = (k, q) => `<div class="pi"><label>${q}</label><div class="pirow"><input type="checkbox" aria-label="${q} 고르기" data-pre="${k}"><textarea aria-label="${q}"></textarea></div></div>`;
+$('#pre').innerHTML = ['det', 'asi'].map(k => { const [a, b, u] = PRE[k], who = k === 'det' ? '탐정' : '조수';
+  return `<div class="precol"><div class="pre-hd"><b>사전 조사 시트</b><span>${who}</span><input type="text" aria-label="날짜" placeholder="년 월 일"></div>`
+    + `<div class="prebox"><h4>가장 먼저 알리고 싶은 점</h4>${a.map(q => piHtml(k, q)).join('')}</div>`
+    + `<p class="arrow">아지트 페이즈에서 서로 「자기소개」를 한 뒤에 기재</p>`
+    + `<div class="prebox"><h4>두 번째로 알리고 싶은 점</h4>${b.map(q => piHtml(k, q)).join('')}</div>`
+    + `<p class="hand">${k === 'det' ? '⏱' : '🔭'} 기재 후 파트너의 플레이어에게 건넨다</p>`
+    + `<div class="usage"><b>이 시트의<br>사용법</b><ul>${u.map(x => `<li>${x}</li>`).join('')}</ul><button type="button" class="use2" data-use="${k}">▶ 사용 — 체크한 항목을 채팅에</button></div></div>`; }).join('');
+document.querySelector('.pi textarea').value = '단 것만 있으면 무엇이든 풀어내는 명탐정';
+$('#xdet tbody').innerHTML = actRow(['', '', '', '']); $('#xasi tbody').innerHTML = actRow(['', '', '', '']);
+const pcard = (m, t) => `<div class="pcard"><div class="ph"><b>🎩 괴도 카드</b><input type="text" aria-label="카드 표시" value="${m}"></div><textarea aria-label="괴도 카드 내용">${t}</textarea><div class="pf">Phantom thief's act.<button type="button" data-reveal>▶ 공개</button></div></div>`;
+$('#pcards').innerHTML = pcard('1', '예고장: 보름달이 뜨는 밤, 시계탑의 「은빛 태엽」을 받으러 가겠습니다.') + pcard('', '');
+
 // 종류 바꾸기
 const setType = t => {
   fs.dataset.type = t;
   const det = t === 'det';
-  $('#die').textContent = t === 'base' ? '아지트 · 사건' : det ? '10면체 사용' : '6면체 사용';
+  $('#die').textContent = t === 'base' ? '둘이서 함께' : t === 'thief' ? '괴도 (GM)' : det ? '10면체 사용' : '6면체 사용';
   $('#sp-role').textContent = det ? '탐정' : '조수';
   $('#sp-die').innerHTML = det ? '10면체<br>사용' : '6면체<br>사용';
   $('#act-head').textContent = det ? '탐정 액션' : '조수 액션';
@@ -427,6 +558,7 @@ document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click',
   if (k === 'guest') $('#guests tbody').insertAdjacentHTML('beforeend', guestRow([0, '', '', '', '']));
   if (k === 'action') $('#actions tbody').insertAdjacentHTML('beforeend', actRow(['', '', '', '']));
   if (k === 'item') $('#items').insertAdjacentHTML('beforeend', itemCard(['', '', '']));
+  if (k === 'pcard') $('#pcards').insertAdjacentHTML('beforeend', pcard('', ''));
 }));
 
 // 굴림 → 채팅 카드
@@ -443,6 +575,11 @@ document.addEventListener('click', e => {
     const det = fs.dataset.type === 'det', n = d(det ? 10 : 6), have = s.parentElement.querySelector('input').checked;
     return card(`${s.dataset.skill} 판정`, `${s.dataset.group} · ${det ? '1D10' : '1D6'}`, n, `${who()}${have ? '' : ' · <b>미습득</b>'}<br><span style="color:var(--sub)">성공 · 실패는 판정 규칙을 받은 뒤 표시</span>`);
   }
+  const u = e.target.closest('[data-use]');
+  if (u) { const k = u.dataset.use, picked = [...document.querySelectorAll(`[data-pre="${k}"]:checked`)].map(c => c.closest('.pi'));
+    return card(`사전 조사 시트 · ${k === 'det' ? '탐정' : '조수'}`, '사용', '✓', picked.length ? picked.map(pi => `<b>${pi.querySelector('label').textContent}</b><br>${pi.querySelector('textarea').value || '(비어 있음)'}`).join('<br>') : '체크한 항목이 없어요'); }
+  const rv = e.target.closest('[data-reveal]');
+  if (rv) { const c = rv.closest('.pcard'); return card('괴도 카드', 'Phantom thief\'s act.', c.querySelector('input').value || '🎩', c.querySelector('textarea').value || '(비어 있음)'); }
   const r = e.target.closest('[data-roll]');
   if (!r) return;
   document.querySelectorAll('.hit').forEach(x => x.classList.remove('hit'));
