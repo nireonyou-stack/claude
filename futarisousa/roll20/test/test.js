@@ -46,7 +46,7 @@ const last = s => s.rolls[s.rolls.length - 1];
   has('조수 판정: sub', r.macro, '{{title=추적 판정}}');
   eq('조수 4 이상 → 탐정 감정 안내', [r.computed.ok, r.computed.note], [1, '탐정이 조수에 대한 감정 1 · 【여유】+1']);
 
-  // ── 기벽 · 감정 표 · 상태이상 · 괴도 배경
+  // ── 기벽 · 감정 표 · 상태이상
   s.set('sheet_type', 'det'); s.set('quirk_4', '단 것을 먹지 않으면 추리가 멈춘다'); await s.settle();
   s.dice.push(4); s.click('quirk'); await s.settle();
   eq('기벽: 눈 + 글', [last(s).computed.dice, last(s).computed.res], ['⚃', '단 것을 먹지 않으면 추리가 멈춘다']);
@@ -60,8 +60,6 @@ const last = s => s.rolls[s.rolls.length - 1];
   s.dice.push(2); s.click('cond'); await s.settle();
   eq('상태이상: 2', last(s).computed.res, '탐정의 폭주');
   has('상태이상: 효과', last(s).computed.eff, '[유리함]');
-  s.dice.push(6); s.click('tbg'); await s.settle();
-  eq('괴도 배경 표: 6', last(s).computed.res, '일그러진 탐정 애호가');
 
   // ── 【여유】 ± (0 아래로 안 내려감)
   s.click('calmup'); await s.settle(); s.click('calmup'); await s.settle();

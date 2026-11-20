@@ -39,7 +39,6 @@ COND = [
 ]
 CONFESS = ('· 탐정 PC는 위에 적힌 내용을 강렬한 감정으로 획득한다.\n· 모든 PC가 파트너에 대한 감정을 1개씩 획득한다.\n· 【여유】가 1D10점 상승한다.\n'
            '· 상태이상을 모두 회복한다.\n· 이번 세션 동안 한 번에 한해 판정 결과를 스페셜로 변경할 수 있다. 이때, 주사위를 굴려 6이 나온 것으로 간주한다.')
-THIEF_BG = ['대대로 물려받은 기술', '아류로 고안한 기술', '천성적인 괴도', '죽을 각오로 특훈', '괴도 마니아', '일그러진 탐정 애호가']
 # 탐정 · 조수 시트 액션 표의 첫 줄 — 원본처럼 인쇄된 기본 액션 (이름 · 타입 · 코스트 · 효과). ▶ 는 act_baseact
 ACTS = {
     'det': ('둘이서 수사', '보조', '없음', '수사 페이즈에서 장면을 종료할 때 사용할 수 있다. 당신과 파트너는 서로에 대한 감정을 1개 심화함으로써 '
@@ -111,7 +110,7 @@ def baseact():
 def data():
     return 'const DATA = ' + json.dumps({
         'skills': SKILLS, 'faces': FACES, 'emoA': EMO_A, 'emoB': EMO_B, 'cond': COND, 'acts': ACTS,
-        'thiefBg': THIEF_BG, 'pre': PRE,
+        'pre': PRE,
     }, ensure_ascii=False) + ';'
 
 

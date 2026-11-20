@@ -1,5 +1,5 @@
 // 둘이서 수사 시트 워커 — role · 【여유】 ± · 굴림 · 채팅 출력(Custom Roll Parsing)
-// DATA(기능 · 기벽 눈 · 감정 표 · 상태이상 · 기본 액션 · 사전 조사 질문 · 괴도 배경 표)는 build.py 가 아래 줄에 넣는다
+// DATA(기능 · 기벽 눈 · 감정 표 · 상태이상 · 기본 액션 · 사전 조사 질문)는 build.py 가 아래 줄에 넣는다
 // @DATA
 const num = v => { const n = parseInt(v, 10); return isNaN(n) ? null : n; };
 const ROLE = { det: '탐정', asi: '조수' };
@@ -71,7 +71,6 @@ on('clicked:cond', () => tableRoll('상태이상', '1D6', '{{roll=[[1d6]]}}', r 
   const k = r.roll.result, s = DATA.cond[k - 1];
   return { dice: k, res: s[0], eff: s[1] };
 }, true));
-on('clicked:tbg', () => tableRoll('괴도 배경 표', '1D6', '{{roll=[[1d6]]}}', r => ({ dice: r.roll.result, res: DATA.thiefBg[r.roll.result - 1]})));
 
 // 기본 액션(원본처럼 인쇄된 첫 줄): 지금 종류의 것을 채팅에
 on('clicked:baseact', () => getAttrs(['sheet_type', 'character_name'], v => {

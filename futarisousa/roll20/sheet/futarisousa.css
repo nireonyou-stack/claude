@@ -80,7 +80,6 @@
 .futari .fr b{flex:none;width:84px;font:700 12px/1.6 var(--serif)}
 .futari .fr input[type=text]{flex:1;border:0}
 .futari .fr.pair b+input+b{width:auto;margin-left:10px}
-.futari .mini{flex:none;border:1px solid var(--line);border-radius:3px;padding:0 5px;font-size:12px}
 .futari .hint{flex:none;font-size:11px;color:var(--sub)}
 .futari .rephead{display:grid;font:700 12px/1.6 var(--serif);border-bottom:1px solid var(--ink);text-align:center}
 .futari .repcontrol{display:flex;justify-content:flex-start;gap:6px;margin-top:4px}
