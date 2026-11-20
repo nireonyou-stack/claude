@@ -42,6 +42,7 @@
 
 - ✔ 단추 이름(`act_…`)에는 `_` 를 쓰지 않는다 (Roll20 이 반복 줄 이름으로 읽음)
 - ✔ 반복 섹션 이름은 `repeating_` 뒤에 영소문자 · 숫자만
+- ✔ 라디오 묶음에는 숨은 빈 라디오(`value="" checked`, CSS 로 숨김)를 둔다 — checked 가 없으면 Roll20 이 첫 라디오를 기본값으로 골라 새 캐릭터에 값이 미리 들어간다 (아마데우스 · 둘이서 수사 다툼)
 - ✔ `<table>` 태그를 쓰지 않는다 — Roll20 PR 봇이 Good Code 규정 위반으로 경고. 표는 div 그리드로 (둘이서 수사 감정 표)
 - `:has()` · `color-mix()` 같은 최신 CSS 는 피한다 (Roll20 쪽 처리 확인 안 됨) — ✔ lint 가 경고
 - 시트 종류 · 탭은 숨은 `<input type="hidden" name="attr_…">` + 형제 선택자로 가른다 (Roll20 이 hidden 의 value 속성을 고쳐 줌)

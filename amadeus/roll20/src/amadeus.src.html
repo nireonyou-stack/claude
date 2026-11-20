@@ -1,0 +1,109 @@
+<!-- 신화창세 RPG 아마데우스 시트 (Roll20, legacy:false)
+     이 파일은 amadeus/roll20/src/amadeus.src.html 을 build.py 로 변환해 만든다. 직접 고치지 말 것.
+     "@이름" 주석 자리는 build.py 가 능력치 · 부모신의 축복 · 식료 · 롤 템플릿 · sheet worker 로 채운다.
+     공식 캐릭터 시트(A4 가로)를 세로로 재배치. 시트의 글은 공식 시트에 인쇄된 것만. -->
+
+<input type="hidden" name="attr_sheet_version" value="">
+<div class="amadeus">
+  <!-- 띠: 로고 · 레벨 -->
+  <div class="band">
+    <span class="logo"><small>신화창세 RPG</small>아마데우스</span><span class="ttl">캐릭터 시트</span>
+    <span class="lv"><b>레벨</b><input type="number" name="attr_level" min="1" title="레벨"></span>
+  </div>
+
+  <div class="pane">
+    <!-- 기본 정보 · 속성 -->
+    <div class="top">
+      <div class="info">
+        <div class="f w"><b>이름</b><input type="text" name="attr_character_name"></div>
+        <div class="f w"><b>신군</b><input type="text" name="attr_cluster"></div>
+        <div class="f"><b>부모신</b><input type="text" name="attr_parent"></div><div class="f"><b>처지</b><input type="text" name="attr_plight"></div>
+        <div class="f"><b>배경</b><input type="text" name="attr_background"></div><div class="f"><b>예언</b><input type="text" name="attr_prophecy"></div>
+        <div class="f"><b>성별</b><input type="text" name="attr_gender"></div><div class="f"><b>연령</b><input type="text" name="attr_age"></div>
+        <div class="f"><b>직업</b><input type="text" name="attr_job"><input type="checkbox" class="pt" name="attr_job_used" value="1" title="직업수정 사용"></div>
+        <div class="f"><b>경험</b><input type="text" name="attr_exp"></div>
+      </div>
+      <div class="attr">
+        <div class="lab">속성</div>
+        <div class="chips"><input type="radio" class="none" name="attr_element" value="" checked>
+          <label class="ch chw"><input type="radio" name="attr_element" value="white">백</label>
+          <label class="ch chr"><input type="radio" name="attr_element" value="red">적</label>
+          <label class="ch chk"><input type="radio" name="attr_element" value="black">흑</label>
+          <label class="ch chg"><input type="radio" name="attr_element" value="green">녹</label>
+          <label class="ch chb"><input type="radio" name="attr_element" value="blue">청</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 능력치: 이름을 누르면 판정 -->
+    <div class="hb">능력치</div>
+    <div class="abil">
+<!--@ABIL-->
+    </div>
+
+    <!-- 생명력 · 상태이상 -->
+    <div class="hb">생명력</div>
+    <div class="hp">
+      <div class="hc"><small>최대치</small><span class="v" name="attr_hp_max"></span>
+        <span class="base"><small>기본</small><input type="number" name="attr_hp_base" title="생명력 최대치 (활력 제외)"></span></div>
+      <div class="hc"><small>활력<button type="action" name="act_vigor" class="dbtn" title="활력 굴리기 (레벨D6)">🎲</button></small><input type="number" class="v" name="attr_vigor" min="0" title="활력"></div>
+      <div class="hc"><small>현재치</small><span class="stp"><button type="action" name="act_hpdn" title="생명력 1 줄이기">−</button><input type="number" class="v" name="attr_hp" min="0" title="생명력 현재치"><button type="action" name="act_hpup" title="생명력 1 늘리기">+</button></span></div>
+      <div class="conds">
+        <label class="st stc"><input type="checkbox" name="attr_st_despair" value="1"><span>절망</span></label>
+        <label class="st stc"><input type="checkbox" name="attr_st_rage" value="1"><span>분노</span></label>
+        <label class="st stc"><input type="checkbox" name="attr_st_fear" value="1"><span>겁</span><input type="text" name="attr_st_fear_n" title="겁 n"></label>
+        <label class="st stc"><input type="checkbox" name="attr_st_corrupt" value="1"><span>타락</span></label>
+        <label class="st stc"><input type="checkbox" name="attr_st_shame" value="1"><span>치욕</span></label>
+        <label class="st stc"><input type="checkbox" name="attr_st_injury" value="1"><span>중상</span><input type="text" name="attr_st_injury_n" title="중상 n"></label>
+      </div>
+    </div>
+
+    <!-- 기프트: 첫 줄은 공식 시트에 인쇄된 부모신의 축복 -->
+    <div class="hb">기프트</div>
+    <div class="gifts">
+      <div class="rh gift"><span></span><span>기프트명</span><span>분류</span><span>조건</span><span>판정</span><span>태그</span><span>효과</span><span></span></div>
+      <div class="rr gift printed"><input type="checkbox" class="pt" name="attr_blessing_seal" value="1" title="봉인"><!--@BLESSING--><button type="action" name="act_blessing" class="use" title="채팅에 출력">▶</button></div>
+      <fieldset class="repeating_gifts">
+        <div class="rr gift"><input type="checkbox" class="pt" name="attr_seal" value="1" title="봉인"><input type="text" name="attr_name" title="기프트명"><input type="text" name="attr_cat" title="분류"><input type="text" name="attr_cond" title="조건"><input type="text" name="attr_check" title="판정"><input type="text" name="attr_tag" title="태그">
+          <div class="ae"><span name="attr_eff"></span><textarea name="attr_eff" title="효과"></textarea></div>
+          <button type="action" name="act_use" class="use" title="채팅에 출력">▶</button></div>
+      </fieldset>
+    </div>
+
+    <!-- 소지금 · 아이템 · 식료 -->
+    <div class="lower">
+      <div class="coin"><div class="hb">소지금</div><div class="cv"><input type="number" name="attr_coin" min="0" title="소지금"><small>신찰</small></div></div>
+      <div class="items">
+        <div class="hb">아이템</div>
+        <div class="rh item"><span>아이템명</span><span>종별</span><span>위력</span><span>특수기능</span><span></span></div>
+        <fieldset class="repeating_items">
+          <div class="rr item"><input type="text" name="attr_name" title="아이템명">
+            <span class="kind"><input type="radio" class="none" name="attr_kind" value="" checked><label class="kd kdp"><input type="radio" name="attr_kind" value="p"><span>상</span></label><label class="kd kdc"><input type="radio" name="attr_kind" value="c"><span>소</span></label></span>
+            <input type="text" name="attr_power" title="위력"><div class="ae"><span name="attr_spec"></span><textarea name="attr_spec" title="특수기능"></textarea></div>
+            <button type="action" name="act_use" class="use" title="채팅에 출력">▶</button></div>
+        </fieldset>
+        <div class="rr item food"><span class="fd"><b>식료</b><input type="number" name="attr_food" min="0" max="5" title="식료 개수"><span>개</span></span>
+          <span class="kind"><span class="kx">상</span><span class="kx on">소</span></span><span></span><span class="ef"><!--@FOOD--></span>
+          <button type="action" name="act_eat" class="use" title="식료 1개로 생명력 1점 회복">▶</button></div>
+      </div>
+    </div>
+
+    <!-- 인물 · 협력자 -->
+    <div class="hb">인물</div>
+    <div class="people">
+      <div class="rh ppl"><span></span><span>인물명</span><span>진실</span><span>마음</span><span></span><span>관계</span></div>
+      <fieldset class="repeating_people">
+        <div class="rr ppl"><input type="checkbox" class="pt" name="attr_seal" value="1" title="개입함"><input type="text" name="attr_name" title="인물명"><span class="c"><input type="checkbox" name="attr_truth" value="1" title="진실"></span><input type="number" name="attr_feel" title="마음">
+          <span class="sign"><input type="radio" class="none" name="attr_sign" value="" checked><label class="sg sgp"><input type="radio" name="attr_sign" value="plus"><span>+</span></label><label class="sg sgm"><input type="radio" name="attr_sign" value="minus"><span>−</span></label></span><input type="text" name="attr_rel" title="관계"></div>
+      </fieldset>
+      <div class="rh ppl ally"><span></span><span>협력자</span><span></span><span>마음</span><span></span><span>관계</span></div>
+      <div class="rr ppl"><input type="checkbox" class="pt" name="attr_ally1_seal" value="1" title="개입함"><input type="text" name="attr_ally1_name" title="협력자"><span></span><input type="number" name="attr_ally1_feel" title="마음">
+        <span class="sign"><input type="radio" class="none" name="attr_ally1_sign" value="" checked><label class="sg sgp"><input type="radio" name="attr_ally1_sign" value="plus"><span>+</span></label><label class="sg sgm"><input type="radio" name="attr_ally1_sign" value="minus"><span>−</span></label></span><input type="text" name="attr_ally1_rel" title="관계"></div>
+      <div class="rr ppl"><input type="checkbox" class="pt" name="attr_ally2_seal" value="1" title="개입함"><input type="text" name="attr_ally2_name" title="협력자"><span></span><input type="number" name="attr_ally2_feel" title="마음">
+        <span class="sign"><input type="radio" class="none" name="attr_ally2_sign" value="" checked><label class="sg sgp"><input type="radio" name="attr_ally2_sign" value="plus"><span>+</span></label><label class="sg sgm"><input type="radio" name="attr_ally2_sign" value="minus"><span>−</span></label></span><input type="text" name="attr_ally2_rel" title="관계"></div>
+    </div>
+  </div>
+</div>
+
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->

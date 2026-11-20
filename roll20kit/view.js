@@ -94,6 +94,7 @@ iframe{display:block;width:870px;height:1400px;border:0;background:#fff}
 .q .qb{background:var(--panel);color:var(--ink);border-radius:6px;padding:14px 16px;min-width:260px;max-width:calc(100vw - 32px);box-shadow:0 8px 30px rgba(0,0,0,.35)}
 .q h3{margin:0 0 10px;font-size:14px}
 .q .qo{display:flex;flex-direction:column;gap:6px}
+.q .qi{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
 .q button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);text-align:left;cursor:pointer}
 .q button:hover,.q button:focus-visible{border-color:var(--accent)}
 @media (max-width: 900px){.vt{flex-direction:column}#textchat{flex-basis:auto;width:100%;max-width:300px}}
@@ -232,13 +233,19 @@ function clientCode() {
   // ── 굴림: ?{…} 묻기 → 인라인 굴림 → (워커 finishRoll) → 롤 템플릿 → 채팅
   const ask = (label, opts) => new Promise(ok => {
     const box = document.createElement('div'); box.className = 'q';
-    box.innerHTML = '<div class="qb" role="dialog" aria-label="' + esc(label) + '"><h3>' + esc(label) + '</h3><div class="qo">' + opts.map((o, i) => '<button type="button" data-i="' + i + '">' + esc(o[0]) + '</button>').join('') + '</div></div>';
-    box.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { box.remove(); ok(opts[+b.dataset.i][1]); } });
-    document.body.append(box); box.querySelector('button').focus();
+    // ?{문구|기본값} 처럼 선택지가 하나뿐이면 Roll20 은 기본값이 든 입력칸을 띄운다
+    const free = opts.length === 1 && !opts[0].comma;
+    box.innerHTML = '<div class="qb" role="dialog" aria-label="' + esc(label) + '"><h3>' + esc(label) + '</h3><div class="qo">'
+      + (free ? '<input type="text" class="qi" value="' + esc(opts[0][1]) + '" aria-label="' + esc(label) + '"><button type="button" data-ok>확인</button>'
+        : opts.map((o, i) => '<button type="button" data-i="' + i + '">' + esc(o[0]) + '</button>').join('')) + '</div></div>';
+    const done = v => { box.remove(); ok(v); };
+    box.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) done(opts[+b.dataset.i][1]); if (e.target.closest('[data-ok]')) done(box.querySelector('.qi').value); });
+    box.addEventListener('keydown', e => { if (e.key === 'Enter' && free) done(box.querySelector('.qi').value); });
+    document.body.append(box); (box.querySelector('.qi') || box.querySelector('button')).focus();
   });
   async function startRoll(ch, macro, cb) {
     const qs = [...new Set([...macro.matchAll(/\?\{([^|}]*)\|([^}]*)\}/g)].map(m => m[0]))], ans = {};
-    for (const q of qs) { const m = q.match(/\?\{([^|}]*)\|([^}]*)\}/); ans[q] = await ask(m[1], m[2].split('|').map(o => { const p = o.split(','); return [p[0], p.length > 1 ? p[p.length - 1] : p[0]]; })); }
+    for (const q of qs) { const m = q.match(/\?\{([^|}]*)\|([^}]*)\}/); ans[q] = await ask(m[1], m[2].split('|').map(o => { const p = o.split(','), r = [p[0], p.length > 1 ? p[p.length - 1] : p[0]]; r.comma = p.length > 1; return r; })); }
     let s = macro; Object.entries(ans).forEach(([q, v]) => { s = s.split(q).join(v); });
     const tm = s.match(/&\{template:([a-z0-9-]+)\}/), fields = {}, results = {};
     for (const m of s.matchAll(/\{\{([^=}]+)=([\s\S]*?)\}\}/g)) {
@@ -276,8 +283,9 @@ function clientCode() {
         const c = t.indexOf('}}', o); const tag = t.slice(o + 2, c).trim();
         if (tag[0] === '#' || tag[0] === '^') {
           const inv = tag[0] === '^' || tag.startsWith('#^'), name = tag.replace(/^#\^|^[#^]/, '');
-          const closeTag = '{{/' + name + '}}'; let depth = 1, j = c + 2, end = -1;
-          const openRe = new RegExp('\\{\\{[#^]{1,2}' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\}\\}', 'g');
+          // 도우미 뒤집기 {{#^rollTotal() …}} 는 {{/^rollTotal() …}} 로 닫는다 (Roll20 롤 템플릿 문서)
+          const helperInv = tag.startsWith('#^'), closeTag = '{{/' + (helperInv ? '^' : '') + name + '}}'; let depth = 1, j = c + 2, end = -1;
+          const openRe = new RegExp('\\{\\{' + (helperInv ? '#\\^' : '[#^]') + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\}\\}', 'g');
           while (j < t.length) { const nc = t.indexOf(closeTag, j); if (nc < 0) break; openRe.lastIndex = j; let mo, opens = 0; while ((mo = openRe.exec(t)) && mo.index < nc) opens++; depth += opens - 1; if (depth === 0) { end = nc; break; } j = nc + closeTag.length; }
           if (end < 0) { outHtml += '[템플릿 오류: ' + esc(name) + ' 닫힘 없음]'; break; }
           const h = helper(name), on = h === null ? truthy(name) : h;

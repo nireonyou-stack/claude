@@ -1,0 +1,19 @@
+<!-- 채팅 카드: 검은 띠(제목 · 부제) + 흰 본문. 굴림은 sheet worker 가 startRoll 로 보내고, computed:: 칸은 finishRoll 로 채운다.
+     판정(ok): 주사위 상자(액션 다이스는 검게 · 무드 다이스가 있는 판정이면 눈마다 운명의 수레바퀴 색) + 도장(ok 1 성공 · 2 실패 · 3 스페셜 · 4 펌블)
+              · 달성치 계산 · 인과 안내(note) · 상태이상 안내(st1 · st2)
+     굴림 결과(res, ok 없음): 수 + 결과 글 | 목록(k1~k3 · v1~v3) | 효과 글(effect) | 누구 · 봉인(flag)
+     CSS 는 roll20kit/LESSONS.md 1 · 2장 (카드 규칙을 CSS 맨 위 · ASCII 만 · 인라인 굴림 정리) -->
+<rolltemplate class="sheet-rolltemplate-amadeus">
+  <div class="sheet-card">
+    <div class="sheet-hd"><span class="sheet-ttl">{{title}}</span>{{#sub}}<span class="sheet-sub">{{sub}}{{#ok}} · 목표치 {{computed::tgt}}{{/ok}}</span>{{/sub}}</div>
+    <div class="sheet-bd">
+      {{#ok}}<div class="sheet-chk"><div class="sheet-dice"><!--@DICE--></div>{{#rollTotal() computed::ok 1}}<span class="sheet-stamp sheet-s1">{{computed::res}}</span>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<span class="sheet-stamp sheet-s2">{{computed::res}}</span>{{/rollTotal() computed::ok 2}}{{#rollTotal() computed::ok 3}}<span class="sheet-stamp sheet-s3">{{computed::res}}</span>{{/rollTotal() computed::ok 3}}{{#rollTotal() computed::ok 4}}<span class="sheet-stamp sheet-s4">{{computed::res}}</span>{{/rollTotal() computed::ok 4}}</div>
+      <div class="sheet-sum">달성치 <b>{{computed::sum}}</b> = {{computed::calc}}</div>{{#rollTotal() computed::ok 4}}<div class="sheet-note">펌블표를 굴린다</div>{{/rollTotal() computed::ok 4}}
+      <div class="sheet-note">{{computed::note}}</div>{{#rollTotal() computed::m 1}}{{#st1}}<div class="sheet-note">{{st1}}</div>{{/st1}}{{#st2}}<div class="sheet-note">{{st2}}</div>{{/st2}}{{/rollTotal() computed::m 1}}{{/ok}}
+      {{^ok}}{{#res}}<div class="sheet-res"><span class="sheet-num">{{computed::dice}}</span><span class="sheet-rt">{{computed::res}}</span></div>{{/res}}{{/ok}}
+      {{#k1}}<div class="sheet-kv"><b>{{k1}}</b><span>{{v1}}</span></div>{{/k1}}{{#k2}}<div class="sheet-kv"><b>{{k2}}</b><span>{{v2}}</span></div>{{/k2}}{{#k3}}<div class="sheet-kv"><b>{{k3}}</b><span>{{v3}}</span></div>{{/k3}}
+      {{#effect}}<div class="sheet-tx">{{effect}}</div>{{/effect}}
+      {{#who}}<div class="sheet-who">{{who}}{{#flag}} <b>{{flag}}</b>{{/flag}}</div>{{/who}}
+    </div>
+  </div>
+</rolltemplate>

@@ -1,0 +1,9 @@
+[
+  { "name": "아스카모리 아오이", "attrs": { "character_name": "아스카모리 아오이", "level": "1", "exp": "0", "element": "red", "cluster": "그리스 신군", "parent": "제우스", "background": "창세의 아이", "gender": "여", "age": "17", "job": "고등학생",
+      "war_rank": "A", "war_mode": "1", "spi_rank": "C", "spi_mode": "0", "tec_rank": "B", "tec_mode": "0", "lov_rank": "B", "lov_mode": "-1", "bra_rank": "D", "bra_mode": "0", "mun_rank": "C", "mun_mode": "1",
+      "hp_base": "11", "hp_max": "11", "hp": "11", "coin": "4", "food": "3", "ally1_name": "제우스", "ally1_feel": "1", "ally1_sign": "plus", "ally1_rel": "기대" },
+    "rows": { "gifts": [ { "name": "견본 기프트", "cat": "보조", "cond": "적적", "check": "무용", "tag": "공격", "eff": "플레이어가 적는 효과 글" } ],
+              "items": [ { "name": "번개창", "kind": "p", "power": "3", "spec": "견본" } ],
+              "people": [ { "name": "니쿠야 미나토", "feel": "2", "sign": "plus", "rel": "동료" } ] } },
+  { "name": "새 캐릭터", "attrs": {} }
+]

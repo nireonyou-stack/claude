@@ -103,6 +103,17 @@ def check(folder):
                 W(f'HTML: Bootstrap 클래스 이름 {c!r} — Roll20 기본 CSS 가 칠함')
 
     # ── 4. HTML · 워커
+    # 라디오 묶음에 checked 가 하나도 없으면 Roll20 은 첫 라디오를 기본값으로 쓴다 — 새 캐릭터에 미리 골라진 값이 생김 (아마데우스)
+    body = re.sub(r'<rolltemplate.*?</rolltemplate>|<script.*?</script>', '', html, flags=re.S)
+    groups = {}
+    for m in re.finditer(r'<input\b[^>]*type="radio"[^>]*>', body):
+        nm = re.search(r'name="(attr_[^"]+)"', m.group(0))
+        if nm:
+            g = groups.setdefault(nm.group(1), [False, body.count(chr(10), 0, m.start()) + 1])
+            g[0] = g[0] or bool(re.search(r'\bchecked\b', m.group(0)))
+    for nm, (chk, line) in groups.items():
+        if not chk:
+            W(f'HTML: 라디오 {nm} (줄 {line}) 에 checked 가 없음 — Roll20 이 첫 라디오를 기본값으로 고름. 숨은 빈 라디오를 checked 로')
     # <table> 은 Roll20 PR 봇이 경고 (Good Code 규정) — 표는 div 그리드로 (둘이서 수사 감정 표)
     for m in re.finditer(r'<table\b', html):
         W(f'HTML: <table> 태그 (줄 {html.count(chr(10), 0, m.start()) + 1}) — Roll20 PR 봇이 경고, div 그리드로')
