@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+/* Futari Sousa (buddy suspense TRPG) detective / assistant / hideout+case sheet. Layout: futarisousa/roll20/mockup.html.
+   Print look: paper + black header bars + dotted rules, one brass accent. Dark mode follows Roll20 (.sheet-darkmode on body).
+   ASCII only in this file (glyphs as escapes). */
+.futari{--paper:#fbfaf6;--ink:#1e1d1a;--sub:#6f6b63;--line:#c8c3b8;--cell:#f0ede6;--bar:#1e1d1a;--bar-ink:#fbfaf6;--accent:#8a6a2c;--accent-bg:#f3ead8;--card:#ffffff;
+  --serif:'Nanum Myeongjo','Noto Serif KR',serif;--sans:'Noto Sans KR','Malgun Gothic',sans-serif}
+.sheet-darkmode .futari{--paper:#1c1b18;--ink:#ebe6dc;--sub:#9b958a;--line:#47433c;--cell:#25231f;--bar:#33302a;--bar-ink:#f2ece0;--accent:#cfa962;--accent-bg:#3a3122;--card:#24221e}
+.futari{width:860px;background:var(--paper);color:var(--ink);font:13px/1.5 var(--sans);padding-bottom:14px;border:1px solid var(--line);box-sizing:border-box}
+.futari *{box-sizing:border-box}
+.futari input[type=text],.futari input[type=number],.futari textarea,.futari select{background:transparent;color:var(--ink);border:0;border-bottom:1px dotted var(--line);border-radius:0;box-shadow:none;margin:0;padding:2px 4px;height:auto;min-width:0;font:inherit;width:auto}
+.futari textarea{width:100%;border:0;resize:vertical;line-height:1.5}
+.futari input[type=number]{width:3.2em;text-align:center;-moz-appearance:textfield}
+.futari input::-webkit-inner-spin-button{-webkit-appearance:none}
+.futari input[type=checkbox]{margin:0;width:13px;height:13px;accent-color:var(--ink);cursor:pointer}
+.futari button{font:inherit;color:inherit}
+.futari :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.futari h4,.futari h5{margin:0}
+.futari ul{margin:0 0 4px;padding-left:16px}
+
+/* type switch: hidden attr_sheet_type / attr_base_tab before .futari */
+.t-type[value="asi"] ~ .futari .det-only,.t-type[value="base"] ~ .futari .det-only{display:none!important}
+.t-type:not([value="asi"]) ~ .futari .asi-only{display:none!important}
+.t-type:not([value="base"]) ~ .futari .base-only{display:none!important}
+.t-type[value="base"] ~ .futari .pc{display:none}
+.t-tab[value="case"] ~ .futari .pane.hq,.t-tab:not([value="case"]) ~ .futari .pane.case{display:none}
+
+/* band */
+.futari .band{display:flex;align-items:center;gap:12px;background:var(--bar);color:var(--bar-ink);padding:6px 14px}
+.futari .logo{font:800 19px/1 var(--serif);letter-spacing:.06em}
+.futari .logo small{display:block;font:500 9px/1.2 var(--sans);letter-spacing:.2em;opacity:.75;margin-bottom:3px}
+.futari .stype{display:flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--bar-ink)}
+.futari .stype select{background:var(--bar);color:var(--bar-ink);border:1px solid rgba(255,255,255,.35);border-radius:3px;padding:3px 6px;width:auto}
+.futari .die{margin-left:auto;font:700 12px/1 var(--sans);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 10px}
+/* section header bar */
+.futari .hb{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--bar);color:var(--bar-ink);font:700 14px/1 var(--serif);letter-spacing:.2em;padding:5px 8px;position:relative}
+.futari .hb .act,.futari .etab caption button,.futari .status .act{font:500 11px/1 var(--sans);letter-spacing:0;background:transparent;color:var(--bar-ink);border:1px solid rgba(255,255,255,.45);border-radius:3px;padding:3px 7px;cursor:pointer}
+.futari .hb .act{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+.futari .hb .act::before,.futari .etab caption button::before,.futari .status .act::before{content:"\1F3B2  "}
+
+/* character sheet grid */
+.futari .pc{display:grid;grid-template-columns:420px 40px minmax(0,1fr);gap:0 12px;padding:12px 14px 0}
+.futari .col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.futari .id{display:grid;grid-template-columns:140px minmax(0,1fr);gap:10px;border:1px solid var(--ink);padding:8px}
+.futari .portrait{position:relative;height:184px;border:1px solid var(--ink);transform:rotate(-2deg);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px;background:var(--cell);overflow:hidden}
+.futari .portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.futari .portrait img:not([src]),.futari .portrait img[src=""]{display:none}
+.futari .fields{display:flex;flex-direction:column}
+.futari .fr{display:flex;align-items:baseline;gap:6px;border-bottom:1px dotted var(--line);padding:2px 0}
+.futari .fr b{flex:none;width:76px;font:700 12px/1.6 var(--serif)}
+.futari .fr input{flex:1;border:0}
+.futari .fr.pair b:nth-of-type(2){width:auto;margin-left:8px}
+/* skills */
+.futari .skills{display:flex;flex-direction:column;gap:3px}
+.futari .srow{display:grid;grid-template-columns:52px repeat(6,minmax(0,1fr));border:1px solid var(--ink)}
+.futari .srow>b{display:flex;align-items:center;gap:2px;padding:0 4px;font:800 16px/1 var(--serif);border-right:1px solid var(--ink)}
+.futari .srow>b::after{content:"\25B8";font-size:10px}
+.futari .sk{display:flex;align-items:center;gap:2px;padding:5px 1px 5px 3px;border-right:1px solid var(--line);font-size:11.5px;letter-spacing:-.04em;white-space:nowrap;min-width:0}
+.futari .sk:last-child{border-right:0}
+.futari .sk button{border:0;background:none;padding:0;cursor:pointer;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis}
+.futari .sk button:hover{color:var(--accent);text-decoration:underline}
+.futari .sk input:checked+button{font-weight:700}
+.futari .sk:has(input:checked){background:var(--accent-bg)}
+/* quirks (detective) */
+.futari .quirk{display:grid;grid-template-columns:44px minmax(0,1fr);border-bottom:1px dotted var(--line)}
+.futari .quirk span{font-size:26px;line-height:38px;text-align:center;border-right:1px dotted var(--line)}
+.futari .quirk input{border:0;padding:0 8px}
+/* mental + guests (assistant) */
+.futari .mental{border:1px dotted var(--line);padding:6px 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.futari .mental .lb{font:700 12px/1 var(--serif)}
+.futari .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:3px}
+.futari .stepper button{border:0;background:none;width:24px;height:24px;padding:0;cursor:pointer}
+.futari .stepper input[type=number]{border:0;width:2.6em;font-weight:700}
+.futari .hearts{margin-left:auto;display:flex;align-items:center;gap:4px;font:700 13px/1 var(--serif)}
+.futari .track{display:inline-flex;align-items:center;gap:2px}
+.futari .track input{appearance:none;-webkit-appearance:none;margin:0;width:22px;height:22px;border:0;background:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.futari .track input::before{content:"\2665";font-size:20px;line-height:1;color:var(--accent)}
+.futari .track input:checked ~ input::before{content:"\2661";color:var(--sub)}
+.futari .track input.z{width:14px}
+.futari .track input.z::before{content:"\00D7";font-size:13px;color:var(--sub)}
+.futari .rephead{display:grid;font:700 12px/1.6 var(--serif);border-bottom:1px solid var(--ink);text-align:center}
+.futari .rephead.guests,.futari .grow{grid-template-columns:24px minmax(0,1fr) 64px minmax(0,1fr) minmax(0,1.3fr)}
+.futari .grow{display:grid;align-items:center;border-bottom:1px dotted var(--line)}
+.futari .grow input[type=text]{border:0;border-left:1px dotted var(--line);font-size:12px}
+.futari .grow input[type=checkbox]{justify-self:center}
+/* actions */
+.futari .rephead.acts,.futari .arow{grid-template-columns:84px 46px 46px minmax(0,1fr) 22px}
+.futari .arow{display:grid;align-items:start;border-bottom:1px dotted var(--line);font-size:12px}
+.futari .arow>input[type=text]{border:0;border-right:1px dotted var(--line);padding:4px}
+.futari .arow>input[type=text]:nth-child(2),.futari .arow>input[type=text]:nth-child(3){text-align:center}
+.futari .ae{display:grid;min-width:0}
+.futari .ae>*{grid-area:1/1}
+.futari .ae span{visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;padding:4px;font-size:11.5px;line-height:1.5;min-height:3em}
+.futari .ae textarea{overflow:hidden;resize:none;padding:4px;font-size:11.5px;height:100%}
+.futari .use{border:0;background:none;color:var(--sub);cursor:pointer;padding:4px 0;font-size:10px}
+.futari .use:hover{color:var(--accent)}
+/* spine */
+.futari .spine{display:flex;flex-direction:column;align-items:center;gap:10px;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:6px 0}
+.futari .spine .t{writing-mode:vertical-rl;font:800 30px/1 var(--serif);letter-spacing:.05em}
+.futari .spine .t small{font:700 11px/1 var(--serif);letter-spacing:.1em;margin-top:6px}
+.futari .spine .role{writing-mode:vertical-rl;font:800 26px/1 var(--serif);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 0}
+.futari .spine .cs{writing-mode:vertical-rl;font:700 18px/1 var(--serif);letter-spacing:.4em}
+.futari .spine .dn{font:700 12px/1.3 var(--serif);text-align:center}
+/* partner + summary */
+.futari .names{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 2px}
+.futari .names .fr b{width:auto}
+.futari .two{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--ink)}
+.futari .two>div{padding:4px 6px}
+.futari .two>div+div{border-left:1px dotted var(--line)}
+.futari .two h4{font:700 12px/1.6 var(--serif)}
+.futari .two h4::before{content:"\25BC"}
+.futari .two textarea{min-height:120px}
+.futari .bottom{display:grid;grid-template-columns:1.6fr 1fr;gap:8px}
+.futari .box{border:1px solid var(--ink);display:flex;flex-direction:column}
+.futari .rules{padding:6px 8px;font-size:11.5px;line-height:1.55}
+.futari .rules b{display:block;font:700 12.5px/1.6 var(--serif)}
+.futari .box textarea{flex:1;min-height:150px;padding:6px 8px}
+/* repeating controls */
+.futari .repcontrol{display:flex;gap:6px;justify-content:flex-start;margin-top:4px}
+.futari .repcontrol button{font-size:11px;padding:1px 8px;border:1px dashed var(--line);background:none;color:var(--sub);border-radius:3px;box-shadow:none;text-shadow:none}
+.futari .repcontrol button:hover{color:var(--ink);border-color:var(--ink)}
+.futari .repitem{position:relative}
+
+/* hideout + case */
+.futari .tabs{display:flex;gap:2px;padding:10px 14px 0}
+.futari .tabs label{margin:0;cursor:pointer}
+.futari .tabs input{position:absolute;opacity:0;pointer-events:none}
+.futari .tabs span{display:block;border:1px solid var(--ink);border-bottom:0;background:var(--cell);padding:5px 16px;font:700 13px/1 var(--serif)}
+.futari .tabs input:checked+span{background:var(--bar);color:var(--bar-ink)}
+.futari .tabs input:focus-visible+span{outline:2px solid var(--accent)}
+.futari .pane{border-top:1px solid var(--ink);margin:0 14px;padding-top:12px;display:flex;flex-direction:column;gap:12px}
+.futari .hqtop{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+.futari .note{border:1px solid var(--ink);padding:8px 10px;transform:rotate(-.6deg);background:var(--card);box-shadow:2px 3px 0 rgba(0,0,0,.12)}
+.futari .note+.note{transform:rotate(.8deg)}
+.futari .note .fr b{width:auto;margin-right:6px}
+.futari .repcontainer[data-groupname="repeating_memories"]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.futari .item{border:1px solid var(--ink);padding:6px 8px;display:flex;flex-direction:column;gap:2px;background:var(--card);height:100%}
+.futari .item label{margin:0;font:700 11.5px/1.6 var(--serif);color:var(--sub)}
+.futari .item input[type=text]{border-bottom:1px dotted var(--line)}
+.futari .item textarea{min-height:52px;font-size:12px}
+.futari .lower{display:grid;grid-template-columns:1fr 1.25fr;gap:12px}
+.futari .tbls{display:flex;flex-direction:column;gap:10px}
+.futari .etab{width:100%;border-collapse:collapse;font-size:11.5px}
+.futari .etab caption{background:var(--bar);color:var(--bar-ink);text-align:left;font:700 12px/1 var(--serif);padding:5px 6px;caption-side:top}
+.futari .etab caption button{float:right;margin-top:-3px}
+.futari .etab td{border:1px solid var(--line);padding:2px 5px}
+.futari .etab td.n{width:26px;text-align:center;color:var(--sub)}
+.futari .casegrid{display:grid;grid-template-columns:120px minmax(0,1fr);border:2px solid var(--ink)}
+.futari .casegrid>b{display:flex;align-items:center;justify-content:center;text-align:center;font:700 15px/1.3 var(--serif);border-bottom:1px solid var(--ink);border-right:1px solid var(--ink);padding:6px}
+.futari .casegrid>.v{border-bottom:1px solid var(--ink);padding:4px 8px;display:flex;gap:8px;align-items:center;min-width:0}
+.futari .casegrid>.v input[type=text]{flex:1}
+.futari .casegrid>.v input.date{flex:0 0 110px}
+.futari .casegrid textarea{min-height:64px}
+.futari .casegrid .lv{flex:none;display:flex;align-items:center;gap:6px;border-left:1px solid var(--ink);padding-left:8px;font:700 12px/1.3 var(--serif)}
+.futari .casegrid .hint{font-size:11px;color:var(--sub);flex:none}
+.futari .emo{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--ink)}
+.futari .emo h4{grid-column:1/-1;text-align:center;font:700 15px/1.8 var(--serif);border-bottom:1px solid var(--ink)}
+.futari .emo>div{padding:4px 8px}
+.futari .emo>div+div{border-left:1px solid var(--ink)}
+.futari .emo h5{text-align:center;font:700 13px/1.8 var(--serif);border-bottom:1px solid var(--line)}
+.futari .emo label{display:block;margin:4px 0 0;font:700 12px/1.6 var(--serif)}
+.futari .emo label::before{content:"> "}
+.futari .status{grid-column:1/-1;display:grid;grid-template-columns:48px repeat(3,minmax(0,1fr))}
+.futari .status>b{grid-row:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:700 14px/1.2 var(--serif);text-align:center;border-right:1px solid var(--ink)}
+.futari .status .act{color:var(--ink);border-color:var(--line);padding:2px 4px}
+.futari .st{display:grid;grid-template-columns:34px minmax(0,1fr);margin:0;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);cursor:pointer;font-weight:400}
+.futari .st:nth-of-type(3n){border-right:0}
+.futari .st:nth-of-type(n+4){border-bottom:0}
+.futari .st .no{display:flex;align-items:center;justify-content:center;font:700 22px/1 var(--serif);border-right:1px solid var(--line)}
+.futari .st .sb{display:flex;flex-direction:column;padding:4px 6px}
+.futari .st b{display:flex;align-items:center;gap:4px;font:700 13px/1.4 var(--serif)}
+.futari .st small{font-size:10.5px;line-height:1.4;color:var(--sub)}
+.futari .st:has(input:checked){background:var(--accent-bg)}
+.futari .secret{display:flex;align-items:stretch;border:2px solid var(--ink);border-top-style:dashed}
+.futari .secret b{flex:0 0 120px;display:flex;align-items:center;justify-content:center;font:700 15px/1 var(--serif);border-right:1px solid var(--ink)}
+.futari .secret input[type=text]{flex:1;order:2;border:0;padding:8px}
+.futari .secret .so{order:3;align-self:center;margin:0 4px 0 10px}
+.futari .secret .sot{order:4;align-self:center;font-size:12px;color:var(--sub);padding-right:10px}
+.futari .secret .so:not(:checked)+input{filter:blur(5px)}
+.futari .confess{font-size:11.5px;display:grid;grid-template-columns:120px 1fr;gap:8px}
+.futari .confess b{text-align:center;font:700 14px/1.6 var(--serif)}
+
+/* roll template */
+.sheet-rolltemplate-futarisousa .sheet-card{--ink:#1e1d1a;--sub:#6f6b63;--line:#c8c3b8;--bar:#1e1d1a;--bar-ink:#fbfaf6;--accent:#8a6a2c;background:#fff;color:var(--ink);border:1px solid var(--ink);font:12px/1.45 'Noto Sans KR',sans-serif;margin:2px 0}
+.sheet-rolltemplate-futarisousa.sheet-rolltemplate-darkmode .sheet-card{--ink:#ebe6dc;--sub:#9b958a;--line:#47433c;--bar:#33302a;--bar-ink:#f2ece0;--accent:#cfa962;background:#24221e}
+.sheet-rolltemplate-futarisousa .sheet-hd{display:flex;justify-content:space-between;align-items:baseline;gap:6px;background:var(--bar);color:var(--bar-ink);padding:4px 8px}
+.sheet-rolltemplate-futarisousa .sheet-ttl{font:700 13px/1.3 'Nanum Myeongjo',serif}
+.sheet-rolltemplate-futarisousa .sheet-sub{font-size:10.5px;opacity:.8;text-align:right}
+.sheet-rolltemplate-futarisousa .sheet-bd{padding:6px 8px;display:flex;flex-direction:column;gap:4px}
+.sheet-rolltemplate-futarisousa .sheet-dice,.sheet-rolltemplate-futarisousa .sheet-res{display:flex;align-items:center;gap:8px}
+.sheet-rolltemplate-futarisousa .sheet-die{min-width:1.7em;text-align:center;border:1px solid var(--ink);border-radius:4px;padding:3px 4px;font:800 22px/1 'Nanum Myeongjo',serif}
+.sheet-rolltemplate-futarisousa .sheet-rt{font:700 14px/1.35 'Nanum Myeongjo',serif}
+.sheet-rolltemplate-futarisousa .sheet-tx{white-space:pre-wrap;font-size:11.5px}
+.sheet-rolltemplate-futarisousa .sheet-who{color:var(--sub);font-size:11px}
+.sheet-rolltemplate-futarisousa .sheet-who b{color:var(--accent)}

@@ -1,0 +1,175 @@
+<!-- 둘이서 수사(버디 서스펜스 TRPG) 탐정 · 조수 · 아지트 · 사건 조사 시트 (Roll20, legacy:false)
+     이 파일은 futarisousa/roll20/src/futarisousa.src.html 을 build.py 로 변환해 만든다. 직접 고치지 말 것.
+     "@이름" 주석 자리는 build.py 가 기능표 · 기벽 · 감정 표 · 상태이상 · 롤 템플릿 · sheet worker 로 채운다.
+     배치: futarisousa/roll20/mockup.html -->
+
+<!-- 시트 종류(det 탐정 · asi 조수 · base 아지트·사건) · 아지트 탭(hq · case): 띠의 드롭다운 · 탭 라디오와 같은 속성. 값에 따라 CSS 가 칸을 가른다 -->
+<input type="hidden" class="t-type" name="attr_sheet_type" value="det">
+<input type="hidden" class="t-tab" name="attr_base_tab" value="hq">
+<input type="hidden" name="attr_sheet_version" value="">
+<div class="futari">
+  <!-- 띠 -->
+  <div class="band">
+    <span class="logo"><small>버디 서스펜스 TRPG</small>둘이서 수사</span>
+    <label class="stype">시트
+      <select name="attr_sheet_type"><option value="det" selected>탐정 캐릭터 시트</option><option value="asi">조수 캐릭터 시트</option><option value="base">아지트 · 사건 조사 시트</option></select>
+    </label>
+    <span class="die det-only">10면체 사용</span><span class="die asi-only">6면체 사용</span><span class="die base-only">둘이 함께</span>
+  </div>
+
+  <!-- ════ 탐정 · 조수 캐릭터 시트: 왼쪽 | 세로 띠 | 오른쪽 ════ -->
+  <div class="pc">
+    <div class="col">
+      <div class="id">
+        <div class="portrait"><span>초상</span><img name="attr_character_avatar" alt=""></div>
+        <div class="fields">
+          <div class="fr"><b>이름</b><input type="text" name="attr_character_name"></div>
+          <div class="fr"><b>클래스</b><input type="text" name="attr_class"></div>
+          <div class="fr"><b>배경</b><input type="text" name="attr_background"></div>
+          <div class="fr pair"><b>나이</b><input type="text" name="attr_age"><b>신장</b><input type="text" name="attr_height"></div>
+          <div class="fr"><b>패션 특징</b><input type="text" name="attr_fashion"></div>
+          <div class="fr"><b>좋아하는 것</b><input type="text" name="attr_likes"></div>
+          <div class="fr"><b>싫어하는 것</b><input type="text" name="attr_dislikes"></div>
+          <div class="fr"><b>직업</b><input type="text" name="attr_job"></div>
+        </div>
+      </div>
+
+      <!-- 기능: 체크 = 습득 · 이름을 누르면 판정(탐정 10면체 · 조수 6면체 1~3개) -->
+      <div class="skills">
+        <div class="hb">기능</div>
+<!--@SKILLS-->
+      </div>
+
+      <!-- 탐정: 기벽 (1D6) -->
+      <div class="det-only">
+        <div class="hb">기벽<button type="action" name="act_quirk" class="act" title="기벽 1D6 굴리기">1D6</button></div>
+<!--@QUIRKS-->
+      </div>
+
+      <!-- 조수: 멘탈(【여유】 · 【마음고생】) · 게스트 -->
+      <div class="asi-only col">
+        <div class="hb">멘탈</div>
+        <div class="mental">
+          <span class="lb">【여유】</span>
+          <span class="stepper"><button type="action" name="act_reservedn" title="여유 1 줄이기">−</button><input type="number" name="attr_reserve" value="0" min="0" title="여유"><button type="action" name="act_reserveup" title="여유 1 늘리기">+</button></span>
+          <span class="hearts">마음고생 ▸
+            <span class="track"><input type="radio" class="z" name="attr_hardship" value="0" checked title="0으로"><input type="radio" name="attr_hardship" value="1" title="1"><input type="radio" name="attr_hardship" value="2" title="2"><input type="radio" name="attr_hardship" value="3" title="3"></span>
+          </span>
+        </div>
+        <div class="hb">게스트</div>
+        <div class="rephead guests"><span></span><span>이름</span><span>기능</span><span>관계</span><span>메모</span></div>
+        <fieldset class="repeating_guests">
+          <div class="grow"><input type="checkbox" name="attr_learned" value="1" title="게스트를 통해 기능 습득"><input type="text" name="attr_name"><input type="text" name="attr_skill"><input type="text" name="attr_relation"><input type="text" name="attr_memo"></div>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="spine">
+      <span class="t">둘이서 수사<small>버디 서스펜스 TRPG</small></span>
+      <span class="role det-only">탐정</span><span class="role asi-only">조수</span>
+      <span class="cs">캐릭터 시트</span>
+      <span class="dn det-only">10면체<br>사용</span><span class="dn asi-only">6면체<br>사용</span>
+    </div>
+
+    <div class="col">
+      <!-- 액션: 새 시트 · 종류를 바꾸면 첫 줄에 기본 액션(둘이서 수사 / 따라잡다) — 워커 -->
+      <div class="hb"><span class="det-only">탐정 액션</span><span class="asi-only">조수 액션</span></div>
+      <div class="rephead acts"><span>이름</span><span>타입</span><span>코스트</span><span>효과</span><span></span></div>
+      <fieldset class="repeating_actions">
+        <div class="arow"><input type="text" name="attr_name"><input type="text" name="attr_type"><input type="text" name="attr_cost">
+          <div class="ae"><span name="attr_effect"></span><textarea name="attr_effect"></textarea></div>
+          <button type="action" name="act_use" class="use" title="채팅에 출력">▶</button></div>
+      </fieldset>
+
+      <div class="hb">파트너</div>
+      <div class="names">
+        <div class="fr"><b>이름</b><input type="text" name="attr_partner_name"></div>
+        <div class="fr"><b>호칭</b><input type="text" name="attr_partner_call"></div>
+      </div>
+      <div class="two">
+        <div><h4>마음에 드는 점</h4><textarea name="attr_partner_good"></textarea></div>
+        <div><h4>마음에 안 드는 점</h4><textarea name="attr_partner_bad"></textarea></div>
+      </div>
+
+      <div class="bottom">
+        <div class="box">
+          <div class="hb"><span class="det-only">탐정 요약</span><span class="asi-only">조수 요약</span></div>
+          <div class="rules det-only">
+            <b>●알고 있었어 카드</b>
+            <ul><li>탐정 PC의 플레이어와 게임 마스터만 내용을 볼 수 있다.</li><li>조수 PC의 플레이어에게는 내용을 전달할 수 있다.</li>
+              <li>알고 있었어 카드에는 사건의 줄거리와 키워드를 채우는 칸이 있다.</li><li>모든 알고 있었어 카드와 모든 키워드를 모으면 수사 페이즈를 종료한다.</li>
+              <li>일반적인 키워드는 「 」 안에 있다. 중요 키워드는 『 』 안에 있다.</li><li>중요 키워드는 【둘이서 수사】를 사용해야만 획득할 수 있다.</li></ul>
+          </div>
+          <div class="rules asi-only">
+            <b>●【여유】를 획득하는 타이밍</b>
+            <ul><li>아지트 페이즈에서 획득한다 (+3점)</li><li>판정에서 조수 PC의 플레이어가 주사위를 굴려 4 이상이 나왔다 (+1점)</li><li>판정에서 스페셜이 발생했다 (+1점)</li>
+              <li>고백한다 (+1D10점)</li><li>【여유】가 0이 되어 【마음고생】이 상승했을 때 (+2D6점)</li><li>그 밖에 시나리오의 이벤트나 시추에이션 수사 등에 따라</li></ul>
+            <b>●【여유】가 감소하는 타이밍</b>
+            <ul><li>수사 페이즈에서 사이클을 종료했을 때 (-수사 곤란 레벨만큼의 점수)</li><li>액션을 사용 (-사용하는 액션의 코스트만큼의 점수)</li><li>그 밖에 시나리오의 이벤트나 시추에이션 수사 등으로 감소</li></ul>
+          </div>
+        </div>
+        <div class="box"><div class="hb">수사 메모</div><textarea name="attr_memo" placeholder="키워드 · 단서 메모"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ 아지트 · 사건 조사 시트 (두 PC 가 같이 쓰는 캐릭터 하나) ════ -->
+  <div class="base base-only">
+    <div class="tabs">
+      <label><input type="radio" name="attr_base_tab" value="hq" checked><span>아지트 시트</span></label>
+      <label><input type="radio" name="attr_base_tab" value="case"><span>사건 조사 시트</span></label>
+    </div>
+
+    <div class="pane hq">
+      <div class="hqtop">
+        <div class="note">
+          <div class="fr"><b>아지트는 어떤 곳?</b><input type="text" name="attr_hq_what"></div>
+          <div class="fr"><b>아지트의 이름</b><input type="text" name="attr_hq_name"></div>
+        </div>
+        <div class="note"><div class="fr"><b>간판 탐정</b><input type="text" name="attr_hq_sign"></div></div>
+      </div>
+      <div class="hb">추억의 물품</div>
+      <fieldset class="repeating_memories">
+        <div class="item"><label>아이템 이름</label><input type="text" name="attr_name"><label>어떤 물건?</label><input type="text" name="attr_what">
+          <label>아이템 에피소드</label><textarea name="attr_episode"></textarea></div>
+      </fieldset>
+      <div class="lower">
+        <div class="box"><div class="hb">아이템 상자</div><textarea name="attr_item_box" placeholder="소모품 · 받은 물건"></textarea></div>
+        <div class="tbls">
+          <table class="etab"><caption>감정 표A (D66)<button type="action" name="act_emoa" title="감정 표A 굴리기">D66</button></caption><tbody>
+<!--@EMO_A-->
+          </tbody></table>
+          <table class="etab"><caption>감정 표B (D10)<button type="action" name="act_emob" title="감정 표B 굴리기">D10</button></caption><tbody>
+<!--@EMO_B-->
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane case">
+      <div class="casegrid">
+        <b>사건명</b><div class="v"><input type="text" name="attr_case_name"><span class="hint">날짜</span><input type="text" class="date" name="attr_case_date" placeholder="년 월 일"></div>
+        <b>사건 담당자</b><div class="v"><input type="text" name="attr_case_who1"><input type="text" name="attr_case_who2"></div>
+        <b>조사 방해 요인</b><div class="v"><input type="text" name="attr_case_block"><span class="lv">수사 곤란<br>레벨 <input type="number" name="attr_case_lv" value="0" min="0"></span></div>
+        <b>사건의<br>등장인물</b><div class="v"><textarea name="attr_case_npc"></textarea></div>
+        <b>키워드</b><div class="v"><textarea name="attr_case_keywords" placeholder="「일반 키워드」 『중요 키워드』"></textarea></div>
+        <div class="emo">
+          <h4>감정</h4>
+          <div><h5>탐정이 조수에 대해</h5><label>마음에 드는 점</label><textarea name="attr_emo_dg"></textarea><label>마음에 안 드는 점</label><textarea name="attr_emo_db"></textarea></div>
+          <div><h5>조수가 탐정에 대해</h5><label>마음에 드는 점</label><textarea name="attr_emo_ag"></textarea><label>마음에 안 드는 점</label><textarea name="attr_emo_ab"></textarea></div>
+        </div>
+        <div class="status">
+          <b>상태<br>이상<button type="action" name="act_status" class="act" title="상태이상 1D6 굴리기">1D6</button></b>
+<!--@STATUS-->
+        </div>
+      </div>
+      <div class="secret"><b>숨겨둔 마음</b><input type="checkbox" class="so" name="attr_secret_open" value="1" title="체크하면 보임"><input type="text" name="attr_case_secret"><span class="sot">보이기</span></div>
+      <div class="confess"><b>고백 효과</b><ul>
+        <li>탐정 PC는 위에 적힌 내용을 강렬한 감정으로 획득한다.</li><li>모든 PC가 파트너에 대한 감정을 1개씩 획득한다.</li><li>【여유】가 1D10점 상승한다.</li>
+        <li>상태이상을 모두 회복한다.</li><li>이번 세션 동안 한 번에 한해 판정 결과를 스페셜로 변경할 수 있다. 이때, 주사위를 굴려 6이 나온 것으로 간주한다.</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->

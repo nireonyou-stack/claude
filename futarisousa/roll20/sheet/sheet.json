@@ -1,0 +1,9 @@
+{
+  "html": "futarisousa.html",
+  "css": "futarisousa.css",
+  "authors": "nire",
+  "roll20userid": "4733990",
+  "preview": "futarisousa.png",
+  "instructions": "둘이서 수사(버디 서스펜스 TRPG) 탐정 · 조수 · 아지트 · 사건 조사 시트. 띠의 드롭다운으로 탐정 캐릭터 시트 · 조수 캐릭터 시트 · 아지트 · 사건 조사 시트(두 PC가 같이 쓰는 캐릭터)를 바꿉니다. 기능 이름을 누르면 판정(탐정 10면체 · 조수 6면체, 1~3개 중 고르기), 기벽 · 감정 표 · 상태이상은 주사위 단추로 굴립니다. 액션의 ▶ 는 채팅에 효과를 출력합니다.",
+  "legacy": false
+}
