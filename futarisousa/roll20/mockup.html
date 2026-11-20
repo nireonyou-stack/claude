@@ -166,8 +166,6 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
 .confess ul{margin:0;padding-left:16px}
 /* 종류에 따라 보이기 (실제 시트: attr_sheet_type 형제 선택자) */
 .fs[data-type=det] .as-only,.fs[data-type=asi] .det-only{display:none!important}
-.fs[data-type=base] .pc{display:none}
-.fs:not([data-type=base]) .base-only{display:none!important}
 
 /* 공용 시트 탭 늘림: 사전 조사 · 다툼 · 규격 외 */
 .tabs{flex-wrap:wrap}
@@ -225,8 +223,22 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
 .pcard textarea{flex:1;padding:6px 8px!important;font-size:12px}
 .pcard .pf{display:flex;align-items:center;justify-content:space-between;background:var(--bar);color:var(--bar-ink);padding:3px 8px;font:italic 700 12px/1.4 var(--serif)}
 .pcard .pf button{border:1px solid color-mix(in srgb,var(--bar-ink) 45%,transparent);background:none;color:var(--bar-ink);border-radius:3px;padding:1px 6px;cursor:pointer;font:500 11px/1.4 var(--sans)}
-.fs[data-type=thief] .pc{display:none}
-.fs:not([data-type=thief]) .thief-only{display:none!important}
+/* 사전 조사(탐정 · 조수 시트의 탭)는 그 사람 것 한 장 */
+.pre2{grid-template-columns:minmax(0,1fr);max-width:620px;margin:0 auto;width:100%}
+/* 판정 고르기 (Roll20 에서는 굴릴 때 묻는 창) */
+.jm{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;border:1px solid color-mix(in srgb,var(--bar-ink) 45%,transparent);border-radius:3px;overflow:hidden;letter-spacing:0}
+.jm button{border:0;background:none;color:var(--bar-ink);font:500 11px/1 var(--sans);padding:3px 7px;cursor:pointer}
+.jm button[aria-checked=true]{background:var(--bar-ink);color:var(--bar)}
+.card .stamp{display:inline-block;margin-top:2px;border:2px solid currentColor;border-radius:3px;padding:0 6px;font:800 13px/1.5 var(--serif);transform:rotate(-4deg)}
+.card .ok{color:var(--accent)}.card .ng{color:var(--sub)}.card .sp{color:var(--accent);background:var(--accent-bg)}
+.boxrows{display:flex;flex-direction:column}
+.boxrows .br2{display:grid;grid-template-columns:1fr 54px;border-bottom:1px dotted var(--line)}
+.boxrows .br2 input{border:0!important}
+.boxrows .br2 input+input{border-left:1px dotted var(--line)!important;text-align:center}
+.mini{border:1px solid var(--line);background:none;border-radius:3px;padding:0 5px;cursor:pointer;font-size:12px;flex:none}
+.permit{border:1px dashed var(--accent);background:var(--accent-bg);padding:6px 10px;font-size:12px;border-radius:4px}
+.permit b{font-family:var(--serif)}
+.cards-h{margin:4px 0 0;font:800 16px/1.4 var(--serif)}
 
 /* ── 채팅 카드 미리보기 (롤 템플릿) ── */
 .chat{display:flex;flex-direction:column;gap:8px}
@@ -258,17 +270,21 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
       <span class="logo"><small>버디 서스펜스 TRPG</small>둘이서 수사</span>
       <label>시트
         <select id="type" aria-label="시트 종류">
-          <option value="det" selected>탐정 캐릭터 시트</option>
-          <option value="asi">조수 캐릭터 시트</option>
-          <option value="base">둘이서 공용 시트 (아지트 · 사건 · 사전 조사 · 다툼 · 규격 외)</option>
+          <option value="det" selected>탐정 시트</option>
+          <option value="asi">조수 시트</option>
+          <option value="base">아지트 시트 (둘이 함께)</option>
+          <option value="case">사건 조사 시트 (그 세션만)</option>
+          <option value="cards">알고 있었어 · 괴도 카드 (탐정 · GM 만)</option>
           <option value="thief">괴도 시트 (GM)</option>
         </select>
       </label>
       <span class="die" id="die">10면체 사용</span>
     </div>
 
+    <div class="tabs" role="tablist" id="tabs"></div>
+
     <!-- ── 탐정 · 조수 ── -->
-    <div class="pc">
+    <div class="pc" data-pane="pc">
       <div class="col">
         <div class="id">
           <div class="portrait">초상 (캐릭터 아바타)</div>
@@ -285,7 +301,7 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
         </div>
 
         <div class="skills">
-          <div class="hb">기능</div>
+          <div class="hb">기능<span class="jm" role="radiogroup" aria-label="판정 (Roll20 에서는 굴릴 때 묻는 창)"><button type="button" role="radio" aria-checked="true" data-jm="2">보통</button><button type="button" role="radio" aria-checked="false" data-jm="3">유리함</button><button type="button" role="radio" aria-checked="false" data-jm="1">불리함</button></span></div>
           <div id="skills"></div>
         </div>
 
@@ -353,15 +369,8 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
     </div>
 
     <!-- ── 아지트 · 사건 조사 (둘이 함께 쓰는 캐릭터) ── -->
-    <div class="base-only">
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" aria-selected="true" data-tab="hq">아지트 시트</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="case">사건 조사 시트</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="pre">사전 조사 시트</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="fight">다툼 시트</button>
-        <button type="button" role="tab" aria-selected="false" data-tab="extra">규격 외 탐정 시트</button>
-      </div>
-      <div class="pane" data-pane="hq">
+    <div class="panes">
+      <div class="pane" data-pane="hq" hidden>
         <div class="hq">
           <div class="note">
             <div class="fr"><b>아지트는 어떤 곳?</b><input type="text" id="hq-what" value="2층 헌책방 위 다락방"></div>
@@ -375,7 +384,7 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
         <div class="items" id="items"></div>
         <button type="button" class="add" data-add="item">+ 물품 추가</button>
         <div class="lower">
-          <div class="box"><div class="hb">아이템 상자</div><textarea id="box" aria-label="아이템 상자" placeholder="소모품 · 받은 물건"></textarea></div>
+          <div class="box"><div class="hb">아이템 상자</div><div class="boxrows" id="boxrows"><div class="br2"><input type="text" aria-label="아이템 이름" value="손전등"><input type="number" aria-label="개수" value="1"></div><div class="br2"><input type="text" aria-label="아이템 이름" value="붕대"><input type="number" aria-label="개수" value="3"></div></div><button type="button" class="add" data-add="boxrow" style="margin:6px">+ 아이템 추가</button></div>
           <div class="col">
             <table class="etab" id="tblA"><caption>감정 표A (D66)<button type="button" data-roll="A">🎲 D66</button></caption><tbody></tbody></table>
             <table class="etab" id="tblB"><caption>감정 표B (D10)<button type="button" data-roll="B">🎲 D10</button></caption><tbody></tbody></table>
@@ -385,7 +394,7 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
       <div class="pane" data-pane="case" hidden>
         <div class="case">
           <b>사건명</b><div class="v"><input type="text" id="c-name" value="안개 낀 시계탑 살인 사건"><span class="hint">날짜</span><input type="text" id="c-date" value="1925. 11. 20" style="flex:0 0 110px"></div>
-          <b>사건 담당자</b><div class="v"><input type="text" id="c-who1" value="오카다 경부"><input type="text" id="c-who2" value=""></div>
+          <b>사건 담당자</b><div class="v"><span class="hint">탐정</span><input type="text" id="c-who1" value="쿠로사와 렌"><span class="hint">조수</span><input type="text" id="c-who2" value="히나타 유이"></div>
           <b>조사 방해 요인</b><div class="v"><input type="text" id="c-block" value="경찰의 비협조"><span class="lv">수사 곤란<br>레벨 <input type="number" id="c-lv" value="2" aria-label="수사 곤란 레벨"></span></div>
           <b>사건의<br>등장인물</b><div class="v"><textarea id="c-npc" aria-label="사건의 등장인물">시계 수리공 이토 / 의뢰인 미즈하라 부인</textarea></div>
           <b>키워드</b><div class="v"><textarea id="c-key" aria-label="키워드">「멈춘 시계」 『사라진 태엽』</textarea></div>
@@ -428,10 +437,20 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
         <div class="hb">🔭 조수 PC의 규격 외 액션</div>
         <table class="rep" id="xasi"><thead><tr><th style="width:110px">이름</th><th style="width:56px">타입</th><th style="width:56px">코스트</th><th>효과</th></tr></thead><tbody></tbody></table>
       </div>
+
+      <div class="pane" data-pane="cards" hidden>
+        <p class="permit"><b>보기 권한</b> — 이 캐릭터는 Roll20 저널에서 <b>탐정 플레이어와 GM 만</b> 볼 수 있게 두세요 (시트의 한 부분만 숨기는 기능은 Roll20 에 없어요). 공개할 때는 ▶ 공개 로 채팅에 내요.</p>
+        <h3 class="cards-h">🕵 알고 있었어 카드</h3>
+        <div class="cards2" id="kcards"></div>
+        <button type="button" class="add" data-add="kcard">+ 알고 있었어 카드 추가</button>
+        <h3 class="cards-h">🎩 괴도 카드 <small style="font:400 11px var(--sans);color:var(--sub)">가지고 있는 동안 알고 있었어 카드의 키워드를 얻을 수 없음 · 공개하면 풀림</small></h3>
+        <div class="cards2" id="tcards"></div>
+        <button type="button" class="add" data-add="tcard">+ 괴도 카드 추가</button>
+      </div>
     </div>
 
     <!-- ── 괴도 시트 (GM — 라이벌 괴도) ── -->
-    <div class="thief thief-only">
+    <div class="thief" data-pane="thief" hidden>
       <div class="tgrid">
         <div class="spine" aria-hidden="true"><span class="t">둘이서 수사<small>버디 서스펜스 TRPG</small></span><span class="hat">🎩</span><span class="role">괴도</span><span class="cs">시트</span></div>
         <div class="col">
@@ -439,7 +458,7 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
             <div class="portrait">초상 (캐릭터 아바타)</div>
             <div class="fields">
               <div class="fr"><b>괴도 이름</b><input type="text" aria-label="괴도 이름" value="괴도 미드나이트"></div>
-              <div class="fr"><b>배경</b><input type="text" aria-label="배경" value="사라진 마술단의 마지막 단원"></div>
+              <div class="fr"><b>배경</b><input type="text" aria-label="배경" value="사라진 마술단의 마지막 단원"><button type="button" class="mini" data-roll="TB" title="괴도 배경 표 1D6">🎲</button></div>
               <div class="fr"><b>진짜 이름</b><input type="text" aria-label="진짜 이름" value="???"></div>
               <div class="fr pair"><b>나이</b><input type="text" aria-label="나이" value="불명"><b>신장</b><input type="text" aria-label="신장" value="175cm"></div>
               <div class="fr"><b>패션 특징</b><input type="text" aria-label="패션 특징" value="실크 해트 · 은빛 가면"></div>
@@ -468,9 +487,9 @@ table.rep textarea{min-height:44px;font-size:11.5px;resize:none;overflow:hidden}
   <section class="ask">
     <h2>정해 주실 것</h2>
     <ol>
-      <li><b>괴도 시트</b> — 띠의 드롭다운에 네 번째 종류 <b>괴도 시트 (GM)</b>로 넣었어요. GM 이 라이벌 괴도 캐릭터에 써요. 괴도 카드는 줄을 더할 수 있고 ▶ 공개 로 채팅에 내요. 원본에 없는 <b>괴도 이름</b> 칸(= Roll20 캐릭터 이름)을 맨 위에 더했어요.</li>
-      <li><b>사전 조사 · 다툼 · 규격 외 탐정 시트</b> — 두 사람이 같이 쓰거나 서로 건네는 시트라 <b>둘이서 공용 시트</b>의 탭으로 넣었어요. 사전 조사는 탐정 · 조수 두 장을 나란히, ▶ 사용 은 체크한 항목을 채팅에 내요.</li>
-      <li><b>조수 시트의 액션 머리</b> — 지금은 ‘조수 액션’. 인쇄본처럼 ‘탐정 액션’으로 둘까요?</li>
+      <li><b>카드 시트</b> — Roll20 은 보기 권한이 <b>캐릭터 단위</b>라 사건 조사 시트의 일부만 숨길 수 없어요. 그래서 <b>알고 있었어 · 괴도 카드</b>를 따로 종류로 두고, 그 캐릭터를 탐정 플레이어와 GM 만 보게 하는 안이에요. 괴도 시트(GM)에도 괴도 카드 초안 칸이 남아 있어요 — 건넬 때 카드 시트로 옮겨 적어요.</li>
+      <li><b>판정</b> — 기능 이름을 누르면 <b>보통(2개) · 유리함(3개) · 불리함(1개)</b>을 묻고, 카드에 <b>성공 · 실패 · 스페셜 · 펌블</b>을 찍어요. (목업은 기능 머리의 고르기로 흉내)</li>
+      <li><b>조수 시트의 액션 머리</b> — 홈페이지 열쇠가 <code>repeating_acts</code>(탐정 액션)라 칸은 같고, 머리 글만 ‘조수 액션’이에요. 원본처럼 ‘탐정 액션’으로 둘까요?</li>
     </ol>
   </section>
 </div>
@@ -516,7 +535,7 @@ const PRE = {
 };
 const piHtml = (k, q) => `<div class="pi"><label>${q}</label><div class="pirow"><input type="checkbox" aria-label="${q} 고르기" data-pre="${k}"><textarea aria-label="${q}"></textarea></div></div>`;
 $('#pre').innerHTML = ['det', 'asi'].map(k => { const [a, b, u] = PRE[k], who = k === 'det' ? '탐정' : '조수';
-  return `<div class="precol"><div class="pre-hd"><b>사전 조사 시트</b><span>${who}</span><input type="text" aria-label="날짜" placeholder="년 월 일"></div>`
+  return `<div class="precol" data-who="${k}"><div class="pre-hd"><b>사전 조사 시트</b><span>${who}</span><input type="text" aria-label="날짜" placeholder="년 월 일"></div>`
     + `<div class="prebox"><h4>가장 먼저 알리고 싶은 점</h4>${a.map(q => piHtml(k, q)).join('')}</div>`
     + `<p class="arrow">아지트 페이즈에서 서로 「자기소개」를 한 뒤에 기재</p>`
     + `<div class="prebox"><h4>두 번째로 알리고 싶은 점</h4>${b.map(q => piHtml(k, q)).join('')}</div>`
@@ -527,11 +546,26 @@ $('#xdet tbody').innerHTML = actRow(['', '', '', '']); $('#xasi tbody').innerHTM
 const pcard = (m, t) => `<div class="pcard"><div class="ph"><b>🎩 괴도 카드</b><input type="text" aria-label="카드 표시" value="${m}"></div><textarea aria-label="괴도 카드 내용">${t}</textarea><div class="pf">Phantom thief's act.<button type="button" data-reveal>▶ 공개</button></div></div>`;
 $('#pcards').innerHTML = pcard('1', '예고장: 보름달이 뜨는 밤, 시계탑의 「은빛 태엽」을 받으러 가겠습니다.') + pcard('', '');
 
+// 종류 → 탭 줄 · 패널 (사전 조사는 그 사람 것 한 장)
+const TABS = { det: [['pc', '탐정 시트'], ['pre', '사전 조사 시트']], asi: [['pc', '조수 시트'], ['pre', '사전 조사 시트']],
+  base: [['hq', '아지트 시트'], ['fight', '다툼 시트'], ['extra', '규격 외 탐정 시트']], case: [['case']], cards: [['cards']], thief: [['thief']] };
+const showPane = k => {
+  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== k; });
+  document.querySelectorAll('#tabs [role=tab]').forEach(x => x.setAttribute('aria-selected', String(x.dataset.tab === k)));
+  document.querySelectorAll('.precol').forEach(c => { c.hidden = c.dataset.who !== fs.dataset.type; });
+};
+const kcard = (m, t) => `<div class="pcard"><div class="ph"><b>🕵 알고 있었어 카드</b><input type="text" aria-label="카드 번호" value="${m}"></div><textarea aria-label="알고 있었어 카드 내용">${t}</textarea><div class="pf">You knew.<button type="button" data-reveal>▶ 공개</button></div></div>`;
+$('#kcards').innerHTML = kcard('1', '피해자는 사건 전날 시계탑의 열쇠를 「＿＿＿」에게 맡겼다.\n키워드: 「멈춘 시계」') + kcard('2', '');
+$('#tcards').innerHTML = pcard('1', '괴도가 노리는 것은 「①」해서 만든 「②」의 요리다.');
 // 종류 바꾸기
 const setType = t => {
   fs.dataset.type = t;
+  const tabs = TABS[t];
+  $('#tabs').hidden = tabs.length < 2;
+  $('#tabs').innerHTML = tabs.length < 2 ? '' : tabs.map(([k, n]) => `<button type="button" role="tab" data-tab="${k}">${n}</button>`).join('');
+  showPane(tabs[0][0]);
   const det = t === 'det';
-  $('#die').textContent = t === 'base' ? '둘이서 함께' : t === 'thief' ? '괴도 (GM)' : det ? '10면체 사용' : '6면체 사용';
+  $('#die').textContent = { base: '둘이 함께', case: '그 세션만', cards: '탐정 · GM 만', thief: '괴도 (GM)' }[t] || (det ? '10면체 사용' : '6면체 사용');
   $('#sp-role').textContent = det ? '탐정' : '조수';
   $('#sp-die').innerHTML = det ? '10면체<br>사용' : '6면체<br>사용';
   $('#act-head').textContent = det ? '탐정 액션' : '조수 액션';
@@ -546,10 +580,8 @@ setType('det');
 document.querySelectorAll('table.rep textarea').forEach(grow);
 
 // 탭 · 접기 · 여유
-document.querySelectorAll('[role=tab]').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('[role=tab]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
-  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== b.dataset.tab; });
-}));
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[role=tab]'); if (b) showPane(b.dataset.tab); });
+document.querySelectorAll('[data-jm]').forEach(b => b.addEventListener('click', () => document.querySelectorAll('[data-jm]').forEach(x => x.setAttribute('aria-checked', String(x === b)))));
 $('#fold').addEventListener('click', () => { const f = $('#secret').classList.toggle('folded'); $('#fold').textContent = f ? '펼치기' : '접기'; });
 $('#yu-m').addEventListener('click', () => { $('#yu').value = Math.max(0, +$('#yu').value - 1); });
 $('#yu-p').addEventListener('click', () => { $('#yu').value = +$('#yu').value + 1; });
@@ -559,6 +591,9 @@ document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click',
   if (k === 'action') $('#actions tbody').insertAdjacentHTML('beforeend', actRow(['', '', '', '']));
   if (k === 'item') $('#items').insertAdjacentHTML('beforeend', itemCard(['', '', '']));
   if (k === 'pcard') $('#pcards').insertAdjacentHTML('beforeend', pcard('', ''));
+  if (k === 'kcard') $('#kcards').insertAdjacentHTML('beforeend', kcard('', ''));
+  if (k === 'tcard') $('#tcards').insertAdjacentHTML('beforeend', pcard('', ''));
+  if (k === 'boxrow') $('#boxrows').insertAdjacentHTML('beforeend', '<div class="br2"><input type="text" aria-label="아이템 이름"><input type="number" aria-label="개수" value="1"></div>');
 }));
 
 // 굴림 → 채팅 카드
@@ -572,14 +607,16 @@ const who = () => $('#f-name').value || '이름 없음';
 document.addEventListener('click', e => {
   const s = e.target.closest('[data-skill]');
   if (s) {
-    const det = fs.dataset.type === 'det', n = d(det ? 10 : 6), have = s.parentElement.querySelector('input').checked;
-    return card(`${s.dataset.skill} 판정`, `${s.dataset.group} · ${det ? '1D10' : '1D6'}`, n, `${who()}${have ? '' : ' · <b>미습득</b>'}<br><span style="color:var(--sub)">성공 · 실패는 판정 규칙을 받은 뒤 표시</span>`);
+    const det = fs.dataset.type === 'det', jm = $('[data-jm][aria-checked=true]'), n = +jm.dataset.jm, have = s.parentElement.querySelector('input').checked;
+    const ds = Array.from({ length: n }, () => d(det ? 10 : 6)), ok = ds.some(x => x >= 4), sp = ds.includes(6), fb = ds.every(x => x === 1);
+    const stamp = fb ? '<span class="stamp ng">펌블</span> 상태이상 · 【마음고생】+1' : sp ? '<span class="stamp sp">스페셜</span> 【여유】+1' : ok ? '<span class="stamp ok">성공</span>' : '<span class="stamp ng">실패</span>';
+    return card(`${s.dataset.skill} 판정`, `${s.dataset.group} · ${jm.textContent} ${n}D${det ? 10 : 6}`, ds.join(' '), `${stamp}<br>${who()}${have ? '' : ' · <b>미습득</b>'}${!det && ok ? '<br><span style="color:var(--sub)">조수 4 이상 → 탐정이 조수에 대한 감정 1 · 【여유】+1</span>' : ''}`);
   }
   const u = e.target.closest('[data-use]');
   if (u) { const k = u.dataset.use, picked = [...document.querySelectorAll(`[data-pre="${k}"]:checked`)].map(c => c.closest('.pi'));
     return card(`사전 조사 시트 · ${k === 'det' ? '탐정' : '조수'}`, '사용', '✓', picked.length ? picked.map(pi => `<b>${pi.querySelector('label').textContent}</b><br>${pi.querySelector('textarea').value || '(비어 있음)'}`).join('<br>') : '체크한 항목이 없어요'); }
   const rv = e.target.closest('[data-reveal]');
-  if (rv) { const c = rv.closest('.pcard'); return card('괴도 카드', 'Phantom thief\'s act.', c.querySelector('input').value || '🎩', c.querySelector('textarea').value || '(비어 있음)'); }
+  if (rv) { const c = rv.closest('.pcard'), kn = !!c.closest('#kcards'); return card(kn ? '알고 있었어 카드' : '괴도 카드', kn ? 'You knew.' : 'Phantom thief\'s act.', c.querySelector('input').value || '🎩', c.querySelector('textarea').value || '(비어 있음)'); }
   const r = e.target.closest('[data-roll]');
   if (!r) return;
   document.querySelectorAll('.hit').forEach(x => x.classList.remove('hit'));
@@ -588,6 +625,7 @@ document.addEventListener('click', e => {
     cell.classList.add('hit'); return card('감정 표A', 'D66', k, A.find(x => x[0] === k)[1]);
   }
   if (r.dataset.roll === 'B') { const k = String(d(10)), cell = $(`#tblB td[data-k="${k}"]`); cell.classList.add('hit'); return card('감정 표B', 'D10', k, B.find(x => x[0] === k)[1]); }
+  if (r.dataset.roll === 'TB') { const TB = ['대대로 물려받은 기술', '아류로 고안한 기술', '천성적인 괴도', '죽을 각오로 특훈', '괴도 마니아', '일그러진 탐정 애호가'], k = d(6); return card('괴도 배경 표', '1D6', k, TB[k - 1]); }
   if (r.dataset.roll === 'S') { const k = d(6); $(`.st[data-s="${k}"]`).classList.add('hit'); return card('상태이상', '1D6', k, ST[k - 1][0] + '<br><span style="color:var(--sub)">' + ST[k - 1][1] + '</span>'); }
 });
 $('#quirk-roll').addEventListener('click', () => {
