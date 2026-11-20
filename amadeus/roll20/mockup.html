@@ -1,0 +1,231 @@
+<title>아마데우스 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nanum+Myeongjo:700,800|Noto+Sans+KR:400,500,700&display=swap">
+<style>
+/* 한 장짜리 목업: 세로 830px 시트(왼쪽) + Roll20 채팅 카드 예시(오른쪽). 시트는 흰 종이 · 검은 띠 · 무채색, 색은 속성 5색만 */
+:root{--paper:#ffffff;--ink:#1a1a1a;--sub:#666666;--line:#c4c4c4;--cell:#f2f2f2;--bar:#2a2a2a;--bar2:#4a4a4a;--bar-ink:#ffffff;--page:#e6e6e6;
+  --red:#c0392b;--blue:#2f6fb3;--green:#2f8a4b;--white:#f4f4f4;--black:#222222;
+  --serif:'Nanum Myeongjo','Noto Serif KR',serif;--sans:'Noto Sans KR','Malgun Gothic',sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+h1.pg{font:800 18px/1.3 var(--serif);margin:0 0 4px}
+p.pg{margin:0 0 12px;color:var(--sub);font-size:12px}
+.wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.scroll{overflow-x:auto;max-width:100%}
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding-bottom:14px}
+/* 띠 */
+.band{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,var(--bar),var(--bar2));color:var(--bar-ink);padding:8px 14px}
+.logo{font:800 22px/1 var(--serif);letter-spacing:.02em}
+.logo small{display:block;font:700 10px/1.4 var(--sans);letter-spacing:.2em;opacity:.8}
+.band .ttl{font:700 13px/1 var(--serif);letter-spacing:.3em;opacity:.9}
+.lv{margin-left:auto;display:flex;gap:10px;align-items:center;font:700 12px var(--serif)}
+.lv span{display:inline-block;min-width:34px;border-bottom:1px solid rgba(255,255,255,.5);text-align:center;font:700 15px var(--sans)}
+.pane{padding:12px 14px 0;display:flex;flex-direction:column;gap:12px}
+.hb{background:linear-gradient(90deg,var(--bar),var(--bar2));color:var(--bar-ink);text-align:center;font:700 14px/1 var(--serif);letter-spacing:.3em;padding:6px;position:relative}
+.hb .db{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:13px;letter-spacing:0;cursor:pointer}
+/* 기본 정보 + 속성 */
+.top{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:12px}
+.info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--ink)}
+.f{display:flex;align-items:center;border-bottom:1px solid var(--line);min-height:30px}
+.f:nth-child(odd){border-right:1px solid var(--line)}
+.f.w{grid-column:1/-1;border-right:0}
+.f b{flex:0 0 74px;align-self:stretch;display:flex;align-items:center;justify-content:center;background:var(--cell);font:700 13px var(--serif);border-right:1px solid var(--line)}
+.f span{padding:0 8px}
+.f .pt{margin-left:auto;margin-right:8px}
+.pt{display:inline-block;width:13px;height:13px;border:1px solid var(--ink);transform:rotate(45deg);vertical-align:middle}
+.pt.on{background:var(--ink)}
+.attr{border:1px solid var(--ink);display:flex;flex-direction:column}
+.attr .lab{background:var(--cell);text-align:center;font:700 13px var(--serif);border-bottom:1px solid var(--line);padding:4px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}
+.chip{display:flex;align-items:center;gap:5px;font-size:12px}
+.dot{width:12px;height:12px;border-radius:50%;border:1px solid var(--ink);flex:none}
+.dot.red{background:var(--red)}.dot.blue{background:var(--blue)}.dot.green{background:var(--green)}.dot.white{background:var(--white)}.dot.black{background:var(--black)}
+.chip.sel{font-weight:700}
+.chip.sel .dot{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}
+/* 능력치 */
+.abil{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.ab{display:grid;grid-template-columns:96px minmax(0,1fr) 70px 70px;border:1px solid var(--ink);min-height:62px}
+.ab .nm{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--cell);border-right:1px solid var(--line);cursor:pointer}
+.ab .nm b{font:800 22px/1 var(--serif)}
+.ab .nm i{font:500 9px/1.6 var(--sans);letter-spacing:.15em;color:var(--sub);font-style:normal}
+.ab .nm:hover b{text-decoration:underline}
+.ab .ev{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--line)}
+.ab .ev small,.ab .dc small{font-size:10px;color:var(--sub)}
+.ab .ev .g{font:800 20px/1.1 var(--sans)}
+.sel2{display:flex;gap:4px;font-size:11px;color:var(--sub)}
+.sel2 em{font-style:normal;border:1px solid var(--line);padding:0 5px}
+.ab .dc{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--line)}
+.ab .dc:last-child{border-right:0}
+.ab .dc .v{font:700 16px var(--sans)}
+/* 생명력 */
+.hp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.6fr);border:1px solid var(--ink)}
+.hp>div{border-right:1px solid var(--line);padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.hp>div:last-child{border-right:0}
+.hp small{font:700 12px var(--serif)}
+.hp .v{font:700 20px var(--sans)}
+.hp .v i{font-style:normal;font-size:12px;color:var(--sub);font-weight:400}
+.stp{display:flex;gap:4px;align-items:center}
+.stp button{font:inherit;border:1px solid var(--line);background:none;width:22px;height:22px;border-radius:3px;cursor:pointer}
+.conds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 10px;align-content:center}
+.conds label{display:flex;align-items:center;gap:4px;font-size:12px}
+.conds input[type=text]{width:26px;border:0;border-bottom:1px dotted var(--line);font:inherit;text-align:center}
+/* 표 꼴 줄 (기프트 · 아이템 · 인물) */
+.rh,.rr{display:grid;align-items:center}
+.rh{font:700 12px/1.8 var(--serif);text-align:center;border-bottom:1px solid var(--ink)}
+.rr{border-bottom:1px dotted var(--line);min-height:30px}
+.rr>*{padding:3px 5px}
+.rr .c{text-align:center}
+.rr .use{color:var(--sub);cursor:pointer;text-align:center}
+.gift{grid-template-columns:24px 140px 54px 56px 54px 64px minmax(0,1fr) 24px}
+.gift .ef{font-size:11.5px;line-height:1.45}
+.printed{background:var(--cell)}
+.printed .gn{font:800 14px var(--serif)}
+.repc{display:flex;gap:6px;margin-top:4px}
+.repc span{font-size:11px;padding:1px 8px;border:1px dashed var(--line);color:var(--sub);border-radius:3px}
+.lower{display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px}
+.coin{border:1px solid var(--ink);display:flex;flex-direction:column}
+.coin .v{flex:1;display:flex;align-items:flex-end;justify-content:flex-end;gap:6px;padding:8px;font:700 22px var(--sans)}
+.coin .v small{font:700 12px var(--serif)}
+.item{grid-template-columns:minmax(0,1.2fr) 74px 44px minmax(0,2fr) 24px}
+.kind{display:flex;gap:2px;justify-content:center;font-size:11px}
+.kind em{font-style:normal;border:1px solid var(--line);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center}
+.kind em.on{border-color:var(--ink);font-weight:700}
+.food{grid-template-columns:minmax(0,1.2fr) 74px 44px minmax(0,2fr) 24px;background:var(--cell)}
+.food .ef{font-size:11px}
+.ppl{grid-template-columns:24px minmax(0,1.4fr) 40px 52px 62px minmax(0,1.6fr)}
+.sign{display:flex;gap:2px;justify-content:center}
+.sign em{font-style:normal;width:20px;height:20px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.sign em.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.box{width:13px;height:13px;border:1px solid var(--ink);display:inline-block;vertical-align:middle}
+.box.on{background:var(--ink)}
+.sub{font:700 12px/1.8 var(--serif);text-align:center;background:var(--cell);border-bottom:1px solid var(--ink);margin-top:6px}
+/* 채팅 카드 (Roll20 채팅 폭 약 280px) */
+.chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px}
+.chat .ct{font-weight:700;padding:2px 4px 6px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.msg{margin:0 0 10px}
+.msg .by{display:block;font:700 13px "Helvetica Neue",Arial,sans-serif;margin:0 0 2px 2px}
+.card{background:#fff;box-shadow:inset 0 0 0 1px var(--ink);font:12px/1.5 var(--sans)}
+.card .hd{display:flex;justify-content:space-between;align-items:baseline;gap:6px;background:linear-gradient(90deg,var(--bar),var(--bar2));color:#fff;padding:5px 9px}
+.card .hd b{font:800 13.5px var(--serif)}
+.card .hd span{font-size:10.5px;opacity:.85}
+.card .bd{padding:7px 9px 8px}
+.chk{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dice{display:flex;gap:5px}
+.die{display:flex;flex-direction:column;align-items:center;gap:3px}
+.die b{min-width:30px;text-align:center;border:1px solid var(--ink);border-radius:4px;padding:4px 3px 2px;font:800 21px/1 var(--serif)}
+.die.act b{background:var(--ink);color:#fff}
+.die .dot{width:10px;height:10px}
+.die .dot.any{background:conic-gradient(var(--red) 0 25%,var(--blue) 0 50%,var(--green) 0 75%,var(--white) 0)}
+.stamp{flex:none;border:2px solid currentColor;border-radius:3px;padding:1px 7px;font:800 15px/1.4 var(--serif);transform:rotate(-4deg)}
+.s1{color:#7a5a1c}.s2{color:var(--sub)}.s3{color:#7a5a1c;background:#ededed}.s4{color:#a33a2e}
+.sum{margin-top:5px;font-size:12px}
+.sum b{font-size:14px}
+.note{margin-top:4px;padding:3px 6px;background:#ededed;font-size:11px}
+.who{margin-top:5px;color:var(--sub);font-size:11px}
+.kv{display:flex;gap:6px;font-size:11.5px;padding:2px 0;border-bottom:1px dotted var(--line)}
+.kv b{flex:0 0 40px;font:700 12px var(--serif)}
+.tx{margin-top:4px;font-size:11.5px}
+.legend{margin-top:12px;max-width:830px;font-size:12px;color:var(--sub)}
+.legend b{color:var(--ink)}
+</style>
+
+<h1 class="pg">아마데우스 Roll20 시트 목업</h1>
+<p class="pg">세로 830px · 공식 캐릭터 시트(A4 가로)를 세로로 재배치 · 오른쪽은 채팅 카드 예시. 칸 안의 글은 견본이에요.</p>
+<div class="wrap">
+<div class="scroll"><div class="sheet">
+  <div class="band"><div class="logo"><small>신화창세 RPG</small>아마데우스</div><span class="ttl">캐릭터 시트</span>
+    <div class="lv">레벨 <span>1</span></div></div>
+  <div class="pane">
+    <div class="top">
+      <div class="info">
+        <div class="f w"><b>이름</b><span>아스카모리 아오이</span></div>
+        <div class="f w"><b>신군</b><span>그리스 신군</span></div>
+        <div class="f"><b>부모신</b><span>제우스</span></div><div class="f"><b>처지</b><span></span></div>
+        <div class="f"><b>배경</b><span>창세의 아이</span></div><div class="f"><b>예언</b><span></span></div>
+        <div class="f"><b>성별</b><span>여</span></div><div class="f"><b>연령</b><span>17</span></div>
+        <div class="f"><b>직업</b><span>고등학생</span><i class="pt"></i></div><div class="f"><b>경험</b><span>0</span></div>
+      </div>
+      <div class="attr"><div class="lab">속성</div>
+        <div class="chips"><span class="chip"><i class="dot white"></i>백</span><span class="chip sel"><i class="dot red"></i>적</span>
+          <span class="chip"><i class="dot black"></i>흑</span><span class="chip"><i class="dot green"></i>녹</span><span class="chip"><i class="dot blue"></i>청</span></div></div>
+    </div>
+
+    <div class="hb">능력치</div>
+    <div class="abil">
+      <div class="ab"><div class="nm"><b>무용</b><i>WARFARE</i></div><div class="ev"><small>평가</small><span class="g">A+</span><span class="sel2"><em>A ▾</em><em>+ ▾</em></span></div><div class="dc"><small>다이스</small><span class="v">3개</span></div><div class="dc"><small>수정</small><span class="v">+1</span></div></div>
+      <div class="ab"><div class="nm"><b>영력</b><i>SPIRIT</i></div><div class="ev"><small>평가</small><span class="g">C</span><span class="sel2"><em>C ▾</em><em>없음 ▾</em></span></div><div class="dc"><small>다이스</small><span class="v">1개</span></div><div class="dc"><small>수정</small><span class="v">0</span></div></div>
+      <div class="ab"><div class="nm"><b>기술</b><i>TECHNIQUE</i></div><div class="ev"><small>평가</small><span class="g">B</span><span class="sel2"><em>B ▾</em><em>없음 ▾</em></span></div><div class="dc"><small>다이스</small><span class="v">2개</span></div><div class="dc"><small>수정</small><span class="v">0</span></div></div>
+      <div class="ab"><div class="nm"><b>사랑</b><i>LOVE</i></div><div class="ev"><small>평가</small><span class="g">B−</span><span class="sel2"><em>B ▾</em><em>− ▾</em></span></div><div class="dc"><small>다이스</small><span class="v">2개</span></div><div class="dc"><small>수정</small><span class="v">−1</span></div></div>
+      <div class="ab"><div class="nm"><b>두뇌</b><i>BRAIN</i></div><div class="ev"><small>평가</small><span class="g">D</span><span class="sel2"><em>D ▾</em><em>없음 ▾</em></span></div><div class="dc"><small>다이스</small><span class="v">2개</span><small>낮은 눈</small></div><div class="dc"><small>수정</small><span class="v">0</span></div></div>
+      <div class="ab"><div class="nm"><b>일상</b><i>MUNDANE</i></div><div class="ev"><small>평가</small><span class="g">C+</span><span class="sel2"><em>C ▾</em><em>+ ▾</em></span></div><div class="dc"><small>다이스</small><span class="v">1개</span></div><div class="dc"><small>수정</small><span class="v">+1</span></div></div>
+    </div>
+
+    <div class="hb">생명력</div>
+    <div class="hp">
+      <div><small>최대치</small><span class="v">11 <i>(기본 8 + 활력 3)</i></span></div>
+      <div><small>활력 <span title="레벨D6 굴리기" style="cursor:pointer">🎲</span></small><span class="v">3</span></div>
+      <div><small>현재치</small><span class="stp"><button>−</button><span class="v">9</span><button>+</button></span></div>
+      <div class="conds">
+        <label><i class="box"></i>절망</label><label><i class="box on"></i>분노</label><label><i class="box"></i>겁 <input type="text" value=""></label>
+        <label><i class="box"></i>타락</label><label><i class="box"></i>치욕</label><label><i class="box"></i>중상 <input type="text" value=""></label>
+      </div>
+    </div>
+
+    <div class="hb">기프트</div>
+    <div>
+      <div class="rh gift"><span></span><span>기프트명</span><span>분류</span><span>조건</span><span>판정</span><span>타그</span><span>효과</span><span></span></div>
+      <div class="rr gift printed"><i class="pt"></i><span class="gn">부모신의 축복</span><span class="c">보조</span><span class="c">※</span><span class="c">없음</span><span></span>
+        <span class="ef">(공식 시트에 인쇄된 효과 글 — 부모신의 권능에 관한 판정에서 생명력 2점당 달성치 +1 …)</span><span class="use">▶</span></div>
+      <div class="rr gift"><i class="pt"></i><span>견본 기프트</span><span class="c">보조</span><span class="c">적적</span><span class="c">무용</span><span class="c">공격</span><span class="ef">플레이어가 적는 효과 글</span><span class="use">▶</span></div>
+      <div class="rr gift"><i class="pt on"></i><span>봉인된 기프트</span><span class="c">술식</span><span class="c">청※</span><span class="c">영력</span><span class="c"></span><span class="ef">◈ 체크 = 봉인</span><span class="use">▶</span></div>
+      <div class="repc"><span>Modify</span><span>+Add</span></div>
+    </div>
+
+    <div class="lower">
+      <div class="coin"><div class="hb" style="letter-spacing:.2em">소지금</div><div class="v">4 <small>신찰</small></div></div>
+      <div>
+        <div class="hb">아이템</div>
+        <div class="rh item"><span>아이템명</span><span>종별</span><span>위력</span><span>특수기능</span><span></span></div>
+        <div class="rr item"><span>번개창 (신성무기)</span><span class="kind"><em class="on">상</em><em>소</em></span><span class="c">3</span><span>견본</span><span class="use">▶</span></div>
+        <div class="rr item"><span>회복약</span><span class="kind"><em>상</em><em class="on">소</em></span><span class="c"></span><span>견본</span><span class="use">▶</span></div>
+        <div class="repc"><span>Modify</span><span>+Add</span></div>
+        <div class="rr food"><span><b>식료</b> 3 개</span><span class="kind"><em>상</em><em class="on">소</em></span><span></span><span class="ef">휴식 시에 식사를 하는 것으로 【생명력】을 1점 회복할 수 있다.</span><span class="use" title="식료 1 쓰고 생명력 +1">▶</span></div>
+      </div>
+    </div>
+
+    <div class="hb">인물</div>
+    <div>
+      <div class="rh ppl"><span></span><span>인물명</span><span>진실</span><span>마음</span><span>± </span><span>관계</span></div>
+      <div class="rr ppl"><i class="pt"></i><span>니쿠야 미나토</span><span class="c"><i class="box"></i></span><span class="c">2</span><span class="sign"><em class="on">+</em><em>−</em></span><span>동료</span></div>
+      <div class="rr ppl"><i class="pt on"></i><span>수상한 점원</span><span class="c"><i class="box on"></i></span><span class="c">1</span><span class="sign"><em>+</em><em class="on">−</em></span><span>의심</span></div>
+      <div class="repc"><span>Modify</span><span>+Add</span></div>
+      <div class="sub">협력자</div>
+      <div class="rh ppl"><span></span><span>협력자</span><span></span><span>마음</span><span>± </span><span>관계</span></div>
+      <div class="rr ppl"><i class="pt"></i><span>제우스</span><span></span><span class="c">1</span><span class="sign"><em class="on">+</em><em>−</em></span><span>기대</span></div>
+      <div class="rr ppl"><i class="pt"></i><span></span><span></span><span class="c"></span><span class="sign"><em>+</em><em>−</em></span><span></span></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="chat"><div class="ct">채팅 (카드 예시)</div>
+  <div class="msg"><span class="by">아스카모리 아오이:</span><div class="card"><div class="hd"><b>무용 판정</b><span>A+ · 3D6 · 목표치 4</span></div><div class="bd">
+    <div class="chk"><div class="dice"><span class="die act"><b>5</b><i class="dot white"></i></span><span class="die"><b>2</b><i class="dot red"></i></span><span class="die"><b>1</b><i class="dot black"></i></span></div><span class="stamp s1">성공</span></div>
+    <div class="sum">달성치 <b>6</b> = 액션 다이스 5 + 수정 1</div>
+    <div class="note">무드 다이스 하나를 골라 인과 1개 — 5 백 · 2 적 · 1 흑</div>
+    <div class="note">분노: 가장 낮은 눈을 무드 다이스로</div>
+  </div></div></div>
+  <div class="msg"><span class="by">아스카모리 아오이:</span><div class="card"><div class="hd"><b>두뇌 판정</b><span>D · 2개 중 낮은 눈 · 목표치 4</span></div><div class="bd">
+    <div class="chk"><div class="dice"><span class="die act"><b>1</b><i class="dot black"></i></span><span class="die"><b>6</b><i class="dot any"></i></span></div><span class="stamp s4">펌블</span></div>
+    <div class="sum">달성치 <b>1</b> · 랭크D 라 인과는 없음</div>
+  </div></div></div>
+  <div class="msg"><span class="by">아스카모리 아오이:</span><div class="card"><div class="hd"><b>견본 기프트</b><span>보조 · 적적</span></div><div class="bd">
+    <div class="kv"><b>판정</b><span>무용</span></div><div class="kv"><b>타그</b><span>공격</span></div>
+    <div class="tx">플레이어가 적은 효과 글</div>
+  </div></div></div>
+  <div class="msg"><span class="by">아스카모리 아오이:</span><div class="card"><div class="hd"><b>활력</b><span>레벨 1 · 1D6</span></div><div class="bd">
+    <div class="chk"><div class="dice"><span class="die"><b>3</b></span></div></div><div class="sum">생명력 최대치 8 → <b>11</b></div>
+  </div></div></div>
+</div>
+</div>
+
+<div class="legend"><b>보는 법</b> — 능력치 이름을 누르면 판정(목표치 · 기타 수정을 묻고 랭크만큼 굴림). 액션 다이스는 가장 높은 눈(랭크D 는 낮은 눈)으로 자동 계산, 무드 다이스는 눈마다 운명의 수레바퀴 색(1 흑 · 2 적 · 3 청 · 4 녹 · 5 백 · 6 아무 곳)을 보여 주고 플레이어가 고름. ◈ 는 봉인 · 사용 체크(직업 · 기프트 · 인물).</div>
