@@ -1,6 +1,7 @@
 # Roll20 시트 만들기 — 시행착오 기록 · 체크리스트
 
 블러드문(Blood Moon (Korean)) 시트를 Roll20 에 내며 겪은 일을 모은 것. 새 룰 시트도 이 목록을 지킨다.
+만드는 순서 · 판단 기준(자료 모으기 → 목업 → 승인 → 제출, 넣는 것 · 안 넣는 것, 사이코로 픽션 공통 부품)은 [PROCESS.md](PROCESS.md).
 `python3 roll20kit/lint.py <시트 폴더>` 가 아래 ✔ 표시 항목을 자동으로 막는다 — 시트를 고칠 때마다 돌린다.
 프로 계정이 없어 실제 Roll20 에서 시험할 수 없으니, 화면은 `node roll20kit/view.js <시트 폴더> <출력.html> [견본.json]` (가상 Roll20)로 본다.
 가상 Roll20 은 시트를 iframe 의 `.charsheet` 안에 Roll20 기본 CSS 흉내와 함께 그리고, 반복 섹션을 `.repcontainer` 로 펼치고, 워커를 그대로 돌리고, 채팅에는 `.sheet-rolltemplate-*` 규칙만 싣는다 — lint 의 CSS 오류가 하나라도 있으면 채팅 CSS 를 통째로 뺀다 (실제 Roll20 과 같게). Roll20 기본 CSS 는 실제 값이 아니라 흉내이니, 새로 알게 된 실제 모습은 여기와 view.js 의 BASE 에 같이 적는다.

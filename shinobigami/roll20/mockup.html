@@ -1,0 +1,500 @@
+<title>시노비가미 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nanum+Myeongjo:400,700,800|Nanum+Brush+Script|Noto+Sans+KR:400,500,700&display=swap">
+<style>
+/* 한 장짜리 목업: 세로 830px 시트(유파북 히라사카 기관 한국어판 시트 배치) + Roll20 채팅 카드. 종이 · 검은 띠 · 무채색, 도장만 붉은색 */
+:root{--paper:#ffffff;--ink:#141414;--sub:#5e5e5e;--line:#bdbdbd;--cell:#f0f0f0;--bar:#161616;--band:#1d1d1d;--panel:#f3f3f3;--page:#e3e3e3;--seal:#a1262a;
+  --serif:'Nanum Myeongjo','Noto Serif KR',serif;--sans:'Noto Sans KR','Malgun Gothic',sans-serif;--brush:'Nanum Brush Script','Nanum Myeongjo',serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+h1.pg{font:800 18px/1.3 var(--serif);margin:0 0 4px;text-wrap:balance}
+p.pg{margin:0 0 12px;color:var(--sub);font-size:12px}
+.wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.scroll{overflow-x:auto;max-width:100%}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],textarea{border:0;background:transparent;width:100%;min-width:0;padding:0 4px;outline:0}
+textarea{resize:none;display:block}
+:focus-visible{outline:2px solid var(--seal);outline-offset:1px}
+
+/* ── 시트 ── */
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px}
+.sheet[data-t=ninja] .nm{display:none}
+.sheet[data-t=normal] .nj{display:none}
+.hb{background:var(--bar);color:#fff;text-align:center;font:700 14px/1 var(--sans);letter-spacing:.12em;padding:6px 4px}
+.hb small{font:400 10.5px var(--sans);letter-spacing:0;opacity:.9}
+.chip{flex:none;background:var(--bar);color:#fff;font:700 11.5px/1 var(--sans);padding:4px 6px;white-space:nowrap}
+/* 1단: 이름 · 인물 칸 · 제목 */
+.r1{display:grid;grid-template-columns:236px minmax(0,1fr) 172px;gap:8px}
+.namebox{border:1px solid var(--ink);display:flex;flex-direction:column;padding:6px;gap:6px}
+.nmfield{display:flex;align-items:stretch;border:1px solid var(--ink)}
+.nmfield input{font:700 15px var(--serif);height:28px}
+.portrait{flex:1;min-height:180px;background:var(--paper)}
+.ppl{border:1px solid var(--ink);display:flex;flex-direction:column}
+.ph,.pr{display:grid;grid-template-columns:minmax(0,1fr) 18px 18px 18px 78px 12px;align-items:center;column-gap:3px;padding:0 4px}
+.ph{font:500 11px var(--sans);text-align:center;padding-top:2px}
+.ph span:nth-child(n+2):nth-child(-n+4){font-size:9.5px}
+.pr{border:1px solid var(--line);margin:0 4px 3px;padding:0 0 0 2px;height:21px}
+.pr input[type=text]{height:19px;font-size:12px}
+.pr .emo{border-left:1px solid var(--line)}
+.box{appearance:none;-webkit-appearance:none;width:15px;height:15px;margin:0;border:1px solid var(--ink);background:var(--paper);cursor:pointer;justify-self:center}
+.box:checked{background:linear-gradient(45deg,transparent 44%,var(--ink) 45%,var(--ink) 55%,transparent 56%),linear-gradient(-45deg,transparent 44%,var(--ink) 45%,var(--ink) 55%,transparent 56%)}
+.pm{display:flex;flex-direction:column;border-left:1px solid var(--line);height:100%}
+.pm label{flex:1;display:flex;align-items:center;justify-content:center;font:700 9px/1 var(--sans);cursor:pointer;color:var(--sub)}
+.pm label+label{border-top:1px solid var(--line)}
+.pm input{display:none}
+.pm input:checked+span{color:#fff;background:var(--ink);padding:0 2px}
+.title{background:var(--bar);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:12px 8px 10px;gap:2px;text-align:center}
+.title .t1{font:700 12px var(--serif);letter-spacing:.06em}
+.title .t2{font:400 56px/0.95 var(--brush);letter-spacing:-.02em}
+.title select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.45);color:#fff;font:700 13px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;
+  background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(-45deg,transparent 50%,#fff 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
+.title select option{color:var(--ink)}
+/* 2단: 기본 정보 · 특기 리스트 */
+.r2{display:grid;grid-template-columns:236px minmax(0,1fr);gap:8px;margin-top:8px}
+.info{border:1px solid var(--ink);display:flex;flex-direction:column}
+.ir{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--line);padding:4px;min-height:30px}
+.ir.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px}
+.ir.two>div{display:flex;align-items:center;gap:4px;min-width:0}
+.ir.two.wide{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.ir input{height:22px}
+.bg{display:flex;flex-direction:column;padding:4px;gap:0;flex:1}
+.bg input{height:24px;border-bottom:1px dotted var(--line)}
+.sk{border:1px solid var(--ink);display:flex;flex-direction:column}
+.grid{display:grid;grid-template-columns:24px 8px repeat(5,minmax(0,1fr) 8px) minmax(0,1fr);grid-template-rows:28px repeat(11,24px);padding:4px;position:relative}
+.no{background:var(--bar);color:#fff;font:700 13px/1 var(--serif);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.no.corner{border-bottom:0}
+.fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:700 15px/1 var(--sans);margin:0 1px}
+.slot{appearance:none;-webkit-appearance:none;width:13px;height:13px;margin:0;background:#fff;border:0;cursor:pointer}
+.slot:checked{background:linear-gradient(45deg,transparent 40%,var(--seal) 40% 60%,transparent 60%),linear-gradient(-45deg,transparent 40%,var(--seal) 40% 60%,transparent 60%),#fff}
+.gap{grid-row:1/-1;cursor:pointer;display:block;position:relative}
+.gap input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.gap span{position:absolute;inset:0 2px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.gap input:checked+span{background:var(--ink);border-color:var(--ink)}
+.gap:hover span{background:var(--cell)}
+.gap:hover input:checked+span{background:#444}
+.c{position:relative;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line);margin:0 1px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.c .own{position:absolute;left:2px;top:50%;transform:translateY(-50%);appearance:none;-webkit-appearance:none;width:9px;height:9px;margin:0;border:1px solid var(--line);border-radius:50%;cursor:pointer;background:var(--paper)}
+.c .own:checked{border-color:var(--ink);background:var(--ink)}
+.c .n{border:1px solid transparent;background:none;padding:0 5px;border-radius:9px;font:400 12.5px/17px var(--serif);cursor:pointer;letter-spacing:.02em}
+.c .n:hover{text-decoration:underline}
+.c .own:checked~.n{border-color:var(--ink);font-weight:800}
+.c .tn{position:absolute;right:2px;bottom:0;font:500 9px/1 var(--sans);color:var(--sub)}
+.c.off{background:repeating-linear-gradient(-45deg,transparent 0 4px,rgba(0,0,0,.08) 4px 5px)}
+.c.off .n{color:var(--sub)}
+/* 3단: 인법 리스트 · 일반인 규칙 요약본 */
+.np{margin-top:8px;border:1px solid var(--ink)}
+.nh,.nr{display:grid;grid-template-columns:22px 148px 72px 34px 40px 94px minmax(0,1fr);align-items:stretch}
+.nh{font:500 11px var(--sans);text-align:center;padding:3px 4px 2px}
+.nh span{align-self:end}
+.nr{margin:0 4px 3px;border:1px solid var(--line);min-height:24px}
+.nr>*{border-left:1px solid var(--line);display:flex;align-items:center}
+.nr>:first-child{border-left:0;justify-content:center}
+.nr input{height:22px}
+.nr .nn{font:700 14px var(--serif)}
+.nr .ctr{justify-content:center;text-align:center}
+.nr .ctr input{text-align:center}
+.nr .eff{padding:2px 4px;font-size:11.5px;line-height:1.45}
+.nr.printed .nn{padding-left:4px;font:800 14px var(--serif)}
+.nr textarea{font-size:11.5px;line-height:1.45;min-height:20px;padding:2px 0;overflow:hidden}
+.ty{display:flex;justify-content:center;gap:0;font:400 12px var(--serif)}
+.ty label{display:flex;align-items:center;cursor:pointer}
+.ty label+label::before{content:"\30FB";color:var(--sub);padding:0 1px}
+.ty input{display:none}
+.ty span{display:inline-flex;width:17px;height:17px;align-items:center;justify-content:center;border-radius:50%;border:1px solid transparent}
+.ty input:checked+span{border-color:var(--ink);font-weight:800}
+.ty.fixed span.on{border-color:var(--ink);font-weight:800}
+.rules{margin-top:8px;border:1px solid var(--ink)}
+.rl{border-bottom:1px solid var(--line);padding:6px 10px;font:400 12.5px/1.55 var(--sans)}
+.rl:last-child{border-bottom:0}
+.cat{display:grid;grid-template-columns:1fr 1fr}
+.ce{display:flex;align-items:center;gap:6px;padding:5px 6px;border-bottom:1px solid var(--line);font-size:11.5px}
+.ce:nth-child(odd){border-right:1px solid var(--line)}
+.ce:nth-last-child(-n+2){border-bottom:0}
+.ce b{background:var(--bar);color:#fff;font:700 12px/1 var(--sans);padding:4px 12px 4px 6px;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%);white-space:nowrap}
+/* 접는 곳 */
+.fold{display:flex;align-items:center;gap:6px;margin:12px 0 6px;cursor:pointer;user-select:none}
+.fold input{display:none}
+.fold .hand{font:400 15px/1 var(--serif)}
+.fold .lb{font:700 11px var(--sans);color:var(--sub)}
+.fold .dash{flex:1;border-top:1.5px dashed var(--ink)}
+.fold:hover .dash{border-top-style:solid}
+.band{display:none;background:var(--band);padding:6px;gap:6px;position:relative;overflow:hidden}
+#fold:checked~.band{display:grid}
+.band.nj{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 28px 246px}
+.band.nm{grid-template-columns:28px repeat(3,minmax(0,1fr)) 28px 232px}
+.sheet[data-t=normal] #fold:checked~.band.nj,.sheet[data-t=ninja] #fold:checked~.band.nm{display:none}
+.vl{color:#fff;writing-mode:vertical-rl;text-orientation:upright;font:700 17px/1 var(--sans);letter-spacing:.2em;display:flex;align-items:center;justify-content:center}
+.wm{position:absolute;left:14%;top:-34px;z-index:2;font:400 250px/1 var(--brush);color:rgba(0,0,0,.075);pointer-events:none;white-space:nowrap;letter-spacing:.12em}
+.og{background:var(--panel);border:1px solid #000;display:flex;flex-direction:column;padding:6px;gap:5px;position:relative;z-index:1}
+.og .row{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.og .row input{height:22px;font:700 13px var(--serif)}
+.og .lines{flex:1;display:flex;flex-direction:column;gap:3px}
+.og textarea{flex:1;min-height:96px;font-size:12px;line-height:22px;background:repeating-linear-gradient(transparent 0 21px,var(--line) 21px 22px);padding:0 2px}
+.og .say{position:absolute;right:6px;top:6px}
+.gear{display:flex;flex-direction:column;gap:5px;position:relative;z-index:1}
+.gi{background:var(--panel);border:1px solid #000;padding:4px 6px}
+.gi .gh{display:flex;align-items:center;gap:6px}
+.gi .gh b{font:800 14px var(--serif)}
+.gi .gh b i{font-style:normal;font-weight:400}
+.gi p{margin:2px 0 0;font-size:10.5px;line-height:1.45}
+.cir{margin-left:auto;display:flex;gap:1px}
+.cir label{cursor:pointer}
+.cir input{display:none}
+.cir span{display:block;width:12px;height:12px;border:1px solid var(--ink);border-radius:50%;background:var(--ink)}
+.gblank{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.gblank .gi{min-height:34px;display:flex;align-items:center}
+.gblank input{height:22px;font:700 12.5px var(--serif)}
+.tr{background:var(--panel);border:1px solid #000;padding:6px;display:flex;flex-direction:column;gap:4px;position:relative;z-index:1}
+.tr .row{display:flex;align-items:center;gap:4px}
+.tr .row input{height:22px;font:700 12.5px var(--serif)}
+.tr .lab{display:flex;gap:4px;align-items:flex-start}
+.tr textarea{flex:1;font-size:11.5px;line-height:20px;min-height:40px;background:repeating-linear-gradient(transparent 0 19px,var(--line) 19px 20px)}
+.tr textarea.e{min-height:80px}
+/* 아이콘 단추 (그림 · 이모지 없이 CSS 로만) */
+.dic{display:inline-block;flex:none;width:16px;height:16px;padding:0;border:1.5px solid currentColor;border-radius:3px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 50% 50%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 28% 72%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 72%,currentColor 1.2px,transparent 1.7px)}
+.bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
+.bub::after{content:"";position:absolute;left:2px;bottom:-6px;width:0;height:0;border-top:5px solid currentColor;border-right:5px solid transparent}
+.dic:hover,.bub:hover{color:var(--ink)}
+
+/* ── 채팅 ── */
+.chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
+.chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
+.log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1380px;overflow-y:auto}
+.who{font:700 11px var(--sans);color:var(--sub)}
+.cd{border:1px solid var(--ink);background:#fff}
+.cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:800 14px/1.3 var(--serif);display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.cd .ch small{font:500 10.5px var(--sans);opacity:.8;white-space:nowrap}
+.cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
+.cd .sub{font-size:11px;color:var(--sub)}
+.cd .roll{display:flex;align-items:center;gap:5px}
+.cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px var(--sans)}
+.cd .eq{color:var(--sub)}
+.cd .tot{font:800 20px/1 var(--sans);font-variant-numeric:tabular-nums}
+.cd .tg{font-size:11px;color:var(--sub)}
+.cd .stp{margin-left:auto;border:2px solid var(--ink);padding:2px 7px;font:800 14px/1.2 var(--serif);transform:rotate(-4deg)}
+.cd .stp.sp{border-color:var(--seal);color:var(--seal)}
+.cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
+.cd .stp.ng{color:var(--sub);border-color:var(--sub)}
+.cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
+.cd .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:11.5px}
+.cd .kv b{font:700 11px var(--sans);color:var(--sub)}
+.cd.ougi .ch{background:var(--seal)}
+.note{font-size:11.5px;color:var(--sub);margin:10px 0 0;max-width:830px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<h1 class="pg">시노비가미 시트 목업</h1>
+<p class="pg">유파북 히라사카 기관 한국어판 세로 시트 배치를 따랐어요. 들어 있는 값은 화면을 보여 주려는 예시예요. 제목 아래 드롭다운으로 닌자용 · 일반인용을 바꾸고, ☞ 접는 곳을 누르면 펴지고 접혀요. 특기 이름을 누르면 오른쪽 채팅에 판정 카드가 나와요.</p>
+
+<div class="wrap">
+<div class="scroll">
+<div class="sheet" id="sheet" data-t="ninja">
+
+  <!-- 1단 -->
+  <div class="r1">
+    <div class="namebox">
+      <div class="nmfield"><span class="chip" style="display:flex;align-items:center">이름</span><input type="text" id="cname" value="카게로" aria-label="이름"></div>
+      <div class="portrait" aria-label="캐릭터 그림 (Roll20 아바타)"></div>
+    </div>
+    <div class="ppl">
+      <div class="hb">인물 칸</div>
+      <div class="ph"><span>인물명</span><span>거처</span><span>비밀</span><span>오의</span><span>감정</span><span></span></div>
+      <div id="ppl"></div>
+    </div>
+    <div class="title">
+      <span class="t1">인술 배틀 TRPG</span>
+      <span class="t2">시노비가미</span>
+      <select id="stype" aria-label="시트 종류">
+        <option value="ninja">닌자용 캐릭터 시트</option>
+        <option value="normal">일반인용 캐릭터 시트</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 2단 -->
+  <div class="r2">
+    <div class="info">
+      <div class="ir two"><div><span class="chip">나이</span><input type="text" value="17" aria-label="나이"></div><div><span class="chip">성별</span><input type="text" value="여" aria-label="성별"></div></div>
+      <div class="ir nj"><span class="chip">유파</span><input type="text" value="하구레모노" aria-label="유파"></div>
+      <div class="ir two nj"><div><span class="chip">계급</span><input type="text" value="중닌" aria-label="계급"></div><div><span class="chip">신념</span><input type="text" value="정" aria-label="신념"></div></div>
+      <div class="ir"><span class="chip">법식</span><input type="text" aria-label="법식"></div>
+      <div class="ir nm"><span class="chip">진실의 수</span><input type="text" value="1" aria-label="진실의 수"></div>
+      <div class="ir nj"><span class="chip">사회적 신분</span><input type="text" value="여고생" aria-label="사회적 신분"></div>
+      <div class="ir two wide nm"><div><span class="chip">사회적 신분</span><input type="text" value="여고생" aria-label="사회적 신분"></div><div><span class="chip">신념</span><input type="text" value="정" aria-label="신념"></div></div>
+      <div class="ir"><span class="chip">공적</span><input type="text" value="12" aria-label="공적"></div>
+      <div class="ir" style="border-bottom:0;padding-bottom:0"><span class="chip">배경</span></div>
+      <div class="bg"><input type="text" value="정체불명" aria-label="배경 1"><input type="text" aria-label="배경 2"><input type="text" aria-label="배경 3"><input type="text" aria-label="배경 4"></div>
+    </div>
+    <div class="sk">
+      <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <!-- 3단: 닌자 = 인법 리스트 -->
+  <div class="np nj">
+    <div class="hb">인법 리스트</div>
+    <div class="nh"><span></span><span>인법명</span><span>타입</span><span>간격</span><span>코스트</span><span>지정 특기</span><span>효과</span></div>
+    <div class="nr printed">
+      <span><button class="dic" type="button" data-melee title="접근전 공격 판정"></button></span>
+      <span class="nn">접근전 공격</span>
+      <span class="ty fixed"><span class="on">공</span>&#x30FB;서&#x30FB;장</span>
+      <span class="ctr">1</span>
+      <span class="ctr" style="font-size:12px">없음</span>
+      <span><input type="text" id="melee" value="도검술" aria-label="접근전 공격 지정 특기"></span>
+      <span class="eff">접근전. 공격이 성공하면 목표에게 접근전 대미지 1점을 입힐 수 있다.</span>
+    </div>
+    <div id="ninpo"></div>
+  </div>
+
+  <!-- 3단: 일반인 = 규칙 요약본 · 촉매표 -->
+  <div class="rules nm">
+    <div class="hb">일반인 규칙 요약본</div>
+    <div class="rl">누군가가 페르소나의 【진실】을 획득하면 그것은 공개되며, 모든 참가자가 볼 수 있다.</div>
+    <div class="rl">「증식자」의 【진실】을 가지고 있는 캐릭터는 프라이즈로 간주한다.</div>
+    <div class="rl">「이인」의 【진실】이 가진 효과는 그것을 사용할 때 공개해야 한다.</div>
+    <div class="rl">일반인의 플롯치는 0. 단, 라운드마다 플롯을 실시해서 예측치를 결정한다.<br>일반인은 예측치와 같은 플롯치, 또는 플롯치 0의 캐릭터 중에서 공격 목표를 선택한다.</div>
+    <div class="rl">예측치는 닌자 캐릭터의 플롯치가 공개되고, 모든 플롯치가 결정된 뒤에 공개한다.</div>
+    <div class="rl">일반인은 간격과 관계없이 인법의 대상이 된다.</div>
+    <div class="hb">촉매표</div>
+    <div class="cat">
+      <div class="ce"><b>크리티컬 히트</b>「살의」,「우정」,「목표에 대한 애정」</div>
+      <div class="ce"><b>범위 공격</b>「분노」,「충성」,「질투」,「동경과 열등감」</div>
+      <div class="ce"><b>완전 성공</b>「신통환」,「공감」,「동경」,「임의의 플러스【감정】2개」</div>
+      <div class="ce"><b>절대 방어</b>「불신」,「목표에 대한 충성이나 우정이나 애정」</div>
+      <div class="ce"><b>판정 방해</b>「둔갑부」,「모멸」,「열등감」,「목표의【비밀】」</div>
+      <div class="ce"><b>불사신</b>「병량환」,「광신」,「열등감」</div>
+    </div>
+  </div>
+
+  <!-- 접는 곳: 누르면 펴짐 · 다시 누르면 접힘 -->
+  <input type="checkbox" id="fold" hidden>
+  <label class="fold" for="fold" title="접는 곳"><span class="hand">&#x261E;</span><span class="lb">접는 곳</span><span class="dash"></span></label>
+
+  <!-- 접히는 곳 (닌자): 오의 내역 · 닌자도구 -->
+  <div class="band nj">
+    <div class="wm">극비</div>
+    <div class="vl">오의 내역</div>
+    <div class="og" data-og="1">
+      <button class="bub say" type="button" title="채팅에 출력"></button>
+      <div class="row"><span class="chip">오의명 1</span><input type="text" class="ogn" value="월영" aria-label="오의명 1"></div>
+      <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" value="은형술" aria-label="오의 1 지정 특기"></div>
+      <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 1 효과">판정 방해</textarea></div>
+    </div>
+    <div class="og" data-og="2">
+      <button class="bub say" type="button" title="채팅에 출력"></button>
+      <div class="row"><span class="chip">오의명 2</span><input type="text" class="ogn" aria-label="오의명 2"></div>
+      <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" aria-label="오의 2 지정 특기"></div>
+      <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 2 효과"></textarea></div>
+    </div>
+    <div class="vl">닌자도구</div>
+    <div class="gear" data-gear></div>
+  </div>
+
+  <!-- 접히는 곳 (일반인): 진실 · 닌자도구 -->
+  <div class="band nm">
+    <div class="wm">극비</div>
+    <div class="vl">진실</div>
+    <div class="tr"><button class="bub say" type="button" title="채팅에 출력" style="position:absolute;right:6px;top:6px"></button>
+      <div class="row"><span class="chip">이름</span><input type="text" value="이인" aria-label="진실 1 이름"></div>
+      <div class="lab"><span class="chip">설정</span><textarea aria-label="진실 1 설정"></textarea></div>
+      <div class="lab"><span class="chip">효과</span><textarea class="e" aria-label="진실 1 효과"></textarea></div></div>
+    <div class="tr"><button class="bub say" type="button" title="채팅에 출력" style="position:absolute;right:6px;top:6px"></button>
+      <div class="row"><span class="chip">이름</span><input type="text" aria-label="진실 2 이름"></div>
+      <div class="lab"><span class="chip">설정</span><textarea aria-label="진실 2 설정"></textarea></div>
+      <div class="lab"><span class="chip">효과</span><textarea class="e" aria-label="진실 2 효과"></textarea></div></div>
+    <div class="tr"><button class="bub say" type="button" title="채팅에 출력" style="position:absolute;right:6px;top:6px"></button>
+      <div class="row"><span class="chip">이름</span><input type="text" aria-label="진실 3 이름"></div>
+      <div class="lab"><span class="chip">설정</span><textarea aria-label="진실 3 설정"></textarea></div>
+      <div class="lab"><span class="chip">효과</span><textarea class="e" aria-label="진실 3 효과"></textarea></div></div>
+    <div class="vl">닌자도구</div>
+    <div class="gear" data-gear></div>
+  </div>
+</div>
+<p class="note">시트 밖 안내 (목업에만): 접힌 곳은 Roll20에서 시트를 볼 수 있는 사람이면 누구나 펼 수 있어요. 시트를 열 때마다 접힌 상태로 돌아가게 하고, 오의 · 진실은 쓸 때 채팅 카드로 공개해요.</p>
+</div>
+
+<div class="chat">
+  <h2>Roll20 채팅 (카드 예시)</h2>
+  <div class="log" id="log"></div>
+</div>
+</div>
+
+<script>
+// 특기 리스트 (한국어판 시트 인쇄 순서) — 열 = 분야, 줄 = 2~12
+const FIELDS = ['기술','체술','인술','모술','전술','요술'];
+const SK = [
+  ['기기술','불의 술','물의 술','침술','암기','의상술','포승술','등반술','고문술','손괴술','굴삭술'],
+  ['기승술','포술','수리검술','손놀림','신체조작','보법','주법','비행술','격투술','도검술','괴력'],
+  ['생존술','잠복술','도주술','도청술','복화술','은형술','변장술','향술','분신술','은폐술','제육감'],
+  ['의술','독술','함정술','조사술','사기술','대인술','예능','미인계','괴뢰술','유언비어','경제력'],
+  ['병량술','동물사역','야전술','지형활용','의지','용병술','기억술','색적술','암호술','전달술','인맥'],
+  ['이형화','소환술','사령술','결계술','봉인술','언령술','환술','동술','천리안','빙의술','주술']];
+const COL = 'ABCDEF', GAPS = ['Z','A','B','C','D','E'];   // 중국어 시트와 같은 이름: 특기 A2~F12 · 공백 Z(기술 왼쪽) · A~E(분야 사이)
+const st = { own: new Set(['C3','C7','B5','D5','E6','F8']), gap: new Set(['B','C']), lost: new Set() };   // 예시: 하구레모노(인술) → 공백 B · C
+const grid = document.getElementById('grid');
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+// 격자: 머리줄(모퉁이 · 분야 ■) + 11줄(번호 · 특기 칸) + 공백 6줄기(열 전체를 덮는 막대)
+const cells = {};
+(function build() {
+  grid.append(el('div', 'no corner'));
+  FIELDS.forEach((f, i) => {
+    const h = el('div', 'fh'); h.style.gridColumn = String(3 + i * 2);
+    h.append(f);
+    const s = el('input', 'slot'); s.type = 'checkbox'; s.title = f + ' 생명력 슬롯 (체크 = 소실)';
+    s.onchange = () => { s.checked ? st.lost.add(i) : st.lost.delete(i); calc(); };
+    h.append(s); grid.append(h);
+  });
+  for (let r = 0; r < 11; r++) {
+    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '1'; no.style.gridRow = String(r + 2); grid.append(no);
+    FIELDS.forEach((f, i) => {
+      const id = COL[i] + (r + 2), c = el('div', 'c');
+      c.style.gridColumn = String(3 + i * 2); c.style.gridRow = String(r + 2);
+      const own = el('input', 'own'); own.type = 'checkbox'; own.checked = st.own.has(id); own.title = SK[i][r] + ' 습득';
+      own.onchange = () => { own.checked ? st.own.add(id) : st.own.delete(id); calc(); };
+      const n = el('button', 'n', SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정';
+      n.onclick = () => rollSkill(i, r);
+      const tn = el('span', 'tn');
+      c.append(own, n, tn); grid.append(c); cells[id] = { c, tn };
+    });
+  }
+  GAPS.forEach((g, k) => {
+    const l = el('label', 'gap'); l.style.gridColumn = String(2 + k * 2); l.title = '공백 ' + g + ' 칠하기';
+    const i = el('input'); i.type = 'checkbox'; i.checked = st.gap.has(g);
+    i.onchange = () => { i.checked ? st.gap.add(g) : st.gap.delete(g); calc(); };
+    l.append(i, el('span')); grid.append(l);
+  });
+})();
+
+// 목표치 = 5 + 거리. 세로 한 칸 1, 옆 분야로 2 (칠한 공백을 건너면 1). 소실된 분야의 습득 특기는 출발점에서 뺀다
+const dist = (a, b) => {
+  let d = Math.abs(a.r - b.r);
+  for (let c = Math.min(a.f, b.f); c < Math.max(a.f, b.f); c++) d += st.gap.has(GAPS[c + 1]) ? 1 : 2;
+  return d;
+};
+function target(f, r) {
+  const src = [...st.own].map(id => ({ f: COL.indexOf(id[0]), r: +id.slice(1) - 2 })).filter(s => !st.lost.has(s.f));
+  return src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, { f, r })))) : null;
+}
+function calc() {
+  FIELDS.forEach((_, f) => { for (let r = 0; r < 11; r++) {
+    const { c, tn } = cells[COL[f] + (r + 2)], t = target(f, r);
+    tn.textContent = t == null ? '' : t; c.classList.toggle('off', st.lost.has(f));
+  } });
+}
+
+// 인물 칸 9줄
+const ppl = document.getElementById('ppl');
+const PPL = [['츠바키', [1, 0, 0], '우정', '+'], ['류지', [0, 1, 0], '불신', '-']];
+for (let i = 0; i < 9; i++) {
+  const p = PPL[i] || ['', [0, 0, 0], '', ''], row = el('div', 'pr');
+  row.innerHTML = `<input type="text" value="${p[0]}" aria-label="인물명 ${i + 1}">` +
+    ['거처', '비밀', '오의'].map((k, j) => `<input type="checkbox" class="box" ${p[1][j] ? 'checked' : ''} aria-label="${k} ${i + 1}">`).join('') +
+    `<input type="text" class="emo" value="${p[2]}" aria-label="감정 ${i + 1}">` +
+    `<span class="pm"><label><input type="radio" name="pm${i}" ${p[3] === '+' ? 'checked' : ''}><span>+</span></label><label><input type="radio" name="pm${i}" ${p[3] === '-' ? 'checked' : ''}><span>&minus;</span></label></span>`;
+  ppl.append(row);
+}
+
+// 인법 리스트 8줄 (첫 줄 위 '접근전 공격'은 인쇄된 줄)
+const ninpo = document.getElementById('ninpo');
+const NP = [['그림자 베기', 0, '1', '1', '은형술', '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점.'], ['연막', 1, '2', '1', '잠복술', '이 장면 동안 자신을 목표로 하는 공격의 회피 판정에 +1.']];
+for (let i = 0; i < 8; i++) {
+  const p = NP[i] || ['', -1, '', '', '', ''], row = el('div', 'nr');
+  row.innerHTML = `<span><button class="dic" type="button" title="인법 판정"></button></span>` +
+    `<span><input type="text" class="nn" value="${p[0]}" aria-label="인법명 ${i + 1}"></span>` +
+    `<span class="ty">${['공', '서', '장'].map((k, j) => `<label><input type="radio" name="ty${i}" ${p[1] === j ? 'checked' : ''}><span>${k}</span></label>`).join('')}</span>` +
+    `<span class="ctr"><input type="text" value="${p[2]}" aria-label="간격 ${i + 1}"></span>` +
+    `<span class="ctr"><input type="text" value="${p[3]}" aria-label="코스트 ${i + 1}"></span>` +
+    `<span><input type="text" value="${p[4]}" aria-label="지정 특기 ${i + 1}"></span>` +
+    `<span class="eff"><textarea rows="1" aria-label="효과 ${i + 1}">${p[5]}</textarea></span>`;
+  row.querySelector('.dic').onclick = () => rollNinpo(row);
+  ninpo.append(row);
+}
+
+// 닌자도구: 인쇄된 셋(개수 ○ 6개) + 빈 칸 둘
+const GEAR = [['병량환', '자신의 【생명력】이 1점 이상이라면 언제든지 사용할 수 있다. 이 아이템을 사용하면 자신의 【생명력】 1점이나 상태이상 하나를 회복할 수 있다.', 1],
+  ['신통환', '자신이 행동 판정의 주사위를 굴렸을 때 사용할 수 있다. 그 주사위를 다시 굴릴 수 있다.', 1],
+  ['둔갑부', '자신 이외의 누군가가 행동 판정의 주사위를 굴렸을 때 사용할 수 있다. 그 주사위를 다시 굴리게 할 수 있다.', 0]];
+document.querySelectorAll('[data-gear]').forEach((box, b) => {
+  GEAR.forEach(([n, e, cnt], g) => {
+    const gi = el('div', 'gi');
+    const circles = [1, 2, 3, 4, 5, 6].map(k => `<label title="${k}개"><input type="radio" name="g${b}${g}" value="${k}" ${cnt === k ? 'checked' : ''}><span></span></label>`).join('');
+    gi.innerHTML = `<div class="gh"><button class="bub" type="button" title="사용 (1개 줄이고 채팅에 출력)"></button><b>${n}<i>&times;</i></b><span class="cir"><input type="radio" name="g${b}${g}" value="0" ${cnt === 0 ? 'checked' : ''}>${circles}</span></div><p>${e}</p>`;
+    gi.querySelector('.bub').onclick = () => useGear(gi, n, e);
+    box.append(gi);
+  });
+  const blank = el('div', 'gblank');
+  blank.innerHTML = '<div class="gi"><input type="text" aria-label="닌자도구 칸 1"></div><div class="gi"><input type="text" aria-label="닌자도구 칸 2"></div>';
+  box.append(blank);
+});
+// ○ 를 눌러 개수: 고른 것까지 검게 (빈 ○ 는 0개)
+document.querySelectorAll('.cir').forEach(c => {
+  const paint = () => { const v = +(c.querySelector('input:checked')?.value || 0); c.querySelectorAll('label span').forEach((s, k) => s.style.background = k < v ? 'var(--ink)' : 'var(--paper)'); };
+  c.addEventListener('change', paint); paint();
+});
+
+// ── 채팅 카드 ──
+const log = document.getElementById('log');
+const name = () => document.getElementById('cname').value || '이름 없음';
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+// 2 는 늘 펌블, 12 는 늘 스페셜 (스페셜치 · 펌블치가 바뀌는 효과는 플레이어가 직접 적용)
+function judge(a, b, t) {
+  const s = a + b;
+  if (s === 12) return ['스페셜', 'sp'];
+  if (s === 2) return ['펌블', 'fb'];
+  return t != null && s >= t ? ['성공', ''] : ['실패', 'ng'];
+}
+function card({ title, sub, roll, kv, eff, cls }) {
+  const w = el('div');
+  w.append(el('div', 'who', name()));
+  const c = el('div', 'cd' + (cls ? ' ' + cls : ''));
+  c.innerHTML = `<div class="ch"><span>${title}</span></div><div class="cb">${sub ? `<div class="sub">${sub}</div>` : ''}${roll ? (() => {
+    const [r, k] = judge(roll[0], roll[1], roll[2]);
+    return `<div class="roll"><span class="die">${roll[0]}</span><span class="die">${roll[1]}</span><span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${roll[2] != null ? `<span class="tg">목표치 ${roll[2]}</span>` : ''}<span class="stp ${k}">${r}</span></div>`;
+  })() : ''}${kv ? `<div class="kv">${kv.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div>` : ''}${eff ? `<div class="eff">${eff}</div>` : ''}</div>`;
+  w.append(c); log.append(w); log.scrollTop = log.scrollHeight;
+}
+const findSkill = s => { for (let f = 0; f < 6; f++) { const r = SK[f].indexOf(s.trim()); if (r >= 0) return [f, r]; } return null; };
+function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (t == null ? '' : ` · 목표치 ${t}`) + (st.lost.has(f) ? ' · 생명력 소실' : ''), roll: [d6(), d6(), t] }); }
+function rollNinpo(row) {
+  const v = [...row.querySelectorAll('input[type=text]')].map(i => i.value), ty = row.querySelector('.ty input:checked');
+  const nm = v[0] || '인법', s = findSkill(v[3] || ''), tyN = ty ? ['공격', '서포트', '장비'][[...row.querySelectorAll('.ty input')].indexOf(ty)] : '';
+  card({ title: `【${nm}】`, sub: [tyN, v[1] && `간격 ${v[1]}`, v[2] && `코스트 ${v[2]}`, v[3] && `《${v[3]}》`].filter(Boolean).join(' · '),
+    roll: s ? [d6(), d6(), target(...s)] : null, eff: row.querySelector('textarea').value });
+}
+document.querySelector('[data-melee]').onclick = () => {
+  const s = findSkill(document.getElementById('melee').value);
+  card({ title: '【접근전 공격】', sub: '공격 · 간격 1 · 코스트 없음' + (s ? ` · 《${SK[s[0]][s[1]]}》` : ''), roll: s ? [d6(), d6(), target(...s)] : null, eff: '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점을 입힐 수 있다.' });
+};
+document.querySelectorAll('.og .say').forEach(b => b.onclick = () => {
+  const p = b.closest('.og');
+  card({ title: p.querySelector('.ogn').value || '오의', cls: 'ougi', sub: '오의' + (p.querySelector('.ogs').value ? ` · 《${p.querySelector('.ogs').value}》` : ''), eff: p.querySelector('.oge').value });
+});
+document.querySelectorAll('.tr .say').forEach(b => b.onclick = () => {
+  const p = b.closest('.tr'), [n] = [...p.querySelectorAll('input')].map(i => i.value), [s, e] = [...p.querySelectorAll('textarea')].map(t => t.value);
+  card({ title: `【진실】 ${n || ''}`, cls: 'ougi', kv: s ? [['설정', s]] : null, eff: e });
+});
+function useGear(gi, n, e) {
+  const cur = +(gi.querySelector('.cir input:checked')?.value || 0);
+  if (!cur) return card({ title: n, sub: '남은 개수 0', eff: e });
+  gi.querySelector(`.cir input[value="${cur - 1}"]`).checked = true; gi.querySelector('.cir').dispatchEvent(new Event('change'));
+  card({ title: `${n} 사용`, sub: `남은 개수 ${cur} → ${cur - 1}`, eff: e });
+}
+
+// 효과 칸: 글 길이만큼 늘어남 (실제 시트는 span + textarea 겹치기)
+const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+document.querySelectorAll('.nr textarea').forEach(t => { t.addEventListener('input', () => grow(t)); requestAnimationFrame(() => grow(t)); });
+// 시트 종류 · 처음 화면
+document.getElementById('stype').onchange = e => document.getElementById('sheet').dataset.t = e.target.value;
+document.getElementById('fold').checked = true;
+calc();
+// 예시 카드 (값 고정)
+card({ title: '《은형술》 판정', sub: '인술 · 목표치 5', roll: [4, 3, 5] });
+card({ title: '【그림자 베기】', sub: '공격 · 간격 1 · 코스트 1 · 《은형술》', roll: [6, 6, 5], eff: '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점.' });
+card({ title: '《주술》 판정', sub: '요술 · 목표치 8', roll: [1, 1, 8] });
+card({ title: '월영', cls: 'ougi', sub: '오의 · 《은형술》', eff: '판정 방해' });
+card({ title: '병량환 사용', sub: '남은 개수 2 → 1', eff: GEAR[0][1] });
+</script>
