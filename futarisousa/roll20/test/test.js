@@ -5,73 +5,103 @@ const HTML = fs.readFileSync(process.argv[2] || path.join(__dirname, '../sheet/f
 let pass = 0, fail = 0;
 const eq = (name, got, want) => { const ok = JSON.stringify(got) === JSON.stringify(want); ok ? pass++ : fail++; if (!ok) console.log('FAIL', name, '\n   got ', JSON.stringify(got), '\n   want', JSON.stringify(want)); };
 const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ : fail++; if (!ok) console.log('FAIL', name, '— missing', JSON.stringify(sub), 'in', String(s).slice(0, 300)); };
-const acts = s => [...s.attrs.keys()].filter(k => /^repeating_actions_.*_name$/.test(k)).map(k => s.get(k));
+const acts = s => [...s.attrs.keys()].filter(k => /^repeating_acts_.*_name$/.test(k)).map(k => s.get(k));
 const last = s => s.rolls[s.rolls.length - 1];
 (async () => {
-  // ── 새 탐정 시트: 기본 액션 한 줄 · 다시 열어도 그대로
+  // ── 새 탐정 시트: role · 기본 액션 한 줄 · 다시 열어도 그대로
   let s = makeSim(HTML); s.open(); await s.settle();
   eq('new: version', String(s.get('sheet_version')), '1');
+  eq('new: role 탐정', s.get('role'), '탐정');
   eq('new: default action (탐정)', acts(s), ['둘이서 수사']);
   s.open(); await s.settle();
   eq('reopen: still one action', acts(s), ['둘이서 수사']);
-  // 조수로 바꾸면 손대지 않은 기본 액션은 바뀐다
   s.set('sheet_type', 'asi'); await s.settle();
+  eq('switch to 조수: role', s.get('role'), '조수');
   eq('switch to 조수: default replaced', acts(s), ['따라잡다']);
-  eq('조수 default cost', s.get([...s.attrs.keys()].find(k => /^repeating_actions_.*_cost$/.test(k))), '1');
-  // 고친 액션은 그대로 둔다
-  const row = [...s.attrs.keys()].find(k => /^repeating_actions_.*_name$/.test(k)).replace(/name$/, '');
-  s.set(row + 'effect', '내가 고친 효과'); await s.settle();
+  eq('조수 default cost', s.get([...s.attrs.keys()].find(k => /^repeating_acts_.*_cost$/.test(k))), '1');
+  const row = [...s.attrs.keys()].find(k => /^repeating_acts_.*_name$/.test(k)).replace(/name$/, '');
+  s.set(row + 'eff', '내가 고친 효과'); await s.settle();
   s.set('sheet_type', 'det'); await s.settle();
   eq('edited action kept on switch', acts(s), ['따라잡다']);
+  s.set('sheet_type', 'case'); await s.settle();
+  eq('사건: role 비움', s.get('role'), '');
+  has('사건: 고백 효과 기본 글', s.get('confess'), '강렬한 감정');
+  s.set('sheet_type', 'base'); await s.settle();
+  eq('아지트: 액션 그대로', acts(s), ['따라잡다']);
 
-  // ── 기능 판정: 탐정 10면체 · 조수 6면체 · 개수 묻기 · 미습득
+  // ── 기능 판정: 보통 2 · 유리함 3 · 불리함 1 → 성공 · 실패 · 스페셜 · 펌블
   s = makeSim(HTML); s.open(); await s.settle();
-  s.set('character_name', '쿠로사와 렌'); s.set('sk_lie', '1'); await s.settle();
-  s.queries['주사위 수'] = 2; s.dice.push(7, 3, 9, 2);
-  s.click('rlie'); await s.settle();
-  let r = last(s);
-  has('skill roll: template', r.macro, '&{template:futarisousa}');
-  has('skill roll: d10', r.macro, '{{d1=[[1d10]]}}');
-  has('skill roll: title', r.macro, '{{title=거짓말 판정}}');
-  has('skill roll: sub', r.macro, '{{sub=통찰 · 탐정 10면체}}');
-  eq('skill roll: dice count asked', r.results.n.result, 2);
-  eq('skill roll: computed dice', [r.computed.d1, r.computed.d2, r.computed.d3], [7, 3, 9]);
-  eq('skill roll: learned → no flag', r.macro.includes('{{flag='), false);
-  s.click('rweather'); await s.settle();
-  has('unlearned skill flagged', last(s).macro, '{{flag=미습득}}');
+  s.set('character_name', '쿠로사와 렌'); s.set('skill_1_1', '1'); await s.settle();
+  const roll = async (btn, n, dice) => { s.queries['판정'] = n; s.dice.push(...dice); s.click(btn); await s.settle(); return last(s); };
+  let r = await roll('sk11', 2, [7, 3, 9]);
+  has('skill: template', r.macro, '&{template:futarisousa}');
+  has('skill: d10', r.macro, '{{d1=[[1d10]]}}');
+  has('skill: title', r.macro, '{{title=거짓말 판정}}');
+  has('skill: sub', r.macro, '{{sub=통찰 · 탐정 10면체}}');
+  eq('skill: 보통 2 → 7·3 성공', [r.computed.ok, r.computed.res, r.computed.mode], [1, '성공', '보통 2D10']);
+  eq('skill: learned → no flag', r.macro.includes('{{flag='), false);
+  eq('skill: computed fields first', r.macro.indexOf('{{ok=') < r.macro.indexOf('{{title='), true);
+  r = await roll('sk11', 3, [2, 6, 1]);
+  eq('유리함 3 → 6 → 스페셜', [r.computed.ok, r.computed.res, r.computed.mode, r.computed.note, r.computed.hn], [3, '스페셜', '유리함 3D10', '【여유】+1', 1]);
+  r = await roll('sk11', 1, [3, 9, 9]);
+  eq('불리함 1 → 3 실패 (뒤 눈은 안 셈)', [r.computed.ok, r.computed.res, r.computed.hn], [2, '실패', 0]);
+  r = await roll('sk11', 2, [1, 1, 8]);
+  eq('모두 1 → 펌블', [r.computed.ok, r.computed.res, r.computed.note], [4, '펌블', '상태이상 · 【마음고생】+1']);
+  r = await roll('sk16', 2, [5, 2, 2]);
+  has('미습득 표시', r.macro, '{{flag=미습득}}');
   s.set('sheet_type', 'asi'); await s.settle();
-  s.click('rchase'); await s.settle();
-  has('조수 판정: d6', last(s).macro, '{{d1=[[1d6]]}}');
-  has('조수 판정: sub', last(s).macro, '조수 6면체');
+  r = await roll('sk46', 2, [4, 2, 2]);
+  has('조수 판정: d6', r.macro, '{{d1=[[1d6]]}}');
+  has('조수 판정: sub', r.macro, '{{title=추적 판정}}');
+  eq('조수 4 이상 → 탐정 감정 안내', [r.computed.ok, r.computed.note], [1, '탐정이 조수에 대한 감정 1 · 【여유】+1']);
 
-  // ── 기벽 · 감정 표 · 상태이상
-  s.set('sheet_type', 'det'); s.set('quirk4', '단 것을 먹지 않으면 추리가 멈춘다'); await s.settle();
+  // ── 기벽 · 감정 표 · 상태이상 · 괴도 배경
+  s.set('sheet_type', 'det'); s.set('quirk_4', '단 것을 먹지 않으면 추리가 멈춘다'); await s.settle();
   s.dice.push(4); s.click('quirk'); await s.settle();
-  eq('quirk: face + text', [last(s).computed.dice, last(s).computed.res], ['⚃', '단 것을 먹지 않으면 추리가 멈춘다']);
+  eq('기벽: 눈 + 글', [last(s).computed.dice, last(s).computed.res], ['⚃', '단 것을 먹지 않으면 추리가 멈춘다']);
   s.dice.push(2); s.click('quirk'); await s.settle();
-  eq('quirk: empty row', last(s).computed.res, '(비어 있음)');
+  eq('기벽: 빈 줄', last(s).computed.res, '(비어 있음)');
   s.dice.push(5, 2); s.click('emoa'); await s.settle();
-  eq('감정 표A: D66 sorted (5,2 → 25)', [last(s).computed.dice, last(s).computed.res], ['25', '별 이유 없이']);
-  s.dice.push(6, 6); s.click('emoa'); await s.settle();
-  eq('감정 표A: 66', last(s).computed.res, '생활 관습');
+  eq('감정 표A: D66 (5,2 → 25)', [last(s).computed.dice, last(s).computed.res], ['25', '별 이유 없이']);
+  eq('감정 표A: 효과 칸 없음', last(s).macro.includes('{{eff='), false);
   s.dice.push(10); s.click('emob'); await s.settle();
   eq('감정 표B: 10', [last(s).computed.dice, last(s).computed.res], ['10', '자신과의 관계']);
-  s.dice.push(2); s.click('status'); await s.settle();
+  s.dice.push(2); s.click('cond'); await s.settle();
   eq('상태이상: 2', last(s).computed.res, '탐정의 폭주');
-  has('상태이상: effect', last(s).computed.eff, '[유리함]');
+  has('상태이상: 효과', last(s).computed.eff, '[유리함]');
+  s.dice.push(6); s.click('tbg'); await s.settle();
+  eq('괴도 배경 표: 6', last(s).computed.res, '일그러진 탐정 애호가');
 
   // ── 【여유】 ± (0 아래로 안 내려감)
-  s.click('reserveup'); await s.settle(); s.click('reserveup'); await s.settle();
-  eq('여유 +2', String(s.get('reserve')), '2');
-  for (let i = 0; i < 3; i++) { s.click('reservedn'); await s.settle(); }
-  eq('여유 floor 0', String(s.get('reserve')), '0');
+  s.click('calmup'); await s.settle(); s.click('calmup'); await s.settle();
+  eq('여유 +2', String(s.get('calm')), '2');
+  for (let i = 0; i < 3; i++) { s.click('calmdn'); await s.settle(); }
+  eq('여유 바닥 0', String(s.get('calm')), '0');
 
-  // ── 액션 출력
-  const arow = s.addRow('actions', { name: '추리 쇼', type: '보조', cost: '2', effect: '모두를 모아 추리를 펼친다.' }); await s.settle();
+  // ── 액션 · 규격 외 · 카드 공개
+  const arow = s.addRow('acts', { name: '추리 쇼', type: '보조', cost: '2', eff: '모두를 모아 추리를 펼친다.' }); await s.settle();
   s.click('use', arow); await s.settle();
   has('action: title', last(s).macro, '{{title=추리 쇼}}');
   has('action: sub', last(s).macro, '{{sub=보조 · 코스트 2}}');
   has('action: effect', last(s).macro, '{{effect=모두를 모아 추리를 펼친다.}}');
+  const xrow = s.addRow('exasi', { name: '비장의 한 수', type: '보조', cost: '3', eff: '규격 외.' }); await s.settle();
+  s.click('use', xrow); await s.settle();
+  has('규격 외 (조수): sub', last(s).macro, '{{sub=조수 규격 외 · 보조 · 코스트 3}}');
+  const krow = s.addRow('knew', { no: '2', text: '피해자는 열쇠를 맡겼다.' }); await s.settle();
+  s.click('reveal', krow); await s.settle();
+  has('알고 있었어 카드: 제목', last(s).macro, '{{title=알고 있었어 카드 2}}');
+  has('알고 있었어 카드: 꼬리', last(s).macro, '{{sub=You knew.}}');
+  const prow = s.addRow('pcards', { no: '1', text: '예고장' }); await s.settle();
+  s.click('reveal', prow); await s.settle();
+  has('괴도 카드: 꼬리', last(s).macro, "{{sub=Phantom thief's act.}}");
+
+  // ── 사전 조사 시트: 체크한 항목만 (그 사람 질문으로)
+  s.set('pre_q1', '단 것만 있으면 무엇이든 풀어내는 명탐정'); s.set('pre_c1', '1'); s.set('pre_q4', '아침에 깨워 주기'); s.set('pre_c4', '1'); s.set('pre_c5', '1'); await s.settle();
+  s.click('preuse'); await s.settle();
+  has('사전 조사: 제목', last(s).macro, '{{title=사전 조사 시트 · 탐정}}');
+  has('사전 조사: 1번', last(s).macro, '{{k1=어떤 탐정인가요?}} {{v1=단 것만 있으면 무엇이든 풀어내는 명탐정}}');
+  has('사전 조사: 4번', last(s).macro, '{{k2=파트너가 해주기를 바라는 대우}}');
+  eq('사전 조사: 탐정에게 없는 5번은 빠짐', last(s).macro.includes('{{k3='), false);
 
   const warn = s.log.filter(l => l[0] === 'WARN');
   eq('no simulator warnings', warn, []);

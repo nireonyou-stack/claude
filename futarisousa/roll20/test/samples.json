@@ -1,0 +1,12 @@
+[
+  { "name": "탐정 · 쿠로사와 렌", "attrs": { "sheet_type": "det", "character_name": "쿠로사와 렌", "cls": "안락의자 탐정", "age": "27", "height": "181", "job": "탐정 사무소 소장", "fashion": "낡은 체크 코트", "like": "단 것", "dislike": "아침", "calm": "2", "skill_1_1": "1", "skill_1_4": "1", "skill_2_2": "1", "skill_3_5": "1", "skill_4_3": "1", "quirk_1": "생각할 때 각설탕을 쌓는다", "quirk_4": "단 것을 먹지 않으면 추리가 멈춘다", "partner": "아오이 하루", "call": "하루 군", "p_like": "성실함", "p_dislike": "잔소리", "memo": "의뢰비는 늘 케이크로 받는다." },
+    "rows": { "acts": [ { "name": "추리 쇼", "type": "보조", "cost": "2", "eff": "모두를 모아 추리를 펼친다." } ] } },
+  { "name": "조수 · 아오이 하루", "attrs": { "sheet_type": "asi", "character_name": "아오이 하루", "cls": "현장파 조수", "age": "22", "height": "170", "job": "대학생", "fashion": "운동화와 후드", "like": "달리기", "dislike": "거짓말", "calm": "1", "worry": "1", "skill_1_2": "1", "skill_2_6": "1", "skill_4_6": "1", "partner": "쿠로사와 렌", "call": "선생님", "p_like": "번뜩임", "p_dislike": "게으름" },
+    "rows": { "guests": [ { "name": "타나카 경부", "skill": "탐문", "rel": "단골 경찰", "memo": "커피로 매수 가능", "used": "0" } ] } },
+  { "name": "아지트 · 렌과 하루", "attrs": { "sheet_type": "base", "tab": "hq", "agit": "쿠로사와 탐정 사무소", "sign": "검은 고양이 간판", "agit_about": "역 앞 빌딩 3층. 아래층은 찻집." },
+    "rows": { "keeps": [ { "name": "은색 열쇠", "what": "첫 사건의 증거품", "ep": "1화" } ], "box": [ { "name": "각설탕", "n": "12" } ] } },
+  { "name": "사건 · 붉은 열쇠", "attrs": { "sheet_type": "case", "date": "2026-11-20", "title": "붉은 열쇠 사건", "tantei": "쿠로사와 렌", "joshu": "아오이 하루", "block": "3", "level": "2", "people": "피해자 · 집사 · 조카", "keys": "열쇠 · 찻잔" } },
+  { "name": "카드 (GM)", "attrs": { "sheet_type": "cards" },
+    "rows": { "knew": [ { "no": "2", "text": "피해자는 집사에게 열쇠를 맡겼다." } ], "pcards": [ { "no": "1", "text": "예고장 — 오늘 밤 열두 시, 붉은 열쇠를 받으러 가겠다." } ] } },
+  { "name": "괴도 (GM)", "attrs": { "sheet_type": "thief", "character_name": "괴도 크림슨", "realname": "?", "age": "불명", "fashion": "붉은 실크해트", "like": "보석", "dislike": "경찰" } }
+]
