@@ -18,7 +18,7 @@
 - ✔ Google Fonts 는 옛 주소 `https://fonts.googleapis.com/css?family=A:400,700|B:900&display=swap` (`/css2` 금지) (e222b35)
 - ✔ 주석 안에 `'` · `;` 를 쓰지 않는다 (e222b35)
 - ✔ 다크 모드 카드 선택자는 같은 요소: `.sheet-rolltemplate-이름.sheet-rolltemplate-darkmode .sheet-card` (e222b35)
-- 블러드문 v4(11-13) 뒤로 실제 게임에서 카드가 제대로 보이는지는 **사용자 확인 필요** — 확인되면 여기에 적는다.
+- ✔ 블러드문 v4(11-13) 뒤로 실제 게임에서 카드가 제대로 나오는 것을 사용자가 확인함 (11-20) — 위 목록이 원인 전부였다
 
 ## 2. 채팅 카드 안쪽
 

@@ -46,7 +46,7 @@
     <div class="hp">
       <div class="hc"><small>최대치</small><span class="v" name="attr_hp_max"></span>
         <span class="base"><small>기본</small><input type="number" name="attr_hp_base" title="생명력 최대치 (활력 제외)"></span></div>
-      <div class="hc"><small>활력<button type="action" name="act_vigor" class="tb" title="활력 굴리기 (레벨D6)">굴림</button></small><input type="number" class="v" name="attr_vigor" min="0" title="활력"></div>
+      <div class="hc"><small>활력<button type="action" name="act_vigor" class="dic" title="활력 굴리기 (레벨D6)"></button></small><input type="number" class="v" name="attr_vigor" min="0" title="활력"></div>
       <div class="hc"><small>현재치</small><span class="stp"><button type="action" name="act_hpdn" title="생명력 1 줄이기">−</button><input type="number" class="v" name="attr_hp" min="0" title="생명력 현재치"><button type="action" name="act_hpup" title="생명력 1 늘리기">+</button></span></div>
       <div class="conds">
         <label class="st stc"><input type="checkbox" name="attr_st_despair" value="1"><span>절망</span></label>
@@ -62,11 +62,11 @@
     <div class="hb">기프트</div>
     <div class="gifts">
       <div class="rh gift"><span></span><span>기프트명</span><span>분류</span><span>조건</span><span>판정</span><span>태그</span><span>효과</span><span></span></div>
-      <div class="rr gift printed"><input type="checkbox" class="pt" name="attr_blessing_seal" value="1" title="봉인"><!--@BLESSING--><button type="action" name="act_blessing" class="use" title="채팅에 출력">출력</button></div>
+      <div class="rr gift printed"><input type="checkbox" class="pt" name="attr_blessing_seal" value="1" title="봉인"><!--@BLESSING--><button type="action" name="act_blessing" class="dic" title="채팅에 출력"></button></div>
       <fieldset class="repeating_gifts">
         <div class="rr gift"><input type="checkbox" class="pt" name="attr_seal" value="1" title="봉인"><input type="text" name="attr_name" title="기프트명"><input type="text" name="attr_cat" title="분류"><input type="text" name="attr_cond" title="조건"><input type="text" name="attr_check" title="판정"><input type="text" name="attr_tag" title="태그">
           <div class="ae"><span name="attr_eff"></span><textarea name="attr_eff" title="효과"></textarea></div>
-          <button type="action" name="act_use" class="use" title="채팅에 출력">출력</button></div>
+          <button type="action" name="act_use" class="dic" title="채팅에 출력"></button></div>
       </fieldset>
     </div>
 
@@ -80,11 +80,11 @@
           <div class="rr item"><input type="text" name="attr_name" title="아이템명">
             <span class="kind"><input type="radio" class="none" name="attr_kind" value="" checked><label class="kd kdp"><input type="radio" name="attr_kind" value="p"><span>상</span></label><label class="kd kdc"><input type="radio" name="attr_kind" value="c"><span>소</span></label></span>
             <input type="text" name="attr_power" title="위력"><div class="ae"><span name="attr_spec"></span><textarea name="attr_spec" title="특수기능"></textarea></div>
-            <button type="action" name="act_use" class="use" title="채팅에 출력">출력</button></div>
+            <button type="action" name="act_use" class="dic" title="채팅에 출력"></button></div>
         </fieldset>
         <div class="rr item food"><span class="fd"><b>식료</b><input type="number" name="attr_food" min="0" max="5" title="식료 개수"><span>개</span></span>
           <span class="kind"><span class="kx">상</span><span class="kx on">소</span></span><span></span><span class="ef"><!--@FOOD--></span>
-          <button type="action" name="act_eat" class="use" title="식료 1개로 생명력 1점 회복">먹기</button></div>
+          <button type="action" name="act_eat" class="dic" title="식료 1개로 생명력 1점 회복"></button></div>
       </div>
     </div>
 
