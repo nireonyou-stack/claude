@@ -1,26 +1,11 @@
-// 둘이서 수사 시트 워커 — role · 기본 액션 · 고백 효과 기본 글 · 【여유】 ± · 굴림(Custom Roll Parsing)
+// 둘이서 수사 시트 워커 — role · 【여유】 ± · 굴림 · 채팅 출력(Custom Roll Parsing)
 // DATA(기능 · 기벽 눈 · 감정 표 · 상태이상 · 기본 액션 · 사전 조사 질문 · 괴도 배경 표)는 build.py 가 아래 줄에 넣는다
 // @DATA
 const num = v => { const n = parseInt(v, 10); return isNaN(n) ? null : n; };
 const ROLE = { det: '탐정', asi: '조수' };
 
-// ── 종류가 정해지거나 바뀔 때: 홈페이지가 읽는 role · 탐정 · 조수 기본 액션 · 사건 조사 시트의 고백 효과 기본 글
-//    기본 액션: 비었으면 첫 줄에. 다른 종류의 기본 액션 한 줄만 손대지 않은 채 있으면 이 종류 것으로 바꾼다
-const setup = () => getAttrs(['sheet_type', 'confess'], v => {
-  const t = v.sheet_type || 'det', mine = DATA.acts[t];
-  setAttrs({ role: ROLE[t] || '' }, { silent: true });
-  if (t === 'case' && !v.confess) setAttrs({ confess: DATA.confess }, { silent: true });
-  if (!mine) return;
-  const put = row => setAttrs({ [`${row}name`]: mine[0], [`${row}type`]: mine[1], [`${row}cost`]: mine[2], [`${row}eff`]: mine[3] });
-  getSectionIDs('acts', ids => {
-    if (!ids.length) return put(`repeating_acts_${generateRowID()}_`);
-    if (ids.length !== 1) return;
-    const row = `repeating_acts_${ids[0]}_`;
-    getAttrs(['name', 'eff'].map(k => row + k), a => {
-      if (Object.entries(DATA.acts).some(([k, d]) => k !== t && a[row + 'name'] === d[0] && a[row + 'eff'] === d[3])) put(row);
-    });
-  });
-});
+// ── 종류가 정해지거나 바뀔 때: 홈페이지가 읽는 role (탐정 · 조수, 그 밖은 빈 값)
+const setup = () => getAttrs(['sheet_type'], v => setAttrs({ role: ROLE[v.sheet_type || 'det'] || '' }, { silent: true }));
 on('sheet:opened', () => getAttrs(['sheet_version'], v => {
   if (num(v.sheet_version) >= 1) return;
   setAttrs({ sheet_version: 1 }, { silent: true });
@@ -88,6 +73,11 @@ on('clicked:cond', () => tableRoll('상태이상', '1D6', '{{roll=[[1d6]]}}', r 
 }, true));
 on('clicked:tbg', () => tableRoll('괴도 배경 표', '1D6', '{{roll=[[1d6]]}}', r => ({ dice: r.roll.result, res: DATA.thiefBg[r.roll.result - 1]})));
 
+// 기본 액션(원본처럼 인쇄된 첫 줄): 지금 종류의 것을 채팅에
+on('clicked:baseact', () => getAttrs(['sheet_type', 'character_name'], v => {
+  const [name, type, cost, eff] = DATA.acts[v.sheet_type === 'asi' ? 'asi' : 'det'];
+  post(T + field('title', name) + field('sub', `${type} · 코스트 ${cost}`) + field('who', v.character_name) + field('effect', eff));
+}));
 // 액션 · 규격 외 액션: 채팅에 출력 (이름 · 타입 · 코스트 · 효과)
 const rowOf = (e, sec) => { const m = `${e.sourceAttribute || ''} ${e.triggerName || ''}`.match(new RegExp(`repeating_${sec}_([^_\\s]+)_`, 'i')); return m ? `repeating_${sec}_${m[1]}_` : null; };
 [['acts', ''], ['exdet', '탐정 규격 외 · '], ['exasi', '조수 규격 외 · ']].forEach(([sec, pre]) => on(`clicked:repeating_${sec}:use`, e => {
@@ -96,6 +86,18 @@ const rowOf = (e, sec) => { const m = `${e.sourceAttribute || ''} ${e.triggerNam
     const g = k => v[row + k] || '';
     post(T + field('title', g('name') || '액션') + field('sub', pre + [g('type'), g('cost') && `코스트 ${g('cost')}`].filter(Boolean).join(' · '))
       + field('who', v.character_name) + field('effect', g('eff')));
+  });
+}));
+// 감정 한 줄: 마음에 드는 점 · 안 드는 점 (파트너 · 사건 조사 시트 · 괴도 시트) — 부제는 누구에 대한 감정인지
+const EMO = [['plike', 1, ''], ['pdislike', 0, ''], ['tjlike', 1, '탐정이 조수에 대해'], ['tjdislike', 0, '탐정이 조수에 대해'],
+  ['jtlike', 1, '조수가 탐정에 대해'], ['jtdislike', 0, '조수가 탐정에 대해'], ['tdlike', 1, '탐정에 대해'], ['tddislike', 0, '탐정에 대해'],
+  ['talike', 1, '조수에 대해'], ['tadislike', 0, '조수에 대해']];
+EMO.forEach(([sec, like, about]) => on(`clicked:repeating_${sec}:send`, e => {
+  const row = rowOf(e, sec); if (!row) return;
+  getAttrs([row + 'text', 'partner', 'character_name'], v => {
+    if (!v[row + 'text']) return;
+    post(T + field('title', like ? '마음에 드는 점' : '마음에 안 드는 점') + field('sub', about || (v.partner ? `파트너 · ${v.partner}` : '파트너'))
+      + field('who', v.character_name) + field('effect', v[row + 'text']));
   });
 }));
 // 알고 있었어 카드 · 괴도 카드 공개

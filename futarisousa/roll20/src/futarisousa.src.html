@@ -16,13 +16,12 @@
     <select class="stype" name="attr_sheet_type" title="시트 종류">
       <option value="det" selected>탐정 시트</option>
       <option value="asi">조수 시트</option>
-      <option value="base">아지트 시트 (둘이 함께)</option>
-      <option value="case">사건 조사 시트 (그 세션만)</option>
-      <option value="cards">알고 있었어 · 괴도 카드 (탐정 · GM 만)</option>
-      <option value="thief">괴도 시트 (GM)</option>
+      <option value="base">아지트 시트</option>
+      <option value="case">사건 조사 시트</option>
+      <option value="cards">알고 있었어 · 괴도 카드</option>
+      <option value="thief">괴도 시트</option>
     </select>
-    <span class="chip k-det">10면체 사용</span><span class="chip k-asi">6면체 사용</span><span class="chip k-base">둘이 함께</span>
-    <span class="chip k-case">그 세션만</span><span class="chip k-cards">탐정 · GM 만</span><span class="chip k-thief">괴도 (GM)</span>
+    <span class="chip k-det">10면체 사용</span><span class="chip k-asi">6면체 사용</span>
   </div>
 
   <!-- 탭: 고른 탭은 attr_tab 값으로 칠한다 (라디오 체크가 아니라) -->
@@ -39,7 +38,7 @@
   <!-- ════ 탐정 · 조수 캐릭터 시트 (세로) ════ -->
   <div class="pane p-pc">
     <div class="id">
-      <div class="portrait"><span>초상</span><img name="attr_character_avatar" alt=""></div>
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
       <div class="fields">
         <div class="fr"><b>이름</b><input type="text" name="attr_character_name"></div>
         <div class="fr"><b>클래스</b><input type="text" name="attr_cls"></div>
@@ -54,13 +53,13 @@
 
     <!-- 기능: 체크 = 습득 · 이름을 누르면 판정 (보통 2 · 유리함 3 · 불리함 1 개, 탐정 10면체 · 조수 6면체) -->
     <div class="sec">
-      <div class="hb">기능<span class="hn">이름을 누르면 판정</span></div>
+      <div class="hb">기능</div>
 <!--@SKILLS-->
     </div>
 
     <!-- 탐정: 기벽 1D6 -->
     <div class="sec k-det">
-      <div class="hb">기벽<button type="action" name="act_quirk" class="hbtn" title="기벽 1D6 굴리기">🎲 1D6</button></div>
+      <div class="hb">기벽<button type="action" name="act_quirk" class="hbtn" title="기벽 1D6 굴리기">🎲</button></div>
       <div class="quirks">
 <!--@QUIRKS-->
       </div>
@@ -74,7 +73,7 @@
         <span class="stepper"><button type="action" name="act_calmdn" title="여유 1 줄이기">−</button><input type="number" name="attr_calm" value="0" min="0" title="여유"><button type="action" name="act_calmup" title="여유 1 늘리기">+</button></span>
         <span class="lb mg">【마음고생】</span>
         <span class="track" title="마음고생 0~3"><input type="radio" class="z" name="attr_worry" value="0" checked title="0"><input type="radio" name="attr_worry" value="1" title="1"><input type="radio" name="attr_worry" value="2" title="2"><input type="radio" name="attr_worry" value="3" title="3"></span>
-        <span class="hint">【여유】를 여기에 둔다 · 마음고생은 0~3</span>
+        <span class="hint">【여유】를 여기에 둔다</span>
       </div>
     </div>
     <div class="sec k-asi">
@@ -85,10 +84,11 @@
       </fieldset>
     </div>
 
-    <!-- 액션: 새 시트 · 종류를 바꾸면 첫 줄에 기본 액션(둘이서 수사 / 따라잡다) — 워커 -->
+    <!-- 액션: 첫 줄은 원본처럼 인쇄된 기본 액션(둘이서 수사 / 따라잡다), 그 아래가 습득한 액션 -->
     <div class="sec">
       <div class="hb"><span class="k-det">탐정 액션</span><span class="k-asi">조수 액션</span></div>
       <div class="rephead acts"><span>이름</span><span>타입</span><span>코스트</span><span>효과</span><span></span></div>
+<!--@BASEACT-->
       <fieldset class="repeating_acts">
         <div class="arow"><input type="text" name="attr_name"><input type="text" name="attr_type"><input type="text" name="attr_cost">
           <div class="ae"><span name="attr_eff"></span><textarea name="attr_eff"></textarea></div>
@@ -103,8 +103,8 @@
         <div class="fr"><b>호칭</b><input type="text" name="attr_call"></div>
       </div>
       <div class="two">
-        <div><h4><i>▼</i>마음에 드는 점</h4><textarea name="attr_p_like"></textarea></div>
-        <div><h4><i>▼</i>마음에 안 드는 점</h4><textarea name="attr_p_dislike"></textarea></div>
+        <div><h4><i>▼</i>마음에 드는 점</h4><fieldset class="repeating_plike"><div class="erow"><input type="text" name="attr_text" title="마음에 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div>
+        <div><h4><i>▼</i>마음에 안 드는 점</h4><fieldset class="repeating_pdislike"><div class="erow"><input type="text" name="attr_text" title="마음에 안 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div>
       </div>
     </div>
 
@@ -125,13 +125,13 @@
           <ul><li>수사 페이즈에서 사이클을 종료했을 때 (-수사 곤란 레벨만큼의 점수)</li><li>액션을 사용 (-사용하는 액션의 코스트만큼의 점수)</li><li>그 밖에 시나리오의 이벤트나 시추에이션 수사 등으로 감소</li></ul>
         </div>
       </div>
-      <div class="box"><div class="hb">수사 메모</div><textarea name="attr_memo" placeholder="키워드 · 단서 메모"></textarea></div>
+      <div class="box"><div class="hb">수사 메모</div><textarea name="attr_memo"></textarea></div>
     </div>
   </div>
 
   <!-- ════ 사전 조사 시트 (탐정 · 조수 시트의 탭 — 그 사람 것 한 장) ════ -->
   <div class="pane p-pre">
-    <div class="pre-hd"><b>사전 조사 시트</b><span class="k-det">탐정</span><span class="k-asi">조수</span><input type="text" name="attr_pre_date" placeholder="년 월 일" title="날짜"></div>
+    <div class="pre-hd"><b>사전 조사 시트</b><span class="k-det">탐정</span><span class="k-asi">조수</span><input type="text" name="attr_pre_date" title="날짜"></div>
     <div class="prebox"><h4>가장 먼저 알리고 싶은 점</h4>
 <!--@PRE1-->
     </div>
@@ -144,7 +144,7 @@
       <ul><li>사건 발생 페이즈 이후, 언제든지 사용할 수 있다.</li><li>사용을 선언하고, 이 시트에 준비된 임의의 항목을 골라 체크 박스를 체크한다.</li>
         <li class="k-det">【여유】를 3점 소비하고, 파트너가 체크한 항목에 적혀 있는 내용에 따라 행동한다. 그 후, 파트너는 다음 판정에서 유리함을 얻는다.</li>
         <li class="k-asi">파트너가 체크된 항목에 적혀 있는 내용에 따라 행동한다. 그 후, 【여유】를 1점 획득한다.</li></ul>
-      <button type="action" name="act_preuse" class="say" title="체크한 항목을 채팅에">▶ 사용 — 체크한 항목을 채팅에</button>
+      <button type="action" name="act_preuse" class="say" title="체크한 항목을 채팅에">▶ 사용</button>
     </div>
   </div>
 
@@ -157,7 +157,7 @@
       </div>
       <div class="note"><div class="fr"><b>간판 탐정</b><input type="text" name="attr_sign"></div></div>
     </div>
-    <div class="hb">추억의 물품<span class="hn">최대 10개</span></div>
+    <div class="hb">추억의 물품</div>
     <fieldset class="repeating_keeps">
       <div class="item"><div class="il">아이템 이름</div><input type="text" name="attr_name"><div class="il">어떤 물건?</div><input type="text" name="attr_what">
         <div class="il">아이템 에피소드</div><textarea name="attr_ep"></textarea></div>
@@ -169,10 +169,10 @@
         <fieldset class="repeating_box"><div class="brow"><input type="text" name="attr_name"><input type="number" name="attr_n" value="1" min="0"></div></fieldset>
       </div>
       <div class="tbls">
-        <table class="etab"><caption>감정 표A (D66)<button type="action" name="act_emoa" class="cbtn" title="감정 표A 굴리기">🎲 D66</button></caption><tbody>
+        <table class="etab"><caption>감정 표A (D66)<button type="action" name="act_emoa" class="cbtn" title="감정 표A 굴리기">🎲</button></caption><tbody>
 <!--@EMO_A-->
         </tbody></table>
-        <table class="etab"><caption>감정 표B (D10)<button type="action" name="act_emob" class="cbtn" title="감정 표B 굴리기">🎲 D10</button></caption><tbody>
+        <table class="etab"><caption>감정 표B (D10)<button type="action" name="act_emob" class="cbtn" title="감정 표B 굴리기">🎲</button></caption><tbody>
 <!--@EMO_B-->
         </tbody></table>
       </div>
@@ -182,7 +182,7 @@
   <div class="pane p-fight">
     <div class="qbox"><div class="ql">다툼의 원인:</div><textarea name="attr_fight_cause"></textarea></div>
     <h3 class="qq"><b>↓</b> 누구의 잘못인 것 같나요?</h3>
-    <div class="q2"><div><h4>⏱ 탐정의 견해</h4><textarea name="attr_fight_det"></textarea></div><div><h4>🔭 조수의 견해</h4><textarea name="attr_fight_asi"></textarea></div></div>
+    <div class="q2"><div><h4>탐정의 견해</h4><textarea name="attr_fight_det"></textarea></div><div><h4>조수의 견해</h4><textarea name="attr_fight_asi"></textarea></div></div>
     <div class="qbox qrow"><div class="ql">다툼 키워드:</div><input type="text" name="attr_fight_key"></div>
     <div class="qbox"><div class="ql">해결 방법:</div><textarea name="attr_fight_how"></textarea></div>
     <h3 class="qq">다툼은 해결되었나요?</h3>
@@ -195,14 +195,14 @@
   <div class="pane p-extra">
     <div class="names"><div class="fr"><b>탐정의 이름</b><input type="text" name="attr_ex_det"></div><div class="fr"><b>조수의 이름</b><input type="text" name="attr_ex_asi"></div></div>
     <label class="cf cfx"><input type="checkbox" name="attr_confessed" value="1"><b>고백했다</b><small>고백했다를 체크했다면 규격 외 액션을 습득한 것으로 취급한다</small></label>
-    <div class="hb">⏱ 탐정 PC의 규격 외 액션</div>
+    <div class="hb">탐정 PC의 규격 외 액션</div>
     <div class="rephead acts"><span>이름</span><span>타입</span><span>코스트</span><span>효과</span><span></span></div>
     <fieldset class="repeating_exdet">
       <div class="arow"><input type="text" name="attr_name"><input type="text" name="attr_type"><input type="text" name="attr_cost">
         <div class="ae"><span name="attr_eff"></span><textarea name="attr_eff"></textarea></div>
         <button type="action" name="act_use" class="use" title="채팅에 출력">▶</button></div>
     </fieldset>
-    <div class="hb">🔭 조수 PC의 규격 외 액션</div>
+    <div class="hb">조수 PC의 규격 외 액션</div>
     <div class="rephead acts"><span>이름</span><span>타입</span><span>코스트</span><span>효과</span><span></span></div>
     <fieldset class="repeating_exasi">
       <div class="arow"><input type="text" name="attr_name"><input type="text" name="attr_type"><input type="text" name="attr_cost">
@@ -214,34 +214,33 @@
   <!-- ════ 사건 조사 시트 (그 세션만 — 따로 된 캐릭터라 내보내기 · 가져오기에서 뺄 수 있다) ════ -->
   <div class="pane p-case">
     <div class="casegrid">
-      <b>사건명</b><div class="v"><input type="text" name="attr_title"><span class="hint">날짜</span><input type="text" class="date" name="attr_date" placeholder="년 월 일"></div>
-      <b>사건 담당자</b><div class="v"><span class="hint">탐정</span><input type="text" name="attr_tantei"><span class="hint">조수</span><input type="text" name="attr_joshu"></div>
+      <b>사건명</b><div class="v"><input type="text" name="attr_title" title="사건명"><input type="text" class="date" name="attr_date" title="날짜"></div>
+      <b>사건 담당자</b><div class="v"><input type="text" name="attr_tantei" title="탐정"><input type="text" name="attr_joshu" title="조수"></div>
       <b>조사 방해 요인</b><div class="v"><input type="text" name="attr_block"><span class="lv">수사 곤란<br>레벨 <input type="number" name="attr_level" value="0" min="0"></span></div>
       <b>사건의<br>등장인물</b><div class="v"><textarea name="attr_people"></textarea></div>
-      <b>키워드</b><div class="v"><textarea name="attr_keys" placeholder="「일반 키워드」 『중요 키워드』"></textarea></div>
+      <b>키워드</b><div class="v"><textarea name="attr_keys"></textarea></div>
       <div class="emo">
         <h4>감정</h4>
-        <div><h5>탐정이 조수에 대해</h5><div class="el">&gt; 마음에 드는 점</div><textarea name="attr_tj_like"></textarea><div class="el">&gt; 마음에 안 드는 점</div><textarea name="attr_tj_dislike"></textarea></div>
-        <div><h5>조수가 탐정에 대해</h5><div class="el">&gt; 마음에 드는 점</div><textarea name="attr_jt_like"></textarea><div class="el">&gt; 마음에 안 드는 점</div><textarea name="attr_jt_dislike"></textarea></div>
+        <div><h5>탐정이 조수에 대해</h5><div class="el">&gt; 마음에 드는 점</div><fieldset class="repeating_tjlike"><div class="erow"><input type="text" name="attr_text" title="마음에 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset><div class="el">&gt; 마음에 안 드는 점</div><fieldset class="repeating_tjdislike"><div class="erow"><input type="text" name="attr_text" title="마음에 안 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div>
+        <div><h5>조수가 탐정에 대해</h5><div class="el">&gt; 마음에 드는 점</div><fieldset class="repeating_jtlike"><div class="erow"><input type="text" name="attr_text" title="마음에 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset><div class="el">&gt; 마음에 안 드는 점</div><fieldset class="repeating_jtdislike"><div class="erow"><input type="text" name="attr_text" title="마음에 안 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div>
       </div>
       <div class="conds">
-        <b class="ch">상태<br>이상<button type="action" name="act_cond" class="cbtn" title="상태이상 1D6 굴리기">🎲 1D6</button></b>
+        <b class="ch">상태<br>이상<button type="action" name="act_cond" class="cbtn" title="상태이상 1D6 굴리기">🎲</button></b>
 <!--@COND-->
       </div>
     </div>
-    <div class="secret"><b>숨겨둔 마음</b><input type="checkbox" class="so" name="attr_heart_open" value="1" title="체크하면 보임"><input type="text" name="attr_heart"><span class="sot">체크하면 보임</span></div>
-    <div class="confess"><b>고백 효과</b><textarea name="attr_confess"><!--@CONFESS--></textarea></div>
+    <div class="secret"><b>숨겨둔 마음</b><input type="checkbox" class="so" name="attr_heart_open" value="1" title="체크하면 보임"><input type="text" name="attr_heart" title="숨겨둔 마음"></div>
+    <div class="confess"><b>고백 효과</b><ul><!--@CONFESS--></ul></div>
   </div>
 
-  <!-- ════ 알고 있었어 · 괴도 카드 (탐정 플레이어와 GM 만 보게 — 보기 권한은 캐릭터 단위) ════ -->
+  <!-- ════ 알고 있었어 · 괴도 카드 (보기 권한은 캐릭터 단위라 따로 된 캐릭터 — 저널에서 탐정 플레이어와 GM 만) ════ -->
   <div class="pane p-cards">
-    <p class="permit"><b>보기 권한</b> — 이 캐릭터는 Roll20 저널에서 <b>탐정 플레이어와 GM 만</b> 볼 수 있게 두세요 (시트의 일부만 숨기는 기능은 Roll20 에 없어요). 공개할 때는 카드의 ▶ 공개.</p>
-    <h3 class="cards-h">🕵 알고 있었어 카드</h3>
+    <h3 class="cards-h">알고 있었어 카드</h3>
     <fieldset class="repeating_knew">
       <div class="pcard"><div class="ph"><b>알고 있었어 카드</b><input type="text" name="attr_no" title="카드 번호"></div><textarea name="attr_text"></textarea>
         <div class="pf"><i>You knew.</i><button type="action" name="act_reveal" class="rv" title="채팅에 공개">▶ 공개</button></div></div>
     </fieldset>
-    <h3 class="cards-h">🎩 괴도 카드<span class="hn">가지고 있는 동안 알고 있었어 카드의 「키워드」를 얻을 수 없음 · 공개하면 풀림</span></h3>
+    <h3 class="cards-h">괴도 카드</h3>
     <fieldset class="repeating_pcards">
       <div class="pcard"><div class="ph"><b>괴도 카드</b><input type="text" name="attr_no" title="카드 번호"></div><textarea name="attr_text"></textarea>
         <div class="pf"><i>Phantom thief's act.</i><button type="action" name="act_reveal" class="rv" title="채팅에 공개">▶ 공개</button></div></div>
@@ -251,9 +250,8 @@
   <!-- ════ 괴도 시트 (GM — 라이벌 괴도) ════ -->
   <div class="pane p-thief">
     <div class="id">
-      <div class="portrait"><span>초상</span><img name="attr_character_avatar" alt=""></div>
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
       <div class="fields">
-        <div class="fr"><b>괴도 이름</b><input type="text" name="attr_character_name"></div>
         <div class="fr"><b>배경</b><input type="text" name="attr_background"><button type="action" name="act_tbg" class="mini" title="괴도 배경 표 1D6">🎲</button></div>
         <div class="fr"><b>진짜 이름</b><input type="text" name="attr_realname"></div>
         <div class="fr pair"><b>나이</b><input type="text" name="attr_age"><b>신장</b><input type="text" name="attr_height"></div>
@@ -264,10 +262,10 @@
       </div>
     </div>
     <div class="hb">탐정에 대해</div>
-    <div class="two"><div><h4><i>▼</i>마음에 드는 점</h4><textarea name="attr_td_like"></textarea></div><div><h4><i>▼</i>마음에 안 드는 점</h4><textarea name="attr_td_dislike"></textarea></div></div>
+    <div class="two"><div><h4><i>▼</i>마음에 드는 점</h4><fieldset class="repeating_tdlike"><div class="erow"><input type="text" name="attr_text" title="마음에 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div><div><h4><i>▼</i>마음에 안 드는 점</h4><fieldset class="repeating_tddislike"><div class="erow"><input type="text" name="attr_text" title="마음에 안 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div></div>
     <div class="hb">조수에 대해</div>
-    <div class="two"><div><h4><i>▼</i>마음에 드는 점</h4><textarea name="attr_ta_like"></textarea></div><div><h4><i>▼</i>마음에 안 드는 점</h4><textarea name="attr_ta_dislike"></textarea></div></div>
-    <h3 class="cards-h">🎩 괴도 카드<span class="hn">초안 — 탐정에게 건넬 때 카드 시트로 옮겨 적는다</span></h3>
+    <div class="two"><div><h4><i>▼</i>마음에 드는 점</h4><fieldset class="repeating_talike"><div class="erow"><input type="text" name="attr_text" title="마음에 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div><div><h4><i>▼</i>마음에 안 드는 점</h4><fieldset class="repeating_tadislike"><div class="erow"><input type="text" name="attr_text" title="마음에 안 드는 점"><button type="action" name="act_send" class="use" title="채팅에 출력">▶</button></div></fieldset></div></div>
+    <h3 class="cards-h">괴도 카드</h3>
     <fieldset class="repeating_tcards">
       <div class="pcard"><div class="ph"><b>괴도 카드</b><input type="text" name="attr_no" title="카드 번호"></div><textarea name="attr_text"></textarea>
         <div class="pf"><i>Phantom thief's act.</i><button type="action" name="act_reveal" class="rv" title="채팅에 공개">▶ 공개</button></div></div>

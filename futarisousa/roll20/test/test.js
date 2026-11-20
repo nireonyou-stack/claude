@@ -8,26 +8,17 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
 const acts = s => [...s.attrs.keys()].filter(k => /^repeating_acts_.*_name$/.test(k)).map(k => s.get(k));
 const last = s => s.rolls[s.rolls.length - 1];
 (async () => {
-  // ── 새 탐정 시트: role · 기본 액션 한 줄 · 다시 열어도 그대로
+  // ── 새 탐정 시트: role · 미리 채운 액션 없음 · 종류 바꾸면 role 따라감
   let s = makeSim(HTML); s.open(); await s.settle();
   eq('new: version', String(s.get('sheet_version')), '1');
   eq('new: role 탐정', s.get('role'), '탐정');
-  eq('new: default action (탐정)', acts(s), ['둘이서 수사']);
-  s.open(); await s.settle();
-  eq('reopen: still one action', acts(s), ['둘이서 수사']);
+  eq('new: no prefilled action rows', acts(s), []);
   s.set('sheet_type', 'asi'); await s.settle();
   eq('switch to 조수: role', s.get('role'), '조수');
-  eq('switch to 조수: default replaced', acts(s), ['따라잡다']);
-  eq('조수 default cost', s.get([...s.attrs.keys()].find(k => /^repeating_acts_.*_cost$/.test(k))), '1');
-  const row = [...s.attrs.keys()].find(k => /^repeating_acts_.*_name$/.test(k)).replace(/name$/, '');
-  s.set(row + 'eff', '내가 고친 효과'); await s.settle();
-  s.set('sheet_type', 'det'); await s.settle();
-  eq('edited action kept on switch', acts(s), ['따라잡다']);
   s.set('sheet_type', 'case'); await s.settle();
   eq('사건: role 비움', s.get('role'), '');
-  has('사건: 고백 효과 기본 글', s.get('confess'), '강렬한 감정');
-  s.set('sheet_type', 'base'); await s.settle();
-  eq('아지트: 액션 그대로', acts(s), ['따라잡다']);
+  eq('사건: 고백 효과는 입력칸이 아님', HTML.includes('name="attr_confess"'), false);
+  eq('placeholder 없음', /placeholder=/.test(HTML), false);
 
   // ── 기능 판정: 보통 2 · 유리함 3 · 불리함 1 → 성공 · 실패 · 스페셜 · 펌블
   s = makeSim(HTML); s.open(); await s.settle();
@@ -94,6 +85,27 @@ const last = s => s.rolls[s.rolls.length - 1];
   const prow = s.addRow('pcards', { no: '1', text: '예고장' }); await s.settle();
   s.click('reveal', prow); await s.settle();
   has('괴도 카드: 꼬리', last(s).macro, "{{sub=Phantom thief's act.}}");
+
+  // ── 기본 액션(인쇄된 첫 줄) · 감정 한 줄 채팅
+  s.set('sheet_type', 'det'); await s.settle();
+  s.click('baseact'); await s.settle();
+  has('기본 액션 탐정', last(s).macro, '{{title=둘이서 수사}}');
+  has('기본 액션 탐정 sub', last(s).macro, '{{sub=보조 · 코스트 없음}}');
+  s.set('sheet_type', 'asi'); await s.settle();
+  s.click('baseact'); await s.settle();
+  has('기본 액션 조수', last(s).macro, '{{title=따라잡다}}');
+  s.set('partner', '쿠로사와 렌'); await s.settle();
+  const erow = s.addRow('plike', { text: '얼굴' }); await s.settle();
+  s.click('send', erow); await s.settle();
+  has('감정: 제목', last(s).macro, '{{title=마음에 드는 점}}');
+  has('감정: 파트너', last(s).macro, '{{sub=파트너 · 쿠로사와 렌}}');
+  has('감정: 내용', last(s).macro, '{{effect=얼굴}}');
+  const n0 = s.rolls.length, jrow = s.addRow('jtdislike', { text: '' }); await s.settle();
+  s.click('send', jrow); await s.settle();
+  eq('감정: 빈 줄은 안 보냄', s.rolls.length, n0);
+  s.set(jrow + '_text', '잔소리'); await s.settle(); s.click('send', jrow); await s.settle();
+  has('감정: 사건 조사 시트 부제', last(s).macro, '{{sub=조수가 탐정에 대해}}');
+  s.set('sheet_type', 'det'); await s.settle();
 
   // ── 사전 조사 시트: 체크한 항목만 (그 사람 질문으로)
   s.set('pre_q1', '단 것만 있으면 무엇이든 풀어내는 명탐정'); s.set('pre_c1', '1'); s.set('pre_q4', '아침에 깨워 주기'); s.set('pre_c4', '1'); s.set('pre_c5', '1'); await s.settle();
