@@ -84,9 +84,13 @@ textarea{resize:none;display:block}
 .plfield input{height:20px;font-size:12px}
 .portrait{flex:1;min-height:180px;background:var(--paper)}
 .ppl{border:1px solid var(--ink);display:flex;flex-direction:column}
-.ph,.pr{display:grid;grid-template-columns:minmax(0,1fr) 18px 18px 18px 84px 12px;align-items:center;column-gap:3px;padding:0 4px}
+.ph,.pr{display:grid;grid-template-columns:minmax(0,1fr) 18px 18px 18px 98px 84px 12px;align-items:center;column-gap:3px;padding:0 4px}
 .ph{font:500 11px var(--sans);text-align:center;padding-top:2px}
-.ph span:nth-child(n+2):nth-child(-n+4){font-size:9.5px}
+.ph span:nth-child(n+2):nth-child(-n+5){font-size:9.5px}
+/* 오의 칸을 체크하면 지정특기 · 파훼 판정 단추가 보임 */
+.pr .pk{visibility:hidden;display:flex;align-items:center;gap:3px;height:100%}
+.pr .ob:checked~.pk{visibility:visible}
+.pk input[type=text]{border-bottom:1px dotted var(--line)}
 .pr{border:1px solid var(--line);margin:0 4px 3px;padding:0 0 0 2px;height:21px}
 .pr input[type=text]{height:19px;font-size:12px}
 .pr .emo{border-left:1px solid var(--line)}
@@ -144,12 +148,14 @@ textarea{resize:none;display:block}
 .grid{display:grid;grid-template-columns:26px 9px repeat(5,minmax(0,1fr) 9px) minmax(0,1fr);grid-template-rows:31px repeat(11,26.5px);padding:4px;position:relative}
 .no{background:var(--bar);color:#fff;font:700 14px/1 var(--serif);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
 .no.corner{border-bottom:0}
+.no.wr{background:var(--accent)}
 .fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:700 16.5px/1 var(--sans);margin:0 1px}
 .slot{width:14px;height:14px;margin:0;padding:0;background:#fff;border:0;cursor:pointer;color:#fff;font:800 9.5px/14px var(--sans);text-align:center}
 .slot.lost{background:linear-gradient(45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),linear-gradient(-45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),#fff}
 .slot.dirty{background:var(--accent)}
 /* 요마화: 특기 리스트 머리 오른쪽 끝 */
 .yoma{position:absolute;right:6px;top:50%;transform:translateY(-50%);cursor:pointer;display:inline-flex}
+.yoma[hidden]{display:none}
 .yoma input{display:none}
 .yoma span{border:1px solid #888;color:#bbb;font:700 10.5px/16px var(--sans);padding:0 5px;letter-spacing:0}
 .yoma input:checked+span{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -329,7 +335,7 @@ textarea{resize:none;display:block}
     </div>
     <div class="ppl">
       <div class="hb">인물 칸</div>
-      <div class="ph"><span>인물명</span><span>거처</span><span>비밀</span><span>오의</span><span>감정</span><span></span></div>
+      <div class="ph"><span>인물명</span><span>거처</span><span>비밀</span><span>오의</span><span>지정특기</span><span>감정</span><span></span></div>
       <div id="ppl"></div>
     </div>
     <div class="title">
@@ -512,7 +518,7 @@ const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.c
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ── 특기 리스트 ──
-const grid = document.getElementById('grid'), cells = {};
+const grid = document.getElementById('grid'), cells = {}, wrapNo = [];
 (function build() {
   grid.append(el('div', 'no corner'));
   FIELDS.forEach((f, i) => {
@@ -528,7 +534,7 @@ const grid = document.getElementById('grid'), cells = {};
     h.append(s); grid.append(h);
   });
   for (let r = 0; r < 11; r++) {
-    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '1'; no.style.gridRow = String(r + 2); grid.append(no);
+    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '1'; no.style.gridRow = String(r + 2); grid.append(no); if (r === 0 || r === 10) wrapNo.push(no);
     FIELDS.forEach((f, i) => {
       const id = COL[i] + (r + 2), c = el('div', 'c');
       c.style.gridColumn = String(3 + i * 2); c.style.gridRow = String(r + 2);
@@ -573,6 +579,7 @@ function calc() {
 function scanWrap() {
   const names = [...document.querySelectorAll('#ninpo .nn')].map(i => i.value).join(' ');
   st.wrapC = /마계공학/.test(names); st.wrapR = /목련/.test(names);
+  wrapNo.forEach(n => n.classList.toggle('wr', st.wrapR));   // 목련: 이어진 2 · 12
   document.getElementById('wraptags').innerHTML = (st.wrapC ? '<span class="tag">마계공학</span>' : '') + (st.wrapR ? '<span class="tag">목련</span>' : '');
   calc();
 }
@@ -651,19 +658,21 @@ TABLES.forEach(([n, d, tab]) => {
 
 // ── 인물 칸 9줄 ──
 const ppl = document.getElementById('ppl');
-const PPL = [['츠바키', [1, 0, 0], '우정', '+'], ['류지', [0, 1, 0], '불신', '-']];
+const PPL = [['츠바키', [1, 0, 1], '우정', '+', '독술'], ['류지', [0, 1, 0], '불신', '-']];
 for (let i = 0; i < 9; i++) {
   const p = PPL[i] || ['', [0, 0, 0], '', ''], row = el('div', 'pr');
   row.innerHTML = `<input type="text" value="${p[0]}" aria-label="인물명 ${i + 1}">` +
-    ['거처', '비밀', '오의'].map((k, j) => `<input type="checkbox" class="box" ${p[1][j] ? 'checked' : ''} aria-label="${k} ${i + 1}">`).join('') +
+    ['거처', '비밀', '오의'].map((k, j) => `<input type="checkbox" class="box${j === 2 ? ' ob' : ''}" ${p[1][j] ? 'checked' : ''} aria-label="${k} ${i + 1}">`).join('') +
+    `<span class="pk"><input type="text" class="pks" value="${p[4] || ''}" aria-label="오의 지정특기 ${i + 1}"><button class="dic" type="button" title="파훼 판정"></button></span>` +
     `<input type="text" class="emo" value="${p[2]}" aria-label="감정 ${i + 1}">` +
     `<span class="pm"><label><input type="radio" name="pm${i}" ${p[3] === '+' ? 'checked' : ''}><span>+</span></label><label><input type="radio" name="pm${i}" ${p[3] === '-' ? 'checked' : ''}><span>&minus;</span></label></span>`;
+  row.querySelector('.pk .dic').onclick = () => rollBreak(row);
   ppl.append(row);
 }
 
 // ── 배경: 줄마다 이름 · ＋(효과 칸 펴기) · 채팅 출력 ──
 const bg = document.getElementById('bg');
-const BG = [['정체불명', '자신의 【거처】를 알고 있는 캐릭터가 없는 동안 …']];
+const BG = [['정체불명', '자신의 【거처】를 알고 있는 캐릭터가 없는 동안 …'], ['마인', '']];
 for (let i = 0; i < 5; i++) {
   const [n, e] = BG[i] || ['', ''];
   const w = el('div'), line = el('div', 'bl'), x = el('div', 'bx');
@@ -678,7 +687,8 @@ for (let i = 0; i < 5; i++) {
 const ninpo = document.getElementById('ninpo');
 const NP = [['그림자 베기', 0, '1', '1', '은형술', '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점.', 'https://example.com/kage.png', '그림자에 숨어 단숨에 벤다.'],
   ['연막', 1, '2', '1', '잠복술', '이 장면 동안 자신을 목표로 하는 공격의 회피 판정에 +1.', '', ''],
-  ['마계공학', 2, '', '', '', '특기 리스트의 좌우 끝이 이어진 것으로 본다.', '', '']];
+  ['마계공학', 2, '', '', '', '특기 리스트의 좌우 끝이 이어진 것으로 본다.', '', ''],
+  ['목련', 2, '', '', '', '', '', '']];
 let nRows = 0;
 function addNinpo(p) {
   const i = nRows++, [nm, ty, rg, co, sk, ef, img, fl] = p || ['', -1, '', '', '', '', '', ''], w = el('div', 'nw'), row = el('div', 'nr'), x = el('div', 'nx');
@@ -746,7 +756,7 @@ function judge(a, b, t) {
   return t == null ? null : s >= t ? ['성공', ''] : ['실패', 'ng'];
 }
 const wmk = () => (document.getElementById('crestu')?.value.trim() ? '<span class="wmk"></span>' : '');
-function card({ title, sub, roll, dice, kv, eff, fl, img, cls, table, plain, to }) {
+function card({ title, sub, roll, only, dice, kv, eff, fl, img, cls, table, plain, to }) {
   const mode = document.querySelector('input[name=rmode]:checked').value;   // 공개: 모두에게 · GM에게(귓속말)
   const dest = to || (mode === 'gm' ? 'GM 에게' : '');
   const w = el('div');
@@ -754,8 +764,8 @@ function card({ title, sub, roll, dice, kv, eff, fl, img, cls, table, plain, to 
   if (plain != null) { w.append(el('div', 'cd plain', `<div class="cb">${esc(plain)}</div>${wmk()}`)); log.append(w); log.scrollTop = log.scrollHeight; return; }
   let body = sub ? `<div class="sub">${esc(sub)}</div>` : '';
   if (roll) {
-    const j = judge(roll[0], roll[1], roll[2]);
-    body += `<div class="roll${roll[2] != null ? ' big' : ''}">${die(roll[0])}${die(roll[1])}<span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
+    const j = judge(roll[0], roll[1], only ? null : roll[2]);
+    body += `<div class="roll${roll[2] != null || only ? ' big' : ''}">${die(roll[0])}${die(roll[1])}<span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
     // 전장 효과 (전투 중 체크한 전장만)
     const ns = [bfOn('수중') && '수중 · 회피 판정 -2', j && j[1] === 'fb' && bfOn('고지대') && '고지대 · 펌블 — 접근전 대미지 1점', bfOn('위험지대') && '위험지대'].filter(Boolean);
     if (ns.length) body += ns.map(n => `<div class="note">${n}</div>`).join('');
@@ -777,7 +787,14 @@ const subFum = () => {
   const bfs = BF.filter(bfOn);
   return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : '') + (bfs.length ? ` · ${bfs.join(' · ')}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
 };
-function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + tgs(t) + ({ lost: ' · 소실', dirty: ' · 부정' }[st.slot[f]] || '') + (st.yoma ? ' · 요마화' : '') + subFum(), roll: [d6(), d6(), t] }); }
+const slotTag = f => ({ lost: ' · 소실', dirty: ' · 부정' }[st.slot[f]] || '') + (st.yoma ? ' · 요마화' : '');
+function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + tgs(t) + slotTag(f) + subFum(), roll: [d6(), d6(), t] }); }
+// 파훼 판정: 오의마다 수정치가 달라 성공 · 실패는 찍지 않고 스페셜 · 펌블만 찍는다
+function rollBreak(row) {
+  const who = row.querySelector('input').value, sk = row.querySelector('.pks').value.trim(), s = findSkill(sk), t = s ? target(...s) : null;
+  const sub = ([who && `${who}의 오의`, s && FIELDS[s[0]] + tgs(t) + slotTag(s[0])].filter(Boolean).join(' · ') + subFum()).replace(/^ · /, '');
+  card({ title: sk ? `《${sk}》 파훼 판정` : '파훼 판정', sub, roll: [d6(), d6(), t], only: true });
+}
 function rollNinpo(row, x) {
   const q = s => row.querySelector(s).value, ty = row.querySelector('.ty input:checked');
   const s = findSkill(q('.sk')), tyN = ty ? ['공격', '서포트', '장비'][[...row.querySelectorAll('.ty input')].indexOf(ty)] : '';
@@ -812,6 +829,13 @@ function useGear(gi, n, e) {
 document.getElementById('stype').onchange = e => document.getElementById('sheet').dataset.t = e.target.value;
 document.getElementById('fold').checked = true;
 document.getElementById('yoma').onchange = e => { st.yoma = e.target.checked; calc(); };
+// 배경에 【마인】이 있을 때만 요마화 칸을 보임 (없어지면 끔)
+function scanYoma() {
+  const y = document.getElementById('yoma'), on = [...bg.querySelectorAll('.bl input')].some(i => /마인/.test(i.value));
+  y.parentElement.hidden = !on;
+  if (!on && y.checked) { y.checked = false; st.yoma = false; calc(); }
+}
+bg.addEventListener('input', scanYoma); scanYoma();
 drawHp(); syncScene(); scanWrap();
 // 예시 카드 (값 고정)
 card({ title: '《은형술》 판정', sub: '인술 · 목표치 5', roll: [4, 3, 5] });
