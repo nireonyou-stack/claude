@@ -31,7 +31,7 @@ textarea{resize:none;display:block}
 
 /* 판정 · 굴림 띠 (특기 리스트와 인법 리스트 사이) — 위아래 가는 선만, 줄 사이 점선 */
 .strip{margin-top:8px;border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);font-size:11.5px}
-.sr{display:flex;align-items:center;gap:4px 5px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
+.sr{display:flex;align-items:center;gap:4px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
 .sr+.sr{border-top:1px dotted var(--line)}
 .tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
 .seg{display:inline-flex;border:1px solid var(--ink)}
@@ -40,8 +40,7 @@ textarea{resize:none;display:block}
 .seg span{display:block;padding:0 5px;font:500 11.5px/18px var(--sans)}
 .seg label+label span{border-left:1px solid var(--ink)}
 .seg input:checked+span{background:var(--accent);color:#fff}
-.seg.num{margin:0 4px}
-.seg.num span{width:16px;padding:0;text-align:center;font-weight:700}
+.seg.num span{width:20px;padding:0;text-align:center;font-weight:700}
 .dis{opacity:.4;pointer-events:none}
 .fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
 .fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:800 14px/1.2 var(--sans);color:var(--accent)}
@@ -51,6 +50,7 @@ textarea{resize:none;display:block}
 .ck span,.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
 .ck input:checked+span,.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .ckn input{width:18px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
+#bf .ck span{padding:0 3px}
 .vbar{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
 .rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 5px;cursor:pointer;font:500 11.5px/18px var(--sans)}
 .rtg{display:inline-flex}
@@ -138,6 +138,11 @@ textarea{resize:none;display:block}
 .bx.open{display:block}
 .plus{flex:none;width:15px;height:15px;padding:0;border:1px solid var(--sub);background:#fff;color:var(--sub);font:700 12px/12px var(--sans);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .plus:hover,.plus.on{border-color:var(--accent);color:var(--accent)}
+/* 그림 주소 펴기 단추: 액자 그림 아이콘 */
+.pic{position:relative;flex:none;width:18px;height:14px;padding:0;border:1.5px solid currentColor;border-radius:2px;background:#fff;color:var(--sub);cursor:pointer}
+.pic::before{content:"";position:absolute;left:1px;bottom:1px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid currentColor}
+.pic::after{content:"";position:absolute;right:2px;top:2px;width:3px;height:3px;border-radius:50%;background:currentColor}
+.pic:hover,.pic.on{color:var(--accent)}
 .sk{border:1px solid var(--ink);display:flex;flex-direction:column}
 /* 생명력: 시트 종류 고르기 바로 아래 (검은 제목 칸 안) */
 .hp{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:8px;width:100%}
@@ -257,7 +262,8 @@ textarea{resize:none;display:block}
 .og textarea{flex:1;min-height:96px;font-size:12px;line-height:22px;background:repeating-linear-gradient(transparent 0 21px,var(--line) 21px 22px);padding:0 2px}
 .og .acts{position:absolute;right:6px;top:6px;display:flex;gap:5px;align-items:center}
 .og .row.imgrow{display:none;border-bottom:0;border-top:1px solid var(--line);padding:4px 0 0}
-.og .row.imgrow.open{display:flex}
+.og.img .row.imgrow{display:flex}
+.og:not(.img) .lines .thumb{display:none}
 .og .row.imgrow input{font:400 11.5px var(--sans)}
 /* 그림 주소를 넣으면 칸 옆에 썸네일 (실제 시트는 속성 값을 src 로 쓰는 img) */
 .thumb{display:none;flex:none;width:46px;height:46px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,#e2e2e2 0 5px,#f4f4f4 5px 10px);font:500 9.5px/46px var(--sans);color:var(--sub);text-align:center}
@@ -268,7 +274,7 @@ textarea{resize:none;display:block}
 .og .gp{display:flex;flex-direction:column;gap:3px;border-top:1px dotted var(--sub);padding-top:5px}
 .og .gp .row{border-bottom:0;padding-bottom:0}
 .og .gp .row input{height:20px;font:700 12px var(--serif);border-bottom:1px solid var(--line)}
-.og .gp textarea{flex:none;min-height:40px;font-size:11.5px;line-height:20px;background:repeating-linear-gradient(transparent 0 19px,var(--line) 19px 20px)}
+.og .gp textarea{flex:none;min-height:20px;height:20px;font-size:11.5px;line-height:20px;background:repeating-linear-gradient(transparent 0 19px,var(--line) 19px 20px)}
 .chip.gs{background:var(--green)}
 .chip.gw{background:var(--accent)}
 .og .rep{padding:0;align-items:center}
@@ -368,7 +374,7 @@ textarea{resize:none;display:block}
       <div id="ppl"></div>
     </div>
     <div class="title">
-      <button class="plus cplus" type="button" title="유파 문장 그림 주소 칸 펴기">+</button>
+      <button class="pic cplus" type="button" title="유파 문장 그림 주소 칸 펴기"></button>
       <span class="crest" id="crest">문장</span>
       <span class="t1">인술 배틀 TRPG</span>
       <span class="t2">시노비가미</span>
@@ -410,7 +416,7 @@ textarea{resize:none;display:block}
       <span class="seg num" id="plot"></span>
       <button class="bub" type="button" id="plotsend" title="GM 에게 플롯 귓속말"></button>
       <span class="tl">전장</span>
-      <span id="bf" style="display:inline-flex;gap:4px"></span>
+      <span id="bf" style="display:inline-flex;gap:3px"></span>
       <span class="sp"></span>
       <span class="fum" data-k="f">펌블치 <b id="fumble">2</b><span class="adj"><button type="button" class="up" title="펌블치 +1"></button><button type="button" class="dn" title="펌블치 -1"></button></span><button type="button" class="rs" title="펌블치 자동 계산으로 되돌림"></button></span>
       <span class="fum spc" data-k="s">스페셜치 <b id="special">12</b><span class="adj"><button type="button" class="up" title="스페셜치 +1"></button><button type="button" class="dn" title="스페셜치 -1"></button></span><button type="button" class="rs" title="스페셜치 12 로 되돌림"></button></span>
@@ -470,17 +476,17 @@ textarea{resize:none;display:block}
   <div class="band nj">
     <div class="wm">극비사항</div>
     <div class="vl">오의 내역</div>
-    <div class="og">
-      <span class="acts"><button class="plus on" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
+    <div class="og img">
+      <span class="acts"><button class="pic on" type="button" title="그림 주소 · 썸네일 펴기"></button><button class="bub say" type="button" title="채팅에 출력"></button></span>
       <div class="row"><span class="chip">오의명 1</span><input type="text" class="ogn" value="월영" aria-label="오의명 1"></div>
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" value="은형술" aria-label="오의 1 지정 특기"></div>
       <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 1 효과">판정 방해</textarea><span class="thumb">그림</span></div>
-      <div class="row imgrow open"><span class="chip">그림 주소</span><input type="text" class="ogi" value="https://example.com/wolyoung.png" aria-label="오의 1 그림 주소"></div>
+      <div class="row imgrow"><span class="chip">그림 주소</span><input type="text" class="ogi" value="https://example.com/wolyoung.png" aria-label="오의 1 그림 주소"></div>
       <div class="gps"></div>
       <div class="rep"><span class="tl">강점 · 결점</span><button type="button" class="gadd">+Add</button><button type="button">Modify</button></div>
     </div>
     <div class="og">
-      <span class="acts"><button class="plus" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
+      <span class="acts"><button class="pic" type="button" title="그림 주소 · 썸네일 펴기"></button><button class="bub say" type="button" title="채팅에 출력"></button></span>
       <div class="row"><span class="chip">오의명 2</span><input type="text" class="ogn" aria-label="오의명 2"></div>
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" aria-label="오의 2 지정 특기"></div>
       <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 2 효과"></textarea><span class="thumb">그림</span></div>
@@ -867,7 +873,7 @@ function addPair(og) {
     '<div class="row"><span class="chip gw">결점</span><input type="text" aria-label="결점 이름"></div><textarea aria-label="결점 효과"></textarea>'));
 }
 document.querySelectorAll('.og').forEach((og, i) => { og.querySelector('.gadd').onclick = () => addPair(og); if (i === 0) addPair(og); });
-document.querySelectorAll('.og .plus').forEach(b => b.onclick = () => { b.closest('.og').querySelector('.imgrow').classList.toggle('open'); b.classList.toggle('on'); });
+document.querySelectorAll('.og .pic').forEach(b => b.onclick = () => { b.closest('.og').classList.toggle('img'); b.classList.toggle('on'); });
 document.querySelectorAll('[data-truth] .say').forEach(b => b.onclick = () => {
   const p = b.closest('.tr'), n = p.querySelector('input').value, [s, e] = [...p.querySelectorAll('textarea')].map(t => t.value);
   card({ title: `【진실】 ${n || ''}`, cls: 'ougi', kv: s ? [['설정', s]] : null, eff: e });
