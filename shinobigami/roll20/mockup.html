@@ -29,26 +29,33 @@ textarea{resize:none;display:block}
 .chip{flex:none;background:var(--bar);color:#fff;font:700 11.5px/1 var(--sans);padding:4px 6px;white-space:nowrap}
 .tag{display:inline-block;background:var(--accent);color:#fff;font:700 10px/1 var(--sans);padding:3px 5px;letter-spacing:0;margin-left:4px;vertical-align:1px}
 
-/* 판정 · 굴림 막대 (시트 맨 위) */
-.tools{background:var(--tool);border:1px solid var(--line);margin-bottom:8px;font-size:12px}
-.tr1{display:flex;align-items:center;gap:6px 10px;padding:5px 8px;flex-wrap:wrap}
-.tr1+.tr1{border-top:1px solid var(--line)}
-.tl{font:700 11.5px var(--sans);color:var(--sub);white-space:nowrap}
+/* 판정 · 굴림 띠 (특기 리스트와 인법 리스트 사이) — 위아래 가는 선만, 줄 사이 점선 */
+.strip{margin-top:8px;border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);font-size:11.5px}
+.sr{display:flex;align-items:center;gap:4px 7px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
+.sr+.sr{border-top:1px dotted var(--line)}
+.tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
 .seg{display:inline-flex;border:1px solid var(--ink)}
 .seg label{cursor:pointer}
 .seg input{display:none}
-.seg span{display:block;padding:2px 8px;font:500 12px/18px var(--sans)}
+.seg span{display:block;padding:0 7px;font:500 11.5px/18px var(--sans)}
 .seg label+label span{border-left:1px solid var(--ink)}
 .seg input:checked+span{background:var(--accent);color:#fff}
-.seg.num span{width:24px;padding:2px 0;text-align:center;font-weight:700}
-.seg.dis{opacity:.4;pointer-events:none}
-.fum{display:inline-flex;align-items:center;gap:4px}
-.fum b{display:inline-block;min-width:22px;text-align:center;border-bottom:1.5px solid var(--accent);font:800 15px var(--sans);color:var(--accent)}
-.rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:1px 8px;cursor:pointer;font:500 12px/20px var(--sans)}
+.seg.num span{width:20px;padding:0;text-align:center;font-weight:700}
+.dis{opacity:.4;pointer-events:none}
+.fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:800 14px/1.2 var(--sans);color:var(--accent)}
+.ck{cursor:pointer;display:inline-flex}
+.ck input{display:none}
+.ck span,.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 6px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
+.ck input:checked+span,.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.ckn input{width:20px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
+.vbar{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
+.rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 7px;cursor:pointer;font:500 11.5px/18px var(--sans)}
 .rt:hover{border-color:var(--accent);color:var(--accent)}
-.gmsg{display:flex;align-items:center;gap:4px;flex:1;min-width:200px}
-.gmsg input{border:1px solid var(--line);background:#fff;height:24px}
-.sel{border:1px solid var(--line);background:#fff;height:24px;font-size:12px}
+.gmsg{display:flex;align-items:center;gap:4px;flex:1;min-width:150px}
+.gmsg input{border:0;border-bottom:1px solid var(--line);height:20px;font-size:11.5px}
+.sel{border:1px solid var(--line);background:#fff;height:20px;font-size:11px;padding:0 2px}
+#rmode,#rtell{width:92px}
 .sp{flex:1}
 
 /* 1단: 이름 · 인물 칸 · 제목 */
@@ -95,11 +102,13 @@ textarea{resize:none;display:block}
 .plus{flex:none;width:15px;height:15px;padding:0;border:1px solid var(--sub);background:#fff;color:var(--sub);font:700 12px/12px var(--sans);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .plus:hover,.plus.on{border-color:var(--accent);color:var(--accent)}
 .sk{border:1px solid var(--ink);display:flex;flex-direction:column}
-.hp{display:flex;align-items:center;gap:6px;padding:5px 6px;border-bottom:1px solid var(--line)}
-.hp .nums{display:inline-flex;align-items:center;gap:2px;font:700 13px var(--sans)}
-.hp input{width:30px;height:22px;text-align:center;border-bottom:1px solid var(--ink);font:700 14px var(--sans);padding:0}
-.hpb{display:flex;flex-wrap:wrap;gap:2px}
-.hpb button{width:15px;height:15px;padding:0;border:1.5px solid var(--ink);background:#fff;cursor:pointer}
+/* 생명력: 시트 종류 고르기 바로 아래 (검은 제목 칸 안) */
+.hp{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:8px;width:100%}
+.hp .nums{display:inline-flex;align-items:center;gap:3px;font:700 13px var(--sans);color:#fff}
+.hp .hl{font:700 11.5px var(--sans);margin-right:3px}
+.hp input{width:28px;height:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,.6);font:700 14px var(--sans);padding:0;color:#fff}
+.hpb{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:150px}
+.hpb button{width:14px;height:14px;padding:0;border:1.5px solid #fff;background:transparent;cursor:pointer}
 .hpb button.on{background:var(--accent);border-color:var(--accent)}
 .grid{display:grid;grid-template-columns:26px 9px repeat(5,minmax(0,1fr) 9px) minmax(0,1fr);grid-template-rows:31px repeat(11,26.5px);padding:4px;position:relative}
 .no{background:var(--bar);color:#fff;font:700 14px/1 var(--serif);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
@@ -247,32 +256,11 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">시노비가미 시트 목업</h1>
-<p class="pg">유파북 히라사카 기관 한국어판 세로 시트 배치에 중국어 시트의 색 · 굴림표 · 플롯 귓속말을 더했어요. 들어 있는 값은 예시예요. 맨 위 막대에서 장면 · 플롯을 바꾸면 펌블치가 바뀌고, 인법명에 「마계공학」 · 「목련」이 들어가면 특기 리스트 목표치가 바로 바뀌어요. ＋ 단추는 그림 주소 · 개요 · 효과 칸을 펴요.</p>
+<p class="pg">유파북 히라사카 기관 한국어판 세로 시트 배치에 중국어 시트의 색 · 굴림표 · 플롯 귓속말을 더했어요. 들어 있는 값은 예시예요. 특기 리스트 아래 띠에서 장면 · 플롯 · 전장(혼잡) · 불덩어리를 바꾸면 펌블치가 바뀌고, 체크한 상태이상은 판정 카드에 함께 적혀요. 인법명에 「마계공학」 · 「목련」이 들어가면 특기 리스트 목표치가 바로 바뀌어요. ＋ 단추는 그림 주소 · 개요 · 효과 칸을 펴요.</p>
 
 <div class="wrap">
 <div class="scroll">
 <div class="sheet" id="sheet" data-t="ninja">
-
-  <!-- 판정 · 굴림 막대 -->
-  <div class="tools">
-    <div class="tr1">
-      <span class="tl">장면</span>
-      <span class="seg" id="scene"><label><input type="radio" name="scene" value="drama" checked><span>드라마 장면</span></label><label><input type="radio" name="scene" value="battle"><span>전투 중</span></label></span>
-      <span class="tl">플롯</span>
-      <span class="seg num" id="plot"></span>
-      <button class="bub" type="button" id="plotsend" title="GM 에게 플롯 귓속말"></button>
-      <span class="sp"></span>
-      <span class="fum">펌블치 <b id="fumble">2</b></span>
-      <span class="fum">스페셜치 <b>12</b></span>
-    </div>
-    <div class="tr1" id="tables"><span class="tl">굴림표</span></div>
-    <div class="tr1">
-      <span class="tl">굴림</span>
-      <select class="sel" id="rmode" aria-label="굴림 보내기"><option value="">모두에게</option><option value="gm">GM 에게 귓속말</option><option value="tok">선택한 토큰에게 귓속말</option></select>
-      <select class="sel" id="rtell" aria-label="귓속말 알리기"><option value="">알리지 않기</option><option value="tell">비밀 굴림을 알리기</option></select>
-      <div class="gmsg"><span class="tl">GM 귓속말</span><input type="text" id="gmtext" aria-label="GM 에게 보낼 글"><button class="bub" type="button" id="gmsend" title="GM 에게 보내기"></button></div>
-    </div>
-  </div>
 
   <!-- 1단 -->
   <div class="r1">
@@ -292,6 +280,7 @@ textarea{resize:none;display:block}
         <option value="ninja">닌자용 캐릭터 시트</option>
         <option value="normal">일반인용 캐릭터 시트</option>
       </select>
+      <div class="hp"><span class="nums"><span class="hl">생명력</span><input type="number" id="hpv" value="6" aria-label="생명력">/<input type="number" id="hpm" value="6" aria-label="생명력 최대"></span><span class="hpb" id="hpb"></span></div>
     </div>
   </div>
 
@@ -311,8 +300,29 @@ textarea{resize:none;display:block}
     </div>
     <div class="sk">
       <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small><span id="wraptags"></span></div>
-      <div class="hp"><span class="chip">생명력</span><span class="nums"><input type="number" id="hpv" value="6" aria-label="생명력">/<input type="number" id="hpm" value="6" aria-label="생명력 최대"></span><span class="hpb" id="hpb"></span></div>
       <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <!-- 판정 · 굴림 띠: 장면 · 플롯 · 전장 → 펌블치 / 상태이상 / 굴림표 · 굴림 보내기 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">장면</span>
+      <span class="seg" id="scene"><label><input type="radio" name="scene" value="drama" checked><span>드라마 장면</span></label><label><input type="radio" name="scene" value="battle"><span>전투 중</span></label></span>
+      <span class="tl">플롯</span>
+      <span class="seg num" id="plot"></span>
+      <button class="bub" type="button" id="plotsend" title="GM 에게 플롯 귓속말"></button>
+      <span class="tl">전장</span>
+      <select class="sel" id="bfield" aria-label="현재 전장"><option value=""></option><option>평지</option><option>수중</option><option>고지대</option><option>악천후</option><option>혼잡</option><option>위험지대</option></select>
+      <span class="fum">펌블치 <b id="fumble">2</b></span>
+      <div class="gmsg"><span class="tl">GM 귓속말</span><input type="text" id="gmtext" aria-label="GM 에게 보낼 글"><button class="bub" type="button" id="gmsend" title="GM 에게 보내기"></button></div>
+    </div>
+    <div class="sr" id="conds"><span class="tl">상태이상</span></div>
+    <div class="sr" id="tables">
+      <span class="tl">굴림표</span>
+      <span class="sp" id="tsp"></span>
+      <span class="tl">보내기</span><select class="sel" id="rmode" aria-label="굴림 보내기"><option value="">모두에게</option><option value="gm">GM에게</option><option value="tok">선택한 토큰에게</option></select>
+      <select class="sel" id="rtell" aria-label="비밀 굴림 알리기"><option value="">알리지 않기</option><option value="tell">알리기</option></select>
     </div>
   </div>
 
@@ -514,24 +524,38 @@ hpv.oninput = drawHp; hpm.oninput = drawHp;
 // ── 판정 막대: 장면 · 플롯 → 펌블치 ──
 const plotSeg = document.getElementById('plot');
 plotSeg.innerHTML = [1, 2, 3, 4, 5, 6].map(k => `<label><input type="radio" name="plot" value="${k}"><span>${k}</span></label>`).join('');
-const fumble = () => st.scene === 'battle' && st.plot ? Math.max(2, st.plot) : 2;
+// 상태이상: 기본 6종 | 전국 6종. 불덩어리는 누적 개수(펌블치 +개수)
+const CONDS = ['고장', '마비', '중상', '행방불명', '망각', '저주', '|', '최면', '불덩어리', '맹독', '기아', '잔류물', '야망'];
+const conds = document.getElementById('conds');
+CONDS.forEach(c => {
+  if (c === '|') return conds.append(el('span', 'vbar'));
+  if (c === '불덩어리') {
+    const s = el('span', 'ckn', `${c}<input type="number" min="0" aria-label="불덩어리 개수">`), i = s.querySelector('input');
+    i.oninput = () => { s.classList.toggle('on', +i.value > 0); syncScene(); }; conds.append(s); st.burn = i; return;
+  }
+  conds.append(el('label', 'ck', `<input type="checkbox" value="${c}"><span>${c}</span></label>`));
+});
+// 펌블치 = 드라마 장면 2 · 전투 중 플롯치(최소 2) + 전장 혼잡 1 + 불덩어리 개수
+const battle = () => st.scene === 'battle';
+const fumble = () => (battle() && st.plot ? Math.max(2, st.plot) : 2) + (battle() && st.field === '혼잡' ? 1 : 0) + (+st.burn?.value || 0);
 function syncScene() {
   st.scene = document.querySelector('input[name=scene]:checked').value;
   st.plot = +(document.querySelector('input[name=plot]:checked')?.value || 0);
-  plotSeg.classList.toggle('dis', st.scene !== 'battle');
+  st.field = document.getElementById('bfield').value;
+  plotSeg.classList.toggle('dis', !battle()); document.getElementById('bfield').classList.toggle('dis', !battle());
   document.getElementById('fumble').textContent = fumble();
 }
-document.getElementById('scene').onchange = syncScene; plotSeg.onchange = syncScene;
+document.getElementById('scene').onchange = syncScene; plotSeg.onchange = syncScene; document.getElementById('bfield').onchange = syncScene;
 document.getElementById('plotsend').onclick = () => card({ title: '플롯', sub: st.plot ? `${name()}의 플롯은 ${st.plot}` : '플롯을 먼저 고르세요', to: 'GM 에게' });
 document.getElementById('gmsend').onclick = () => { const t = document.getElementById('gmtext'); if (t.value) { card({ plain: t.value, to: 'GM 에게' }); t.value = ''; } };
 // 굴림표 단추
-const tbar = document.getElementById('tables');
+const tbar = document.getElementById('tables'), tsp = document.getElementById('tsp');
 TABLES.forEach(([n, d, tab]) => {
   const b = el('button', 'rt', n); b.type = 'button'; b.title = `${n} 굴림 (${d === 2 ? '2D6' : '1D6'})`;
   b.onclick = () => { const a = d6(), c = d === 2 ? d6() : null, s = a + (c || 0); card({ title: n, table: [a, c, tab[s]] }); };
-  tbar.append(b);
+  tbar.insertBefore(b, tsp);
 });
-{ const b = el('button', 'rt', '2D6'); b.type = 'button'; b.title = '2D6 굴림'; b.onclick = () => card({ title: '2D6', roll: [d6(), d6(), null] }); tbar.append(b); }
+{ const b = el('button', 'rt', '2D6'); b.type = 'button'; b.title = '2D6 굴림'; b.onclick = () => card({ title: '2D6', roll: [d6(), d6(), null] }); tbar.insertBefore(b, tsp); }
 
 // ── 인물 칸 9줄 ──
 const ppl = document.getElementById('ppl');
@@ -643,8 +667,12 @@ function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
   log.append(w); log.scrollTop = log.scrollHeight;
 }
 const findSkill = s => { for (let f = 0; f < 6; f++) { const r = SK[f].indexOf(s.trim()); if (r >= 0) return [f, r]; } return null; };
-const subFum = () => st.scene === 'battle' ? ` · 펌블치 ${fumble()}` : '';
-function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (t == null ? '' : ` · 목표치 ${t}`) + subFum() + (st.lost.has(f) ? ' · 생명력 소실' : ''), roll: [d6(), d6(), t] }); }
+// 판정 카드 둘째 줄: 펌블치가 2가 아니면 · 전투 중이면 전장 · 체크한 상태이상
+const subFum = () => {
+  const on = [...conds.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value).concat(+st.burn?.value ? [`불덩어리 ${st.burn.value}`] : []);
+  return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (battle() && st.field ? ` · ${st.field}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
+};
+function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (t == null ? '' : ` · 목표치 ${t}`) + (st.lost.has(f) ? ' · 생명력 소실' : '') + subFum(), roll: [d6(), d6(), t] }); }
 function rollNinpo(row, x) {
   const q = s => row.querySelector(s).value, ty = row.querySelector('.ty input:checked');
   const s = findSkill(q('.sk')), tyN = ty ? ['공격', '서포트', '장비'][[...row.querySelectorAll('.ty input')].indexOf(ty)] : '';
