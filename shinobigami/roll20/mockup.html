@@ -52,8 +52,21 @@ textarea{resize:none;display:block}
 .vbar{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
 .rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 7px;cursor:pointer;font:500 11.5px/18px var(--sans)}
 .rt:hover{border-color:var(--accent);color:var(--accent)}
-.gmsg{display:flex;align-items:center;gap:4px;flex:1;min-width:150px}
-.gmsg input{border:0;border-bottom:1px solid var(--line);height:20px;font-size:11.5px}
+.fum .fmod{width:30px;height:18px;text-align:center;border:1px solid var(--line);font:700 11.5px var(--sans);padding:0;margin-left:3px}
+.gmb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);background:#fff;padding:0 8px 0 6px;font:500 11.5px/18px var(--sans);cursor:pointer}
+.gmb:hover{border-color:var(--accent);color:var(--accent)}
+.gmb i{position:relative;display:inline-block;width:13px;height:9px;border:1.3px solid currentColor;border-radius:3px;margin-bottom:2px}
+.gmb i::after{content:"";position:absolute;left:1px;bottom:-4px;border-top:3px solid currentColor;border-right:3px solid transparent}
+/* Roll20 물음 창 흉내 (GM 귓속말) */
+.qm[hidden]{display:none}
+.qm{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.qbox{background:#fff;border:1px solid var(--ink);padding:12px;width:320px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.qbox .qt{font:700 13px var(--sans)}
+.qbox input{border:1px solid var(--line);height:28px}
+.qbox .qb{display:flex;justify-content:flex-end;gap:6px}
+.qbox button{border:1px solid var(--ink);background:#fff;padding:2px 12px;cursor:pointer;font:500 12px var(--sans)}
+.qbox button.ok{background:var(--ink);color:#fff}
+.cd .note{font:500 11px/1.45 var(--sans);color:var(--accent)}
 .sel{border:1px solid var(--line);background:#fff;height:20px;font-size:11px;padding:0 2px}
 #rmode,#rtell{width:92px}
 .sp{flex:1}
@@ -108,11 +121,20 @@ textarea{resize:none;display:block}
 .hp .hl{font:700 11.5px var(--sans);margin-right:3px}
 .hp input{width:28px;height:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,.6);font:700 14px var(--sans);padding:0;color:#fff}
 /* 한 줄 10칸 (5칸마다 조금 띄움), 줄은 왼쪽부터 채움 — 최대 50칸 */
-.hpb{display:flex;flex-wrap:wrap;gap:3px 2px;width:152px;justify-content:flex-start}
+.hpb{display:grid;grid-template-columns:repeat(10,13px);gap:3px 2px}
 .hpb:empty{display:none}
-.hpb button{width:13px;height:13px;padding:0;border:1.5px solid #fff;background:transparent;cursor:pointer;flex:none}
-.hpb button:nth-child(10n+6){margin-left:4px}
+.hpb button{width:13px;height:13px;padding:0;border:1.5px solid #fff;background:transparent;cursor:pointer}
 .hpb button.on{background:var(--accent);border-color:var(--accent)}
+.hpb button.x{border-color:#4a4a4a;cursor:default}
+/* 유파 문장: 그림 주소를 넣으면 '인술 배틀 TRPG' 위에 (시트에는 그림을 넣지 않음) */
+.title{position:relative}
+.title .cplus{position:absolute;right:6px;top:6px}
+.crest{display:none;width:58px;height:58px;border-radius:50%;margin-bottom:6px;background:repeating-linear-gradient(45deg,#3a3a3a 0 6px,#2a2a2a 6px 12px);border:1px solid #555;color:#aaa;font:500 10px/58px var(--sans);text-align:center}
+.crest.on{display:block}
+.crow{display:none;width:100%;margin-top:8px;align-items:center;gap:4px}
+.crow.open{display:flex}
+.crow .tl{color:#bbb}
+.crow input{border-bottom:1px solid rgba(255,255,255,.5);color:#fff;height:20px;font-size:11px}
 .grid{display:grid;grid-template-columns:26px 9px repeat(5,minmax(0,1fr) 9px) minmax(0,1fr);grid-template-rows:31px repeat(11,26.5px);padding:4px;position:relative}
 .no{background:var(--bar);color:#fff;font:700 14px/1 var(--serif);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
 .no.corner{border-bottom:0}
@@ -152,11 +174,13 @@ textarea{resize:none;display:block}
 .nr .eff{padding:2px 4px;font-size:11.5px;line-height:1.45}
 .nw.printed .nn{padding-left:4px;font:800 14px var(--serif)}
 .nr textarea{font-size:11.5px;line-height:1.45;min-height:20px;padding:2px 0;overflow:hidden}
-.nx{display:none;grid-template-columns:auto minmax(0,1fr);gap:4px 6px;align-items:start;border-top:1px dotted var(--line);padding:4px 6px 5px 26px;font-size:11.5px}
+.nx{display:none;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 6px;align-items:start;border-top:1px dotted var(--line);padding:4px 6px 5px 26px;font-size:11.5px}
 .nx.open{display:grid}
 .nx b{font:700 11px var(--sans);color:var(--sub);padding-top:3px}
 .nx input,.nx textarea{background:var(--cell);height:22px;font-size:11.5px}
-.nx textarea{height:auto;min-height:36px;line-height:1.45;padding:3px 5px}
+.nx textarea{height:auto;min-height:46px;line-height:1.45;padding:3px 5px}
+.nx .img{grid-column:2/4}
+.nx .thumb{grid-column:3;grid-row:2}
 .ty{display:flex;justify-content:center;gap:0;font:400 12px var(--serif)}
 .ty label{display:flex;align-items:center;cursor:pointer}
 .ty label+label::before{content:"\30FB";color:var(--sub);padding:0 1px}
@@ -203,8 +227,8 @@ textarea{resize:none;display:block}
 /* 그림 주소를 넣으면 칸 옆에 썸네일 (실제 시트는 속성 값을 src 로 쓰는 img) */
 .thumb{display:none;flex:none;width:46px;height:46px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,#e2e2e2 0 5px,#f4f4f4 5px 10px);font:500 9.5px/46px var(--sans);color:var(--sub);text-align:center}
 .thumb.on{display:block}
-.iw{display:flex;align-items:flex-start;gap:6px;min-width:0}
-.iw input{flex:1}
+.og .lines{position:relative}
+.og .lines .thumb{position:absolute;right:2px;bottom:2px}
 .gear{display:flex;flex-direction:column;gap:5px;position:relative;z-index:1}
 .gi{background:var(--panel);border:1px solid #000;padding:4px 6px}
 .gi .gh{display:flex;align-items:center;gap:6px}
@@ -268,7 +292,7 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">시노비가미 시트 목업</h1>
-<p class="pg">유파북 히라사카 기관 한국어판 세로 시트 배치에 중국어 시트의 색 · 굴림표 · 플롯 귓속말을 더했어요. 들어 있는 값은 예시예요. 특기 리스트 아래 띠에서 장면 · 플롯 · 전장(혼잡) · 불덩어리를 바꾸면 펌블치가 바뀌고, 체크한 상태이상은 판정 카드에 함께 적혀요. 인법명에 「마계공학」 · 「목련」이 들어가면 특기 리스트 목표치가 바로 바뀌어요. ＋ 단추는 그림 주소 · 개요 · 효과 칸을 펴요.</p>
+<p class="pg">유파북 히라사카 기관 한국어판 세로 시트 배치에 중국어 시트의 색 · 굴림표 · 플롯 귓속말을 더했어요. 들어 있는 값은 예시예요. 특기 리스트 아래 띠에서 장면 · 플롯 · 전장 · 불덩어리 · 펌블치 옆 수정칸을 바꾸면 펌블치가 바뀌고, 체크한 전장 효과와 상태이상은 판정 카드에 함께 적혀요. 제목 칸 ＋ 로 유파 문장 그림 주소를 넣을 수 있어요. 인법명에 「마계공학」 · 「목련」이 들어가면 특기 리스트 목표치가 바로 바뀌어요. ＋ 단추는 그림 주소 · 개요 · 효과 칸을 펴요.</p>
 
 <div class="wrap">
 <div class="scroll">
@@ -286,6 +310,8 @@ textarea{resize:none;display:block}
       <div id="ppl"></div>
     </div>
     <div class="title">
+      <button class="plus cplus" type="button" title="유파 문장 그림 주소 칸 펴기">+</button>
+      <span class="crest" id="crest">문장</span>
       <span class="t1">인술 배틀 TRPG</span>
       <span class="t2">시노비가미</span>
       <select id="stype" aria-label="시트 종류">
@@ -293,6 +319,7 @@ textarea{resize:none;display:block}
         <option value="normal">일반인용 캐릭터 시트</option>
       </select>
       <div class="hp"><span class="nums"><span class="hl">생명력</span><input type="number" id="hpv" value="6" aria-label="생명력">/<input type="number" id="hpm" value="6" aria-label="생명력 최대"></span><span class="hpb" id="hpb"></span></div>
+      <div class="crow" id="crow"><span class="tl">문장</span><input type="text" id="crestu" value="https://example.com/hagure.png" aria-label="유파 문장 그림 주소"></div>
     </div>
   </div>
 
@@ -325,9 +352,9 @@ textarea{resize:none;display:block}
       <span class="seg num" id="plot"></span>
       <button class="bub" type="button" id="plotsend" title="GM 에게 플롯 귓속말"></button>
       <span class="tl">전장</span>
-      <select class="sel" id="bfield" aria-label="현재 전장"><option value=""></option><option>평지</option><option>수중</option><option>고지대</option><option>악천후</option><option>혼잡</option><option>위험지대</option></select>
-      <span class="fum">펌블치 <b id="fumble">2</b></span>
-      <div class="gmsg"><span class="tl">GM 귓속말</span><input type="text" id="gmtext" aria-label="GM 에게 보낼 글"><button class="bub" type="button" id="gmsend" title="GM 에게 보내기"></button></div>
+      <span id="bf" style="display:inline-flex;gap:4px"></span>
+      <span class="sp"></span>
+      <span class="fum">펌블치 <b id="fumble">2</b><input type="text" id="fmod" class="fmod" aria-label="펌블치 수정" title="펌블치 수정 (+1 · -1 처럼)"></span>
     </div>
     <div class="sr" id="conds"><span class="tl">상태이상</span></div>
     <div class="sr" id="tables">
@@ -388,15 +415,15 @@ textarea{resize:none;display:block}
       <span class="acts"><button class="plus on" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
       <div class="row"><span class="chip">오의명 1</span><input type="text" class="ogn" value="월영" aria-label="오의명 1"></div>
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" value="은형술" aria-label="오의 1 지정 특기"></div>
-      <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 1 효과">판정 방해</textarea></div>
-      <div class="row imgrow open"><span class="chip">그림 주소</span><input type="text" class="ogi" value="https://example.com/wolyoung.png" aria-label="오의 1 그림 주소"><span class="thumb">그림</span></div>
+      <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 1 효과">판정 방해</textarea><span class="thumb">그림</span></div>
+      <div class="row imgrow open"><span class="chip">그림 주소</span><input type="text" class="ogi" value="https://example.com/wolyoung.png" aria-label="오의 1 그림 주소"></div>
     </div>
     <div class="og">
       <span class="acts"><button class="plus" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
       <div class="row"><span class="chip">오의명 2</span><input type="text" class="ogn" aria-label="오의명 2"></div>
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" aria-label="오의 2 지정 특기"></div>
-      <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 2 효과"></textarea></div>
-      <div class="row imgrow"><span class="chip">그림 주소</span><input type="text" class="ogi" aria-label="오의 2 그림 주소"><span class="thumb">그림</span></div>
+      <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 2 효과"></textarea><span class="thumb">그림</span></div>
+      <div class="row imgrow"><span class="chip">그림 주소</span><input type="text" class="ogi" aria-label="오의 2 그림 주소"></div>
     </div>
     <div class="vl">닌자도구</div>
     <div class="gear" data-gear></div>
@@ -527,9 +554,10 @@ const hp = () => +hpv.value || 0, hpMax = () => Math.max(0, Math.min(50, +hpm.va
 function setHp(n) { hpv.value = Math.max(0, Math.min(hpMax() || n, n)); drawHp(); }
 function drawHp() {
   hpb.innerHTML = '';
-  for (let k = 1; k <= hpMax(); k++) {
-    const b = el('button', k <= hp() ? 'on' : ''); b.type = 'button'; b.title = `생명력 ${k}`;
-    b.onclick = () => setHp(k === hp() ? k - 1 : k);
+  const m = hpMax(), slots = m ? Math.ceil(m / 10) * 10 : 0;   // 10 이하 10칸 · 20 이하 20칸 · 30 이하 30칸 …
+  for (let k = 1; k <= slots; k++) {
+    const b = el('button', k > m ? 'x' : k <= hp() ? 'on' : ''); b.type = 'button';
+    if (k <= m) { b.title = `생명력 ${k}`; b.onclick = () => setHp(k === hp() ? k - 1 : k); } else b.disabled = true;
     hpb.append(b);
   }
 }
@@ -549,19 +577,32 @@ CONDS.forEach(c => {
   }
   conds.append(el('label', 'ck', `<input type="checkbox" value="${c}"><span>${c}</span></label>`));
 });
+conds.append(el('span', 'sp'));
+{ const g = el('button', 'gmb', '<i></i>GM 귓속말'); g.type = 'button'; g.title = 'GM 에게 귓속말 (물음 창)'; g.onclick = () => { qm.hidden = false; qin.focus(); }; conds.append(g); }
 // 펌블치 = 드라마 장면 2 · 전투 중 플롯치(최소 2) + 전장 혼잡 1 + 불덩어리 개수
 const battle = () => st.scene === 'battle';
-const fumble = () => (battle() && st.plot ? Math.max(2, st.plot) : 2) + (battle() && st.field === '혼잡' ? 1 : 0) + (+st.burn?.value || 0);
+const BF = ['수중', '고지대', '악천후', '혼잡', '위험지대'];
+const bfBox = document.getElementById('bf');
+BF.forEach(b => bfBox.append(el('label', 'ck', `<input type="checkbox" value="${b}"><span>${b}</span></label>`)));
+const bfOn = n => battle() && bfBox.querySelector(`input[value="${n}"]`).checked;
+const fmod = () => parseInt(String(document.getElementById('fmod').value).replace(/[−－]/g, '-').replace(/\s/g, ''), 10) || 0;
+// 펌블치 = 드라마 장면 2 · 전투 중 플롯치(최소 2) + 혼잡 1 + 불덩어리 개수 + 손으로 적은 수정
+const fumble = () => (battle() && st.plot ? Math.max(2, st.plot) : 2) + (bfOn('혼잡') ? 1 : 0) + (+st.burn?.value || 0) + fmod();
 function syncScene() {
   st.scene = document.querySelector('input[name=scene]:checked').value;
   st.plot = +(document.querySelector('input[name=plot]:checked')?.value || 0);
-  st.field = document.getElementById('bfield').value;
-  plotSeg.classList.toggle('dis', !battle()); document.getElementById('bfield').classList.toggle('dis', !battle());
+  plotSeg.classList.toggle('dis', !battle()); bfBox.classList.toggle('dis', !battle());
   document.getElementById('fumble').textContent = fumble();
 }
-document.getElementById('scene').onchange = syncScene; plotSeg.onchange = syncScene; document.getElementById('bfield').onchange = syncScene;
+document.getElementById('scene').onchange = syncScene; plotSeg.onchange = syncScene; bfBox.onchange = syncScene; document.getElementById('fmod').oninput = syncScene;
 document.getElementById('plotsend').onclick = () => card({ title: '플롯', sub: st.plot ? `${name()}의 플롯은 ${st.plot}` : '플롯을 먼저 고르세요', to: 'GM 에게' });
-document.getElementById('gmsend').onclick = () => { const t = document.getElementById('gmtext'); if (t.value) { card({ plain: t.value, to: 'GM 에게' }); t.value = ''; } };
+// GM 귓속말: 단추를 누르면 Roll20 물음 창(?{…})이 떠서 글을 받는다
+const qm = el('div', 'qm', '<div class="qbox" role="dialog" aria-label="GM 에게 귓속말"><div class="qt">GM 에게 귓속말</div><input type="text" id="qin"><div class="qb"><button type="button" class="no">취소</button><button type="button" class="ok">확인</button></div></div>');
+qm.hidden = true; document.body.append(qm);
+const qin = qm.querySelector('#qin'), qclose = () => { qm.hidden = true; qin.value = ''; };
+qm.querySelector('.ok').onclick = () => { if (qin.value.trim()) card({ plain: qin.value, to: 'GM 에게' }); qclose(); };
+qm.querySelector('.no').onclick = qclose;
+qin.onkeydown = e => { if (e.key === 'Enter') qm.querySelector('.ok').click(); if (e.key === 'Escape') qclose(); };
 // 굴림표 단추
 const tbar = document.getElementById('tables'), tsp = document.getElementById('tsp');
 TABLES.forEach(([n, d, tab]) => {
@@ -612,7 +653,7 @@ function addNinpo(p) {
     `<span><input type="text" class="sk" value="${sk}" aria-label="지정 특기 ${i + 1}"></span>` +
     `<span class="eff"><textarea rows="1" aria-label="효과 ${i + 1}">${ef}</textarea></span>` +
     `<span><button class="plus" type="button" title="그림 주소 · 개요 칸 펴기">+</button></span>`;
-  x.innerHTML = `<b>그림 주소</b><span class="iw"><input type="text" class="img" value="${img}" aria-label="그림 주소 ${i + 1}"><span class="thumb">그림</span></span><b>개요</b><textarea class="fl" aria-label="개요 ${i + 1}">${fl}</textarea>`;
+  x.innerHTML = `<b>그림 주소</b><input type="text" class="img" value="${img}" aria-label="그림 주소 ${i + 1}"><b>개요</b><textarea class="fl" aria-label="개요 ${i + 1}">${fl}</textarea><span class="thumb">그림</span>`;
   bindThumb(x.querySelector('.img'));
   if (img || fl) { x.classList.add('open'); row.querySelector('.plus').classList.add('on'); }
   row.querySelector('.plus').onclick = ev => { x.classList.toggle('open'); ev.currentTarget.classList.toggle('on'); };
@@ -622,8 +663,12 @@ function addNinpo(p) {
   w.append(row, x); ninpo.append(w);
 }
 const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
-function bindThumb(inp) { const t = inp.parentElement.querySelector('.thumb'), f = () => t.classList.toggle('on', !!inp.value.trim()); inp.addEventListener('input', f); f(); }
+function bindThumb(inp) { const t = inp.closest('.og, .nx').querySelector('.thumb'), f = () => t.classList.toggle('on', !!inp.value.trim()); inp.addEventListener('input', f); f(); }
 document.querySelectorAll('.ogi').forEach(bindThumb);
+// 유파 문장: ＋ 로 주소 칸을 펴고, 주소가 있으면 제목 위에 둥근 문장 칸
+const crestU = document.getElementById('crestu'), crest = document.getElementById('crest');
+const crestSync = () => crest.classList.toggle('on', !!crestU.value.trim()); crestU.oninput = crestSync; crestSync();
+document.querySelector('.cplus').onclick = ev => { document.getElementById('crow').classList.toggle('open'); ev.currentTarget.classList.toggle('on'); };
 for (let i = 0; i < 8; i++) addNinpo(NP[i]);
 document.getElementById('npadd').onclick = () => addNinpo();
 
@@ -674,6 +719,9 @@ function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
   if (roll) {
     const j = judge(roll[0], roll[1], roll[2]);
     body += `<div class="roll">${die(roll[0])}${die(roll[1])}<span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${roll[2] != null ? `<span class="tg">목표치 ${roll[2]}</span>` : ''}${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
+    // 전장 효과 (전투 중 체크한 전장만)
+    const ns = [bfOn('수중') && '수중 · 회피 판정 -2', j && j[1] === 'fb' && bfOn('고지대') && '고지대 · 펌블 — 접근전 대미지 1점', bfOn('위험지대') && '위험지대'].filter(Boolean);
+    if (ns.length) body += ns.map(n => `<div class="note">${n}</div>`).join('');
   }
   if (table) body += `<div class="rt2">${die(table[0])}${table[1] ? die(table[1]) : ''}<span>${esc(table[2] || '')}</span></div>`;
   if (kv) body += `<div class="kv">${kv.map(([k, v]) => `<b>${k}</b><span>${esc(v)}</span>`).join('')}</div>`;
@@ -687,18 +735,20 @@ const findSkill = s => { for (let f = 0; f < 6; f++) { const r = SK[f].indexOf(s
 // 판정 카드 둘째 줄: 펌블치가 2가 아니면 · 전투 중이면 전장 · 체크한 상태이상
 const subFum = () => {
   const on = [...conds.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value).concat(+st.burn?.value ? [`불덩어리 ${st.burn.value}`] : []);
-  return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (battle() && st.field ? ` · ${st.field}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
+  const bfs = BF.filter(bfOn);
+  return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (bfs.length ? ` · ${bfs.join(' · ')}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
 };
 function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (t == null ? '' : ` · 목표치 ${t}`) + (st.lost.has(f) ? ' · 생명력 소실' : '') + subFum(), roll: [d6(), d6(), t] }); }
 function rollNinpo(row, x) {
   const q = s => row.querySelector(s).value, ty = row.querySelector('.ty input:checked');
   const s = findSkill(q('.sk')), tyN = ty ? ['공격', '서포트', '장비'][[...row.querySelectorAll('.ty input')].indexOf(ty)] : '';
-  card({ title: `【${q('.nn') || '인법'}】`, sub: [tyN, q('.rg') && `간격 ${q('.rg')}`, q('.co') && `코스트 ${q('.co')}`, q('.sk') && `《${q('.sk')}》`].filter(Boolean).join(' · ') + (s ? subFum() : ''),
+  const rg = q('.rg') && (tyN === '공격' && bfOn('악천후') ? `간격 ${q('.rg')}+1` : `간격 ${q('.rg')}`);
+  card({ title: `【${q('.nn') || '인법'}】`, sub: [tyN, rg, q('.co') && `코스트 ${q('.co')}`, q('.sk') && `《${q('.sk')}》`].filter(Boolean).join(' · ') + (s ? subFum() : ''),
     img: x.querySelector('.img').value, roll: s ? [d6(), d6(), target(...s)] : null, eff: row.querySelector('textarea').value, fl: x.querySelector('.fl').value });
 }
 document.querySelector('[data-melee]').onclick = () => {
   const s = findSkill(document.getElementById('melee').value);
-  card({ title: '【접근전 공격】', sub: '공격 · 간격 1 · 코스트 없음' + (s ? ` · 《${SK[s[0]][s[1]]}》` + subFum() : ''), roll: s ? [d6(), d6(), target(...s)] : null, eff: '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점을 입힐 수 있다.' });
+  card({ title: '【접근전 공격】', sub: `공격 · 간격 ${bfOn('악천후') ? '1+1' : '1'} · 코스트 없음` + (s ? ` · 《${SK[s[0]][s[1]]}》` + subFum() : ''), roll: s ? [d6(), d6(), target(...s)] : null, eff: '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점을 입힐 수 있다.' });
 };
 document.querySelectorAll('.og .say').forEach(b => b.onclick = () => {
   const p = b.closest('.og');

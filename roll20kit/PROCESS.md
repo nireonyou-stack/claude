@@ -16,7 +16,8 @@
 4. **목업** (`<룰>/roll20/mockup.html` → Artifact) — 세로 830px 시트 + 채팅 카드 예시. 값은 예시임을 적는다.
 5. **계획 → 사용자 승인 → 만들기** (`src/*.src.html` + `build.py` + `worker.js` + `rolltemplate.html` → `sheet/`).
 6. **검사** — `python3 roll20kit/lint.py <sheet 폴더>` 0/0 · `node test/test.js` (r20sim) · `node roll20kit/view.js` 가상 Roll20 화면 + 채팅 카드를 그림으로 확인.
-7. **제출** — 포크에 upstream master 에서 새 브랜치, 폴더 `<시트 이름> (Korean)/`. 사용자가 compare 링크(`?expand=1&template=new_sheet.md`)로 PR. 포크 커밋에는 Claude-Session 줄을 넣지 않는다.
+7. **제출** — `sheet.json` 의 `authors` 는 `sai-korokoro` (Roll20 시트 고르기 화면에 그대로 보임 — 2026-11-21 사용자 결정, 둘이서 수사 · 아마데우스도 바꿈) · `roll20userid` 4733990.
+   포크에 upstream master 에서 새 브랜치, 폴더 `<시트 이름> (Korean)/`. 사용자가 compare 링크(`?expand=1&template=new_sheet.md`)로 PR. 포크 커밋에는 Claude-Session 줄을 넣지 않는다.
 
 ## 2. 시트에 넣는 것 · 안 넣는 것
 
