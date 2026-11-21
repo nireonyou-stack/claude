@@ -44,11 +44,12 @@ textarea{resize:none;display:block}
 .dis{opacity:.4;pointer-events:none}
 .fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
 .fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:800 14px/1.2 var(--sans);color:var(--accent)}
+.fum.sp b{border-bottom-color:var(--green);color:var(--green)}
 .ck{cursor:pointer;display:inline-flex}
 .ck input{display:none}
 .ck span,.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
 .ck input:checked+span,.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
-.ckn input{width:20px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
+.ckn input{width:18px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
 .vbar{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
 .rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 7px;cursor:pointer;font:500 11.5px/18px var(--sans)}
 .rt:hover{border-color:var(--accent);color:var(--accent)}
@@ -68,7 +69,6 @@ textarea{resize:none;display:block}
 .qbox button.ok{background:var(--ink);color:#fff}
 .cd .note{font:500 11px/1.45 var(--sans);color:var(--accent)}
 .sel{border:1px solid var(--line);background:#fff;height:20px;font-size:11px;padding:0 2px}
-#rmode,#rtell{width:92px}
 .sp{flex:1}
 
 /* 1단: 이름 · 인물 칸 · 제목 */
@@ -76,6 +76,9 @@ textarea{resize:none;display:block}
 .namebox{border:1px solid var(--ink);display:flex;flex-direction:column;padding:6px;gap:6px}
 .nmfield{display:flex;align-items:stretch;border:1px solid var(--ink)}
 .nmfield input{font:700 15px var(--serif);height:28px}
+.plfield{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--line);margin-top:-2px}
+.plfield .chip{font-size:10px;padding:3px 5px}
+.plfield input{height:20px;font-size:12px}
 .portrait{flex:1;min-height:180px;background:var(--paper)}
 .ppl{border:1px solid var(--ink);display:flex;flex-direction:column}
 .ph,.pr{display:grid;grid-template-columns:minmax(0,1fr) 18px 18px 18px 84px 12px;align-items:center;column-gap:3px;padding:0 4px}
@@ -159,7 +162,7 @@ textarea{resize:none;display:block}
 
 /* 3단: 인법 리스트 · 일반인 규칙 요약본 */
 .np{margin-top:8px;border:1px solid var(--ink)}
-.nh,.nr{display:grid;grid-template-columns:22px 148px 72px 34px 40px 94px minmax(0,1fr) 20px;align-items:stretch}
+.nh,.nr{display:grid;grid-template-columns:22px 120px 66px 28px 34px 80px minmax(0,1fr) 20px;align-items:stretch}
 .nh{font:500 11px var(--sans);text-align:center;padding:3px 4px 2px}
 .nh span{align-self:end}
 .nw{margin:0 4px 3px;border:1px solid var(--line)}
@@ -183,9 +186,9 @@ textarea{resize:none;display:block}
 .nx .thumb{grid-column:3;grid-row:2}
 .ty{display:flex;justify-content:center;gap:0;font:400 12px var(--serif)}
 .ty label{display:flex;align-items:center;cursor:pointer}
-.ty label+label::before{content:"\30FB";color:var(--sub);padding:0 1px}
+.ty label+label::before{content:"\30FB";color:var(--sub);padding:0;font-size:10px}
 .ty input{display:none}
-.ty span{display:inline-flex;width:17px;height:17px;align-items:center;justify-content:center;border-radius:50%;border:1px solid transparent}
+.ty span{display:inline-flex;width:15px;height:15px;font-size:11.5px;align-items:center;justify-content:center;border-radius:50%;border:1px solid transparent}
 .ty input:checked+span{border-color:var(--accent);color:var(--accent);font-weight:800}
 .ty.fixed span.on{border-color:var(--accent);color:var(--accent);font-weight:800}
 .ty.fixed label{cursor:default}
@@ -267,21 +270,22 @@ textarea{resize:none;display:block}
 /* 유파 문장: 주소가 있으면 모든 카드 오른쪽 아래에 연하게 */
 .cd .wmk{position:absolute;right:-12px;bottom:-12px;width:96px;height:96px;border-radius:50%;background:repeating-linear-gradient(45deg,#000 0 6px,transparent 6px 12px);border:2px solid #000;opacity:.08;pointer-events:none}
 /* 판정(목표치가 있는 굴림)만 주사위를 크게 */
-.cd .roll.big .die{width:36px;height:36px;border-width:2px;border-radius:6px;font:800 21px var(--sans)}
+.cd .roll.big .die{width:36px;height:36px;border-width:2px;border-radius:6px;font:800 21px/1 Arial,Helvetica,sans-serif}
 .cd .roll.big .tot{font-size:28px}
 .cd .roll.big .stp{font-size:16px}
 .cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:800 14px/1.3 var(--serif);border-bottom:2px solid var(--accent)}
 .cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
 .cd .sub{font-size:11px;color:var(--sub)}
 .cd .roll{display:flex;align-items:center;gap:5px}
-.cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px var(--sans)}
+.cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px/1 Arial,Helvetica,sans-serif;padding-bottom:1px}
+.cd .tot{font-family:Arial,Helvetica,sans-serif}
 .cd .die.d6{border-color:var(--green);color:var(--green)}
 .cd .die.d1{border-color:var(--accent);color:var(--accent)}
 .cd .eq{color:var(--sub)}
 .cd .tot{font:800 20px/1 var(--sans);font-variant-numeric:tabular-nums;color:var(--navy)}
 .cd .tg{font-size:11px;color:var(--sub)}
 .cd .stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:2px 7px;font:800 14px/1.2 var(--serif);transform:rotate(-4deg)}
-.cd .stp.sp{border-color:var(--accent);color:var(--accent)}
+.cd .stp.sp{border-color:var(--green);color:var(--green)}
 .cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
 .cd .stp.ng{color:var(--sub);border-color:var(--sub)}
 .cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
@@ -309,6 +313,7 @@ textarea{resize:none;display:block}
   <div class="r1">
     <div class="namebox">
       <div class="nmfield"><span class="chip" style="display:flex;align-items:center">이름</span><input type="text" id="cname" value="카게로" aria-label="이름"></div>
+      <div class="plfield"><span class="chip">플레이어</span><input type="text" value="하루" aria-label="플레이어"></div>
       <div class="portrait" aria-label="캐릭터 그림 (Roll20 아바타)"></div>
     </div>
     <div class="ppl">
@@ -362,14 +367,14 @@ textarea{resize:none;display:block}
       <span id="bf" style="display:inline-flex;gap:4px"></span>
       <span class="sp"></span>
       <span class="fum">펌블치 <b id="fumble">2</b><input type="text" id="fmod" class="fmod" aria-label="펌블치 수정" title="펌블치 수정 (+1 · -1 처럼)"></span>
-      <span class="fum">스페셜치 <b id="special">12</b><input type="text" id="smod" class="fmod" aria-label="스페셜치 수정" title="스페셜치 수정 (+1 · -1 처럼)"></span>
+      <span class="fum sp">스페셜치 <b id="special">12</b><input type="text" id="smod" class="fmod" aria-label="스페셜치 수정" title="스페셜치 수정 (+1 · -1 처럼)"></span>
     </div>
     <div class="sr" id="conds"><span class="tl">상태이상</span></div>
     <div class="sr" id="tables">
       <span class="tl">굴림표</span>
       <span class="sp" id="tsp"></span>
-      <span class="tl">보내기</span><select class="sel" id="rmode" aria-label="굴림 보내기"><option value="">모두에게</option><option value="gm">GM에게</option><option value="tok">선택한 토큰에게</option></select>
-      <select class="sel" id="rtell" aria-label="비밀 굴림 알리기"><option value="">알리지 않기</option><option value="tell">알리기</option></select>
+      <span class="tl">공개</span><span class="seg" id="rmode"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
+      <button class="gmb" type="button" id="gmb" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button>
     </div>
   </div>
 
@@ -575,18 +580,18 @@ hpv.oninput = drawHp; hpm.oninput = drawHp;
 const plotSeg = document.getElementById('plot');
 plotSeg.innerHTML = [1, 2, 3, 4, 5, 6].map(k => `<label><input type="radio" name="plot" value="${k}"><span>${k}</span></label>`).join('');
 // 상태이상: 기본 6종 | 전국 6종. 불덩어리는 누적 개수(펌블치 +개수)
-const CONDS = ['고장', '마비', '중상', '행방불명', '망각', '저주', '|', '최면', '불덩어리', '맹독', '기아', '잔류물', '야망'];
+// 누적되는 것(*)은 숫자칸 — 마비 · 망각 · 저주 · 불덩어리 · 맹독 · 기아
+const CONDS = ['고장', '마비*', '중상', '행방불명', '망각*', '저주*', '|', '최면', '불덩어리*', '맹독*', '기아*', '잔류물', '야망'];
 const conds = document.getElementById('conds');
 CONDS.forEach(c => {
   if (c === '|') return conds.append(el('span', 'vbar'));
-  if (c === '불덩어리') {
-    const s = el('span', 'ckn', `${c}<input type="number" min="0" aria-label="불덩어리 개수">`), i = s.querySelector('input');
-    i.oninput = () => { s.classList.toggle('on', +i.value > 0); syncScene(); }; conds.append(s); st.burn = i; return;
+  if (c.endsWith('*')) {
+    const n = c.slice(0, -1), s = el('span', 'ckn', `${n}<input type="number" min="0" data-c="${n}" aria-label="${n} 누적 수">`), i = s.querySelector('input');
+    i.oninput = () => { s.classList.toggle('on', +i.value > 0); syncScene(); }; conds.append(s); if (n === '불덩어리') st.burn = i; return;
   }
   conds.append(el('label', 'ck', `<input type="checkbox" value="${c}"><span>${c}</span></label>`));
 });
-conds.append(el('span', 'sp'));
-{ const g = el('button', 'gmb', '<i></i>GM 귓속말'); g.type = 'button'; g.title = 'GM 에게 귓속말 (물음 창)'; g.onclick = () => { qm.hidden = false; qin.focus(); }; conds.append(g); }
+document.getElementById('gmb').onclick = () => { qm.hidden = false; qin.focus(); };
 // 펌블치 = 드라마 장면 2 · 전투 중 플롯치(최소 2) + 전장 혼잡 1 + 불덩어리 개수
 const battle = () => st.scene === 'battle';
 const BF = ['수중', '고지대', '악천후', '혼잡', '위험지대'];
@@ -722,9 +727,8 @@ function judge(a, b, t) {
 }
 const wmk = () => (document.getElementById('crestu')?.value.trim() ? '<span class="wmk"></span>' : '');
 function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
-  const mode = document.getElementById('rmode').value;
-  const dest = to || (mode === 'gm' ? 'GM 에게' : mode === 'tok' ? '선택한 토큰에게' : '');
-  if (!to && mode && document.getElementById('rtell').value) { const t = el('div', 'who', `<em>${esc(name())} 비밀 굴림 중</em>`); log.append(t); }
+  const mode = document.querySelector('input[name=rmode]:checked').value;   // 공개: 모두에게 · GM에게(귓속말)
+  const dest = to || (mode === 'gm' ? 'GM 에게' : '');
   const w = el('div');
   w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
   if (plain != null) { w.append(el('div', 'cd plain', `<div class="cb">${esc(plain)}</div>${wmk()}`)); log.append(w); log.scrollTop = log.scrollHeight; return; }
@@ -747,11 +751,11 @@ function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
 const findSkill = s => { for (let f = 0; f < 6; f++) { const r = SK[f].indexOf(s.trim()); if (r >= 0) return [f, r]; } return null; };
 // 판정 카드 둘째 줄: 펌블치가 2가 아니면 · 전투 중이면 전장 · 체크한 상태이상
 const subFum = () => {
-  const on = [...conds.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value).concat(+st.burn?.value ? [`불덩어리 ${st.burn.value}`] : []);
+  const on = [...conds.querySelectorAll('input[type=checkbox]:checked, input[data-c]')].filter(i => i.type === 'checkbox' || +i.value > 0).map(i => i.dataset.c ? `${i.dataset.c} ${i.value}` : i.value);
   const bfs = BF.filter(bfOn);
   return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : '') + (bfs.length ? ` · ${bfs.join(' · ')}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
 };
-function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (t == null ? '' : ` · 목표치 ${t}`) + (st.lost.has(f) ? ' · 생명력 소실' : '') + subFum(), roll: [d6(), d6(), t] }); }
+function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (st.lost.has(f) ? ' · 생명력 소실' : '') + subFum(), roll: [d6(), d6(), t] }); }
 function rollNinpo(row, x) {
   const q = s => row.querySelector(s).value, ty = row.querySelector('.ty input:checked');
   const s = findSkill(q('.sk')), tyN = ty ? ['공격', '서포트', '장비'][[...row.querySelectorAll('.ty input')].indexOf(ty)] : '';
@@ -786,10 +790,10 @@ document.getElementById('stype').onchange = e => document.getElementById('sheet'
 document.getElementById('fold').checked = true;
 drawHp(); syncScene(); scanWrap();
 // 예시 카드 (값 고정)
-card({ title: '《은형술》 판정', sub: '인술 · 목표치 5', roll: [4, 3, 5] });
+card({ title: '《은형술》 판정', sub: '인술', roll: [4, 3, 5] });
 card({ title: '【그림자 베기】', sub: '공격 · 간격 1 · 코스트 1 · 《은형술》 · 펌블치 4', img: 1, roll: [6, 6, 5], eff: NP[0][5], fl: NP[0][7] });
 st.scene = 'battle'; st.plot = 4;
-card({ title: '《주술》 판정', sub: '요술 · 목표치 8 · 펌블치 4', roll: [1, 3, 8] });
+card({ title: '《주술》 판정', sub: '요술 · 펌블치 4', roll: [1, 3, 8] });
 st.scene = 'drama'; st.plot = 0;
 card({ title: '장면 표', table: [3, 4, TABLES[0][2][7]] });
 card({ title: '플롯', sub: '카게로의 플롯은 4', to: 'GM 에게' });
