@@ -107,8 +107,11 @@ textarea{resize:none;display:block}
 .hp .nums{display:inline-flex;align-items:center;gap:3px;font:700 13px var(--sans);color:#fff}
 .hp .hl{font:700 11.5px var(--sans);margin-right:3px}
 .hp input{width:28px;height:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,.6);font:700 14px var(--sans);padding:0;color:#fff}
-.hpb{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:150px}
-.hpb button{width:14px;height:14px;padding:0;border:1.5px solid #fff;background:transparent;cursor:pointer}
+/* 한 줄 10칸 (5칸마다 조금 띄움), 줄은 왼쪽부터 채움 — 최대 50칸 */
+.hpb{display:flex;flex-wrap:wrap;gap:3px 2px;width:152px;justify-content:flex-start}
+.hpb:empty{display:none}
+.hpb button{width:13px;height:13px;padding:0;border:1.5px solid #fff;background:transparent;cursor:pointer;flex:none}
+.hpb button:nth-child(10n+6){margin-left:4px}
 .hpb button.on{background:var(--accent);border-color:var(--accent)}
 .grid{display:grid;grid-template-columns:26px 9px repeat(5,minmax(0,1fr) 9px) minmax(0,1fr);grid-template-rows:31px repeat(11,26.5px);padding:4px;position:relative}
 .no{background:var(--bar);color:#fff;font:700 14px/1 var(--serif);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
@@ -509,7 +512,7 @@ function scanWrap() {
 
 // ── 생명력: 숫자 n / 최대 + 최대만큼 네모칸 (누르면 그 칸까지 채움) ──
 const hpv = document.getElementById('hpv'), hpm = document.getElementById('hpm'), hpb = document.getElementById('hpb');
-const hp = () => +hpv.value || 0, hpMax = () => Math.max(0, Math.min(20, +hpm.value || 0));
+const hp = () => +hpv.value || 0, hpMax = () => Math.max(0, Math.min(50, +hpm.value || 0));
 function setHp(n) { hpv.value = Math.max(0, Math.min(hpMax() || n, n)); drawHp(); }
 function drawHp() {
   hpb.innerHTML = '';
