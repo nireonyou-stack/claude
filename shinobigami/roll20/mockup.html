@@ -196,7 +196,15 @@ textarea{resize:none;display:block}
 .og .row input{height:22px;font:700 13px var(--serif)}
 .og .lines{flex:1;display:flex;flex-direction:column;gap:3px}
 .og textarea{flex:1;min-height:96px;font-size:12px;line-height:22px;background:repeating-linear-gradient(transparent 0 21px,var(--line) 21px 22px);padding:0 2px}
-.og .say{position:absolute;right:6px;top:6px}
+.og .acts{position:absolute;right:6px;top:6px;display:flex;gap:5px;align-items:center}
+.og .row.imgrow{display:none;border-bottom:0;border-top:1px solid var(--line);padding:4px 0 0}
+.og .row.imgrow.open{display:flex}
+.og .row.imgrow input{font:400 11.5px var(--sans)}
+/* 그림 주소를 넣으면 칸 옆에 썸네일 (실제 시트는 속성 값을 src 로 쓰는 img) */
+.thumb{display:none;flex:none;width:46px;height:46px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,#e2e2e2 0 5px,#f4f4f4 5px 10px);font:500 9.5px/46px var(--sans);color:var(--sub);text-align:center}
+.thumb.on{display:block}
+.iw{display:flex;align-items:flex-start;gap:6px;min-width:0}
+.iw input{flex:1}
 .gear{display:flex;flex-direction:column;gap:5px;position:relative;z-index:1}
 .gi{background:var(--panel);border:1px solid #000;padding:4px 6px}
 .gi .gh{display:flex;align-items:center;gap:6px}
@@ -247,7 +255,8 @@ textarea{resize:none;display:block}
 .cd .stp.ng{color:var(--sub);border-color:var(--sub)}
 .cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
 .cd .fl{font-size:11.5px;font-style:italic;color:var(--sub);white-space:pre-wrap}
-.cd .img{height:84px;background:repeating-linear-gradient(45deg,#e6e6e6 0 8px,#f3f3f3 8px 16px);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+/* 그림은 카드 틀 밖, 카드 바로 위 (같은 메시지) */
+.cimg{height:130px;margin-bottom:4px;background:repeating-linear-gradient(45deg,#e6e6e6 0 8px,#f3f3f3 8px 16px);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
 .cd .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:11.5px}
 .cd .kv b{font:700 11px var(--sans);color:var(--sub)}
 .cd .rt2{display:flex;gap:6px;align-items:flex-start;font-size:12px;line-height:1.5}
@@ -376,16 +385,18 @@ textarea{resize:none;display:block}
     <div class="wm">극비</div>
     <div class="vl">오의 내역</div>
     <div class="og">
-      <button class="bub say" type="button" title="채팅에 출력"></button>
+      <span class="acts"><button class="plus on" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
       <div class="row"><span class="chip">오의명 1</span><input type="text" class="ogn" value="월영" aria-label="오의명 1"></div>
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" value="은형술" aria-label="오의 1 지정 특기"></div>
       <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 1 효과">판정 방해</textarea></div>
+      <div class="row imgrow open"><span class="chip">그림 주소</span><input type="text" class="ogi" value="https://example.com/wolyoung.png" aria-label="오의 1 그림 주소"><span class="thumb">그림</span></div>
     </div>
     <div class="og">
-      <button class="bub say" type="button" title="채팅에 출력"></button>
+      <span class="acts"><button class="plus" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
       <div class="row"><span class="chip">오의명 2</span><input type="text" class="ogn" aria-label="오의명 2"></div>
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" aria-label="오의 2 지정 특기"></div>
       <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 2 효과"></textarea></div>
+      <div class="row imgrow"><span class="chip">그림 주소</span><input type="text" class="ogi" aria-label="오의 2 그림 주소"><span class="thumb">그림</span></div>
     </div>
     <div class="vl">닌자도구</div>
     <div class="gear" data-gear></div>
@@ -587,7 +598,7 @@ for (let i = 0; i < 5; i++) {
 
 // ── 인법 리스트: 8줄 + Add (줄마다 ＋ = 그림 주소 · 개요) ──
 const ninpo = document.getElementById('ninpo');
-const NP = [['그림자 베기', 0, '1', '1', '은형술', '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점.', '', '그림자에 숨어 단숨에 벤다.'],
+const NP = [['그림자 베기', 0, '1', '1', '은형술', '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점.', 'https://example.com/kage.png', '그림자에 숨어 단숨에 벤다.'],
   ['연막', 1, '2', '1', '잠복술', '이 장면 동안 자신을 목표로 하는 공격의 회피 판정에 +1.', '', ''],
   ['마계공학', 2, '', '', '', '특기 리스트의 좌우 끝이 이어진 것으로 본다.', '', '']];
 let nRows = 0;
@@ -601,7 +612,8 @@ function addNinpo(p) {
     `<span><input type="text" class="sk" value="${sk}" aria-label="지정 특기 ${i + 1}"></span>` +
     `<span class="eff"><textarea rows="1" aria-label="효과 ${i + 1}">${ef}</textarea></span>` +
     `<span><button class="plus" type="button" title="그림 주소 · 개요 칸 펴기">+</button></span>`;
-  x.innerHTML = `<b>그림 주소</b><input type="text" class="img" value="${img}" aria-label="그림 주소 ${i + 1}"><b>개요</b><textarea class="fl" aria-label="개요 ${i + 1}">${fl}</textarea>`;
+  x.innerHTML = `<b>그림 주소</b><span class="iw"><input type="text" class="img" value="${img}" aria-label="그림 주소 ${i + 1}"><span class="thumb">그림</span></span><b>개요</b><textarea class="fl" aria-label="개요 ${i + 1}">${fl}</textarea>`;
+  bindThumb(x.querySelector('.img'));
   if (img || fl) { x.classList.add('open'); row.querySelector('.plus').classList.add('on'); }
   row.querySelector('.plus').onclick = ev => { x.classList.toggle('open'); ev.currentTarget.classList.toggle('on'); };
   row.querySelector('.dic').onclick = () => rollNinpo(row, x);
@@ -610,6 +622,8 @@ function addNinpo(p) {
   w.append(row, x); ninpo.append(w);
 }
 const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+function bindThumb(inp) { const t = inp.parentElement.querySelector('.thumb'), f = () => t.classList.toggle('on', !!inp.value.trim()); inp.addEventListener('input', f); f(); }
+document.querySelectorAll('.ogi').forEach(bindThumb);
 for (let i = 0; i < 8; i++) addNinpo(NP[i]);
 document.getElementById('npadd').onclick = () => addNinpo();
 
@@ -657,7 +671,6 @@ function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
   w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
   if (plain != null) { w.append(el('div', 'cd plain', `<div class="cb">${esc(plain)}</div>`)); log.append(w); log.scrollTop = log.scrollHeight; return; }
   let body = sub ? `<div class="sub">${esc(sub)}</div>` : '';
-  if (img) body += '<div class="img">그림 (인법의 그림 주소)</div>';
   if (roll) {
     const j = judge(roll[0], roll[1], roll[2]);
     body += `<div class="roll">${die(roll[0])}${die(roll[1])}<span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${roll[2] != null ? `<span class="tg">목표치 ${roll[2]}</span>` : ''}${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
@@ -666,6 +679,7 @@ function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
   if (kv) body += `<div class="kv">${kv.map(([k, v]) => `<b>${k}</b><span>${esc(v)}</span>`).join('')}</div>`;
   if (eff) body += `<div class="eff">${esc(eff)}</div>`;
   if (fl) body += `<div class="fl">${esc(fl)}</div>`;
+  if (img) w.append(el('div', 'cimg', '그림 (그림 주소의 그림이 여기에)'));
   w.append(el('div', 'cd' + (cls ? ' ' + cls : ''), `<div class="ch">${esc(title)}</div><div class="cb">${body}</div>`));
   log.append(w); log.scrollTop = log.scrollHeight;
 }
@@ -688,8 +702,9 @@ document.querySelector('[data-melee]').onclick = () => {
 };
 document.querySelectorAll('.og .say').forEach(b => b.onclick = () => {
   const p = b.closest('.og');
-  card({ title: p.querySelector('.ogn').value || '오의', cls: 'ougi', sub: '오의' + (p.querySelector('.ogs').value ? ` · 《${p.querySelector('.ogs').value}》` : ''), eff: p.querySelector('.oge').value });
+  card({ title: p.querySelector('.ogn').value || '오의', cls: 'ougi', sub: '오의' + (p.querySelector('.ogs').value ? ` · 《${p.querySelector('.ogs').value}》` : ''), img: p.querySelector('.ogi').value, eff: p.querySelector('.oge').value });
 });
+document.querySelectorAll('.og .plus').forEach(b => b.onclick = () => { b.closest('.og').querySelector('.imgrow').classList.toggle('open'); b.classList.toggle('on'); });
 document.querySelectorAll('[data-truth] .say').forEach(b => b.onclick = () => {
   const p = b.closest('.tr'), n = p.querySelector('input').value, [s, e] = [...p.querySelectorAll('textarea')].map(t => t.value);
   card({ title: `【진실】 ${n || ''}`, cls: 'ougi', kv: s ? [['설정', s]] : null, eff: e });
@@ -713,6 +728,6 @@ card({ title: '《주술》 판정', sub: '요술 · 목표치 8 · 펌블치 4'
 st.scene = 'drama'; st.plot = 0;
 card({ title: '장면 표', table: [3, 4, TABLES[0][2][7]] });
 card({ title: '플롯', sub: '카게로의 플롯은 4', to: 'GM 에게' });
-card({ title: '월영', cls: 'ougi', sub: '오의 · 《은형술》', eff: '판정 방해' });
+card({ title: '월영', cls: 'ougi', sub: '오의 · 《은형술》', img: 1, eff: '판정 방해' });
 card({ title: '병량환 사용', sub: '남은 개수 2 → 1', eff: GEAR[0][1] });
 </script>
