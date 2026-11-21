@@ -1,0 +1,33 @@
+<!-- 채팅 카드: 그림(카드 밖 위) + 검은 머리띠(오의 · 진실은 진홍) + 흰 본문. 굴림은 sheet worker 가 startRoll 로 보내고 computed:: 칸은 finishRoll 로 채운다.
+     computed 칸(ok · total · hi · tres)은 매크로 앞쪽 10칸 안에 있어야 하므로 워커가 맨 앞에 넣는다.
+     판정: d1 · d2(큰 주사위, 6 초록 · 1 빨강) = 합 | 도장 ok 1 스페셜 · 2 펌블 · 3 성공 · 4 실패 (0 이면 도장 없음 — 파훼 판정의 성공 · 실패)
+     hi 1 = 고지대에서 펌블. 굴림표: te1(+te2) 눈과 결과(tres). nD6: n1~n3 = 합. 문장(crest)은 카드 오른쪽 아래에 연하게. -->
+<rolltemplate class="sheet-rolltemplate-shinobigami">
+  {{#img}}<div class="sheet-cimg">{{img}}</div>{{/img}}
+  <div class="sheet-card">
+    {{#ougi}}<div class="sheet-ou"></div>{{/ougi}}
+    {{#crest}}<div class="sheet-wmk">{{crest}}</div>{{/crest}}
+    {{#title}}<div class="sheet-hd">{{title}}</div>{{/title}}
+    <div class="sheet-bd">
+      {{#sub}}<div class="sheet-sub">{{sub}}</div>{{/sub}}
+      {{#d1}}<div class="sheet-roll sheet-big"><span class="sheet-die">{{d1}}</span><span class="sheet-die">{{d2}}</span><span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span>{{#rollTotal() computed::ok 1}}<span class="sheet-stp sheet-spc">스페셜</span>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<span class="sheet-stp sheet-fb">펌블</span>{{/rollTotal() computed::ok 2}}{{#rollTotal() computed::ok 3}}<span class="sheet-stp">성공</span>{{/rollTotal() computed::ok 3}}{{#rollTotal() computed::ok 4}}<span class="sheet-stp sheet-ng">실패</span>{{/rollTotal() computed::ok 4}}</div>{{/d1}}
+      {{#note}}<div class="sheet-note">{{note}}</div>{{/note}}
+      {{#note2}}<div class="sheet-note">{{note2}}</div>{{/note2}}
+      {{#rollTotal() computed::hi 1}}<div class="sheet-note">고지대 · 펌블 — 접근전 대미지 1점</div>{{/rollTotal() computed::hi 1}}
+      {{#n1}}<div class="sheet-roll"><span class="sheet-die">{{n1}}</span>{{#n2}}<span class="sheet-die">{{n2}}</span>{{/n2}}{{#n3}}<span class="sheet-die">{{n3}}</span>{{/n3}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span></div>{{/n1}}
+      {{#te1}}<div class="sheet-rt"><span class="sheet-die">{{te1}}</span>{{#te2}}<span class="sheet-die">{{te2}}</span>{{/te2}}<span class="sheet-rtx">{{computed::tres}}</span></div>{{/te1}}
+      {{#set}}<div class="sheet-kv"><b>설정</b><span>{{set}}</span></div>{{/set}}
+      {{#eff}}<div class="sheet-eff">{{eff}}</div>{{/eff}}
+      {{#g1s}}<div class="sheet-gk"><div class="sheet-gkh"><b>강점</b>{{g1s}}</div>{{#g1se}}<div class="sheet-gke">{{g1se}}</div>{{/g1se}}</div>{{/g1s}}
+      {{#g1w}}<div class="sheet-gk"><div class="sheet-gkh"><b class="sheet-w">결점</b>{{g1w}}</div>{{#g1we}}<div class="sheet-gke">{{g1we}}</div>{{/g1we}}</div>{{/g1w}}
+      {{#g2s}}<div class="sheet-gk"><div class="sheet-gkh"><b>강점</b>{{g2s}}</div>{{#g2se}}<div class="sheet-gke">{{g2se}}</div>{{/g2se}}</div>{{/g2s}}
+      {{#g2w}}<div class="sheet-gk"><div class="sheet-gkh"><b class="sheet-w">결점</b>{{g2w}}</div>{{#g2we}}<div class="sheet-gke">{{g2we}}</div>{{/g2we}}</div>{{/g2w}}
+      {{#g3s}}<div class="sheet-gk"><div class="sheet-gkh"><b>강점</b>{{g3s}}</div>{{#g3se}}<div class="sheet-gke">{{g3se}}</div>{{/g3se}}</div>{{/g3s}}
+      {{#g3w}}<div class="sheet-gk"><div class="sheet-gkh"><b class="sheet-w">결점</b>{{g3w}}</div>{{#g3we}}<div class="sheet-gke">{{g3we}}</div>{{/g3we}}</div>{{/g3w}}
+      {{#g4s}}<div class="sheet-gk"><div class="sheet-gkh"><b>강점</b>{{g4s}}</div>{{#g4se}}<div class="sheet-gke">{{g4se}}</div>{{/g4se}}</div>{{/g4s}}
+      {{#g4w}}<div class="sheet-gk"><div class="sheet-gkh"><b class="sheet-w">결점</b>{{g4w}}</div>{{#g4we}}<div class="sheet-gke">{{g4we}}</div>{{/g4we}}</div>{{/g4w}}
+      {{#fl}}<div class="sheet-fl">{{fl}}</div>{{/fl}}
+      {{#plain}}<div class="sheet-plain">{{plain}}</div>{{/plain}}
+    </div>
+  </div>
+</rolltemplate>

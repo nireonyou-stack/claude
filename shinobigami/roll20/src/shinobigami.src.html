@@ -1,0 +1,144 @@
+<!-- 시노비가미 (한국어) — 세로 830px. 배치: 유파북 히라사카 기관 한국어판 시트. 목업: shinobigami/roll20/mockup.html
+     칸 이름은 중국어 번체 시트(Shinobi_Gami_Chinese_Traditional)와 맞춤 — FIELDS.md. @ 표시 자리는 build.py 가 채운다.
+     .sg 앞의 숨은 칸은 시트 종류 · 장면 · 요마화 · 분야 상태 · 상태이상 · 생명력 칸 모양을 가르는 거울(형제 선택자용). -->
+<input type="hidden" class="t-type" name="attr_sheet_type" value="ninja">
+<input type="hidden" class="t-scene" name="attr_scene" value="drama">
+<input type="hidden" class="t-yoma" name="attr_yoma" value="0">
+<input type="hidden" class="t-yok" name="attr_yoma_ok" value="0">
+<!--@FIELD_MIRRORS-->
+<!--@COND_MIRRORS-->
+<input type="hidden" class="t-wc" name="attr_MuoChie" value="0">
+<input type="hidden" class="t-wr" name="attr_MuLian" value="0">
+<input type="hidden" class="t-hpd" name="attr_hp_dim" value="6">
+<input type="hidden" class="t-hps" name="attr_hp_slots" value="10">
+<input type="hidden" name="attr_sheet_version" value="0">
+<div class="sg">
+
+  <!-- 1단: 이름 · 인물 칸 · 제목(시트 종류 · 생명력) -->
+  <div class="r1">
+    <div class="namebox">
+      <div class="nmfield"><span class="chip">이름</span><input type="text" name="attr_character_name" title="이름"></div>
+      <div class="plfield"><span class="chip">플레이어</span><input type="text" name="attr_player" title="플레이어"></div>
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
+    </div>
+    <div class="ppl">
+      <div class="hb">인물 칸</div>
+      <div class="ph"><span>인물명</span><span>거처</span><span>비밀</span><span>오의</span><span>오의 지정특기</span><span>감정</span><span></span></div>
+<!--@PEOPLE-->
+    </div>
+    <div class="title">
+      <input type="checkbox" class="tgl tcr" name="attr_crest_open" value="1" title="유파 문장 그림 주소 칸 펴기"><span class="pic cplus"></span>
+      <img class="crest" name="attr_crest_url" alt="">
+      <span class="t1">인술 배틀 TRPG</span>
+      <span class="t2">시노비가미</span>
+      <select name="attr_sheet_type" title="시트 종류"><option value="ninja" selected>닌자용 캐릭터 시트</option><option value="normal">일반인용 캐릭터 시트</option></select>
+      <div class="hp"><span class="nums"><span class="hl">생명력</span><input type="number" name="attr_hp" value="6" title="생명력">/<input type="number" name="attr_hp_max" value="6" title="생명력 최대"></span><span class="hpb"><!--@HPBOX--></span></div>
+      <div class="crow"><span class="tl">문장</span><input type="text" name="attr_crest_url" title="유파 문장 그림 주소"></div>
+    </div>
+  </div>
+
+  <!-- 2단: 기본 정보 · 배경 | 특기 리스트 -->
+  <div class="r2">
+    <div class="info">
+      <div class="ir two"><div><span class="chip">나이</span><input type="text" name="attr_age" title="나이"></div><div><span class="chip">성별</span><input type="text" name="attr_gender" title="성별"></div></div>
+      <div class="ir nj"><span class="chip">유파</span><input type="text" name="attr_clan" title="유파"></div>
+      <div class="ir two nj"><div><span class="chip">계급</span><input type="text" name="attr_rank" title="계급"></div><div><span class="chip">신념</span><input type="text" name="attr_conviction" title="신념"></div></div>
+      <div class="ir"><span class="chip">법식</span><input type="text" name="attr_aim" title="법식"></div>
+      <div class="ir nm"><span class="chip">진실의 수</span><input type="text" name="attr_truth_count" title="진실의 수"></div>
+      <div class="ir nj"><span class="chip">사회적 신분</span><input type="text" name="attr_surface" title="사회적 신분"></div>
+      <div class="ir two wide nm"><div><span class="chip">사회적 신분</span><input type="text" name="attr_surface" title="사회적 신분"></div><div><span class="chip">신념</span><input type="text" name="attr_conviction" title="신념"></div></div>
+      <div class="ir"><span class="chip">공적</span><input type="text" name="attr_score" title="공적"></div>
+      <div class="ir bgh"><span class="chip">배경</span></div>
+      <div class="bg">
+<!--@BACKGROUNDS-->
+      </div>
+    </div>
+    <div class="sk">
+      <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small><span class="tag tagc">마계공학</span><span class="tag tagr">목련</span><label class="yoma" title="요마화: 소실 · 부정 분야의 특기도 씀"><input type="checkbox" name="attr_yoma" value="1"><span>요마화</span></label></div>
+      <div class="grid">
+<!--@SKILLS-->
+      </div>
+    </div>
+  </div>
+
+  <!-- 판정 · 굴림 띠: 장면 · 플롯 · 전장 → 펌블치 · 스페셜치 / 상태이상 · GM 귓속말 / 굴림표 · 공개 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">장면</span>
+      <span class="seg"><label class="sgk"><input type="radio" name="attr_scene" value="drama" checked><span>드라마 장면</span></label><label class="sgk"><input type="radio" name="attr_scene" value="battle"><span>전투 중</span></label></span>
+      <span class="tl">플롯</span>
+      <span class="seg num bt"><!--@PLOTS--></span>
+      <button type="action" class="bub" name="act_plotsend" title="GM 에게 플롯 귓속말"></button>
+      <span class="tl">전장</span>
+      <span class="bf bt"><!--@BATTLEFIELDS--></span>
+      <span class="sp"></span>
+      <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="펌블치 자동 계산으로 되돌림"></button></span>
+      <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="스페셜치 12 로 되돌림"></button></span>
+    </div>
+    <div class="sr"><span class="tl">상태이상</span><!--@CONDS--><span class="sp"></span><button type="action" class="gmb" name="act_gmw" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button></div>
+    <div class="sr"><span class="tl">굴림표</span><!--@TABLES--><span class="sp"></span><span class="tl">공개</span><span class="seg"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span></div>
+  </div>
+
+  <!-- 3단: 닌자 = 인법 리스트 -->
+  <div class="np nj">
+    <div class="hb">인법 리스트</div>
+    <div class="nh"><span></span><span>인법명</span><span>타입</span><span>간격</span><span>코스트</span><span>지정 특기</span><span>효과</span><span></span></div>
+    <div class="nw printed"><div class="nr">
+      <span><button type="action" class="dic" name="act_melee" title="접근전 공격 판정"></button></span>
+      <span class="nn">접근전 공격</span>
+      <span class="ty fixed"><span class="on">공</span><i>&#x30FB;</i><span>서</span><i>&#x30FB;</i><span>장</span></span>
+      <span class="ctr">1</span>
+      <span class="ctr sm">없음</span>
+      <span><input type="text" name="attr_melee_skill" title="접근전 공격 지정 특기"></span>
+      <span class="eff">접근전. 공격이 성공하면 목표에게 접근전 대미지 1점을 입힐 수 있다.</span>
+      <span></span>
+    </div></div>
+<!--@NINPO-->
+    <fieldset class="repeating_acitems">
+<!--@NINPO_REP-->
+    </fieldset>
+  </div>
+
+  <!-- 3단: 일반인 = 규칙 요약본 · 촉매표 (일반인용 캐릭터 시트에 인쇄된 글) -->
+  <div class="rules nm">
+    <div class="hb">일반인 규칙 요약본</div>
+    <div class="rl">누군가가 페르소나의 【진실】을 획득하면 그것은 공개되며, 모든 참가자가 볼 수 있다.</div>
+    <div class="rl">「증식자」의 【진실】을 가지고 있는 캐릭터는 프라이즈로 간주한다.</div>
+    <div class="rl">「이인」의 【진실】이 가진 효과는 그것을 사용할 때 공개해야 한다.</div>
+    <div class="rl">일반인의 플롯치는 0. 단, 라운드마다 플롯을 실시해서 예측치를 결정한다.<br>일반인은 예측치와 같은 플롯치, 또는 플롯치 0의 캐릭터 중에서 공격 목표를 선택한다.</div>
+    <div class="rl">예측치는 닌자 캐릭터의 플롯치가 공개되고, 모든 플롯치가 결정된 뒤에 공개한다.</div>
+    <div class="rl">일반인은 간격과 관계없이 인법의 대상이 된다.</div>
+    <div class="hb">촉매표</div>
+    <div class="cat">
+      <div class="ce"><b>크리티컬 히트</b>「살의」,「우정」,「목표에 대한 애정」</div>
+      <div class="ce"><b>범위 공격</b>「분노」,「충성」,「질투」,「동경과 열등감」</div>
+      <div class="ce"><b>완전 성공</b>「신통환」,「공감」,「동경」,「임의의 플러스【감정】2개」</div>
+      <div class="ce"><b>절대 방어</b>「불신」,「목표에 대한 충성이나 우정이나 애정」</div>
+      <div class="ce"><b>판정 방해</b>「둔갑부」,「모멸」,「열등감」,「목표의【비밀】」</div>
+      <div class="ce"><b>불사신</b>「병량환」,「광신」,「열등감」</div>
+    </div>
+  </div>
+
+  <!-- 접는 곳: 누르면 펴지고 다시 누르면 접힘 (시트를 열 때마다 접힘). 닌자 = 오의 내역 · 닌자도구, 일반인 = 진실 · 닌자도구 -->
+  <div class="foldwrap">
+    <input type="checkbox" class="foldck" name="attr_fold_open" value="1" title="접는 곳">
+    <div class="fold"><span class="hand">&#x261E;</span><span class="lb">접는 곳</span><span class="dash"></span></div>
+    <div class="band">
+      <div class="wm">극비사항</div>
+      <div class="vl nj">오의 내역</div>
+      <div class="vl nm">진실</div>
+<!--@OUGI-->
+<!--@TRUTHS-->
+      <div class="vl">닌자도구</div>
+      <div class="gear">
+<!--@GEAR-->
+        <fieldset class="repeating_gear">
+<!--@GEAR_REP-->
+        </fieldset>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->
