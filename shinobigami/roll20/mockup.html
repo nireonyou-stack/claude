@@ -145,8 +145,14 @@ textarea{resize:none;display:block}
 .no{background:var(--bar);color:#fff;font:700 14px/1 var(--serif);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
 .no.corner{border-bottom:0}
 .fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:700 16.5px/1 var(--sans);margin:0 1px}
-.slot{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin:0;background:#fff;border:0;cursor:pointer}
-.slot:checked{background:linear-gradient(45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),linear-gradient(-45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),#fff}
+.slot{width:14px;height:14px;margin:0;padding:0;background:#fff;border:0;cursor:pointer;color:#fff;font:800 9.5px/14px var(--sans);text-align:center}
+.slot.lost{background:linear-gradient(45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),linear-gradient(-45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),#fff}
+.slot.dirty{background:var(--accent)}
+/* 요마화: 특기 리스트 머리 오른쪽 끝 */
+.yoma{position:absolute;right:6px;top:50%;transform:translateY(-50%);cursor:pointer;display:inline-flex}
+.yoma input{display:none}
+.yoma span{border:1px solid #888;color:#bbb;font:700 10.5px/16px var(--sans);padding:0 5px;letter-spacing:0}
+.yoma input:checked+span{background:var(--accent);border-color:var(--accent);color:#fff}
 .gap{grid-row:1/-1;cursor:pointer;display:block;position:relative}
 .gap input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
 .gap span{position:absolute;inset:0 2px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
@@ -162,6 +168,8 @@ textarea{resize:none;display:block}
 .c .tn{position:absolute;right:2px;bottom:0;font:700 10px/1 var(--sans);color:var(--navy)}
 .c.off{background:repeating-linear-gradient(-45deg,transparent 0 4px,rgba(0,0,0,.08) 4px 5px)}
 .c.off .n{color:var(--sub)}
+.c.dirty{background:radial-gradient(circle,rgba(190,32,46,.18) 1px,transparent 1.5px) 0 0/5px 5px}
+.c.dirty .n{color:var(--sub)}
 
 /* 3단: 인법 리스트 · 일반인 규칙 요약본 */
 .np{margin-top:8px;border:1px solid var(--ink)}
@@ -353,7 +361,7 @@ textarea{resize:none;display:block}
       <div class="bg" id="bg"></div>
     </div>
     <div class="sk">
-      <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small><span id="wraptags"></span></div>
+      <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small><span id="wraptags"></span><label class="yoma" title="요마화: 소실 · 부정 분야도 특기로 씀"><input type="checkbox" id="yoma"><span>요마화</span></label></div>
       <div class="grid" id="grid"></div>
     </div>
   </div>
@@ -499,7 +507,7 @@ const GEAR = [['병량환', '자신의 【생명력】이 1점 이상이라면 �
   ['신통환', '자신이 행동 판정의 주사위를 굴렸을 때 사용할 수 있다. 그 주사위를 다시 굴릴 수 있다.', 1],
   ['둔갑부', '자신 이외의 누군가가 행동 판정의 주사위를 굴렸을 때 사용할 수 있다. 그 주사위를 다시 굴리게 할 수 있다.', 0]];
 
-const st = { own: new Set(['C3','C7','B5','D5','E6','F8']), gap: new Set(['B','C']), lost: new Set(), scene: 'drama', plot: 0, wrapC: false, wrapR: false };
+const st = { own: new Set(['C3','C7','B5','D5','E6','F8']), gap: new Set(['B','C']), slot: {}, yoma: false, scene: 'drama', plot: 0, wrapC: false, wrapR: false };
 const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -510,8 +518,13 @@ const grid = document.getElementById('grid'), cells = {};
   FIELDS.forEach((f, i) => {
     const h = el('div', 'fh'); h.style.gridColumn = String(3 + i * 2);
     h.append(f);
-    const s = el('input', 'slot'); s.type = 'checkbox'; s.title = f + ' 생명력 슬롯 (체크 = 소실)';
-    s.onchange = () => { s.checked ? st.lost.add(i) : st.lost.delete(i); setHp(hp() + (s.checked ? -1 : 1)); calc(); };
+    const s = el('button', 'slot'); s.type = 'button'; s.title = f + ' 생명력 슬롯 (누를 때마다 소실 → 부정 → 빈칸)';
+    s.onclick = () => {
+      const was = st.slot[i] || '', now = { '': 'lost', lost: 'dirty', dirty: '' }[was];
+      st.slot[i] = now; s.className = 'slot' + (now ? ' ' + now : ''); s.textContent = now === 'dirty' ? '부' : '';
+      if (!was) setHp(hp() - 1); else if (!now) setHp(hp() + 1);   // 소실 ↔ 부정 사이는 생명력 그대로
+      calc();
+    };
     h.append(s); grid.append(h);
   });
   for (let r = 0; r < 11; r++) {
@@ -547,13 +560,13 @@ function dist(a, b) {
   return dy + (st.wrapC ? Math.min(direct, around) : direct);
 }
 function target(f, r) {
-  const src = [...st.own].map(id => ({ f: COL.indexOf(id[0]), r: +id.slice(1) - 2 })).filter(s => !st.lost.has(s.f));
+  const src = [...st.own].map(id => ({ f: COL.indexOf(id[0]), r: +id.slice(1) - 2 })).filter(s => st.yoma || !st.slot[s.f]);
   return src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, { f, r })))) : null;
 }
 function calc() {
   FIELDS.forEach((_, f) => { for (let r = 0; r < 11; r++) {
     const { c, tn } = cells[COL[f] + (r + 2)], t = target(f, r);
-    tn.textContent = t == null ? '' : t; c.classList.toggle('off', st.lost.has(f));
+    tn.textContent = t == null ? '' : t; c.classList.toggle('off', st.slot[f] === 'lost' && !st.yoma); c.classList.toggle('dirty', st.slot[f] === 'dirty' && !st.yoma);
   } });
 }
 // 인법명에 「마계공학」 · 「목련」이 있으면 켬
@@ -764,7 +777,7 @@ const subFum = () => {
   const bfs = BF.filter(bfOn);
   return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : '') + (bfs.length ? ` · ${bfs.join(' · ')}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
 };
-function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + tgs(t) + (st.lost.has(f) ? ' · 생명력 소실' : '') + subFum(), roll: [d6(), d6(), t] }); }
+function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + tgs(t) + ({ lost: ' · 소실', dirty: ' · 부정' }[st.slot[f]] || '') + (st.yoma ? ' · 요마화' : '') + subFum(), roll: [d6(), d6(), t] }); }
 function rollNinpo(row, x) {
   const q = s => row.querySelector(s).value, ty = row.querySelector('.ty input:checked');
   const s = findSkill(q('.sk')), tyN = ty ? ['공격', '서포트', '장비'][[...row.querySelectorAll('.ty input')].indexOf(ty)] : '';
@@ -798,6 +811,7 @@ function useGear(gi, n, e) {
 // ── 처음 화면 ──
 document.getElementById('stype').onchange = e => document.getElementById('sheet').dataset.t = e.target.value;
 document.getElementById('fold').checked = true;
+document.getElementById('yoma').onchange = e => { st.yoma = e.target.checked; calc(); };
 drawHp(); syncScene(); scanWrap();
 // 예시 카드 (값 고정)
 card({ title: '《은형술》 판정', sub: '인술 · 목표치 5', roll: [4, 3, 5] });
