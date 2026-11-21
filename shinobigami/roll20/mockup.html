@@ -40,6 +40,7 @@ textarea{resize:none;display:block}
 .seg span{display:block;padding:0 5px;font:500 11.5px/18px var(--sans)}
 .seg label+label span{border-left:1px solid var(--ink)}
 .seg input:checked+span{background:var(--accent);color:#fff}
+.seg.num{margin:0 4px}
 .seg.num span{width:16px;padding:0;text-align:center;font-weight:700}
 .dis{opacity:.4;pointer-events:none}
 .fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
@@ -263,6 +264,16 @@ textarea{resize:none;display:block}
 .thumb.on{display:block}
 .og .lines{position:relative}
 .og .lines .thumb{position:absolute;right:2px;bottom:2px}
+/* 오의 강점 · 결점: +Add 하나에 한 쌍 (실제 시트는 오의마다 반복 줄) */
+.og .gp{display:flex;flex-direction:column;gap:3px;border-top:1px dotted var(--sub);padding-top:5px}
+.og .gp .row{border-bottom:0;padding-bottom:0}
+.og .gp .row input{height:20px;font:700 12px var(--serif);border-bottom:1px solid var(--line)}
+.og .gp textarea{flex:none;min-height:40px;font-size:11.5px;line-height:20px;background:repeating-linear-gradient(transparent 0 19px,var(--line) 19px 20px)}
+.chip.gs{background:var(--green)}
+.chip.gw{background:var(--accent)}
+.og .rep{padding:0;align-items:center}
+.og .rep .tl{margin-right:2px}
+.og .rep button{background:#fff;color:var(--sub);border-color:var(--line)}
 .gear{display:flex;flex-direction:column;gap:5px;position:relative;z-index:1}
 .gi{background:var(--panel);border:1px solid #000;padding:4px 6px}
 .gi .gh{display:flex;align-items:center;gap:6px}
@@ -322,6 +333,11 @@ textarea{resize:none;display:block}
 .cd .fl{font-size:11.5px;font-style:italic;color:var(--sub);white-space:pre-wrap}
 /* 그림은 카드 틀 밖, 카드 바로 위 (같은 메시지) */
 .cimg{height:130px;margin-bottom:4px;background:repeating-linear-gradient(45deg,#e6e6e6 0 8px,#f3f3f3 8px 16px);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+.cd .gk{font-size:11.5px;line-height:1.45}
+.cd .gkh{font-weight:700}
+.cd .gkh b{display:inline-block;background:var(--green);color:#fff;font:700 10px/1 var(--sans);padding:2px 4px;margin-right:5px;vertical-align:1px}
+.cd .gkh b.w{background:var(--accent)}
+.cd .gke{color:#444;white-space:pre-wrap}
 .cd .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:11.5px}
 .cd .kv b{font:700 11px var(--sans);color:var(--sub)}
 .cd .rt2{display:flex;gap:6px;align-items:flex-start;font-size:12px;line-height:1.5}
@@ -460,6 +476,8 @@ textarea{resize:none;display:block}
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" value="은형술" aria-label="오의 1 지정 특기"></div>
       <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 1 효과">판정 방해</textarea><span class="thumb">그림</span></div>
       <div class="row imgrow open"><span class="chip">그림 주소</span><input type="text" class="ogi" value="https://example.com/wolyoung.png" aria-label="오의 1 그림 주소"></div>
+      <div class="gps"></div>
+      <div class="rep"><span class="tl">강점 · 결점</span><button type="button" class="gadd">+Add</button><button type="button">Modify</button></div>
     </div>
     <div class="og">
       <span class="acts"><button class="plus" type="button" title="그림 주소 칸 펴기">+</button><button class="bub say" type="button" title="채팅에 출력"></button></span>
@@ -467,6 +485,8 @@ textarea{resize:none;display:block}
       <div class="row"><span class="chip">지정 특기</span><input type="text" class="ogs" aria-label="오의 2 지정 특기"></div>
       <div class="lines"><span class="chip" style="align-self:flex-start">효과</span><textarea class="oge" aria-label="오의 2 효과"></textarea><span class="thumb">그림</span></div>
       <div class="row imgrow"><span class="chip">그림 주소</span><input type="text" class="ogi" aria-label="오의 2 그림 주소"></div>
+      <div class="gps"></div>
+      <div class="rep"><span class="tl">강점 · 결점</span><button type="button" class="gadd">+Add</button><button type="button">Modify</button></div>
     </div>
     <div class="vl">닌자도구</div>
     <div class="gear" data-gear></div>
@@ -783,7 +803,7 @@ function judge(a, b, t) {
   return t == null ? null : s >= t ? ['성공', ''] : ['실패', 'ng'];
 }
 const wmk = () => (document.getElementById('crestu')?.value.trim() ? '<span class="wmk"></span>' : '');
-function card({ title, sub, roll, only, dice, kv, eff, fl, img, cls, table, plain, to }) {
+function card({ title, sub, roll, only, dice, kv, eff, gm, fl, img, cls, table, plain, to }) {
   const mode = document.querySelector('input[name=rmode]:checked').value;   // 공개: 모두에게 · GM에게(귓속말)
   const dest = to || (mode === 'gm' ? 'GM 에게' : '');
   const w = el('div');
@@ -801,6 +821,7 @@ function card({ title, sub, roll, only, dice, kv, eff, fl, img, cls, table, plai
   if (table) body += `<div class="rt2">${die(table[0])}${table[1] ? die(table[1]) : ''}<span>${esc(table[2] || '')}</span></div>`;
   if (kv) body += `<div class="kv">${kv.map(([k, v]) => `<b>${k}</b><span>${esc(v)}</span>`).join('')}</div>`;
   if (eff) body += `<div class="eff">${esc(eff)}</div>`;
+  if (gm) body += gm.map(([k, n, e]) => `<div class="gk"><div class="gkh"><b class="${k === '결점' ? 'w' : ''}">${k}</b>${esc(n)}</div>${e ? `<div class="gke">${esc(e)}</div>` : ''}</div>`).join('');
   if (fl) body += `<div class="fl">${esc(fl)}</div>`;
   if (img) w.append(el('div', 'cimg', '그림 (그림 주소의 그림이 여기에)'));
   w.append(el('div', 'cd' + (cls ? ' ' + cls : ''), `<div class="ch">${esc(title)}</div><div class="cb">${body}</div>${wmk()}`));
@@ -836,8 +857,16 @@ document.querySelector('[data-melee]').onclick = () => {
 };
 document.querySelectorAll('.og .say').forEach(b => b.onclick = () => {
   const p = b.closest('.og');
-  card({ title: p.querySelector('.ogn').value || '오의', cls: 'ougi', sub: '오의' + (p.querySelector('.ogs').value ? ` · 《${p.querySelector('.ogs').value}》` : ''), img: p.querySelector('.ogi').value, eff: p.querySelector('.oge').value });
+  // 강점 · 결점: 적은 것만 (이름이나 효과가 있는 쪽)
+  const gm = [...p.querySelectorAll('.gp')].flatMap(g => { const [sn, wn] = g.querySelectorAll('input'), [se, we] = g.querySelectorAll('textarea'); return [['강점', sn.value, se.value], ['결점', wn.value, we.value]]; }).filter(x => x[1] || x[2]);
+  card({ title: p.querySelector('.ogn').value || '오의', cls: 'ougi', sub: '오의' + (p.querySelector('.ogs').value ? ` · 《${p.querySelector('.ogs').value}》` : ''), img: p.querySelector('.ogi').value, eff: p.querySelector('.oge').value, gm: gm.length ? gm : null });
 });
+// 강점 · 결점 한 쌍 넣기
+function addPair(og) {
+  og.querySelector('.gps').append(el('div', 'gp', '<div class="row"><span class="chip gs">강점</span><input type="text" aria-label="강점 이름"></div><textarea aria-label="강점 효과"></textarea>' +
+    '<div class="row"><span class="chip gw">결점</span><input type="text" aria-label="결점 이름"></div><textarea aria-label="결점 효과"></textarea>'));
+}
+document.querySelectorAll('.og').forEach((og, i) => { og.querySelector('.gadd').onclick = () => addPair(og); if (i === 0) addPair(og); });
 document.querySelectorAll('.og .plus').forEach(b => b.onclick = () => { b.closest('.og').querySelector('.imgrow').classList.toggle('open'); b.classList.toggle('on'); });
 document.querySelectorAll('[data-truth] .say').forEach(b => b.onclick = () => {
   const p = b.closest('.tr'), n = p.querySelector('input').value, [s, e] = [...p.querySelectorAll('textarea')].map(t => t.value);
