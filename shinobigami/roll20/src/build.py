@@ -44,7 +44,7 @@ def skills():
         out.append(f'<div class="fh">{name}<button type="action" class="slot s{col.lower()}" name="act_slot{col.lower()}" title="{name} 생명력 슬롯 (누를 때마다 소실 → 부정 → 빈칸)"><span>부</span></button></div>'
                    + (gap(GAPS[i + 1]) if i < 5 else ''))
     for r in range(2, 13):
-        line = f'<div class="no{" nw" if r in (2, 12) else ""}">{r}</div>' + gap('Z')
+        line = f'<div class="no">{r}</div>' + gap('Z')
         for i, (col, _, _, names) in enumerate(FIELDS):
             n = names[r - 2]
             line += (f'<div class="c f{col.lower()}"><input type="checkbox" class="own" name="attr_{col}{r}" value="1" title="{n} 습득">'

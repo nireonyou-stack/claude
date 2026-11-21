@@ -163,12 +163,10 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   has('scene table 9', last(s).computed.tres, '세찬 비가 내린다.');
   s.dice.push(2, 4, 6); s.click('nd3'); await s.settle();
   eq('3d6', last(s).computed.total, 12);
-  s.set('plot', '3'); await s.settle(); s.click('plotsend'); await s.settle();
-  has('plot to gm', last(s).macro, '/w gm ');
-  has('plot text', last(s).macro, '카게로의 플롯은 3');
+  has('plot roll button', HTML, 'name="roll_plotsend" title="GM 에게 플롯 귓속말" value="/w gm &{template:shinobigami} {{title=플롯}} {{sub=@{character_name}의 플롯은 @{plot}}}"');
+  has('gm whisper roll button', HTML, 'value="/w gm &{template:shinobigami} {{plain=?{GM 에게 귓속말}}}"');
   s.set('crest_url', 'https://example.com/crest.png'); await s.settle();
-  s.click('gmw'); await s.settle();
-  has('gm whisper query', last(s).macro, '{{plain=?{GM 에게 귓속말}}}');
+  s.dice.push(2); s.click('rt2'); await s.settle();
   has('crest watermark', last(s).macro, '{{crest=[문장](https://example.com/crest.png)}}');
 
   const errs = s.log.filter(l => l[0] !== 'INFO');

@@ -319,9 +319,4 @@ TABLES.forEach(([n, d, tab], i) => on(`clicked:rt${i + 1}`, () => getAttrs(['rol
   post(`${prefix(v)}${TPL} {{total=[[0]]}} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')}${field('title', `${n}D6`)}${crest(v)}`, R => ({ total: ks.reduce((a, k) => a + R[k].result, 0) }));
 })));
 
-// 플롯 · GM 귓속말 (늘 GM 에게)
-on('clicked:plotsend', () => getAttrs(['plot', 'character_name', 'crest_url'], v => {
-  const p = String(v.plot == null ? '' : v.plot).trim();
-  info(v, { title: '플롯', sub: p === '' ? '플롯을 먼저 고르세요' : `${v.character_name || '이름 없음'}의 플롯은 ${p}`, to: '/w gm ' });
-}));
-on('clicked:gmw', () => getAttrs(['crest_url'], v => post(`/w gm ${TPL} {{plain=?{GM 에게 귓속말}}}${crest(v)}`)));
+// 플롯 · GM 귓속말은 시트의 롤 단추(value 가 /w gm 으로 시작)로 보낸다 — 워커를 거치지 않는 Roll20 기본 방식

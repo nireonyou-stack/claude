@@ -54,7 +54,7 @@
       </div>
     </div>
     <div class="sk">
-      <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small><span class="tag tagc">마계공학</span><span class="tag tagr">목련</span><label class="yoma" title="요마화: 소실 · 부정 분야의 특기도 씀"><input type="checkbox" name="attr_yoma" value="1"><span>요마화</span></label></div>
+      <div class="hb">특기 리스트 <small>(특기 분야 오른쪽에 표시된 ■는 【생명력 슬롯】입니다.)</small><label class="yoma" title="요마화: 소실 · 부정 분야의 특기도 씀"><input type="checkbox" name="attr_yoma" value="1"><span>요마화</span></label></div>
       <div class="grid">
 <!--@SKILLS-->
       </div>
@@ -68,14 +68,14 @@
       <span class="seg"><label class="sgk"><input type="radio" name="attr_scene" value="drama" checked><span>드라마 장면</span></label><label class="sgk"><input type="radio" name="attr_scene" value="battle"><span>전투 중</span></label></span>
       <span class="tl">플롯</span>
       <span class="seg num bt"><!--@PLOTS--></span>
-      <button type="action" class="bub" name="act_plotsend" title="GM 에게 플롯 귓속말"></button>
+      <button type="roll" class="bub" name="roll_plotsend" title="GM 에게 플롯 귓속말" value="/w gm &{template:shinobigami} {{title=플롯}} {{sub=@{character_name}의 플롯은 @{plot}}}"></button>
       <span class="tl">전장</span>
       <span class="bf bt"><!--@BATTLEFIELDS--></span>
       <span class="sp"></span>
       <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="펌블치 자동 계산으로 되돌림"></button></span>
       <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="스페셜치 12 로 되돌림"></button></span>
     </div>
-    <div class="sr"><span class="tl">상태이상</span><!--@CONDS--><span class="sp"></span><button type="action" class="gmb" name="act_gmw" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button></div>
+    <div class="sr"><span class="tl">상태이상</span><!--@CONDS--><span class="sp"></span><button type="roll" class="gmb" name="roll_gmw" title="GM 에게 귓속말 (물음 창)" value="/w gm &{template:shinobigami} {{plain=?{GM 에게 귓속말}}}"><i></i>GM 귓속말</button></div>
     <div class="sr"><span class="tl">굴림표</span><!--@TABLES--><span class="sp"></span><span class="tl">공개</span><span class="seg"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span></div>
   </div>
 
