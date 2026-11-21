@@ -31,22 +31,22 @@ textarea{resize:none;display:block}
 
 /* 판정 · 굴림 띠 (특기 리스트와 인법 리스트 사이) — 위아래 가는 선만, 줄 사이 점선 */
 .strip{margin-top:8px;border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);font-size:11.5px}
-.sr{display:flex;align-items:center;gap:4px 7px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
+.sr{display:flex;align-items:center;gap:4px 5px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
 .sr+.sr{border-top:1px dotted var(--line)}
 .tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
 .seg{display:inline-flex;border:1px solid var(--ink)}
 .seg label{cursor:pointer}
 .seg input{display:none}
-.seg span{display:block;padding:0 7px;font:500 11.5px/18px var(--sans)}
+.seg span{display:block;padding:0 5px;font:500 11.5px/18px var(--sans)}
 .seg label+label span{border-left:1px solid var(--ink)}
 .seg input:checked+span{background:var(--accent);color:#fff}
-.seg.num span{width:20px;padding:0;text-align:center;font-weight:700}
+.seg.num span{width:18px;padding:0;text-align:center;font-weight:700}
 .dis{opacity:.4;pointer-events:none}
 .fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
 .fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:800 14px/1.2 var(--sans);color:var(--accent)}
 .ck{cursor:pointer;display:inline-flex}
 .ck input{display:none}
-.ck span,.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 6px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
+.ck span,.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
 .ck input:checked+span,.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
 .ckn input{width:20px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
 .vbar{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
@@ -188,6 +188,7 @@ textarea{resize:none;display:block}
 .ty span{display:inline-flex;width:17px;height:17px;align-items:center;justify-content:center;border-radius:50%;border:1px solid transparent}
 .ty input:checked+span{border-color:var(--accent);color:var(--accent);font-weight:800}
 .ty.fixed span.on{border-color:var(--accent);color:var(--accent);font-weight:800}
+.ty.fixed label{cursor:default}
 .rep{display:flex;gap:4px;padding:0 4px 5px}
 .rep button{border:1px solid var(--line);background:#fff;color:var(--sub);font:700 11px/18px var(--sans);padding:0 8px;cursor:pointer}
 .rep button:hover{border-color:var(--ink);color:var(--ink)}
@@ -262,7 +263,13 @@ textarea{resize:none;display:block}
 .log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1700px;overflow-y:auto}
 .who{font:700 11px var(--sans);color:var(--sub)}
 .who em{font-style:normal;color:var(--accent)}
-.cd{border:1px solid var(--ink);background:#fff}
+.cd{border:1px solid var(--ink);background:#fff;position:relative;overflow:hidden}
+/* 유파 문장: 주소가 있으면 모든 카드 오른쪽 아래에 연하게 */
+.cd .wmk{position:absolute;right:-12px;bottom:-12px;width:96px;height:96px;border-radius:50%;background:repeating-linear-gradient(45deg,#000 0 6px,transparent 6px 12px);border:2px solid #000;opacity:.08;pointer-events:none}
+/* 판정(목표치가 있는 굴림)만 주사위를 크게 */
+.cd .roll.big .die{width:36px;height:36px;border-width:2px;border-radius:6px;font:800 21px var(--sans)}
+.cd .roll.big .tot{font-size:28px}
+.cd .roll.big .stp{font-size:16px}
 .cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:800 14px/1.3 var(--serif);border-bottom:2px solid var(--accent)}
 .cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
 .cd .sub{font-size:11px;color:var(--sub)}
@@ -355,6 +362,7 @@ textarea{resize:none;display:block}
       <span id="bf" style="display:inline-flex;gap:4px"></span>
       <span class="sp"></span>
       <span class="fum">펌블치 <b id="fumble">2</b><input type="text" id="fmod" class="fmod" aria-label="펌블치 수정" title="펌블치 수정 (+1 · -1 처럼)"></span>
+      <span class="fum">스페셜치 <b id="special">12</b><input type="text" id="smod" class="fmod" aria-label="스페셜치 수정" title="스페셜치 수정 (+1 · -1 처럼)"></span>
     </div>
     <div class="sr" id="conds"><span class="tl">상태이상</span></div>
     <div class="sr" id="tables">
@@ -372,7 +380,7 @@ textarea{resize:none;display:block}
     <div class="nw printed"><div class="nr">
       <span><button class="dic" type="button" data-melee title="접근전 공격 판정"></button></span>
       <span class="nn">접근전 공격</span>
-      <span class="ty fixed"><span class="on">공</span>&#x30FB;서&#x30FB;장</span>
+      <span class="ty fixed"><label><span class="on">공</span></label><label><span>서</span></label><label><span>장</span></label></span>
       <span class="ctr">1</span>
       <span class="ctr" style="font-size:12px">없음</span>
       <span><input type="text" id="melee" value="도검술" aria-label="접근전 공격 지정 특기"></span>
@@ -585,7 +593,10 @@ const BF = ['수중', '고지대', '악천후', '혼잡', '위험지대'];
 const bfBox = document.getElementById('bf');
 BF.forEach(b => bfBox.append(el('label', 'ck', `<input type="checkbox" value="${b}"><span>${b}</span></label>`)));
 const bfOn = n => battle() && bfBox.querySelector(`input[value="${n}"]`).checked;
-const fmod = () => parseInt(String(document.getElementById('fmod').value).replace(/[−－]/g, '-').replace(/\s/g, ''), 10) || 0;
+const pmod = id => parseInt(String(document.getElementById(id).value).replace(/[−－]/g, '-').replace(/\s/g, ''), 10) || 0;
+const fmod = () => pmod('fmod');
+// 스페셜치 = 12 + 손으로 적은 수정
+const special = () => 12 + pmod('smod');
 // 펌블치 = 드라마 장면 2 · 전투 중 플롯치(최소 2) + 혼잡 1 + 불덩어리 개수 + 손으로 적은 수정
 const fumble = () => (battle() && st.plot ? Math.max(2, st.plot) : 2) + (bfOn('혼잡') ? 1 : 0) + (+st.burn?.value || 0) + fmod();
 function syncScene() {
@@ -593,8 +604,9 @@ function syncScene() {
   st.plot = +(document.querySelector('input[name=plot]:checked')?.value || 0);
   plotSeg.classList.toggle('dis', !battle()); bfBox.classList.toggle('dis', !battle());
   document.getElementById('fumble').textContent = fumble();
+  document.getElementById('special').textContent = special();
 }
-document.getElementById('scene').onchange = syncScene; plotSeg.onchange = syncScene; bfBox.onchange = syncScene; document.getElementById('fmod').oninput = syncScene;
+document.getElementById('scene').onchange = syncScene; plotSeg.onchange = syncScene; bfBox.onchange = syncScene; document.getElementById('fmod').oninput = syncScene; document.getElementById('smod').oninput = syncScene;
 document.getElementById('plotsend').onclick = () => card({ title: '플롯', sub: st.plot ? `${name()}의 플롯은 ${st.plot}` : '플롯을 먼저 고르세요', to: 'GM 에게' });
 // GM 귓속말: 단추를 누르면 Roll20 물음 창(?{…})이 떠서 글을 받는다
 const qm = el('div', 'qm', '<div class="qbox" role="dialog" aria-label="GM 에게 귓속말"><div class="qt">GM 에게 귓속말</div><input type="text" id="qin"><div class="qb"><button type="button" class="no">취소</button><button type="button" class="ok">확인</button></div></div>');
@@ -704,21 +716,22 @@ const die = v => `<span class="die${v === 6 ? ' d6' : v === 1 ? ' d1' : ''}">${v
 // 펌블: 합 ≤ 펌블치 (드라마 장면 2 · 전투 중 플롯치, 최소 2) · 스페셜: 합 12
 function judge(a, b, t) {
   const s = a + b;
-  if (s >= 12) return ['스페셜', 'sp'];
+  if (s >= special()) return ['스페셜', 'sp'];
   if (s <= fumble()) return ['펌블', 'fb'];
   return t == null ? null : s >= t ? ['성공', ''] : ['실패', 'ng'];
 }
+const wmk = () => (document.getElementById('crestu')?.value.trim() ? '<span class="wmk"></span>' : '');
 function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
   const mode = document.getElementById('rmode').value;
   const dest = to || (mode === 'gm' ? 'GM 에게' : mode === 'tok' ? '선택한 토큰에게' : '');
   if (!to && mode && document.getElementById('rtell').value) { const t = el('div', 'who', `<em>${esc(name())} 비밀 굴림 중</em>`); log.append(t); }
   const w = el('div');
   w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
-  if (plain != null) { w.append(el('div', 'cd plain', `<div class="cb">${esc(plain)}</div>`)); log.append(w); log.scrollTop = log.scrollHeight; return; }
+  if (plain != null) { w.append(el('div', 'cd plain', `<div class="cb">${esc(plain)}</div>${wmk()}`)); log.append(w); log.scrollTop = log.scrollHeight; return; }
   let body = sub ? `<div class="sub">${esc(sub)}</div>` : '';
   if (roll) {
     const j = judge(roll[0], roll[1], roll[2]);
-    body += `<div class="roll">${die(roll[0])}${die(roll[1])}<span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${roll[2] != null ? `<span class="tg">목표치 ${roll[2]}</span>` : ''}${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
+    body += `<div class="roll${roll[2] != null ? ' big' : ''}">${die(roll[0])}${die(roll[1])}<span class="eq">=</span><span class="tot">${roll[0] + roll[1]}</span>${roll[2] != null ? `<span class="tg">목표치 ${roll[2]}</span>` : ''}${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
     // 전장 효과 (전투 중 체크한 전장만)
     const ns = [bfOn('수중') && '수중 · 회피 판정 -2', j && j[1] === 'fb' && bfOn('고지대') && '고지대 · 펌블 — 접근전 대미지 1점', bfOn('위험지대') && '위험지대'].filter(Boolean);
     if (ns.length) body += ns.map(n => `<div class="note">${n}</div>`).join('');
@@ -728,7 +741,7 @@ function card({ title, sub, roll, kv, eff, fl, img, cls, table, plain, to }) {
   if (eff) body += `<div class="eff">${esc(eff)}</div>`;
   if (fl) body += `<div class="fl">${esc(fl)}</div>`;
   if (img) w.append(el('div', 'cimg', '그림 (그림 주소의 그림이 여기에)'));
-  w.append(el('div', 'cd' + (cls ? ' ' + cls : ''), `<div class="ch">${esc(title)}</div><div class="cb">${body}</div>`));
+  w.append(el('div', 'cd' + (cls ? ' ' + cls : ''), `<div class="ch">${esc(title)}</div><div class="cb">${body}</div>${wmk()}`));
   log.append(w); log.scrollTop = log.scrollHeight;
 }
 const findSkill = s => { for (let f = 0; f < 6; f++) { const r = SK[f].indexOf(s.trim()); if (r >= 0) return [f, r]; } return null; };
@@ -736,7 +749,7 @@ const findSkill = s => { for (let f = 0; f < 6; f++) { const r = SK[f].indexOf(s
 const subFum = () => {
   const on = [...conds.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value).concat(+st.burn?.value ? [`불덩어리 ${st.burn.value}`] : []);
   const bfs = BF.filter(bfOn);
-  return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (bfs.length ? ` · ${bfs.join(' · ')}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
+  return (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : '') + (bfs.length ? ` · ${bfs.join(' · ')}` : '') + (on.length ? ` · ${on.join(' · ')}` : '');
 };
 function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + (t == null ? '' : ` · 목표치 ${t}`) + (st.lost.has(f) ? ' · 생명력 소실' : '') + subFum(), roll: [d6(), d6(), t] }); }
 function rollNinpo(row, x) {
@@ -761,9 +774,11 @@ document.querySelectorAll('[data-truth] .say').forEach(b => b.onclick = () => {
 });
 function useGear(gi, n, e) {
   const cir = gi.querySelector('.cir'), cur = +(cir.querySelector('input:checked')?.value || 0);
-  if (!cur) return card({ title: n, sub: '남은 개수 0', eff: e });
+  // 남은 개수는 GM 에게만 귓속말, 모두에게는 사용 카드(효과)만
+  if (!cur) return card({ title: n, sub: '남은 개수 0', to: 'GM 에게' });
   cir.querySelector(`input[value="${cur - 1}"]`).checked = true; cir.dispatchEvent(new Event('change'));
-  card({ title: `${n} 사용`, sub: `남은 개수 ${cur} → ${cur - 1}`, eff: e });
+  card({ title: `${n} 사용`, eff: e });
+  card({ title: n, sub: `남은 개수 ${cur} → ${cur - 1}`, to: 'GM 에게' });
 }
 
 // ── 처음 화면 ──
@@ -779,5 +794,6 @@ st.scene = 'drama'; st.plot = 0;
 card({ title: '장면 표', table: [3, 4, TABLES[0][2][7]] });
 card({ title: '플롯', sub: '카게로의 플롯은 4', to: 'GM 에게' });
 card({ title: '월영', cls: 'ougi', sub: '오의 · 《은형술》', img: 1, eff: '판정 방해' });
-card({ title: '병량환 사용', sub: '남은 개수 2 → 1', eff: GEAR[0][1] });
+card({ title: '병량환 사용', eff: GEAR[0][1] });
+card({ title: '병량환', sub: '남은 개수 2 → 1', to: 'GM 에게' });
 </script>
