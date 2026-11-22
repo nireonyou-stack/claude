@@ -1,0 +1,532 @@
+<title>비기닝 아이돌 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Jua|Noto+Sans+KR:400,500,700,900&display=swap">
+<style>
+/* 한 장짜리 목업: 세로 830px 시트(공식 「비기닝 아이돌 기본 룰북」 캐릭터 시트 — 티아라 노선 · 크라운 노선) + Roll20 채팅 카드.
+   흰 종이 · 검은 띠는 공식 시트 그대로, 노선마다 강조색 하나 (티아라 = 핑크, 크라운 = 로열 블루). 값은 예시 */
+:root{--paper:#ffffff;--ink:#1a1a1a;--sub:#5e5e5e;--line:#c6c6c6;--cell:#f3f3f3;--bar:#1a1a1a;--page:#e3e3e3;
+  --accent:#e4007f;--soft:#fde3f0;--navy:#1f3566;--green:#247305;
+  --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--head:'Jua','Noto Sans KR',sans-serif;color-scheme:light}
+.sheet[data-r=crown]{--accent:#2a4fa8;--soft:#e2e9f8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+h1.pg{font:900 18px/1.3 var(--sans);margin:0 0 4px;text-wrap:balance}
+p.pg{margin:0 0 12px;color:var(--sub);font-size:12px;max-width:1150px}
+.wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.scroll{overflow-x:auto;max-width:100%}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],textarea{border:0;background:transparent;width:100%;min-width:0;padding:0 4px;outline:0}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+textarea{resize:none;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── 시트 ── */
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
+/* 머리띠: 공식 시트의 검은 띠 + ★(티아라) / ☆(크라운) + 오른쪽 겹화살표 */
+.hb{background:var(--bar);color:#fff;font:400 14px/1 var(--head);padding:5px 8px 4px;display:flex;align-items:center;gap:6px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%)}
+.hb::before{content:"\2605";color:var(--accent);font-size:13px}
+.sheet[data-r=crown] .hb::before{content:"\2606"}
+.hb small{font:400 10.5px var(--sans);opacity:.85}
+.hb .sp{flex:1}
+.chip{flex:none;color:var(--ink);font:700 11.5px/1 var(--sans);white-space:nowrap}
+.panel{border:1.5px solid var(--ink);border-radius:0 0 10px 0}
+.sp{flex:1}
+.tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
+
+/* 1단: 제목 · 그림 | 프로필 | 능력치 · 개성 특기 */
+.r1{display:grid;grid-template-columns:190px minmax(0,1fr) 220px;gap:8px}
+.title{display:flex;flex-direction:column;gap:6px}
+.logo{background:var(--bar);color:#fff;padding:10px 8px 8px;text-align:center;border-bottom:4px solid var(--accent);border-radius:0 0 12px 0}
+.logo .t0{font:700 10px var(--sans);letter-spacing:.18em;opacity:.8}
+.logo .t1{font:400 31px/1.05 var(--head);color:#fff}
+.logo .t1 b{font-weight:400;color:var(--accent)}
+.logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--accent);color:#fff;font:700 12px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:6px;
+  background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(-45deg,transparent 50%,#fff 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
+.logo select option{color:var(--ink)}
+.portrait{flex:1;min-height:150px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+.prof{display:flex;flex-direction:column}
+.pr{display:grid;grid-template-columns:86px minmax(0,1fr);align-items:center;border-bottom:1px dotted var(--sub);min-height:29px}
+.pr .chip{padding-left:2px}
+.pr input{height:26px}
+.pr.nm input{font:700 16px var(--sans)}
+.pr2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:8px}
+.stats{display:flex;flex-direction:column;gap:6px}
+.sv{display:grid;grid-template-columns:62px 40px minmax(0,1fr);align-items:center;gap:6px;border:1.5px solid var(--ink);padding:4px 6px;border-radius:0 0 8px 0}
+.sv .chip{font:400 15px/1 var(--head)}
+.sv input{height:30px;text-align:center;font:900 22px/1 var(--sans);border-bottom:2px solid var(--accent);padding:0}
+.pf{display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1.5px solid var(--accent);color:var(--accent);background:#fff;border-radius:14px;height:24px;padding:0 6px;cursor:pointer;font:700 11px var(--sans);white-space:nowrap}
+.pf:hover{background:var(--accent);color:#fff}
+.pf i{display:inline-block;width:12px;height:12px;border:1.3px solid currentColor;border-radius:2px;background-image:radial-gradient(circle at 28% 28%,currentColor .9px,transparent 1.3px),radial-gradient(circle at 50% 50%,currentColor .9px,transparent 1.3px),radial-gradient(circle at 72% 72%,currentColor .9px,transparent 1.3px)}
+.kos{border:1.5px solid var(--ink);padding:4px 6px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 6px;align-items:center;border-radius:0 0 8px 0}
+.kos input{height:24px;border-bottom:1px dotted var(--sub)}
+
+/* 2단: 특기 리스트 | 아이돌 링크 */
+.r2{display:grid;grid-template-columns:minmax(0,1fr) 214px;gap:8px}
+.grid{display:grid;grid-template-columns:22px repeat(5,minmax(0,1fr) 12px) minmax(0,1fr);grid-template-rows:28px repeat(11,24.5px);padding:3px;position:relative}
+.no{background:var(--bar);color:#fff;font:700 11px/1 var(--sans);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.no.corner{border-bottom:0;background:transparent}
+.fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:400 15px/1 var(--head);margin:0 1px}
+.pip{position:relative;display:inline-block;width:13px;height:13px;background:#fff;border-radius:2px}
+.pip i{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--ink)}
+.gap{grid-row:2/-1;cursor:pointer;display:block;position:relative}
+.gap input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.gap span{position:absolute;inset:0 3px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.gap input:checked+span{background:var(--ink);border-color:var(--ink)}
+.gap:hover span{background:var(--cell)}
+.gl1{grid-row:1;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
+.gl1 b{width:12px;height:12px;background:var(--accent);color:#fff;font:900 8.5px/12px var(--sans);text-align:center;clip-path:polygon(50% 0,63% 35%,100% 38%,70% 60%,80% 100%,50% 78%,20% 100%,30% 60%,0 38%,37% 35%)}
+.c{position:relative;display:flex;align-items:center;justify-content:center;padding-left:10px;border-bottom:1px solid var(--line);margin:0 1px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.c .own{position:absolute;left:2px;top:50%;transform:translateY(-50%);appearance:none;-webkit-appearance:none;width:9px;height:9px;margin:0;border:1px solid var(--line);border-radius:50%;cursor:pointer;background:var(--paper)}
+.c .own:checked{border-color:var(--accent);background:var(--accent)}
+.c .n{border:1px solid transparent;background:none;padding:0 3px;border-radius:10px;font:500 12px/17px var(--sans);letter-spacing:-.02em;cursor:pointer;white-space:nowrap}
+.c .n:hover{text-decoration:underline}
+.c .n.long{font-size:10.5px;letter-spacing:-.06em;padding:0 1px}
+.c .own:checked~.n{border:1.5px solid var(--accent);font-weight:900}
+.c .tn{position:absolute;right:2px;bottom:0;font:700 9.5px/1 var(--sans);color:var(--navy)}
+/* 키 · 취미 7 은 빈칸 (직접 적음) */
+.c.free{background:var(--soft)}
+.c.free input[type=text]{height:18px;text-align:center;font:700 12px var(--sans);padding:0 14px 0 12px;border-bottom:1px dashed var(--sub);width:86%}
+.c.free .dic{position:absolute;right:2px;top:2px;width:12px;height:12px;border-width:1.2px}
+.link .li{padding:4px 6px;border-bottom:1px dotted var(--sub)}
+.link .li:last-child{border-bottom:0}
+.link .lh{display:flex;align-items:center;gap:4px;font:400 13.5px/1.2 var(--head)}
+.link .lh .sp{flex:1}
+.link p{margin:1px 0 0;font-size:10px;line-height:1.4;color:#333}
+.x{appearance:none;-webkit-appearance:none;width:15px;height:15px;margin:0;border:0;background:none;cursor:pointer;position:relative}
+.x::before,.x::after{content:"";position:absolute;left:1px;top:7px;width:13px;height:1.5px;background:#bbb;transform:rotate(45deg)}
+.x::after{transform:rotate(-45deg)}
+.x:checked::before,.x:checked::after{background:var(--accent);height:2.5px}
+
+/* 판정 띠 */
+.strip{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);font-size:11.5px}
+.sr{display:flex;align-items:center;gap:4px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
+.sr+.sr{border-top:1px dotted var(--line)}
+.seg{display:inline-flex;border:1px solid var(--ink)}
+.seg label{cursor:pointer}
+.seg input{display:none}
+.seg span{display:block;padding:0 6px;font:500 11.5px/18px var(--sans)}
+.seg label+label span{border-left:1px solid var(--ink)}
+.seg input:checked+span{background:var(--accent);color:#fff}
+.fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:900 14px/1.2 var(--sans);color:var(--accent)}
+.fum.spc b{border-bottom-color:var(--green);color:var(--green)}
+.adj{display:inline-flex;flex-direction:column;gap:1px;margin-left:1px}
+.adj button{position:relative;width:12px;height:8px;padding:0;border:1px solid var(--line);background:#fff;color:var(--sub);cursor:pointer}
+.adj button::after{content:"";position:absolute;left:2px;top:1px;border-left:3px solid transparent;border-right:3px solid transparent}
+.adj .up::after{border-bottom:4px solid currentColor}
+.adj .dn::after{border-top:4px solid currentColor}
+.adj button:hover,.rs:hover{color:var(--accent)}
+.rs{position:relative;width:12px;height:14px;padding:0;border:0;background:none;color:#c8c8c8;cursor:pointer}
+.rs::before{content:"";position:absolute;inset:2px;border:1.5px solid currentColor;border-radius:50%;border-right-color:transparent}
+.rs::after{content:"";position:absolute;right:1px;top:0;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;border-right:4px solid currentColor;transform:rotate(-35deg)}
+.rs.on{color:var(--accent)}
+.rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 6px;cursor:pointer;font:500 11.5px/18px var(--sans)}
+.rt:hover{border-color:var(--accent);color:var(--accent)}
+.rt .tdi{display:inline-block;flex:none;width:10px;height:10px;margin-right:3px;border:1px solid currentColor;border-radius:2px;color:#c8c8c8;
+  background-image:radial-gradient(circle at 27% 27%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 50% 50%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 73% 73%,currentColor .8px,transparent 1.2px)}
+.rt:hover .tdi{color:inherit}
+.rtg{display:inline-flex}
+.rtg .rt+.rt{border-left:0}
+.gmb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);background:#fff;padding:0 8px 0 6px;font:500 11.5px/18px var(--sans);cursor:pointer}
+.gmb:hover{border-color:var(--accent);color:var(--accent)}
+.gmb i{position:relative;display:inline-block;width:13px;height:9px;border:1.3px solid currentColor;border-radius:3px;margin-bottom:2px}
+.gmb i::after{content:"";position:absolute;left:1px;bottom:-4px;border-top:3px solid currentColor;border-right:3px solid transparent}
+.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
+.ckn input{width:22px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
+.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+
+/* 3단: 아이돌 스킬 */
+.sh,.srow{display:grid;grid-template-columns:22px 150px 70px 90px minmax(0,1fr);align-items:stretch}
+.sh{font:700 10.5px var(--sans);text-align:center;color:var(--sub);border-bottom:1px solid var(--ink)}
+.srow{min-height:26px;border-bottom:1px dotted var(--sub)}
+.srow:last-child{border-bottom:0}
+.srow>*{border-left:1px solid var(--line);display:flex;align-items:center}
+.srow>:first-child{border-left:0;justify-content:center}
+.srow input{height:24px}
+.srow .nm input{font-weight:700}
+.srow textarea{font-size:11.5px;line-height:1.45;min-height:22px;padding:2px 4px}
+.ty{justify-content:center;gap:0;font-size:11px}
+.ty label{cursor:pointer}
+.ty input{display:none}
+.ty span{display:inline-block;padding:0 3px;border-radius:9px;border:1px solid transparent}
+.ty input:checked+span{border-color:var(--accent);color:var(--accent);font-weight:900}
+.ty i{font-style:normal;color:var(--sub)}
+
+/* 4단: 리액션 표 | 이해 | 추억 / 멘탈 */
+.r4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 190px;gap:8px}
+.re{display:grid;grid-template-columns:20px minmax(0,1fr);align-items:stretch}
+.re b{background:var(--bar);color:#fff;font:700 11px var(--sans);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.re input{height:27px;border-bottom:1px dotted var(--sub)}
+.un{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;align-items:center;gap:2px;border-bottom:1px dotted var(--sub);min-height:27px;padding:0 4px}
+.un input[type=text]{height:24px;text-align:right}
+.un span{font-size:11.5px;color:#333}
+.box{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin:0;border:1.5px solid var(--ink);background:#fff;cursor:pointer}
+.box:checked{background:linear-gradient(45deg,transparent 44%,var(--accent) 45% 55%,transparent 56%),linear-gradient(-45deg,transparent 44%,var(--accent) 45% 55%,transparent 56%)}
+.mem{display:flex;flex-direction:column;gap:4px;padding:5px}
+.mi{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:4px;border-bottom:1px dotted var(--sub);padding-bottom:3px}
+.heart{position:relative;width:30px;height:27px;cursor:pointer}
+.heart input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.heart span{position:absolute;left:3px;top:4px;width:24px;height:22px;background:#fff;border:1.5px solid var(--ink);clip-path:path('M12 21 C12 21 1 13 1 7 C1 3.5 3.8 1 6.8 1 C9 1 11 2.4 12 4.4 C13 2.4 15 1 17.2 1 C20.2 1 23 3.5 23 7 C23 13 12 21 12 21 Z')}
+.heart span{background:var(--ink)}
+.heart span::after{content:"";position:absolute;inset:2px;background:#fff;clip-path:path('M10 17.6 C10 17.6 0.6 11 0.6 5.9 C0.6 2.9 3 0.8 5.5 0.8 C7.4 0.8 9.1 2 10 3.7 C10.9 2 12.6 0.8 14.5 0.8 C17 0.8 19.4 2.9 19.4 5.9 C19.4 11 10 17.6 10 17.6 Z')}
+.heart input:checked+span::after{background:var(--accent)}
+.mi .lab{font:700 9.5px var(--sans);color:var(--sub)}
+.mi input[type=text]{height:22px}
+.ment .track{display:grid;grid-template-columns:repeat(51,minmax(0,1fr));padding:5px 6px 6px;gap:1px}
+.ment label{cursor:pointer;display:block}
+.ment input{display:none}
+.ment span{display:block;text-align:center;font:700 10.5px/18px var(--sans);border-bottom:2px solid var(--accent);color:var(--sub)}
+.ment input:checked~span{}
+.ment .on span{background:var(--accent);color:#fff}
+
+/* 아이콘 단추 */
+.dic{display:inline-block;flex:none;width:16px;height:16px;padding:0;border:1.5px solid currentColor;border-radius:3px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 50% 50%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 28% 72%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 72%,currentColor 1.2px,transparent 1.7px)}
+.bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
+.bub::after{content:"";position:absolute;left:2px;bottom:-6px;width:0;height:0;border-top:5px solid currentColor;border-right:5px solid transparent}
+.dic:hover,.bub:hover{color:var(--accent)}
+
+/* ── 채팅 ── */
+.chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
+.chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
+.log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1500px;overflow-y:auto}
+.who{font:700 11px var(--sans);color:var(--sub)}
+.who em{font-style:normal;color:var(--accent)}
+.cd{--accent:#e4007f;border:1.5px solid var(--ink);background:#fff;position:relative;overflow:hidden;border-radius:0 0 10px 0}
+.cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:400 15px/1.3 var(--head);border-bottom:3px solid var(--accent)}
+.cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
+.cd .sub{font-size:11px;color:var(--sub)}
+.cd .roll{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px/1 Arial,Helvetica,sans-serif}
+.cd .roll.big .die{width:34px;height:34px;border-width:2px;border-radius:6px;font:800 20px/1 Arial,Helvetica,sans-serif}
+.cd .die.d6{border-color:var(--green);color:var(--green)}
+.cd .die.d1{border-color:var(--accent);color:var(--accent)}
+.cd .die.gone{border-style:dashed;border-color:#bbb;color:#bbb;text-decoration:line-through}
+.cd .eq{color:var(--sub)}
+.cd .tot{font:800 20px/1 Arial,Helvetica,sans-serif;color:var(--navy)}
+.cd .roll.big .tot{font-size:28px}
+.cd .pv{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--sub)}
+.cd .pv b{font:800 30px/1 Arial,Helvetica,sans-serif;color:var(--accent)}
+.cd .stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 6px;font:400 15px/1.2 var(--head);transform:rotate(-4deg);white-space:nowrap}
+.cd .stp.spc,.cd .stp.mir{border-color:var(--accent);color:var(--accent)}
+.cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
+.cd .stp.ng{color:var(--sub);border-color:var(--sub)}
+.cd .note{font:500 11px/1.45 var(--sans);color:var(--accent)}
+.cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
+.cd .rt2{display:flex;gap:6px;align-items:center;font-size:12px}
+.cd .big2{font:900 14px var(--sans)}
+.qm[hidden]{display:none}
+.qm{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.qbox{background:#fff;border:1px solid var(--ink);padding:12px;width:320px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.qbox .qt{font:700 13px var(--sans)}
+.qbox input,.qbox select{border:1px solid var(--line);height:28px}
+.qbox .qb{display:flex;justify-content:flex-end;gap:6px}
+.qbox button{border:1px solid var(--ink);background:#fff;padding:2px 12px;cursor:pointer;font:500 12px var(--sans)}
+.qbox button.ok{background:var(--ink);color:#fff}
+.gl{width:830px;max-width:100%;background:#fff;border:1px solid var(--line);padding:10px 12px;margin-top:16px}
+.gl h2{margin:0 0 6px;font:900 14px var(--sans)}
+.gl .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 12px;font-size:12px}
+.gl .gg span{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);gap:6px}
+.gl .gg i{font-style:normal;color:var(--sub)}
+.note2{width:830px;max-width:100%;margin-top:12px;font-size:12px;color:var(--sub)}
+.note2 b{color:var(--ink)}
+</style>
+
+<h1 class="pg">비기닝 아이돌 — Roll20 시트 목업</h1>
+<p class="pg">공식 기본 룰북 캐릭터 시트(티아라 노선 · 크라운 노선, 가로)를 Roll20 세로 830px 로 옮긴 배치예요. 들어 있는 값은 예시예요. 능력치 옆 단추는 퍼포먼스 판정(같은 눈 제거 → 남은 눈 합 · 미라클 · 퍼펙트 미라클 · 익스텐션), 특기 이름은 일반 판정이에요. 아래 용어표는 일본어 원문을 옮긴 것이라 고칠 것만 알려 주세요.</p>
+
+<div class="wrap">
+<div class="scroll"><div class="sheet" id="sheet" data-r="tiara">
+
+  <!-- 1단 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo">
+        <div class="t0">IDOL START RPG</div>
+        <div class="t1">비기닝<br><b>아이돌</b></div>
+        <select id="route" aria-label="노선"><option value="tiara">티아라 노선 캐릭터 시트</option><option value="crown">크라운 노선 캐릭터 시트</option></select>
+      </div>
+      <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
+    </div>
+    <div class="panel prof">
+      <div class="hb">프로필</div>
+      <div style="padding:0 6px 4px">
+        <div class="pr"><span class="chip">아이돌 클래스</span><input type="text" value="루키" aria-label="아이돌 클래스"></div>
+        <div class="pr"><span class="chip">배경</span><input type="text" value="평범한 고등학생" aria-label="배경"></div>
+        <div class="pr2"><div class="pr nm"><span class="chip">이름</span><input type="text" id="cname" value="하루노 미쿠" aria-label="이름"></div><div class="pr" style="grid-template-columns:40px 1fr"><span class="chip">나이</span><input type="text" value="16" aria-label="나이"></div></div>
+        <div class="pr"><span class="chip">플레이어</span><input type="text" value="하루" aria-label="플레이어"></div>
+        <div class="pr"><span class="chip">이미지 컬러</span><input type="text" value="벚꽃색" aria-label="이미지 컬러"></div>
+        <div class="pr"><span class="chip">특징 1</span><input type="text" value="큰 리본" aria-label="특징 1"></div>
+        <div class="pr"><span class="chip">특징 2</span><input type="text" aria-label="특징 2"></div>
+        <div class="pr"><span class="chip">좋아하는 것</span><input type="text" value="딸기 파르페" aria-label="좋아하는 것"></div>
+        <div class="pr" style="border-bottom:0"><span class="chip">싫어하는 것</span><input type="text" value="천둥" aria-label="싫어하는 것"></div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="hb">능력치<span class="sp"></span><small>단추 = 퍼포먼스 판정</small></div>
+      <div class="sv"><span class="chip">보이스</span><input type="number" value="5" id="s_voice" aria-label="보이스"><button class="pf" type="button" data-stat="voice"><i></i>퍼포먼스</button></div>
+      <div class="sv"><span class="chip">피지컬</span><input type="number" value="3" id="s_physical" aria-label="피지컬"><button class="pf" type="button" data-stat="physical"><i></i>퍼포먼스</button></div>
+      <div class="sv"><span class="chip">비주얼</span><input type="number" value="7" id="s_visual" aria-label="비주얼"><button class="pf" type="button" data-stat="visual"><i></i>퍼포먼스</button></div>
+      <div class="kos"><span class="chip">개성 특기</span><input type="text" value="《미소》" aria-label="개성 특기"><span class="chip">개성 목표치</span><input type="text" value="5" aria-label="개성 목표치"></div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 | 아이돌 링크 -->
+  <div class="r2">
+    <div class="panel">
+      <div class="hb">특기 리스트<span class="sp"></span><small>분야 옆 주사위 눈 = 1D6 분야 · 캐릭터 · 취미 7 은 직접 적는 칸</small></div>
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="panel link">
+      <div class="hb">아이돌 링크<span class="sp"></span><small>× = 사용함</small></div>
+      <div id="link"></div>
+    </div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">굴림</span>
+      <button class="rt" type="button" id="rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
+      <button class="rt" type="button" id="sym" title="다른 PC 의 퍼포먼스에 주사위를 더함"><i class="tdi"></i>심포니</button>
+      <span class="rtg"><button class="rt" type="button" data-nd="1">1D6</button><button class="rt" type="button" data-nd="2">2D6</button><button class="rt" type="button" data-nd="3">3D6</button></span>
+      <span class="ckn" id="modw">수정치<input type="number" id="mod" value="" aria-label="다음 판정 수정치"></span>
+      <span class="sp"></span>
+      <span class="fum" data-k="f">펌블치 <b id="fumble">2</b><span class="adj"><button type="button" class="up" title="펌블치 +1"></button><button type="button" class="dn" title="펌블치 -1"></button></span><button type="button" class="rs" title="2 로 되돌림"></button></span>
+      <span class="fum spc" data-k="s">스페셜치 <b id="special">12</b><span class="adj"><button type="button" class="up" title="스페셜치 +1"></button><button type="button" class="dn" title="스페셜치 -1"></button></span><button type="button" class="rs" title="12 로 되돌림"></button></span>
+    </div>
+    <div class="sr">
+      <span class="tl">공개</span><span class="seg"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
+      <span class="sp"></span>
+      <button class="gmb" type="button" id="gmb" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button>
+    </div>
+  </div>
+
+  <!-- 3단: 아이돌 스킬 -->
+  <div class="panel">
+    <div class="hb">아이돌 스킬</div>
+    <div class="sh"><span></span><span>이름</span><span>타입</span><span>지정특기</span><span>효과</span></div>
+    <div id="skills"></div>
+  </div>
+
+  <!-- 4단: 리액션 표 | 이해 | 추억 -->
+  <div class="r4">
+    <div class="panel">
+      <div class="hb">리액션 표<span class="sp"></span><button class="dic" type="button" id="react" title="1D6 리액션" style="color:#ddd"></button></div>
+      <div id="re"></div>
+    </div>
+    <div class="panel">
+      <div class="hb">이해</div>
+      <div id="un"></div>
+    </div>
+    <div class="panel">
+      <div class="hb">추억 <small>(최대 3개까지)</small></div>
+      <div class="mem" id="mem"></div>
+    </div>
+  </div>
+  <div class="panel ment">
+    <div class="hb">멘탈<span class="sp"></span><small>(최저 0점, 최대 50점)</small></div>
+    <div class="track" id="ment"></div>
+  </div>
+</div></div>
+
+<div class="chat"><h2>Roll20 채팅 (예시)</h2><div class="log" id="log"></div></div>
+</div>
+
+<div class="note2">
+  <p><b>확인 부탁.</b> 퍼포먼스 판정은 「퍼포먼스 판정의 흐름」 PDF 대로 만들었어요: 능력치만큼 주사위(최대 6개)를 굴려 같은 눈을 모두 지우고 남은 눈의 합이 퍼포먼스 값, 다 지워지면 미라클(10), 1~6 이 다 남으면 퍼펙트 미라클(30), 능력치 7 이상이면 익스텐션(능력치−6 개 골라 다시 굴리기 · 퍼포먼스 값 +능력치−6). 능력치가 7 이상일 때 주사위를 6개만 굴리는지, 능력치만큼(7개 이상) 굴리는지 알려 주세요.</p>
+  <p><b>안 넣은 것.</b> 서포터 · 유닛 · 스테이지 시트(따로 쓰는 시트), 랜덤 이벤트 · 데자이어 표 등(룰북 표), 공식 로고.</p>
+</div>
+
+<div class="gl">
+  <h2>용어표 (일본어 → 한국어, 검토용)</h2>
+  <div class="gg" id="gl"></div>
+</div>
+
+<script>
+const FIELDS = ['신장', '속성', '재능', '캐릭터', '취미', '출신'];
+const SK = [
+  ['~125', '131', '136', '141', '146', '156', '166', '171', '176', '180', '190~'],
+  ['에스닉', '다크', '섹시', '페미닌', '큐트', '플레인', '패션', '팝', '버닝', '쿨', '스타'],
+  ['이국 문화', '스타일', '집중력', '담력', '체력', '미소', '운동 신경', '배려', '학력', '셀럽', '연기력'],
+  ['중2병', '미스터리어스', '마이페이스', '연파', '말꼬리', '', '활기', '경파', '공손함', '덜렁이', '바보'],
+  ['오컬트', '펫', '스포츠', '멋내기', '요리', '', '쇼핑', '댄스', '게임', '음악', '아이돌'],
+  ['오키나와', '규슈', '시코쿠', '주고쿠', '긴키', '주부', '간토', '호쿠리쿠', '도호쿠', '홋카이도', '해외']];
+const JA = [
+  ['～125', '131', '136', '141', '146', '156', '166', '171', '176', '180', '190～'],
+  ['エスニック', 'ダーク', 'セクシー', 'フェミニン', 'キュート', 'プレーン', 'パッション', 'ポップ', 'バーニング', 'クール', 'スター'],
+  ['異国文化', 'スタイル', '集中力', '胆力', '体力', '笑顔', '運動神経', '気配り', '学力', 'セレブ', '演技力'],
+  ['中二病', 'ミステリアス', 'マイペース', '軟派', '語尾', '(空欄)', '元気', '硬派', '物腰丁寧', 'どじ', 'ばか'],
+  ['オカルト', 'ペット', 'スポーツ', 'おしゃれ', '料理', '(空欄)', 'ショッピング', 'ダンス', 'ゲーム', '音楽', 'アイドル'],
+  ['沖縄', '九州地方', '四国地方', '中国地方', '近畿地方', '中部地方', '関東地方', '北陸地方', '東北地方', '北海道', '海外']];
+const JA_F = ['身長', '属性', '才能', 'キャラ', '趣味', '出身'];
+const GAPS = ['A', 'B', 'C', 'D', 'E'];
+const COL = 'ABCDEF';
+const st = { own: new Set(['C7', 'B6', 'D2', 'E10', 'F7']), gap: new Set(['C']), free: { D7: '츤데레', E7: '' }, fadj: 0, sadj: 0, ment: 32, lastLeft: [] };
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const PIPS = { 1: [[50, 50]], 2: [[28, 28], [72, 72]], 3: [[25, 25], [50, 50], [75, 75]], 4: [[28, 28], [72, 28], [28, 72], [72, 72]], 5: [[25, 25], [75, 25], [50, 50], [25, 75], [75, 75]], 6: [[28, 22], [72, 22], [28, 50], [72, 50], [28, 78], [72, 78]] };
+const pip = n => `<span class="pip">${PIPS[n].map(([x, y]) => `<i style="left:calc(${x}% - 1.5px);top:calc(${y}% - 1.5px)"></i>`).join('')}</span>`;
+const skName = (f, r) => SK[f][r] || st.free[COL[f] + (r + 2)] || '빈칸';
+
+// ── 특기 리스트 (번호 왼쪽, 공백 A~E 는 분야 사이 별 표시)
+const grid = document.getElementById('grid'), cells = {};
+(function build() {
+  const c0 = el('div', 'no corner'); c0.style.gridColumn = '1'; c0.style.gridRow = '1'; grid.append(c0);
+  FIELDS.forEach((f, i) => { const h = el('div', 'fh', `${f}${pip(i + 1)}`); h.style.gridColumn = String(2 + i * 2); h.style.gridRow = '1'; grid.append(h); });
+  for (let r = 0; r < 11; r++) {
+    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '1'; no.style.gridRow = String(r + 2); grid.append(no);
+    FIELDS.forEach((f, i) => {
+      const id = COL[i] + (r + 2), free = !SK[i][r], c = el('div', 'c' + (free ? ' free' : ''));
+      c.style.gridColumn = String(2 + i * 2); c.style.gridRow = String(r + 2);
+      const own = el('input', 'own'); own.type = 'checkbox'; own.checked = st.own.has(id); own.title = '습득';
+      own.onchange = () => { own.checked ? st.own.add(id) : st.own.delete(id); calc(); };
+      c.append(own);
+      if (free) {
+        const inp = el('input'); inp.type = 'text'; inp.value = st.free[id] || ''; inp.setAttribute('aria-label', `${f} 7 직접 적는 특기`);
+        inp.oninput = () => { st.free[id] = inp.value; };
+        const b = el('button', 'dic'); b.type = 'button'; b.title = '판정'; b.onclick = () => rollSkill(i, r);
+        c.append(inp, b);
+      } else { const n = el('button', 'n' + (SK[i][r].length >= 5 ? ' long' : ''), SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정'; n.onclick = () => rollSkill(i, r); c.append(n); }
+      const tn = el('span', 'tn'); c.append(tn); grid.append(c); cells[id] = tn;
+    });
+  }
+  GAPS.forEach((g, k) => {
+    const s = el('div', 'gl1', `<b>${g}</b>`); s.style.gridColumn = String(3 + k * 2); grid.append(s);
+    const l = el('label', 'gap'); l.style.gridColumn = String(3 + k * 2); l.title = '공백 ' + g + ' 칠하기';
+    const i = el('input'); i.type = 'checkbox'; i.checked = st.gap.has(g);
+    i.onchange = () => { i.checked ? st.gap.add(g) : st.gap.delete(g); calc(); };
+    l.append(i, el('span')); grid.append(l);
+  });
+})();
+function dist(a, b) { let d = Math.abs(a.r - b.r); for (let k = Math.min(a.f, b.f); k < Math.max(a.f, b.f); k++) d += st.gap.has(GAPS[k]) ? 1 : 2; return d; }
+function target(f, r) { const src = [...st.own].map(id => ({ f: COL.indexOf(id[0]), r: +id.slice(1) - 2 })); return src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, { f, r })))) : null; }
+function calc() { FIELDS.forEach((_, f) => { for (let r = 0; r < 11; r++) { const t = target(f, r); cells[COL[f] + (r + 2)].textContent = t == null ? '' : t; } }); }
+
+// ── 아이돌 링크 (공식 시트에 인쇄된 6 개)
+const LINKS = [['1. 멘탈 케어', '언제든지 사용할 수 있다. 캐릭터 한 명의 【멘탈】을 1D6점 상승시킨다.'],
+  ['2. 트레이닝+', '드라마 페이즈의 장면이 종료하기 직전에 사용할 수 있다. 그 장면의 장면 플레이어는 「특훈」을 한다.'],
+  ['3. 커버 포지션', '캐릭터 한 명이 판정의 주사위를 굴린 직후에 사용할 수 있다. 그 판정에 사용한 주사위를 모두 다시 굴린다.'],
+  ['4. 싱크로', '캐릭터 한 명이 퍼포먼스 판정을 한 직후(주사위를 제거하기 전)에 사용할 수 있다. 그 퍼포먼스에 사용한 주사위를 1개 골라 다시 굴린다.'],
+  ['5. 심퍼시', '캐릭터 한 명이 판정 혹은 퍼포먼스 판정을 한 직후에 사용할 수 있다. 그 PC에 대해 「이해」를 얻는다.'],
+  ['6. 디스커션', '언제든지 사용할 수 있다. 「변조」를 모두 회복한다.']];
+document.getElementById('link').innerHTML = LINKS.map(([n, e], i) => `<div class="li"><div class="lh">${n}<span class="sp"></span><button class="bub" type="button" data-l="${i}" title="채팅에 출력"></button><input type="checkbox" class="x" ${i === 0 ? 'checked' : ''} aria-label="${n} 사용함"></div><p>${e}</p></div>`).join('');
+document.querySelectorAll('[data-l]').forEach(b => b.onclick = () => card({ title: `【아이돌 링크】 ${LINKS[+b.dataset.l][0].replace(/^\d\. /, '')}`, eff: LINKS[+b.dataset.l][1] }));
+
+// ── 아이돌 스킬 6 줄
+const SKL = [['스마일 어택', 0, '미소', '판정에 +2 의 수정치를 받는다.'], ['노래하는 천사', 1, '', '【보이스】를 사용한 퍼포먼스 판정의 퍼포먼스 값 +3.']];
+const skl = document.getElementById('skills');
+for (let i = 0; i < 6; i++) {
+  const [n, ty, sk, ef] = SKL[i] || ['', -1, '', ''], r = el('div', 'srow');
+  r.innerHTML = `<span><button class="dic" type="button" title="사용 (지정특기가 있으면 판정)"></button></span><span class="nm"><input type="text" value="${n}" aria-label="아이돌 스킬 ${i + 1}"></span>` +
+    `<span class="ty"><label><input type="radio" name="sty${i}" ${ty === 0 ? 'checked' : ''}><span>보조</span></label><i>·</i><label><input type="radio" name="sty${i}" ${ty === 1 ? 'checked' : ''}><span>상주</span></label></span>` +
+    `<span><input type="text" value="${sk}" aria-label="지정특기"></span><span><textarea aria-label="효과">${ef}</textarea></span>`;
+  r.querySelector('.dic').onclick = () => useSkill(r);
+  skl.append(r);
+}
+// ── 리액션 표 1~6 · 이해 6 줄 · 추억 3 개 · 멘탈 0~50
+const RE = ['손으로 얼굴을 가린다', '“에헤헤…”', '볼을 부풀린다', '', '', ''];
+document.getElementById('re').innerHTML = RE.map((v, i) => `<div class="re"><b>${i + 1}</b><input type="text" value="${v}" aria-label="리액션 ${i + 1}"></div>`).join('');
+document.getElementById('react').onclick = () => { const d = d6(); card({ title: '리액션 표', table: { dice: [d], text: document.querySelectorAll('#re input')[d - 1].value || '(빈칸)' } }); };
+const UN = [['아오이', true], ['린', false]];
+document.getElementById('un').innerHTML = Array.from({ length: 6 }, (_, i) => { const [n, c] = UN[i] || ['', false]; return `<div class="un"><input type="text" value="${n}" aria-label="이해 대상 ${i + 1}"><span>에 대한 이해</span><input type="checkbox" class="box" ${c ? 'checked' : ''} aria-label="이해 ${i + 1}"></div>`; }).join('');
+const MEM = ['첫 무대의 박수', ''];
+document.getElementById('mem').innerHTML = [0, 1, 2].map(i => `<div class="mi"><label class="heart" title="사용함"><input type="checkbox"><span></span></label><div><div class="lab">No.${i + 1}</div><input type="text" value="${MEM[i] || ''}" aria-label="추억 ${i + 1}"></div></div>`).join('');
+const ment = document.getElementById('ment');
+for (let k = 0; k <= 50; k++) { const l = el('label', '', `<input type="radio" name="ment" value="${k}"><span>${k}</span>`); l.onclick = () => { st.ment = k; paintM(); }; ment.append(l); }
+const paintM = () => ment.querySelectorAll('label').forEach((l, k) => l.classList.toggle('on', k === st.ment));
+
+// ── 펌블치 · 스페셜치
+document.querySelectorAll('.fum[data-k]').forEach(w => {
+  const k = w.dataset.k, set = v => { st[k + 'adj'] = Math.max(-12, Math.min(12, v)); sync(); };
+  w.querySelector('.up').onclick = () => set(st[k + 'adj'] + 1); w.querySelector('.dn').onclick = () => set(st[k + 'adj'] - 1); w.querySelector('.rs').onclick = () => set(0);
+});
+const fumble = () => 2 + st.fadj, special = () => 12 + st.sadj;
+function sync() { document.getElementById('fumble').textContent = fumble(); document.getElementById('special').textContent = special(); document.querySelectorAll('.fum[data-k]').forEach(w => w.querySelector('.rs').classList.toggle('on', st[w.dataset.k + 'adj'] !== 0)); }
+const modIn = document.getElementById('mod'); modIn.oninput = () => document.getElementById('modw').classList.toggle('on', !!+modIn.value);
+
+// ── 채팅 카드
+const log = document.getElementById('log');
+const name = () => document.getElementById('cname').value || '이름 없음';
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+const die = (v, gone) => `<span class="die${gone ? ' gone' : v === 6 ? ' d6' : v === 1 ? ' d1' : ''}">${v}</span>`;
+function judge(s, t) { if (s >= special()) return ['스페셜', 'spc']; if (s <= fumble()) return ['펌블', 'fb']; return t == null ? null : s >= t ? ['성공', ''] : ['실패', 'ng']; }
+function card({ title, sub, roll, add = 0, perf, eff, table, dice, notes, to }) {
+  const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
+  const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
+  let b = sub ? `<div class="sub">${esc(sub)}</div>` : '';
+  if (roll) { const s = roll[0] + roll[1] + add, j = judge(roll[0] + roll[1], roll[2]);
+    b += `<div class="roll big">${die(roll[0])}${die(roll[1])}${add ? `<span class="eq">${add > 0 ? '+' : ''}${add}</span>` : ''}<span class="eq">=</span><span class="tot">${s}</span>${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`; }
+  if (perf) b += `<div class="roll big">${perf.dice.map(([v, g]) => die(v, g)).join('')}</div><div class="pv">퍼포먼스 값 <b>${perf.value}</b>${perf.stamp ? `<span class="stp mir">${perf.stamp}</span>` : ''}</div>`;
+  if (table) b += `<div class="rt2">${table.dice.map(v => die(v)).join('')}<span class="big2">${esc(table.text)}</span></div>`;
+  if (dice) b += `<div class="roll">${dice.map(v => die(v)).join('')}<span class="eq">=</span><span class="tot">${dice.reduce((a, c) => a + c, 0)}</span></div>`;
+  if (notes) b += notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+  if (eff) b += `<div class="eff">${esc(eff)}</div>`;
+  const cd = el('div', 'cd', `${title ? `<div class="ch">${esc(title)}</div>` : ''}<div class="cb">${b}</div>`);
+  cd.style.setProperty('--accent', getComputedStyle(document.getElementById('sheet')).getPropertyValue('--accent'));
+  w.append(cd); log.append(w); log.scrollTop = log.scrollHeight;
+}
+const tgs = t => (t == null ? '' : ` · 목표치 ${t}`);
+const modTail = () => { const m = +modIn.value || 0; return m ? ` · 수정치 ${m > 0 ? '+' : ''}${m}` : ''; };
+const tail = () => (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : '');
+const findSkill = s => { const n = s.replace(/[《》\s]/g, ''); for (let f = 0; f < 6; f++) for (let r = 0; r < 11; r++) if (skName(f, r).replace(/\s/g, '') === n) return [f, r]; return null; };
+function rollSkill(f, r) { const t = target(f, r); card({ title: `《${skName(f, r)}》 판정`, sub: FIELDS[f] + tgs(t) + modTail() + tail(), roll: [d6(), d6(), t], add: +modIn.value || 0 }); }
+function useSkill(row) {
+  const q = row.querySelectorAll('input[type=text]'), ty = row.querySelector('.ty input:checked'), tyN = ty ? (ty.parentElement.textContent) : '', sk = q[1].value, s = sk && findSkill(sk);
+  const sub = [tyN, sk && `《${sk.replace(/[《》]/g, '')}》`].filter(Boolean).join(' · ');
+  if (!s) return card({ title: `【${q[0].value || '아이돌 스킬'}】`, sub, eff: row.querySelector('textarea').value });
+  const t = target(...s); card({ title: `【${q[0].value}】`, sub: sub + tgs(t) + modTail() + tail(), roll: [d6(), d6(), t], add: +modIn.value || 0, eff: row.querySelector('textarea').value });
+}
+// 퍼포먼스: 같은 눈은 모두 지우고 남은 눈의 합. 다 지워지면 미라클 10, 1~6 이 다 남으면 퍼펙트 미라클 30, 능력치 7 이상은 익스텐션(+능력치−6)
+const STAT = { voice: '보이스', physical: '피지컬', visual: '비주얼' };
+function settle(all) {
+  const count = {}; all.forEach(v => { count[v] = (count[v] || 0) + 1; });
+  const left = all.filter(v => count[v] === 1);
+  return { dice: all.map(v => [v, count[v] > 1]), left };
+}
+function perform(key) {
+  const v = Math.max(0, +document.getElementById('s_' + key).value || 0), n = Math.min(6, v), ext = Math.max(0, v - 6);
+  const all = Array.from({ length: n }, d6), { dice, left } = settle(all);
+  st.lastLeft = left;
+  let value = left.reduce((a, c) => a + c, 0), stamp = '';
+  if (left.length === 6) { value = 30; stamp = '퍼펙트 미라클'; } else if (!left.length && n) { value = 10; stamp = '미라클'; }
+  const notes = ext ? [`익스텐션 · 주사위 ${ext}개 골라 다시 굴리기 가능 · 퍼포먼스 값 +${ext} (반영됨)`] : [];
+  card({ title: `${STAT[key]} 퍼포먼스`, sub: `${STAT[key]} ${v} · 주사위 ${n}개`, perf: { dice, value: value + ext, stamp }, notes });
+}
+document.querySelectorAll('[data-stat]').forEach(b => b.onclick = () => perform(b.dataset.stat));
+// 심포니: 남은 주사위 + 새로 굴린 주사위(1~6개) → 같은 눈 제거. 다 지워지면 미라클 싱크로 20, 1~6 이 다 남으면 퍼펙트 미라클 30
+const qm = el('div', 'qm', '<div class="qbox" role="dialog" aria-label="물음 창"><div class="qt" id="qt"></div><div id="qf"></div><div class="qb"><button type="button" class="no">취소</button><button type="button" class="ok">확인</button></div></div>');
+qm.hidden = true; document.body.append(qm);
+let qok = null; const qclose = () => { qm.hidden = true; qok = null; };
+qm.querySelector('.ok').onclick = () => { const f = qok; qclose(); f && f(); };
+qm.querySelector('.no').onclick = qclose;
+const ask = (title, html, ok) => { qm.querySelector('#qt').textContent = title; qm.querySelector('#qf').innerHTML = html; qok = ok; qm.hidden = false; qm.querySelector('#qf input,#qf select')?.focus(); };
+document.getElementById('sym').onclick = () => ask('심포니 (Roll20 물음 창)', `<div style="display:flex;flex-direction:column;gap:6px;font-size:12px">남은 주사위 눈 (띄어 쓰기)<input type="text" id="qleft" value="${st.lastLeft.join(' ')}">굴릴 주사위 수<select id="qn">${[1, 2, 3, 4, 5, 6].map(k => `<option>${k}</option>`).join('')}</select></div>`, () => {
+  const left0 = (document.getElementById('qleft').value.match(/[1-6]/g) || []).map(Number), k = +document.getElementById('qn').value;
+  const fresh = Array.from({ length: k }, d6), { dice, left } = settle([...left0, ...fresh]);
+  let value = left.reduce((a, c) => a + c, 0), stamp = '';
+  if (left.length === 6) { value = 30; stamp = '퍼펙트 미라클'; } else if (!left.length) { value = 20; stamp = '미라클 싱크로'; }
+  card({ title: '심포니', sub: `남은 주사위 ${left0.join(' ') || '없음'} + 새 주사위 ${k}개`, perf: { dice, value, stamp }, notes: ['퍼포먼스를 한 PC 에 대한 「이해」에 체크'] });
+});
+document.getElementById('gmb').onclick = () => ask('GM 에게 귓속말', '<input type="text" id="qg" style="width:100%">', () => { const t = document.getElementById('qg').value; if (t) card({ title: '', eff: t, to: 'GM 에게' }); });
+document.getElementById('rsk').onclick = () => { const a = d6(), b = d6(), c = d6(); card({ title: '랜덤 특기', table: { dice: [a, b, c], text: `${FIELDS[a - 1]} · 《${skName(a - 1, b + c - 2)}》` } }); };
+document.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => card({ title: `${b.dataset.nd}D6`, dice: Array.from({ length: +b.dataset.nd }, d6) }));
+document.getElementById('route').onchange = e => { document.getElementById('sheet').dataset.r = e.target.value; };
+
+// 용어표
+const GL = [['ティアラ路線', '티아라 노선'], ['クラウン路線', '크라운 노선'], ['能力値', '능력치'], ['ボイス', '보이스'], ['フィジカル', '피지컬'], ['ビジュアル', '비주얼'], ['アイドルクラス', '아이돌 클래스'], ['背景', '배경'], ['イメージカラー', '이미지 컬러'], ['特徴', '특징'], ['好きなもの', '좋아하는 것'], ['嫌いなもの', '싫어하는 것'],
+  ['個性特技', '개성 특기'], ['個性目標値', '개성 목표치'], ['アイドルリンク', '아이돌 링크'], ['アイドルスキル', '아이돌 스킬'], ['補助', '보조'], ['常駐', '상주'], ['リアクション表', '리액션 표'], ['理解', '이해'], ['～への理解', '~에 대한 이해'], ['思い出', '추억'], ['メンタル', '멘탈'],
+  ['パフォーマンス判定', '퍼포먼스 판정'], ['パフォーマンス値', '퍼포먼스 값'], ['エクステンション', '익스텐션'], ['ミラクル', '미라클'], ['パーフェクトミラクル', '퍼펙트 미라클'], ['シンフォニー', '심포니'], ['ミラクルシンクロ', '미라클 싱크로'], ['変調', '변조'], ['特訓', '특훈'],
+  ['メンタルケア', '멘탈 케어'], ['トレーニング＋', '트레이닝+'], ['カバーポジション', '커버 포지션'], ['シンクロ', '싱크로'], ['シンパシー', '심퍼시'], ['ディスカッション', '디스커션'],
+  ...JA_F.map((j, i) => [j, FIELDS[i]]), ...JA.flatMap((col, f) => col.map((j, r) => [j, SK[f][r] || '(빈칸)']))];
+document.getElementById('gl').innerHTML = GL.map(([j, k]) => `<span><i>${j}</i>${k}</span>`).join('');
+
+// 처음 화면
+calc(); sync(); paintM();
+card({ title: '《미소》 판정', sub: '재능 · 목표치 5', roll: [4, 3, 5] });
+card({ title: '보이스 퍼포먼스', sub: '보이스 5 · 주사위 5개', perf: { dice: [[2, false], [5, true], [1, false], [5, true], [6, false]], value: 9 } });
+card({ title: '비주얼 퍼포먼스', sub: '비주얼 7 · 주사위 6개', perf: { dice: [[3, true], [3, true], [4, true], [4, true], [6, true], [6, true]], value: 11, stamp: '미라클' }, notes: ['익스텐션 · 주사위 1개 골라 다시 굴리기 가능 · 퍼포먼스 값 +1 (반영됨)'] });
+card({ title: '【아이돌 링크】 멘탈 케어', eff: LINKS[0][1] });
+</script>
