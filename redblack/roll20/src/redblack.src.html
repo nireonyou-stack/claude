@@ -40,6 +40,9 @@
     <label class="rpk">흑의 마력<input type="number" name="attr_mb" title="현재 흑의 마력"></label>
     <label class="rpk r">적의 마력<input type="number" name="attr_mr" title="현재 적의 마력"></label>
     <label class="rpk">영광<input type="number" name="attr_glory" value="5" title="영광 (초기 5 · 이츠와리 10 이면 패배)"></label>
+    <span class="rpb"><label class="kil" title="살해됨 (HP 0)"><input type="checkbox" class="kx" name="attr_killed" value="1">살해</label>
+      <button type="action" class="pbtn" name="act_hit" title="받은 대미지를 HP 에 반영 (실드 · 브레이크 · 리벤지 · 살해)">피해</button>
+      <button type="action" class="pbtn" name="act_rest" title="재초기화의 복원: HP + 복원치, 살해 해제">복원</button></span>
   </div>
 
   <!-- 카드 패드 띠 -->
@@ -57,6 +60,7 @@
     <div class="sr">
       <span class="tl">낸 카드</span><div class="hand"><!--@HAND--></div>
       <span class="sum">흑 <span class="sv" name="attr_sum_b">0</span> · <span class="r">적 <span class="sv" name="attr_sum_r">0</span></span> · <span name="attr_sum_n">0</span>장</span>
+      <button type="action" class="pbtn dk" name="act_endr" title="낸 카드의 암시 · 총마력으로 결말 마법 (기동 뒤 마력 0)">결말 마법</button>
       <button type="action" class="pbtn" name="act_clr">비우기</button>
     </div>
     <div class="sr">
@@ -65,8 +69,10 @@
       <span class="ckn">횟수<input type="number" name="attr_acc_count" title="횟수"></span>
       <button type="action" class="pbtn dk" name="act_atk">고발 공격</button>
       <span class="sp"></span>
-      <span class="ckn">어택<input type="number" name="attr_attack" title="어택"></span>
-      <span class="ckn">실드<input type="number" name="attr_shield" title="실드"></span>
+      <span class="ckn" title="〈어택: X〉 내 공격 대미지 +X (1 이상일 때)">어택<input type="number" name="attr_attack" title="어택"></span>
+      <span class="ckn" title="〈실드: X〉 받는 공격 · 리벤지 대미지 −X">실드<input type="number" name="attr_shield" title="실드"></span>
+      <span class="ckn" title="〈브레이크: X〉 상대의 실드를 X 까지 무효">브레이크<input type="number" name="attr_break" title="브레이크"></span>
+      <span class="ckn" title="〈리벤지: X〉 공격으로 1 이상 받으면 상대 HP −X">리벤지<input type="number" name="attr_revenge" title="리벤지"></span>
     </div>
   </div>
 

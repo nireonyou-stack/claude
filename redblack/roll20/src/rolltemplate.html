@@ -1,5 +1,6 @@
 <!-- 채팅 카드: 겹테 · 먹색 머리 + 영문 부제(en) · 체크무늬 띠 · 부채꼴 트럼프 칩 · 「기동」/「부족」 봉랍 도장.
      굴림이 없는 카드라 sheet worker 가 계산을 끝낸 값을 그대로 넣는다 (startRoll 로 보낸다).
+     hit = 피해 (tk 받은 대미지 · hhow 계산 · hres HP · 살해 · 리벤지) · endr = 결말 마법 (etot 총마력 · escale 개찬 규모 · ehN 카드별 암시).
      req = 〔기동〕 조건 (reqb 흑 ♠ · reqr 적 ♥ 표시) · ok 기동 / ng 부족 · 낸 카드 bkN bsN (흑) · rkN rsN (적) · jkN (광대) · sb sr sn = 합계 (광대는 양쪽) · tags 고발/원호 · big + how = 고발 공격. -->
 <rolltemplate class="sheet-rolltemplate-redblack">
   <div class="sheet-card">
@@ -13,6 +14,8 @@
         {{#sn}}<div class="sheet-hand"><span class="sheet-fan"><!--@CHIPS--></span><span class="sheet-tot"><span>흑 <b>{{sb}}</b></span><span>적 <b class="sheet-r">{{sr}}</b></span><span>{{sn}}장</span></span></div>{{/sn}}
         {{#none}}<div class="sheet-hand"><span class="sheet-tot">낸 카드 없음</span></div>{{/none}}
         {{#big}}<div class="sheet-big"><b>{{big}}</b><span>{{how}}</span></div>{{/big}}
+        {{#hit}}<div class="sheet-big"><b>{{computed::tk}}</b><span>{{computed::hhow}}</span></div><div class="sheet-note">{{computed::hres}}</div>{{/hit}}
+        {{#endr}}<div class="sheet-big"><b>{{computed::etot}}</b><span>{{computed::ehow}}</span></div><div class="sheet-note">{{computed::escale}}</div><div class="sheet-hint"><!--@HINTS--></div>{{/endr}}
         {{#note}}<div class="sheet-note">{{note}}</div>{{/note}}
         {{#lvx}}<div class="sheet-lvx">{{lvx}}</div>{{/lvx}}
         {{#eff}}<div class="sheet-eff">{{eff}}</div>{{/eff}}

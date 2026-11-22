@@ -108,7 +108,8 @@ def optional(name):
 
 def build():
     html = (SRC / 'redblack.src.html').read_text(encoding='utf-8')
-    tpl = optional('rolltemplate.html').replace('<!--@CHIPS-->', card_chips())
+    hints = ''.join(f'{{{{#eh{i}}}}}<div>{{{{computed::eh{i}}}}}</div>{{{{/eh{i}}}}}' for i in range(1, SLOTS + 1))
+    tpl = optional('rolltemplate.html').replace('<!--@CHIPS-->', card_chips()).replace('<!--@HINTS-->', hints)
     for key, val in {
         'PAD_B': pad('b'), 'PAD_R': pad('r'), 'HAND': hand(), 'CRESTS': crests(), 'BASIC': basic(), 'NOBLE': noble(), 'AUTH': auth(),
         'ROLLTEMPLATE': tpl,
