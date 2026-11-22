@@ -7,9 +7,12 @@ src/peekaboo.src.css 의 /*@GEN*/ 자리를 칸 채우기 · 원기 슬롯 빗�
     python3 build.py
 """
 import pathlib
+import sys
 
 SRC = pathlib.Path(__file__).resolve().parent
 OUT = SRC.parent / 'sheet'
+sys.path.insert(0, str(SRC.parents[2] / 'roll20kit'))
+import autogrow  # noqa: E402  글이 늘어나면 칸도 늘어나는 textarea
 
 # 특기 리스트 (공식 시트 순서): 열 글자 · 분야 · 2~12 특기
 FIELDS = [
@@ -132,6 +135,7 @@ def build():
 
 if __name__ == '__main__':
     html, css = build()
+    html, css = autogrow.wrap(html), autogrow.css(css, '.pk')
     OUT.mkdir(exist_ok=True)
     (OUT / 'peekaboo.html').write_text(html, encoding='utf-8')
     (OUT / 'peekaboo.css').write_text(css, encoding='utf-8')

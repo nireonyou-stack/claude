@@ -11,6 +11,8 @@ import sys
 
 SRC = pathlib.Path(__file__).resolve().parent
 OUT = SRC.parent / 'sheet'
+sys.path.insert(0, str(SRC.parents[2] / 'roll20kit'))
+import autogrow  # noqa: E402  글이 늘어나면 칸도 늘어나는 textarea
 
 # 특기 리스트: (속성용 영문 id, 분야명, 2~12 특기)
 FIELDS = [
@@ -97,7 +99,7 @@ def build():
 
 
 if __name__ == '__main__':
-    html = build()
+    html = autogrow.wrap(build())
     if len(sys.argv) == 3 and sys.argv[1] == '--preview':
         css = (OUT / 'bloodmoon.css').read_text(encoding='utf-8')
         pathlib.Path(sys.argv[2]).write_text(
@@ -106,4 +108,6 @@ if __name__ == '__main__':
     else:
         OUT.mkdir(exist_ok=True)
         (OUT / 'bloodmoon.html').write_text(html, encoding='utf-8')
+        css = OUT / 'bloodmoon.css'   # CSS 는 sheet 쪽 파일을 직접 고친다 — 자동 늘리기 구역만 다시 만든다
+        css.write_text(autogrow.css(css.read_text(encoding='utf-8'), '.bm'), encoding='utf-8')
         print('wrote', OUT / 'bloodmoon.html')

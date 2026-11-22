@@ -8,9 +8,12 @@ src/amadeus.src.html 의 <!--@...--> 자리를 능력치 · 롤 템플릿 · she
 """
 import json
 import pathlib
+import sys
 
 SRC = pathlib.Path(__file__).resolve().parent
 OUT = SRC.parent / 'sheet'
+sys.path.insert(0, str(SRC.parents[2] / 'roll20kit'))
+import autogrow  # noqa: E402  글이 늘어나면 칸도 늘어나는 textarea
 
 # 능력치: (열쇠, 이름, 영문) — 공식 시트 배치대로 두 줄씩 (무용 | 영력, 기술 | 사랑, 두뇌 | 일상)
 ABIL = [('war', '무용', 'WARFARE'), ('spi', '영력', 'SPIRIT'), ('tec', '기술', 'TECHNIQUE'),
@@ -80,5 +83,7 @@ def build():
 
 if __name__ == '__main__':
     OUT.mkdir(exist_ok=True)
-    (OUT / 'amadeus.html').write_text(build(), encoding='utf-8')
+    (OUT / 'amadeus.html').write_text(autogrow.wrap(build()), encoding='utf-8')
+    css = OUT / 'amadeus.css'   # CSS 는 sheet 쪽 파일을 직접 고친다 — 자동 늘리기 구역만 다시 만든다
+    css.write_text(autogrow.css(css.read_text(encoding='utf-8'), '.amadeus'), encoding='utf-8')
     print('wrote', OUT / 'amadeus.html')

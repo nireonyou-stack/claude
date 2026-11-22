@@ -8,9 +8,12 @@ CSS 는 src/redblack.src.css 를 그대로 sheet/redblack.css 로 옮긴다.
 """
 import html as H
 import pathlib
+import sys
 
 SRC = pathlib.Path(__file__).resolve().parent
 OUT = SRC.parent / 'sheet'
+sys.path.insert(0, str(SRC.parents[2] / 'roll20kit'))
+import autogrow  # noqa: E402  글이 늘어나면 칸도 늘어나는 textarea
 
 RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 SLOTS = 10   # 낸 카드 칸 수
@@ -59,7 +62,7 @@ def basic():
         body = ''.join(f'<p>{esc(p)}</p>' for p in t.split('\n'))
         out.append(f'<div class="mg orn"><div class="mh"><b>선언</b><span class="nm">{n}</span><span class="lv">LV<input type="number" name="attr_bc{i}_lv" value="1" title="{n} LV"></span></div>'
                    f'<div class="boot"><span class="bt"><span>〔기동〕</span><input type="text" name="attr_bc{i}_boot" title="{n} 기동"></span></div>'
-                   f'<div class="tx">{body}</div><div class="ft"><input type="text" class="lvx" name="attr_bc{i}_lvx" title="{n} LV 효과">'
+                   f'<div class="tx">{body}</div><div class="ft"><textarea class="lvx" name="attr_bc{i}_lvx" title="{n} LV 효과"></textarea>'
                    f'<button type="action" class="bub" name="act_bc{i}" title="기동해 채팅에 올림"></button></div></div>')
     return '\n'.join(out)
 
@@ -109,6 +112,7 @@ def build():
 
 if __name__ == '__main__':
     html, css = build()
+    html, css = autogrow.wrap(html), autogrow.css(css, '.rb')
     OUT.mkdir(exist_ok=True)
     (OUT / 'redblack.html').write_text(html, encoding='utf-8')
     (OUT / 'redblack.css').write_text(css, encoding='utf-8')

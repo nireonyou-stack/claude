@@ -217,6 +217,12 @@ textarea{resize:none;display:block}
 .ear .ef input{text-align:left}
 .ear select{height:24px;font-size:11px;text-align:center}
 
+/* 글이 늘어나면 칸도 늘어남: 숨은 거울 글이 높이를 잡고 textarea 가 덮음 (실제 시트는 같은 속성의 span) */
+.auto{position:relative;display:block;width:100%;min-width:0;flex:1 1 auto;align-self:stretch}
+.auto>.mir{display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.auto>.mir::after{content:"."}
+.auto>textarea{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;resize:none}
+
 /* 5단: 탤런트 */
 .tah,.tar{display:grid;grid-template-columns:26px 140px 56px 56px 56px 46px minmax(0,1fr) 42px 26px;align-items:stretch}
 .tar .use{gap:2px}
@@ -230,6 +236,8 @@ textarea{resize:none;display:block}
 .tar input{text-align:center;font-size:11px}
 .tar .nm input{text-align:left;font-weight:700;font-size:12px}
 .tar .ef input{text-align:left}
+.tar .ef textarea,.ear .ef textarea{font-size:11px;line-height:1.4;padding:3px 4px;min-height:23px}
+.eqg .dt textarea.ln{font-size:11.5px;line-height:1.4;padding:1px 4px;min-height:20px;border-bottom:1px solid var(--line)}
 .tar.pr{background:#f6efe2}
 .tar.pr .nm{justify-content:flex-start;padding-left:4px;font:700 11.5px var(--sans)}
 .tar.pr .ef{justify-content:flex-start;padding:2px 5px;font-size:10.5px;line-height:1.35}
@@ -632,12 +640,12 @@ function renderEq() {
       const w = r.w;
       h += `<div class="dk"></div><div class="dt"><span class="seg"><label><input type="radio" name="wf${ri}" value="0" ${w.f === 0 ? 'checked' : ''}><span>물리</span></label><label><input type="radio" name="wf${ri}" value="1" ${w.f === 1 ? 'checked' : ''}><span>마법</span></label></span>` +
         `<span class="f">거리<input type="text" value="${w.r}" aria-label="거리"></span><span class="f">대상<input type="text" value="${w.t}" aria-label="대상"></span><span class="f">저항<input type="text" value="${w.g}" aria-label="저항"></span><span class="f">속성<input type="text" value="${w.a}" aria-label="속성"></span>` +
-        `<span class="f">랭크<input type="number" class="rk" value="${w.k}" data-rk="${ri}" aria-label="랭크"></span><span class="f" style="flex:1">추가 효과<input type="text" class="ln" value="${w.x}" aria-label="추가 효과"></span>` +
+        `<span class="f">랭크<input type="number" class="rk" value="${w.k}" data-rk="${ri}" aria-label="랭크"></span><span class="f" style="flex:1">추가 효과<textarea class="ln ag" rows="1" aria-label="추가 효과">${w.x}</textarea></span>` +
         `<button class="btn" type="button" data-atk="${ri}">공격</button><button class="btn" type="button" data-dmg="${ri}">대미지</button></div>`;
     }
   });
   h += `<div class="tk">총계</div>` + EQC.map((n, i) => `<div class="tot" id="t${i}">0${i < 5 ? `<button class="dic" type="button" data-cv="${i}" title="${n} 판정"></button>` : ''}</div>`).join('');
-  g.innerHTML = h;
+  g.innerHTML = h; autoGrow(g);
   g.querySelectorAll('[data-e]').forEach(i => i.onchange = () => { const [r, c] = i.dataset.e.split(':').map(Number); S.eq[r].v[c] = i.value; renderTotals(); });
   g.querySelectorAll('[data-rk]').forEach(i => i.onchange = () => { S.eq[+i.dataset.rk].w.k = +i.value || ''; renderRate(); });
   g.querySelectorAll('input[name^=wf]').forEach(i => i.onchange = () => { S.eq[+i.name.slice(2)].w.f = +i.value; });
@@ -664,14 +672,14 @@ function talRow(i) {
   const sec = i === 4 || i === 18;
   return `<div class="tar${lock ? ' lk' : ''}${sec ? ' sec' : ''}"><span>${l}</span><span class="nm"><input type="text" value="${t[0]}" aria-label="탤런트 명칭"></span>` +
     t.slice(1, 5).map(v => `<span><input type="text" value="${v}" aria-label="탤런트 항목"></span>`).join('') +
-    `<span class="ef"><input type="text" value="${t[5]}" aria-label="효과"></span><span class="use">${'<input type="checkbox" class="ck" aria-label="사용함">'.repeat(3)}</span><span><button class="bub" type="button" data-tal="${i}" title="채팅에 올림"></button></span></div>`;
+    `<span class="ef"><textarea class="ag" rows="1" aria-label="효과">${t[5]}</textarea></span><span class="use">${'<input type="checkbox" class="ck" aria-label="사용함">'.repeat(3)}</span><span><button class="bub" type="button" data-tal="${i}" title="채팅에 올림"></button></span></div>`;
 }
 function renderTal() {
   const head = `<div class="tah"><span></span><span>명칭</span><span>타이밍</span><span>거리</span><span>대상</span><span>코스트</span><span>효과</span><span>사용</span><span></span></div>`;
   const pr = PRT.map(([n, k, ...r], i) => `<div class="tar pr"><span></span><span class="nm">${n}<small style="font-weight:400;color:var(--sub);margin-left:3px">(${k})</small></span>${r.slice(0, 4).map(v => `<span>${v}</span>`).join('')}<span class="ef">${r[4]}</span><span class="use">${i === 0 ? '<input type="checkbox" class="ck" aria-label="사용함">' : ''}</span><span><button class="bub" type="button" data-prt="${i}" title="채팅에 올림"></button></span></div>`).join('');
-  $('tal').innerHTML = head + pr + LABELS.map((_, i) => talRow(i)).join('');
+  $('tal').innerHTML = head + pr + LABELS.map((_, i) => talRow(i)).join(''); autoGrow($('tal'));
   document.querySelectorAll('[data-tal]').forEach(b => b.onclick = () => {
-    const r = b.closest('.tar'), v = [...r.querySelectorAll('input')].map(i => i.value);
+    const r = b.closest('.tar'), v = [...r.querySelectorAll('input[type=text],textarea')].map(i => i.value);
     if (!v[0]) return;
     card({ title: v[0], head: '탤런트', kv: [['타이밍', v[1]], ['거리', v[2]], ['대상', v[3]], ['코스트', v[4]]], eff: v[5] });
   });
@@ -852,15 +860,31 @@ const EATK = [['물어뜯기', '공격', '근접', '단체', 0, '물리 대미�
 const CHK = ['명중', '회피', '발동', '저항', '간파'];
 $('eatk').innerHTML = `<div class="eah"><span></span><span>명칭</span><span>타이밍</span><span>거리</span><span>대상</span><span>판정</span><span>효과</span><span></span></div>` +
   EATK.map(([n, ti, r, tg, c, e], i) => `<div class="ear"><span><button class="dic" type="button" data-ea="${i}" title="판정"></button></span><span class="nm"><input type="text" value="${n}" aria-label="명칭"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${r}" aria-label="거리"></span><span><input type="text" value="${tg}" aria-label="대상"></span>` +
-    `<span><select aria-label="판정"><option value="-1"${c < 0 ? ' selected' : ''}>없음</option>${CHK.map((k, j) => `<option value="${j}"${c === j ? ' selected' : ''}>${k}</option>`).join('')}</select></span><span class="ef"><input type="text" value="${e}" aria-label="효과"></span><span><button class="bub" type="button" data-eb="${i}" title="채팅에 올림"></button></span></div>`).join('');
+    `<span><select aria-label="판정"><option value="-1"${c < 0 ? ' selected' : ''}>없음</option>${CHK.map((k, j) => `<option value="${j}"${c === j ? ' selected' : ''}>${k}</option>`).join('')}</select></span><span class="ef"><textarea class="ag" rows="1" aria-label="효과">${e}</textarea></span><span><button class="bub" type="button" data-eb="${i}" title="채팅에 올림"></button></span></div>`).join('');
+autoGrow($('eatk'));
 document.querySelectorAll('[data-ea],[data-eb]').forEach(b => b.onclick = () => {
-  const r = b.closest('.ear'), v = [...r.querySelectorAll('input')].map(x => x.value), c = +r.querySelector('select').value;
+  const r = b.closest('.ear'), v = [...r.querySelectorAll('input[type=text],textarea')].map(x => x.value), c = +r.querySelector('select').value;
   if (!v[0]) return;
   const head = [v[1], v[2], v[3]].filter(Boolean).join(' · ');
   if (b.dataset.ea != null && c >= 0) roll({ title: v[0], base: eBase(c), kind: c, head: `${CHK[c]} · ${head}`, eff: v[4] });
   else card({ title: v[0], head: '에너미', kv: [['타이밍', v[1]], ['거리', v[2]], ['대상', v[3]]], eff: v[4] });
 });
 $('stype').onchange = e => { $('sheet').dataset.t = e.target.value; };
+
+// ── 글이 늘어나면 칸도 늘어남 (textarea.ag 를 감싸고 거울 글을 맞춤)
+function autoGrow(root = document) {
+  root.querySelectorAll('textarea.ag').forEach(ta => {
+    if (ta.parentElement.classList.contains('auto')) return;
+    const w = document.createElement('div'), m = document.createElement('span');
+    w.className = 'auto'; m.className = 'mir';
+    ta.replaceWith(w); w.append(m, ta);
+    const cs = getComputedStyle(ta);
+    ['font', 'lineHeight', 'letterSpacing', 'padding', 'borderTop', 'borderBottom', 'borderLeft', 'borderRight', 'minHeight'].forEach(k => { m.style[k] = cs[k]; });
+    m.style.borderColor = 'transparent';
+    const sync = () => { m.textContent = ta.value; };
+    ta.addEventListener('input', sync); sync();
+  });
+}
 
 renderPool(); renderEq(); renderStats(); renderTal(); renderBurn(); renderRate(); renderLast();
 roll({ title: '명중 판정', base: totals()[0], kind: 0, head: '영력 단검 · 물리' });

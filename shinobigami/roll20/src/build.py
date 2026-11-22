@@ -8,9 +8,12 @@ src/shinobigami.src.css 의 /*@HP*/ 자리를 생명력 칸 규칙으로 채워 
     python3 build.py
 """
 import pathlib
+import sys
 
 SRC = pathlib.Path(__file__).resolve().parent
 OUT = SRC.parent / 'sheet'
+sys.path.insert(0, str(SRC.parents[2] / 'roll20kit'))
+import autogrow  # noqa: E402  글이 늘어나면 칸도 늘어나는 textarea
 
 # 특기 리스트: 열 글자(중국어 시트와 같음) · 분야 · 생명력 슬롯 값(중국어 시트 Ninpo_X_Field 의 값) · 2~12 특기
 FIELDS = [
@@ -242,6 +245,7 @@ def build():
 
 if __name__ == '__main__':
     html, css = build()
+    html, css = autogrow.wrap(html), autogrow.css(css, '.sg')
     OUT.mkdir(exist_ok=True)
     (OUT / 'shinobigami.html').write_text(html, encoding='utf-8')
     (OUT / 'shinobigami.css').write_text(css, encoding='utf-8')

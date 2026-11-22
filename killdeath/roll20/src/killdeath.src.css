@@ -171,7 +171,7 @@ body.sheet-darkmode .kd .title select{color:#ffffff}
 .kd .r4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 .kd .rel,.kd .cy{display:flex;flex-direction:column}
 .kd .rows{flex:1;display:flex;flex-direction:column}
-.kd .rows .rr{flex:1}
+.kd .rows .rr{flex:1 0 auto}
 .kd .rel .rh,.kd .rel .rr{display:grid;grid-template-columns:24px minmax(0,1fr) 90px 48px;align-items:stretch}
 .kd .cy .rh,.kd .cy .rr{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr) 24px;align-items:stretch}
 .kd .rh{font:700 10.5px var(--sans);text-align:center;color:var(--sub);border-bottom:1px solid var(--ink)}
@@ -180,6 +180,7 @@ body.sheet-darkmode .kd .title select{color:#ffffff}
 .kd .rr > *{border-left:1px solid var(--line);display:flex;align-items:center}
 .kd .rr > :first-child{border-left:0;justify-content:center}
 .kd .rr input[type=text]{height:24px}
+.kd .rr textarea{font-size:12px;line-height:1.4;min-height:24px;padding:3px 4px}
 .kd .rr .ctr{gap:2px;padding-right:3px}
 .kd .rr .ctr input[type=text]{text-align:center;width:22px;flex:none}
 .kd input[type=checkbox].ck{-webkit-appearance:none;appearance:none;width:14px;height:14px;border:1.5px solid var(--ink);background:var(--paper)}

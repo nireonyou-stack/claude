@@ -181,6 +181,7 @@ textarea{resize:none;display:block}
 .tr .nm input{font-weight:700;text-align:left}
 .tr .ef{justify-content:flex-start}
 .tr .ef input{text-align:left}
+.tr .ef textarea{font-size:11.5px;line-height:1.4;padding:3px 4px;min-height:23px}
 .tr.pr{background:#f7f7f7}
 .tr.pr .nm{justify-content:flex-start;padding-left:5px;font-weight:700}
 .tr.pr .ef{padding:2px 5px;line-height:1.35}
@@ -191,6 +192,12 @@ textarea{resize:none;display:block}
 .memo .tr .dur label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
 .scar .kv{grid-template-columns:auto minmax(0,1fr)}
 .scar textarea{height:44px}
+
+/* 글이 늘어나면 칸도 늘어남: 숨은 거울 글이 높이를 잡고 textarea 가 덮음 (실제 시트는 같은 속성의 span) */
+.auto{position:relative;display:block;width:100%;min-width:0;flex:1 1 auto;align-self:stretch}
+.auto>.mir{display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.auto>.mir::after{content:"."}
+.auto>textarea{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;resize:none}
 
 /* 4단: 조사 진행도 · 혈전의 진행 · 규칙 상자 */
 .prog{display:flex;gap:3px;padding:6px 8px;align-items:center}
@@ -339,7 +346,7 @@ textarea{resize:none;display:block}
         <div class="kv">
           <b>이름</b><span><input type="text" value="레이" aria-label="파트너 이름"></span><b><span class="h-only">기원 / 유의</span><span class="v-only">신념 / 직능</span></b><span><input type="text" value="진조 / 검술" aria-label="기원 / 유의"></span>
           <b>나이</b><span><span class="agv"><input type="text" value="16" aria-label="외견 나이"><i>/</i><input type="text" value="280" aria-label="실제 나이"></span></span><b><span class="h-only">결락</span><span class="v-only">상실</span></b><span><input type="text" value="체온" aria-label="결락"></span>
-          <b>특징 등</b><span class="w"><textarea aria-label="특징 등">달콤한 것을 좋아한다.</textarea></span>
+          <b>특징 등</b><span class="w"><textarea class="ag" aria-label="특징 등">달콤한 것을 좋아한다.</textarea></span>
         </div>
         <div class="sec">흔인 1</div>
         <div class="kv">
@@ -354,7 +361,7 @@ textarea{resize:none;display:block}
         <div class="kv">
           <b>이름</b><span><input type="text" aria-label="이름"></span><b>기원 / 유의</b><span><input type="text" aria-label="기원 / 유의"></span>
           <b>나이</b><span><span class="agv"><input type="text" aria-label="외견 나이"><i>/</i><input type="text" aria-label="실제 나이"></span></span><b>결락</b><span><input type="text" aria-label="결락"></span>
-          <b>특징 등</b><span class="w"><textarea aria-label="특징 등"></textarea></span>
+          <b>특징 등</b><span class="w"><textarea class="ag" aria-label="특징 등"></textarea></span>
         </div>
         <div class="sec"><span class="h-only">흔인 2</span><span class="v-only">상대에게서의 감정</span></div>
         <div class="kv">
@@ -371,7 +378,7 @@ textarea{resize:none;display:block}
     <div class="col">
       <div class="bx scar adv">
         <div class="hb">상호</div>
-        <div class="kv"><b>상호명</b><span><input type="text" value="달을 쏘는 자" aria-label="상호명"></span><b>설정</b><span><textarea aria-label="상호 설정">사냥한 흡혈귀의 수만큼 탄피를 모은다.</textarea></span></div>
+        <div class="kv"><b>상호명</b><span><input type="text" value="달을 쏘는 자" aria-label="상호명"></span><b>설정</b><span><textarea class="ag" aria-label="상호 설정">사냥한 흡혈귀의 수만큼 탄피를 모은다.</textarea></span></div>
       </div>
       <div class="bx tbl bl">
         <div class="hb">혈위</div>
@@ -440,6 +447,21 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const $ = id => document.getElementById(id);
 const sheet = $('sheet'), isV = () => sheet.dataset.t === 'v';
 
+// ── 글이 늘어나면 칸도 늘어남 (textarea.ag 를 감싸고 거울 글을 맞춤)
+function autoGrow(root = document) {
+  root.querySelectorAll('textarea.ag').forEach(ta => {
+    if (ta.parentElement.classList.contains('auto')) return;
+    const w = document.createElement('div'), m = document.createElement('span');
+    w.className = 'auto'; m.className = 'mir';
+    ta.replaceWith(w); w.append(m, ta);
+    const cs = getComputedStyle(ta);
+    ['font', 'lineHeight', 'letterSpacing', 'padding', 'borderTop', 'borderBottom', 'borderLeft', 'borderRight', 'minHeight'].forEach(k => { m.style[k] = cs[k]; });
+    m.style.borderColor = 'transparent';
+    const sync = () => { m.textContent = ta.value; };
+    ta.addEventListener('input', sync); sync();
+  });
+}
+
 // ── 능력치 (인간 기 ♠ · 정 ♣ / 흡혈귀 혈 ♥ · 상 ♦)
 const ABL = { h: [['s', '기', 'スペード', 3], ['c', '정', 'クラブ', 2]], v: [['h', '혈', 'ハート', 3], ['d', '상', 'ダイヤ', 2]] };
 const SUIT = { s: '♠', c: '♣', h: '♥', d: '♦' };
@@ -470,16 +492,18 @@ function renderBL() {
     const lock = lv < 2 || (i > 0 && lv < 3);
     if (i === 0) { const [n, ti, ta, e] = BL_PR[t]; return `<div class="tr pr${lock ? ' lock' : ''}"><span class="no">1</span><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span class="ef">${e}</span><span class="bb"><button class="bub" type="button" data-bl="0" title="채팅에 올림"></button></span></div>`; }
     const [n, ti, ta, e] = BL_EX[i];
-    return `<div class="tr${lock ? ' lock' : ''}"><span class="no">${i + 1}</span><span class="nm"><input type="text" value="${n}" aria-label="혈위 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span class="bb"><button class="bub" type="button" data-bl="${i}" title="채팅에 올림"></button></span></div>`;
+    return `<div class="tr${lock ? ' lock' : ''}"><span class="no">${i + 1}</span><span class="nm"><input type="text" value="${n}" aria-label="혈위 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span class="ef"><textarea class="ag" rows="1" aria-label="해설">${e}</textarea></span><span class="bb"><button class="bub" type="button" data-bl="${i}" title="채팅에 올림"></button></span></div>`;
   }).join('');
+  autoGrow($('bl'));
   $('bl').querySelectorAll('[data-bl]').forEach(b => b.onclick = () => useRow(b.closest('.tr'), '혈위', true));
 }
 const SK = [['무기 공격', '공격', '단일', '손패 1장', '없음', '7 이하의 【생명 카드】 1장을 파괴한다.', 1], ['정밀 사격', '공격', '단일', '손패 1장', '없음', '9 이하의 【생명 카드】 1장을 파괴한다.', 0], ['엄호', '준비', '파트너', '손패 1장', '없음', '파트너의 다음 공격에 +2.', 0]];
 $('sk').innerHTML = Array.from({ length: 6 }, (_, i) => {
   const [n, ti, ta, co, cd, e, pr] = SK[i] || ['', '', '', '', '', '', 0];
   if (pr) return `<div class="tr pr"><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span>${co}</span><span>${cd}</span><span class="ef">${e}</span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
-  return `<div class="tr"><span class="nm"><input type="text" value="${n}" aria-label="특기 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${co}" aria-label="대가"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
+  return `<div class="tr"><span class="nm"><input type="text" value="${n}" aria-label="특기 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${co}" aria-label="대가"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><textarea class="ag" rows="1" aria-label="해설">${e}</textarea></span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
 }).join('');
+autoGrow($('sk')); autoGrow(document.getElementById('sheet'));
 $('sk').querySelectorAll('.bub').forEach(b => b.onclick = () => useRow(b.closest('.tr'), '특기', false));
 $('memo').innerHTML = [['엄호', '+2', 1], ['', '', 0], ['', '', 0], ['', '', 0]].map(([k, m, d], i) => `<div class="tr"><span class="ef"><input type="text" value="${k}" aria-label="효과의 종별"></span><span><input type="text" value="${m}" aria-label="수정치"></span><span class="dur"><label><input type="checkbox" class="ck" ${d === 2 ? 'checked' : ''}>상시</label>/<label><input type="checkbox" class="ck" ${d === 1 ? 'checked' : ''}>종료까지</label></span></div>`).join('');
 
@@ -535,7 +559,7 @@ function investigate() {
 }
 $('inv').onclick = investigate;
 function useRow(tr, kind, isBl) {
-  const v = tr.classList.contains('pr') ? [...tr.children].map(c => c.textContent.trim()) : [...tr.querySelectorAll('input')].map(i => i.value);
+  const v = tr.classList.contains('pr') ? [...tr.children].map(c => c.textContent.trim()) : [...tr.querySelectorAll('input[type=text],textarea')].map(i => i.value);
   const off = isBl ? (tr.classList.contains('pr') ? 1 : 0) : 0, nm = isBl ? v[off] : v[0];
   if (!nm) return;
   const kv = isBl ? [['타이밍', v[off + 1]], ['대상', v[off + 2]]] : [['타이밍', v[1]], ['대상', v[2]], ['대가', v[3]], ['조건', v[4]]];
