@@ -148,6 +148,7 @@ textarea{resize:none;display:block}
 .mis .mr{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--line);padding:0 6px;min-height:26px}
 .mis .mr input{height:24px}
 .mis .mr b{font:400 13px var(--head);white-space:nowrap}
+.mis .mr .printed{padding-left:4px;font:400 15px/1 var(--head)}
 .en .eh,.en .er{display:grid;grid-template-columns:minmax(0,1fr) 110px 30px;align-items:center}
 .en .eh{font:400 12px var(--head);text-align:center;border-bottom:1px solid var(--ink)}
 .en .er{border-bottom:1px solid var(--line);min-height:26px}
@@ -229,6 +230,25 @@ textarea{resize:none;display:block}
 .cd{--accent:#c2361f}
 .cd .rt2{align-items:flex-start}
 .cd .rt2 .die{flex:none}
+/* 채팅 카드: 사무라이 블레이드만 다르게 — 화지 바탕 · 왼쪽 주홍 단책 · 명조 제목 · 겹테 주사위 · 낙관 도장 */
+.cd{background:#fbf6ec;border:1px solid #2a2a2a;border-left:7px solid var(--accent);border-radius:0}
+.cd .ch{position:relative;background:none;color:#1a1a1a;font:400 17px/1.3 var(--head);letter-spacing:.04em;padding:7px 30px 6px 10px;border-bottom:1px solid #2a2a2a}
+.cd .ch::after{content:"";position:absolute;right:10px;top:0;width:9px;height:100%;background:linear-gradient(var(--accent),var(--accent)) center/3px 100% no-repeat,linear-gradient(#2a2a2a,#2a2a2a) left/1px 100% no-repeat,linear-gradient(#2a2a2a,#2a2a2a) right/1px 100% no-repeat}
+.cd .cb{padding:8px 10px}
+.cd .sub{font:400 12px/1.5 var(--head);color:#555}
+.cd .die{border:3px double #2a2a2a;border-radius:2px;background:#fff;color:#1a1a1a;font:400 16px/1 var(--head)}
+.cd .roll.big .die{width:36px;height:36px;border-width:4px;border-radius:2px;font:400 22px/1 var(--head)}
+.cd .die.d6{background:#f6e3a6;border-color:#2a2a2a;color:#1a1a1a}
+.cd .die.d1{background:#e6e1d8;border-color:#8a8578;color:#8a8578}
+.cd .eq{color:#8a8578;font-family:var(--head)}
+.cd .tot,.cd .roll.big .tot{font:400 30px/1 var(--head);color:#1a1a1a}
+.cd .stp{border:0;background:var(--accent);color:#fff;font:400 15px/1 var(--head);padding:6px 7px;border-radius:3px;transform:rotate(-7deg);box-shadow:inset 0 0 0 2px rgba(255,255,255,.4);letter-spacing:.1em}
+.cd .stp.spc{background:#a7781a}
+.cd .stp.fb{background:#3a3a3a}
+.cd .stp.ng{background:none;color:#8a8578;box-shadow:inset 0 0 0 1.5px #8a8578}
+.cd .note{font:400 12px var(--head);color:var(--accent)}
+.cd .eff{background:#f2e9d6;border-left:3px solid #c8b48c;font-size:12px}
+.cd .rt2 .big2{font:400 13px/1.55 var(--head) !important}
 .cd .ch{font:400 15px/1.3 var(--head);letter-spacing:.03em}
 </style>
 
@@ -312,7 +332,7 @@ textarea{resize:none;display:block}
     <div class="bx mis">
       <div class="hb">사명</div>
       <div class="mr"><b>・</b><input type="text" value="벚꽃 여우의 기억을 되찾는다" aria-label="사명 1"><b>／삶</b><input type="text" value="정의로운 검" aria-label="삶" style="max-width:120px"><input type="checkbox" class="ck" aria-label="달성"></div>
-      <div class="mr"><b>・</b><span style="font:400 13px var(--head)">봉마와 싸운다</span><span class="sp"></span><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="mr"><b>・</b><span class="printed">봉마와 싸운다</span><span class="sp"></span><input type="checkbox" class="ck" aria-label="달성"></div>
       <div class="mr"><b>・</b><input type="text" aria-label="사명 3"><input type="checkbox" class="ck" aria-label="달성"></div>
       <div class="mr" style="border-bottom:0"><b>・</b><input type="text" aria-label="사명 4"><input type="checkbox" class="ck" aria-label="달성"></div>
     </div>
