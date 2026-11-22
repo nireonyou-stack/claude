@@ -112,7 +112,63 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.click('cy2'); await s.settle();
   not('escaped braces', last(s).macro.replace(/\{\{(title|eff)=/g, ''), '{{b');
 
-  const errs = s.log.filter(l => l[0] === 'ERROR');
+  const errAll = s.log.filter(l => l[0] === 'ERROR');
+  const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
+
+  // ── 룰북 4·08·04: 첫 공격 (리스크 1 · 2) 은 특기 없이 목표치 5, 반격은 지정특기 · 성공/실패 안내 · 회수인 시청률
+  s = makeSim(HTML, { dice: [3, 2, 3, 2, 6, 6, 1, 1], queries: { '공격': '1' } }); s.open(); await s.settle();
+  s.set('A2', '1'); s.set('ab2_name', '잽'); s.set('ab2_skill', '베기'); await s.settle();
+  s.click('ab2'); await s.settle();
+  has('first-attack query', last(s).macro, '{{ok=[[0]]}} {{total=[[0]]}} {{tgx=[[0]]}} {{fa=[[?{공격|첫 공격 (특기 없이 목표치 5),1|반격 (지정특기),0}]]}}');
+  not('no target in sub for risk 1-2', last(s).macro, '목표치 9');
+  eq('first attack target 5: 3+2 = 5 success', pick(last(s).computed, 'ok', 'total', 'tgx'), { ok: 3, total: 5, tgx: '첫 공격 · 목표치 5' });
+  has('counter guidance', last(s).macro, '{{asu=상대는 리스크 3 · 4 어빌리티로 반격해야 한다}} {{afa=공격한 쪽이 대미지 — 회수인은 사망}} {{vr=1}}');
+  s = makeSim(HTML, { dice: [3, 2], queries: { '공격': '0' } }); s.open(); await s.settle();
+  s.set('A2', '1'); s.set('ab2_name', '잽'); s.set('ab2_skill', '베기'); await s.settle();
+  s.click('ab2'); await s.settle();
+  eq('counter uses the skill target (A2 → 베기 B4 = 9)', pick(last(s).computed, 'ok', 'tgx'), { ok: 4, tgx: '반격 · 목표치 9' });
+  s.set('ab5_name', '돌진'); s.set('ab6_name', '난무'); s.set('ab7_name', '피니시'); await s.settle();
+  s.click('ab5'); await s.settle();
+  has('risk 5 counter → 6 · 7', last(s).macro, '{{asu=상대는 리스크 6 · 7(킬러 트릭) 어빌리티로 반격해야 한다}}');
+  not('risk 5 has no first-attack query', last(s).macro, '{{fa=');
+  s.click('ab6'); await s.settle();
+  has('risk 6 → killer trick only', last(s).macro, '{{asu=상대는 킬러 트릭(리스크 7)로 반격해야 한다}}');
+  s.click('ab7'); await s.settle();
+  has('killer trick success', last(s).macro, '{{asu=킬러 트릭 성공 — 상대가 대미지 (라이프가 있는 NPC 는 라이프 0) · 시청률 +10%}}');
+  s.set('sheet_type', 'tg'); await s.settle();
+  s.click('ab6'); await s.settle();
+  has('target sheet: life note, no rating', last(s).macro, '{{afa=공격한 쪽이 대미지 (라이프 −1 · 표적전이면 한 번 다시 굴림)}}');
+  not('target sheet: no vr', last(s).macro, '{{vr=1}}');
+  eq('rating notes in template', [/시청률 \+10%<\/div>/.test(HTML), /시청률 −20%<\/div>/.test(HTML)], [true, true]);
+  errAll.push(...s.log.filter(l => l[0] === 'ERROR'));
+
+  // ── 사망 처리 (4·08·07 · 4·09): 소울 방출 · 소생 비용 · 헬 슬러그 · 7번째
+  s = makeSim(HTML, { dice: [5, 2, 1], queries: { '누구에게': '1' } }); s.open(); await s.settle();
+  s.set('soul', '250'); s.set('hell_slug', '30'); s.set('deaths', '1'); await s.settle();
+  s.click('die'); await s.settle();
+  has('death computed first', last(s).macro, '{{drel=[[0]]}} {{dres=[[0]]}} {{kb=[[?{누구에게 살해됐나|');
+  eq('killed by collector: release 300 → 250, 2nd death cost 100', [last(s).computed.drel, last(s).computed.dres, ...g(s, 'soul', 'hell_slug', 'deaths')],
+    ['소울 방출 300 → 실제 250 (신에 남아 살아남은 회수인이 나눔)', '2번째 사망 · 소생 비용 100 · 소울 250 → -100 · 헬 슬러그 +100', '-100', '130', '2']);
+  s = makeSim(HTML, { dice: [1, 1], queries: { '누구에게': '0' } }); s.open(); await s.settle();
+  s.set('soul', '500'); s.set('deaths', '6'); await s.settle();
+  s.click('die'); await s.settle();
+  eq('7th death', [last(s).computed.dres, ...g(s, 'soul', 'deaths')], ['7번째 사망 — 결과 페이즈까지 부활할 수 없고, 소울은 마이너스 무한대', '500', '6']);
+  s.set('deaths', '0'); await s.settle(); s.click('die'); await s.settle();
+  eq('killed by NPC: no release, 1st death 50', [last(s).computed.drel, ...g(s, 'soul', 'hell_slug')], ['소울 방출 100 → 실제 0 (신에 남아 살아남은 회수인이 나눔)', '450', '50']);
+  errAll.push(...s.log.filter(l => l[0] === 'ERROR'));
+
+  // ── 행동순 D66 + 행동순 강화 · 신 표 · 서비스 신 표
+  s = makeSim(HTML, { dice: [5, 3, 1, 2, 6, 6, 4, 5] }); s.open(); await s.settle();
+  s.set('cy3_name', '스피드 칩'); s.set('cy3_effect', '행동순 강화 +20'); await s.settle();
+  s.click('init'); await s.settle();
+  eq('D66 small first + 20', last(s).computed, { tres: '35 + 행동순 강화 20 = 55' });
+  s.click('scene'); await s.settle();
+  eq('scene 12 / 66', last(s).computed, { tres: '당신의 사진으로 벽이 뒤덮인 들판' });
+  s.click('svc'); await s.settle();
+  eq('service 4 → 5', last(s).computed, { tres: '연애계 · 비밀을 고백하다' });
+  errAll.push(...s.log.filter(l => l[0] === 'ERROR'));
+
+  const errs = errAll;
   eq('no worker errors', errs.map(e => e[1].split('\n')[0]), []);
   console.log(`${pass} pass, ${fail} fail`);
   process.exit(fail ? 1 : 0);

@@ -1,14 +1,19 @@
 <!-- 채팅 카드: 검은 머리띠(빨간 녹화 점 · 빨강/청회 띠) + 흰 본문. 굴림은 sheet worker 가 startRoll 로 보내고 computed:: 칸은 finishRoll 로 채운다.
      computed 칸(ok · total · tres)은 매크로 앞쪽에 있어야 하므로 워커가 맨 앞에 넣는다.
      판정: d1 · d2(큰 주사위, 6 검정 · 1 빨강) + add = 합 | 도장 ok 1 스페셜 · 2 펌블 · 3 성공 · 4 실패 (0 이면 도장 없음)
-     랜덤 특기: te1(분야) te2 te3(특기) 와 결과(tres). nD6: n1~n3 = 합. -->
+     공격 판정: tgx = 첫 공격 / 반격의 목표치 (리스크 1 · 2), asu · afa = 성공 · 실패 때 안내, vr = 회수인이면 스페셜 · 펌블 때 시청률.
+     사망 처리(dth): kb 1 = 회수인에게 살해 → sr(1D6) 소울 방출 drel, dres = 소생 비용 · 헬 슬러그 · 사망 횟수.
+     표: te1~te4 와 결과(tres). 랜덤 특기 te1(분야) te2 te3(특기). nD6: n1~n3 = 합. -->
 <rolltemplate class="sheet-rolltemplate-killdeath">
   <div class="sheet-card">
     {{#title}}<div class="sheet-hd">{{title}}</div>{{/title}}
     <div class="sheet-bd">
       {{#sub}}<div class="sheet-sub">{{sub}}</div>{{/sub}}
+      {{#tgx}}<div class="sheet-sub">{{computed::tgx}}</div>{{/tgx}}
       {{#d1}}<div class="sheet-roll sheet-big"><span class="sheet-die">{{d1}}</span><span class="sheet-die">{{d2}}</span>{{#add}}<span class="sheet-eq sheet-add">{{add}}</span>{{/add}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span>{{#rollTotal() computed::ok 1}}<span class="sheet-stp sheet-spc">스페셜</span>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<span class="sheet-stp sheet-fb">펌블</span>{{/rollTotal() computed::ok 2}}{{#rollTotal() computed::ok 3}}<span class="sheet-stp">성공</span>{{/rollTotal() computed::ok 3}}{{#rollTotal() computed::ok 4}}<span class="sheet-stp sheet-ng">실패</span>{{/rollTotal() computed::ok 4}}</div>{{/d1}}
-      {{#te1}}<div class="sheet-rt"><span class="sheet-die">{{te1}}</span><span class="sheet-die">{{te2}}</span><span class="sheet-die">{{te3}}</span><span class="sheet-rtx">{{computed::tres}}</span></div>{{/te1}}
+      {{#d1}}{{#asu}}{{#rollTotal() computed::ok 1}}<div class="sheet-note">{{asu}}</div>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 3}}<div class="sheet-note">{{asu}}</div>{{/rollTotal() computed::ok 3}}{{/asu}}{{#afa}}{{#rollTotal() computed::ok 2}}<div class="sheet-note">{{afa}}</div>{{/rollTotal() computed::ok 2}}{{#rollTotal() computed::ok 4}}<div class="sheet-note">{{afa}}</div>{{/rollTotal() computed::ok 4}}{{/afa}}{{#vr}}{{#rollTotal() computed::ok 1}}<div class="sheet-note">시청률 +10%</div>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<div class="sheet-note">시청률 −20%</div>{{/rollTotal() computed::ok 2}}{{/vr}}{{/d1}}
+      {{#dth}}{{#rollTotal() kb 1}}<div class="sheet-rt"><span class="sheet-die">{{sr}}</span><span class="sheet-rtx">{{computed::drel}}</span></div>{{/rollTotal() kb 1}}<div class="sheet-note">{{computed::dres}}</div>{{/dth}}
+      {{#te1}}<div class="sheet-rt"><span class="sheet-die">{{te1}}</span>{{#te2}}<span class="sheet-die">{{te2}}</span>{{/te2}}{{#te3}}<span class="sheet-die">{{te3}}</span>{{/te3}}{{#te4}}<span class="sheet-die">{{te4}}</span>{{/te4}}<span class="sheet-rtx">{{computed::tres}}</span></div>{{/te1}}
       {{#n1}}<div class="sheet-roll"><span class="sheet-die">{{n1}}</span>{{#n2}}<span class="sheet-die">{{n2}}</span>{{/n2}}{{#n3}}<span class="sheet-die">{{n3}}</span>{{/n3}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span></div>{{/n1}}
       {{#k1}}<div class="sheet-kv"><b>{{k1}}</b>{{v1}}</div>{{/k1}}
       {{#k2}}<div class="sheet-kv"><b>{{k2}}</b>{{v2}}</div>{{/k2}}

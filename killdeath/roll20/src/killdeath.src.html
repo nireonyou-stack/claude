@@ -39,6 +39,7 @@
   <!-- 판정 띠 -->
   <div class="strip">
     <button type="action" class="rt" name="act_rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
+    <button type="action" class="rt" name="act_init" title="D66 + 헬 사이버 「행동순 강화」"><i class="tdi"></i>행동순</button>
     <span class="rtg"><button type="action" class="rt" name="act_nd1">1D6</button><button type="action" class="rt" name="act_nd2">2D6</button><button type="action" class="rt" name="act_nd3">3D6</button></span>
     <span class="ckn">수정치<input type="number" class="modv" name="attr_mod" title="다음 판정 수정치"></span>
     <span class="sp"></span>
@@ -92,14 +93,14 @@
     <div class="box stat">
       <div class="st"><span class="chip">차지</span><!--@TOK_CHARGE_PC--></div>
       <div class="st"><span class="chip">블록</span><!--@TOK_BLOCK_PC--></div>
-      <div class="st"><span class="chip">사망 횟수</span><!--@TOK_DEATHS--></div>
+      <div class="st"><span class="chip">사망 횟수</span><!--@TOK_DEATHS--><button type="action" class="rt die" name="act_die" title="소울 방출 · 소생 비용 · 헬 슬러그 · 사망 횟수">사망 처리</button></div>
       <div class="st"><span class="chip">소울</span><input type="number" name="attr_soul" title="소울"></div>
-      <div class="st slug"><span class="chip">헬 슬러그</span><textarea name="attr_hell_slug" title="헬 슬러그"></textarea></div>
+      <div class="st"><span class="chip">헬 슬러그</span><input type="number" name="attr_hell_slug" title="헬 슬러그 (소생 비용만큼 얻음)"></div>
     </div>
   </div>
 
   <div class="box memo">
-    <div class="hb">메모</div>
+    <div class="hb">메모<span class="sp"></span><button type="action" class="hbt" name="act_scene" title="신 표 1 · 2 (D66)">신 표</button><button type="action" class="hbt" name="act_svc" title="서비스 신 표 (1D6 → 1D6)">서비스 신 표</button></div>
     <textarea name="attr_memo" title="메모"></textarea>
   </div>
 </div>
