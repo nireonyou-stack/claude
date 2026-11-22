@@ -324,7 +324,7 @@ textarea{resize:none;display:block}
         <h4>■ 프로젝트 진행 (⇒ 기본 44쪽)</h4>
         <div class="kv"><b class="d">도입</b><span>시나리오 도입 / 사용 룰 설명</span><b class="d">반면 구축</b><span>반면 상황 / 등장 캐스트 소개</span><b class="d">선언 국면</b><span>선언 마법에 의한 조사 / 날조</span><b class="d">고발 국면</b><span>고발 / 원호 중 하나를 골라 전투 (선언 국면과 반복)</span><b class="d">종국</b><span>결말 마법으로 엔딩을 결정</span><b class="d">성장</b><span>로직이나 매직 획득 / 캐릭터 성장</span></div>
         <h4>■ 재초기화 · 차례 결정 (⇒ 기본 53쪽)</h4>
-        <div class="kv"><b class="d">재초기화</b><span>5장 세트 (3장 공개) 를 인원수만큼 준비. 앞 국면의 차례 순으로 세트 1개를 고른다.</span><b class="d">차례 결정</b><span>손패 1장을 순패로 고른다. 공개해 숫자가 큰 순으로 차례. 같은 값은 뒤집어 최소로 취급. 앞 차례의 첫 번째는 순패를 뒤집은 채로.</span></div>
+        <div class="kv"><b class="d">재초기화</b><span>5장 세트 (3장 공개) 를 인원수만큼 준비. 앞 국면의 차례 순으로 세트 1개를 고른다. 남은 1세트는 GM 손패로.</span><b class="d">차례 결정</b><span>손패 1장을 순패로 고른다. 공개해 숫자가 큰 순으로 차례. 같은 값은 뒤집어 최소로 취급. 앞 차례의 첫 번째는 순패를 뒤집은 채로.</span></div>
       </div>
       <div>
         <h4>■ 선언 국면 (⇒ 기본 52쪽)</h4>
@@ -399,7 +399,7 @@ $('noble').innerHTML = Array.from({ length: 6 }, (_, i) => { const [n, b, lv, t]
 const AUTH = [['【추구 권한】', '？：1', '', '', 1, 1, '지속: 당신을 대상으로, 대상에게 〈어택: X〉나 〈실드: X〉 중 하나를 준다. X 는 플레이한 1장마다 +1.\n이 국면 종료 때, 이 마법은 해제된다.'],
   ['【참격 권한】', '흑：12', '', '', 1, 0, '지속: 당신을 대상으로, 대상의 고발 공격에 「횟수 +X」 한다. X 는 플레이한 2장마다 +1.\n이 국면 종료 때, 이 마법은 해제된다.'],
   ['【재생 권한】', '？：10', '', '', 1, 1, '참전자 1명을 대상으로, 대상의 〔HP〕 +2점 회복. 당신의 차례 순이 처음이나 마지막인 경우, 다시 +2점 회복.'],
-  ['【단죄 현현】', '흑：15', '', '', 1, 0, '지속: 당신을 대상으로, 대상의 고발이 정답일 때, 대상의 고발 공격에 「위력 +3」 「횟수 +3」 한다.\n이 국면 종료 때, 이 마법은 해제된다.']];
+  ['【단죄 권한】', '흑：15', '', '', 1, 0, '지속: 당신을 대상으로, 대상의 고발이 정답 보너스를 발생시켰을 때, 대상의 고발 공격에 「위력 +3」 「횟수 +3」 한다.\n이 국면 종료 때, 이 마법은 해제된다.']];
 $('auth').innerHTML = Array.from({ length: 9 }, (_, i) => { const [n, b, k, r, a, s, t] = AUTH[i] || ['', '', '', '', 0, 0, '']; return `<div class="mg au orn" data-kind="권한" data-free="1"><div class="mh"><b>권한</b><input type="text" class="nm" value="${n}" aria-label="권한 마법 이름"><span></span></div>
   <div class="boot"><span class="bt"><input type="text" class="bv" value="${b}" aria-label="기동" style="border-left:0;width:56px"></span><span class="bt c"><span>흑색:</span><input type="text" value="${k}" aria-label="흑색"></span><span class="bt c r"><span>적색:</span><input type="text" value="${r}" aria-label="적색"></span></div>
   <textarea class="tx" aria-label="효과">${t}</textarea><div class="ft"><label><input type="checkbox" class="ck tg" data-t="고발" ${a ? 'checked' : ''}>고발</label><label><input type="checkbox" class="ck tg" data-t="원호" ${s ? 'checked' : ''}>원호</label><button class="bub" type="button" title="기동해 채팅에 올림"></button></div></div>`; }).join('');
