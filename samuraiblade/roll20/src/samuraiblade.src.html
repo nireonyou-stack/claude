@@ -1,0 +1,122 @@
+<!-- 사무라이 블레이드 (한국어) — 세로 830px. 배치: 공식 「사무라이 블레이드 TRPG」 캐릭터 시트를 세로로. 목업: samuraiblade/roll20/mockup.html
+     용어는 TR꿈악어 님 한국어 캐릭터 시트를 따른다. @ 표시 자리는 build.py 가 채운다. -->
+<input type="hidden" name="attr_sheet_version" value="0">
+<div class="sbd">
+
+  <!-- 1단: 제목 · 그림 | 프로필 | 생명력 · 각성 · 공적점 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo"><div class="t1">사무라이 블레이드</div><div class="t2">화투 춤추는 퇴마의 검극</div></div>
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
+    </div>
+    <div class="bx prof">
+      <div class="pf w nm"><span class="lb">이름</span><input type="text" name="attr_character_name" title="이름"></div>
+      <div class="pf"><span class="lb">성별</span><input type="text" name="attr_gender" title="성별"></div>
+      <div class="pf"><span class="lb">연령</span><input type="text" name="attr_age" title="연령"></div>
+      <div class="pf"><span class="lb">플레이어 명</span><input type="text" name="attr_player" title="플레이어 명"></div>
+      <div class="pf"><span class="lb">PC 작성일</span><input type="text" name="attr_created" title="PC 작성일"></div>
+      <div class="pf"><span class="lb">혼백</span><input type="text" name="attr_konpaku" title="혼백"></div>
+      <div class="pf"><span class="lb">레벨</span><input type="text" name="attr_level" title="레벨"></div>
+      <div class="pf"><span class="lb">주류파</span><input type="text" name="attr_main_school" title="주류파"></div>
+      <div class="pf"><span class="lb">부류파</span><input type="text" name="attr_sub_school" title="부류파"></div>
+      <div class="pf w"><span class="lb">경력</span><div class="sk2"><input type="text" name="attr_career" title="경력"><span>특기</span><input type="text" name="attr_career_skill" title="경력 특기"></div></div>
+      <div class="pf w"><span class="lb">직업</span><input type="text" name="attr_job" title="직업"></div>
+      <div class="pf w"><span class="lb">출신</span><div class="sk2"><input type="text" name="attr_origin" title="출신"><span>특기</span><input type="text" name="attr_origin_skill" title="출신 특기"></div></div>
+      <div class="pf w"><span class="lb">각성</span><div class="sk2"><input type="text" name="attr_awaken" title="각성"><span>특기</span><input type="text" name="attr_awaken_skill" title="각성 특기"></div></div>
+      <div class="pf w last"><span class="lb">무령도 이름</span><div class="sk2"><input type="text" name="attr_blade_name" title="무령도 이름"><span>화신</span><input type="text" name="attr_incarnation" title="화신"></div></div>
+    </div>
+    <div class="bx hp">
+      <div class="hb">생명력</div>
+      <div class="now"><span class="lb">현재</span><input type="number" name="attr_hp" title="현재 생명력"></div>
+      <div class="rows">
+        <div class="hrow"><span class="lb">기본치</span><input type="number" name="attr_hp_base" title="기본치"></div>
+        <div class="hrow"><span class="lb">장비품</span><input type="number" name="attr_hp_equip" title="장비품"></div>
+        <div class="hrow tot"><span class="lb">총합</span><input type="number" name="attr_hp_max" title="총합" readonly></div>
+      </div>
+      <div class="awk"><input type="checkbox" class="ck" name="attr_awakened" value="1" title="각성"><span>【각성】 상태일 때, 모든 판정에 부스트 +1</span><b>각성</b></div>
+      <div class="merit"><span class="lb">공적점</span><input type="text" name="attr_merit" title="공적점"></div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 (괄호 = 목표치, 번호 양옆) -->
+  <div class="bx">
+    <div class="hb">특기</div>
+    <div class="grid">
+<!--@SKILLS-->
+    </div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">난이도</span>
+      <span class="seg dif"><label class="sgk"><input type="radio" name="attr_dif" value="0" checked><span>하급 ±0</span></label><label class="sgk"><input type="radio" name="attr_dif" value="5"><span>중급 +5</span></label><label class="sgk"><input type="radio" name="attr_dif" value="10"><span>상급 +10</span></label><label class="sgk"><input type="radio" name="attr_dif" value="15"><span>특급 +15</span></label></span>
+      <span class="ckn">부스트<input type="number" name="attr_boost" min="0" title="부스트"></span>
+      <span class="ckn">수정치<input type="number" name="attr_mod" title="다음 판정 수정치"></span>
+      <span class="sp"></span>
+      <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="2 로 되돌림"></button></span>
+      <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="12 로 되돌림"></button></span>
+    </div>
+    <div class="sr">
+      <span class="tl">굴림표</span>
+      <button type="action" class="rt" name="act_t1"><i class="tdi"></i>범용 장면 표</button>
+      <button type="action" class="rt" name="act_t2"><i class="tdi"></i>카르마 장면 표</button>
+      <button type="action" class="rt" name="act_t3"><i class="tdi"></i>펌블 표</button>
+      <button type="action" class="rt" name="act_t4"><i class="tdi"></i>감정 표</button>
+      <span class="rtg"><button type="action" class="rt" name="act_nd1">1D6</button><button type="action" class="rt" name="act_nd2">2D6</button></span>
+      <span class="sp"></span>
+      <span class="tl">공개</span><span class="seg" title="공개 범위"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span>
+      <button type="roll" class="gmb" name="roll_gmw" title="GM 에게 귓속말 (물음 창)" value="/w gm &{template:samuraiblade} {{plain=?{GM 에게 귓속말}}}"><i></i>GM 귓속말</button>
+    </div>
+  </div>
+
+  <!-- 3단: 어빌리티 (인쇄된 줄 + 레벨 2~7) -->
+  <div class="bx">
+    <div class="hb">어빌리티</div>
+    <div class="ah"><span></span><span>레벨</span><span>어빌리티</span><span>조건</span><span>타이밍</span><span>기능</span><span>간격</span><span>대상</span><span>회수</span><span>효과</span><span></span></div>
+<!--@ABILITIES-->
+  </div>
+
+  <!-- 4단: 사명 · 삶 | 인연 -->
+  <div class="r4">
+    <div class="bx mis">
+      <div class="hb">사명</div>
+      <div class="mr"><b>・</b><input type="text" name="attr_mis1" title="사명 1"><b>／삶</b><input type="text" class="life" name="attr_life" title="삶"><input type="checkbox" class="ck" name="attr_mis1_done" value="1" title="달성"></div>
+      <div class="mr"><b>・</b><span class="printed">봉마와 싸운다</span><span class="sp"></span><input type="checkbox" class="ck" name="attr_mis2_done" value="1" title="달성"></div>
+      <div class="mr"><b>・</b><input type="text" name="attr_mis3" title="사명 3"><input type="checkbox" class="ck" name="attr_mis3_done" value="1" title="달성"></div>
+      <div class="mr"><b>・</b><input type="text" name="attr_mis4" title="사명 4"><input type="checkbox" class="ck" name="attr_mis4_done" value="1" title="달성"></div>
+    </div>
+    <div class="bx en">
+      <div class="hb">인연</div>
+      <div class="eh"><span>인연</span><span>감정</span><span>유대</span></div>
+      <div class="rows">
+<!--@BONDS-->
+      </div>
+    </div>
+  </div>
+
+  <!-- 5단: GS | BS | 장비품 -->
+  <div class="r5">
+    <div class="bx st"><div class="hb">굿 스테이터스 (GS)</div><div class="rows">
+<!--@GS-->
+    </div></div>
+    <div class="bx st bs"><div class="hb">배드 스테이터스 (BS)</div><div class="rows">
+<!--@BS-->
+    </div></div>
+    <div class="bx eq">
+      <div class="hb">장비품</div>
+      <div class="qh"><span></span><span>이름</span><span>종별</span><span>간격</span></div>
+<!--@EQUIP-->
+    </div>
+  </div>
+
+  <!-- 6단: 아이템 -->
+  <div class="bx">
+    <div class="hb">아이템</div>
+    <div class="items">
+<!--@ITEMS-->
+    </div>
+  </div>
+</div>
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->

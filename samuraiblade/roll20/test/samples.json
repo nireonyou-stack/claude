@@ -1,0 +1,11 @@
+[
+  {"name": "사쿠라기 이오리 (예시)", "attrs": {"character_name": "사쿠라기 이오리", "gender": "여", "age": "17", "player": "하루", "created": "2026. 11. 22", "konpaku": "검사", "level": "1",
+    "main_school": "검술", "sub_school": "음양", "career": "학생", "career_skill": "학문 · 운동", "job": "퇴마사 견습", "origin": "신사의 딸", "origin_skill": "기도",
+    "awaken": "봉마에게 습격당함", "awaken_skill": "도검", "blade_name": "사쿠라후부키", "incarnation": "벚꽃 여우", "hp": "14", "hp_base": "12", "hp_equip": "2", "merit": "3",
+    "A11": "1", "B7": "1", "C10": "1", "D6": "1", "E4": "1", "F5": "1", "boost": "1", "dif": "5",
+    "mr_skill": "도검", "mr_dmg": "3", "ab2_name": "벚꽃 베기", "ab2_cond": "검술", "ab2_timing": "이동공격", "ab2_skill": "도검", "ab2_range": "1", "ab2_target": "단일", "ab2_count": "사이클", "ab2_effect": "대미지 +2",
+    "ab3_name": "꽃보라", "ab3_cond": "검술", "ab3_timing": "전력공격", "ab3_skill": "도검", "ab3_range": "1", "ab3_target": "라인", "ab3_count": "배틀", "ab3_effect": "대상 라인의 적 전원에게 대미지 2점. 이 공격으로 【봉마】를 쓰러뜨렸다면 손패에서 화투 1장을 버리고 1장 습득한다.",
+    "mis1": "벚꽃 여우의 기억을 되찾는다", "life": "정의로운 검", "en1_name": "미나토", "en1_emo": "우정 (+)", "en1_bond": "1", "en2_name": "벚꽃 여우", "en2_emo": "애정 (+)", "gs1": "1",
+    "eq1_name": "무령도", "eq1_type": "검", "eq1_range": "1", "eq3_name": "교복", "eq3_type": "의복", "eq5_name": "부적 머리끈", "it1_n": "1", "it4_n": "2", "it6_n": "1"}},
+  {"name": "새 캐릭터", "attrs": {}}
+]
