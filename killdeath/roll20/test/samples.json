@@ -1,0 +1,12 @@
+[
+  {"name": "쿠로사키 렌 (회수인 예시)", "attrs": {"character_name": "쿠로사키 렌", "player": "하루", "gender": "남", "age": "24", "wish": "죽은 동생을 되살린다", "char_attr": "악한", "battle_style": "근접 격투",
+    "A7": "1", "B4": "1", "B8": "1", "C10": "1", "E7": "1", "F5": "1", "gap_b": "1",
+    "ab7_name": "헬 피니시", "ab7_effect": "목표에게 대미지. 반격할 수 없다.", "ab7_skill": "베기", "ab4_name": "연속 베기", "ab4_level": "2", "ab4_effect": "공격 판정에 성공하면 대미지.", "ab4_skill": "베기",
+    "ab2_name": "위협 사격", "ab2_level": "1", "ab2_effect": "공격 판정에 성공하면 대미지.", "ab2_skill": "쏘기",
+    "rel1_used": "1", "rel1_name": "미즈키", "rel1_attr": "라이벌", "rel1_depth": "2", "rel2_name": "헬 군", "rel2_attr": "스폰서", "rel2_depth": "1",
+    "cy1_name": "헬 아이", "cy1_effect": "판정 직후에 사용. 주사위 하나를 다시 굴린다.",
+    "sub_name": "마지막 무대", "sub_clear": "사이클 종료 시 【시청률】이 60% 이상", "sub_reward": "200【소울】",
+    "charge": "1", "block": "1", "deaths": "1", "soul": "400", "hell_slug": "구더기 탕"}},
+  {"name": "표적 · 호위천사 (예시)", "attrs": {"sheet_type": "tg", "character_name": "시라유키", "strength": "강함 3", "battle_style": "사격", "B10": "1", "D6": "1", "charge": "0", "block": "2", "life": "3"}},
+  {"name": "새 캐릭터", "attrs": {}}
+]

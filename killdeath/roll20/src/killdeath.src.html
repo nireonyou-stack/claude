@@ -1,0 +1,107 @@
+<!-- 킬데스 비즈니스 (한국어) — 세로 830px. 배치: 공식 회수인 · 표적/호위천사 캐릭터 시트를 세로로. 목업: killdeath/roll20/mockup.html
+     @ 표시 자리는 build.py 가 채운다. .kd 앞의 숨은 칸은 시트 종류를 가르는 거울(형제 선택자용). -->
+<input type="hidden" class="t-type" name="attr_sheet_type" value="pc">
+<input type="hidden" name="attr_sheet_version" value="0">
+<div class="kd">
+
+  <!-- 1단: 제목 · 시트 종류 | 그림 · 인물 -->
+  <div class="r1">
+    <div class="title">
+      <span class="t0">리얼리티 쇼 RPG</span>
+      <span class="t1"><b>킬데스</b><i>비즈니스</i></span>
+      <select name="attr_sheet_type" title="시트 종류"><option value="pc" selected>회수인 캐릭터 시트</option><option value="tg">표적 · 호위천사 캐릭터 시트</option></select>
+    </div>
+    <div class="prof">
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
+      <div class="fields">
+        <div class="fr"><span class="chip">이름</span><input type="text" class="nm" name="attr_character_name" title="이름"></div>
+        <div class="two">
+          <div class="fr"><span class="chip">플레이어</span><input type="text" name="attr_player" title="플레이어"></div>
+          <div class="fr"><span class="chip">성별</span><input type="text" name="attr_gender" title="성별"></div>
+          <div class="fr"><span class="chip">나이</span><input type="text" name="attr_age" title="나이"></div>
+        </div>
+        <div class="fr"><span class="chip">소원</span><textarea name="attr_wish" title="소원"></textarea></div>
+        <div class="fr pc"><span class="chip">캐릭터 속성</span><input type="text" name="attr_char_attr" title="캐릭터 속성"></div>
+        <div class="fr tg"><span class="chip">강함</span><input type="text" name="attr_strength" title="강함"></div>
+        <div class="fr"><span class="chip">전투 스타일</span><input type="text" name="attr_battle_style" title="전투 스타일"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 -->
+  <div class="box">
+    <div class="hb"><span class="mk">己</span>특기 리스트</div>
+    <div class="grid">
+<!--@SKILLS-->
+    </div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <button type="action" class="rt" name="act_rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
+    <span class="rtg"><button type="action" class="rt" name="act_nd1">1D6</button><button type="action" class="rt" name="act_nd2">2D6</button><button type="action" class="rt" name="act_nd3">3D6</button></span>
+    <span class="ckn">수정치<input type="number" class="modv" name="attr_mod" title="다음 판정 수정치"></span>
+    <span class="sp"></span>
+    <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="2 로 되돌림"></button></span>
+    <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="12 로 되돌림"></button></span>
+    <span class="seg" title="공개 범위"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span>
+    <button type="roll" class="gmb" name="roll_gmw" title="GM 에게 귓속말 (물음 창)" value="/w gm &{template:killdeath} {{plain=?{GM 에게 귓속말}}}"><i></i>GM 귓속말</button>
+  </div>
+
+  <!-- 3단: 어빌리티 (리스크 7 ~ 1, 7 = 킬러 트릭) -->
+  <div class="box">
+    <div class="hb"><span class="mk">業</span>어빌리티</div>
+    <div class="ah"><span></span><span>리스크</span><span>이름</span><span>레벨</span><span>효과</span><span>지정특기</span></div>
+<!--@ABILITIES-->
+  </div>
+
+  <!-- 4단: 관계 | 헬 사이버 (회수인) · 상태 (표적) -->
+  <div class="r4">
+    <div class="box rel">
+      <div class="hb"><span class="mk">想</span>관계</div>
+      <div class="rh"><span></span><span>이름</span><span>속성</span><span>심도</span></div>
+      <div class="rows">
+<!--@RELATIONS-->
+      </div>
+    </div>
+    <div class="box cy pc">
+      <div class="hb"><span class="mk">機</span>헬 사이버</div>
+      <div class="rh"><span>이름</span><span>효과</span><span></span></div>
+      <div class="rows">
+<!--@CYBER-->
+      </div>
+    </div>
+    <div class="box stat tg">
+      <div class="hb">상태</div>
+      <div class="st"><span class="chip">차지</span><!--@TOK_CHARGE_TG--></div>
+      <div class="st"><span class="chip">블록</span><!--@TOK_BLOCK_TG--></div>
+      <div class="st"><span class="chip">라이프</span><input type="number" name="attr_life" title="라이프"></div>
+    </div>
+  </div>
+
+  <!-- 5단 (회수인): 서브플롯 | 차지 · 블록 · 사망 횟수 · 소울 · 헬 슬러그 -->
+  <div class="r5 pc">
+    <div class="box sub">
+      <div class="hb"><span class="mk">話</span>서브플롯<span class="sp"></span><button type="action" class="bub" name="act_sub" title="채팅에 출력"></button></div>
+      <div class="sb">
+        <span class="chip">이름</span><input type="text" name="attr_sub_name" title="서브플롯 이름">
+        <span class="chip">클리어 조건</span><textarea name="attr_sub_clear" title="클리어 조건"></textarea>
+        <span class="chip">보수</span><textarea name="attr_sub_reward" title="보수"></textarea>
+      </div>
+    </div>
+    <div class="box stat">
+      <div class="st"><span class="chip">차지</span><!--@TOK_CHARGE_PC--></div>
+      <div class="st"><span class="chip">블록</span><!--@TOK_BLOCK_PC--></div>
+      <div class="st"><span class="chip">사망 횟수</span><!--@TOK_DEATHS--></div>
+      <div class="st"><span class="chip">소울</span><input type="number" name="attr_soul" title="소울"></div>
+      <div class="st slug"><span class="chip">헬 슬러그</span><textarea name="attr_hell_slug" title="헬 슬러그"></textarea></div>
+    </div>
+  </div>
+
+  <div class="box memo">
+    <div class="hb">메모</div>
+    <textarea name="attr_memo" title="메모"></textarea>
+  </div>
+</div>
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->
