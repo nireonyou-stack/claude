@@ -1,6 +1,7 @@
 """비기닝 아이돌 Roll20 시트 빌드.
 
-src/beginningidol.src.html 의 <!--@...--> 자리를 특기 리스트 · 아이돌 링크 · 아이돌 스킬 · 리액션 표 · 이해 · 추억 · 멘탈,
+src/beginningidol.src.html 의 <!--@...--> 자리를 특기 리스트 · 아이돌 링크 · 아이돌 스킬 · 리액션 표 · 이해 · 추억 · 멘탈 · 의상,
+유닛 시트의 유닛 파워 · 변조,
 src/worker.js(sheet worker) · src/rolltemplate.html(채팅 카드)로 채워 sheet/beginningidol.html 을,
 src/beginningidol.src.css 의 /*@GEN*/ 자리를 주사위 눈 규칙으로 채워 sheet/beginningidol.css 를 만든다.
 
@@ -34,7 +35,16 @@ LINKS = [('멘탈 케어', '언제든지 사용할 수 있다. 캐릭터 한 명
          ('심퍼시', '캐릭터 한 명이 판정 혹은 퍼포먼스 판정을 한 직후에 사용할 수 있다. 그 PC에 대해 「이해」를 얻는다.'),
          ('디스커션', '언제든지 사용할 수 있다. 「변조」를 모두 회복한다.')]
 SKILL_ROWS = 6
-MENTAL_MAX = 50
+MENTAL_MAX, MENTAL_HI = 50, 80   # 의상 「80s」 를 입으면 상한 80 (51~80 칸은 상한 80 체크 때만 보임)
+COS_ROWS = 3                     # 의상 코디 최대 3 브랜드
+UP_ROWS = 5                      # 유닛 파워
+# 변조 (유닛 시트 · 룰북 5·01·06 변조표)
+CONDS = [('불온한 공기', '유닛 멤버의 【멘탈】이 감소할 때, 감소하는 값을 1점 더 늘린다.'),
+         ('미묘한 거리감', '유닛 멤버는 「이해」를 할 수 없게 된다.'),
+         ('실패에 대한 불안', '유닛 멤버의 펌블치가 1점 상승한다.'),
+         ('멤버의 부상', '유닛 멤버는 「막간」에 【멘탈】을 상승시킬 수 없게 된다.'),
+         ('논란', '유닛 멤버가 퍼포먼스 판정을 할 때, 모든 능력치를 1점 낮은 것으로 취급한다.'),
+         ('엇갈림', '유닛 멤버는 아이돌 링크를 사용할 수 없다.')]
 
 
 def gap(g, head=False):
@@ -75,9 +85,7 @@ def links():
 def idol_skills():
     out = []
     for i in range(1, SKILL_ROWS + 1):
-        ty = (f'<input type="radio" class="none" name="attr_sk{i}_type" value="" checked>'
-              f'<label class="tyk"><input type="radio" name="attr_sk{i}_type" value="보조"><span>보조</span></label><i>&#x00B7;</i>'
-              f'<label class="tyk"><input type="radio" name="attr_sk{i}_type" value="상주"><span>상주</span></label>')
+        ty = type_radio(f'sk{i}_type')
         out.append(f'<div class="srow"><span><button type="action" class="dic" name="act_sk{i}" title="사용 (지정특기가 있으면 판정)"></button></span>'
                    f'<span class="nm"><input type="text" name="attr_sk{i}_name" title="아이돌 스킬 {i}"></span><span class="ty">{ty}</span>'
                    f'<span><input type="text" name="attr_sk{i}_skill" title="지정특기"></span><span><textarea name="attr_sk{i}_effect" title="효과"></textarea></span></div>')
@@ -100,7 +108,31 @@ def memories():
 
 def mental():
     return ('<input type="radio" class="none" name="attr_mental" value="" checked>'
-            + ''.join(f'<label class="mt"><input type="radio" name="attr_mental" value="{k}"><span>{k}</span></label>' for k in range(MENTAL_MAX + 1)))
+            + ''.join(f'<label class="mt{" hi" if k > MENTAL_MAX else ""}"><input type="radio" name="attr_mental" value="{k}"><span>{k}</span></label>'
+                      for k in range(MENTAL_HI + 1)))
+
+
+def type_radio(attr):
+    return (f'<input type="radio" class="none" name="attr_{attr}" value="" checked>'
+            f'<label class="tyk"><input type="radio" name="attr_{attr}" value="보조"><span>보조</span></label><i>&#x00B7;</i>'
+            f'<label class="tyk"><input type="radio" name="attr_{attr}" value="상주"><span>상주</span></label>')
+
+
+def costumes():
+    return '\n'.join(f'<div class="cr"><b>{i}</b><span class="nm"><input type="text" name="attr_cos{i}_brand" title="의상 브랜드 {i}"></span>'
+                     f'<span><textarea name="attr_cos{i}_effect" title="효과"></textarea></span>'
+                     f'<span><button type="action" class="bub" name="act_cos{i}" title="채팅에 출력"></button></span></div>' for i in range(1, COS_ROWS + 1))
+
+
+def unit_powers():
+    return '\n'.join(f'<div class="srow"><span><button type="action" class="bub" name="act_up{i}" title="채팅에 출력"></button></span>'
+                     f'<span class="nm"><input type="text" name="attr_up{i}_name" title="유닛 파워 {i}"></span><span class="ty">{type_radio(f"up{i}_type")}</span>'
+                     f'<span><textarea name="attr_up{i}_effect" title="효과"></textarea></span></div>' for i in range(1, UP_ROWS + 1))
+
+
+def conditions():
+    return '\n'.join(f'<div class="cd"><input type="checkbox" class="ck" name="attr_cond{i}" value="1" title="받는 중">'
+                     f'<b>{i}. {n}</b><p>{e}</p></div>' for i, (n, e) in enumerate(CONDS, 1))
 
 
 def gen_css():
@@ -121,6 +153,7 @@ def build():
     for key, val in {
         'SKILLS': skills(), 'LINKS': links(), 'IDOL_SKILLS': idol_skills(), 'REACTIONS': reactions(),
         'UNDERSTANDING': understanding(), 'MEMORIES': memories(), 'MENTAL': mental(),
+        'COSTUMES': costumes(), 'UNIT_POWERS': unit_powers(), 'CONDITIONS': conditions(),
         'ROLLTEMPLATE': optional('rolltemplate.html'),
         'WORKER': f'<script type="text/worker">\n{optional("worker.js")}\n</script>',
     }.items():

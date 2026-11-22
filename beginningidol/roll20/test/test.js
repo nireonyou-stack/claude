@@ -115,7 +115,107 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   s.click('sym'); await s.settle();
   eq('symphony 1 2 + 2 → 1, extension +1 → 2', [last(s).computed.pv, last(s).computed.sym], [2, '남은 1 2 + 새 2 → 1 · 익스텐션 +1']);
 
-  const errs = s.log.filter(l => l[0] === 'ERROR');
+  const errAll = [];
+  const keep = x => { errAll.push(...x.log.filter(l => l[0] === 'ERROR')); return x; };
+  keep(s);
+
+  // ── 【연기파 아이돌】: 왼쪽 끝 · 오른쪽 끝이 이어짐 (이음매 2)
+  s = keep(makeSim(HTML)); s.open(); await s.settle();
+  s.set('A2', '1'); await s.settle();
+  eq('no wrap: F2 = 5 + 10', g(s, 'F2_value', 'E2_value'), ['15', '13']);
+  s.set('acting', '1'); await s.settle();
+  eq('wrap: F2 = 5 + 2, E2 = 5 + 4', g(s, 'F2_value', 'E2_value', 'C2_value'), ['7', '9', '9']);
+
+  // ── 주사위 고치기: 퍼포먼스 (0 = 다시 굴림) · 판정 (앞자리 0) · 굴림 없음
+  s = keep(makeSim(HTML, { dice: [2, 5, 1, 5, 6, /* x1~x5 */ 3, 3, 3, 4, 3], queries: { '주사위 눈': '25106' } })); s.open(); await s.settle();
+  s.click('fix'); await s.settle();
+  has('nothing to fix', last(s).macro, '{{title=주사위 고치기}}');
+  s.set('voice', '5'); await s.settle();
+  s.click('pvoice'); await s.settle();
+  eq('remembered dice', g(s, 'last_dice'), ['25156']);
+  s.click('fix'); await s.settle();
+  has('fix computed first', last(s).macro, '&{template:beginningidol} {{fsub=[[0]]}} {{pv=[[0]]}} {{pst=[[0]]}} {{f1=[[0]]}} {{g1=[[0]]}}');
+  has('fix query default', last(s).macro, '{{fq=[[?{주사위 눈 (바꿀 눈은 고쳐 적고 다시 굴릴 눈은 0)|25156}]]}}');
+  has('fix title', last(s).macro, '{{fx=1}}');
+  has('fix title text', last(s).macro, '{{title=보이스 퍼포먼스 · 주사위 고침}}');
+  eq('fix: 2 5 1 5 6 → 2 5 1 4 6 = 18', pick(last(s).computed, 'pv', 'pst', 'f4', 'g2', 'fsub'), { pv: 18, pst: 0, f4: 4, g2: 0, fsub: '2 5 1 5 6 → 2 5 1 4 6 (다시 굴림 1개) → 남은 2 5 1 4 6' });
+  eq('fix updates last left', g(s, 'last_left', 'last_dice'), ['25146', '25146']);
+  s = keep(makeSim(HTML, { dice: [1, 1, 3, /* x1 x2 ft */ 4, 2, 1], queries: { '주사위 눈': '05' } })); s.open(); await s.settle();
+  s.set('C7', '1'); await s.settle();
+  s.click('rc7'); await s.settle();
+  eq('fumble first', last(s).computed.ok, 2);
+  s.click('fix'); await s.settle();
+  has('check fix flags', last(s).macro, '{{ft=[[1d6]]}} {{fck=1}} {{fx=1}}');
+  eq('check fix: 0 5 → 4 5 = 9 success', pick(last(s).computed, 'ok', 'total', 'f1', 'f2', 'fsub'), { ok: 3, total: 9, f1: 4, f2: 5, fsub: '1 1 → 4 5 (다시 굴림 1개)' });
+
+  // ── 서포터: 퍼포먼스 능력치 1 · 서포트 대응표 (23 은 출신 무작위 특기)
+  s = keep(makeSim(HTML, { dice: [4, /* 23 */ 3, 2, 3, 4, /* 11 */ 1, 1, 6, 6, /* 34 */ 4, 3, 1, 1] })); s.open(); await s.settle();
+  s.set('pc_role', 'support'); s.set('voice', '5'); await s.settle();
+  s.click('pvoice'); await s.settle();
+  has('supporter: one die', last(s).macro, '{{sub=서포터 · 능력치 1 · 주사위 1개}}');
+  not('supporter: no p2', last(s).macro, '{{p2=');
+  s.click('support'); await s.settle();
+  has('support table hidden dice', last(s).macro, '{{te1=[[1d6]]}} {{te2=[[1d6]]}} {{h1=[[1d6]]}} {{h2=[[1d6]]}}');
+  eq('support 23 → 출신 7 《주부》', last(s).computed.tres, '23 트러블 판정 《주부》');
+  s.click('support'); await s.settle();
+  eq('support 11', last(s).computed, { tres: '11 유닛 멤버의 특훈', tlong: '유명한 트레이너에게 부탁해 특훈을 받는다. 「유닛 멤버의 특훈」을 한다.' });
+  s.click('support'); await s.settle();
+  eq('support 34 → skill from text', last(s).computed.tres, '34 트러블 판정 《배려》');
+  eq('support button only for supporter', /class="pq support-only">[^]*?name="act_support"/.test(HTML), true);
+
+  // ── 이해표 · 포지네가 이해표 (작은 눈이 앞)
+  s = keep(makeSim(HTML, { dice: [6, 1, 5, 5] })); s.open(); await s.settle();
+  s.click('utab'); await s.settle();
+  eq('understanding 6 1 → 16', last(s).computed, { tres: '16 목표' });
+  not('no hidden dice', last(s).macro, '{{h1=');
+  s.click('pntab'); await s.settle();
+  eq('pos/neg 55', last(s).computed, { tres: '55 여우 같아 / 너무 여우 같아' });
+
+  // ── 【추억】 멘탈 회복: 쓰지 않은 추억 · 상한 50 / 80
+  s = keep(makeSim(HTML, { dice: [5, 5, 6] })); s.open(); await s.settle();
+  s.set('mental', '48'); s.set('mem1_used', '1'); s.set('mem2', '첫 팬레터'); await s.settle();
+  s.click('memrec'); await s.settle();
+  has('memory card', last(s).macro, '{{title=【추억】 사용 · 멘탈 회복}} {{sub=No.2 첫 팬레터}}');
+  eq('cap 50', [last(s).computed.tres, ...g(s, 'mental', 'mem2_used')], ['【멘탈】 48 → 50', '50', '1']);
+  s.set('mental80', '1'); await s.settle();
+  s.click('memrec'); await s.settle();
+  eq('cap 80', g(s, 'mental', 'mem3_used'), ['55', '1']);
+  s.click('memrec'); await s.settle();
+  has('no memory left', last(s).macro, '{{eff=남은 【추억】이 없습니다.}}');
+  eq('mental track 0~80, 51~ hidden class', [(HTML.match(/name="attr_mental" value="\d+"/g) || []).length, /class="mt hi"><input type="radio" name="attr_mental" value="51"/.test(HTML)], [81, true]);
+
+  // ── 마이 플랜: 과제 달성 → 개성 목표치 −1 (사이드 PC) · 볼티지 달성 자동 체크
+  s = keep(makeSim(HTML, { dice: [4, 5, 9, 4, 5, 9] })); s.open(); await s.settle();
+  s.set('kosei_skill', '미소'); s.set('kosei_target', '10'); s.set('plan_task_done', '1'); await s.settle();
+  s.click('kosei'); await s.settle();
+  has('task done → 9', last(s).macro, '{{sub=개성 목표치 9 (과제 달성 −1)}}');
+  eq('9 ≥ 9', last(s).computed.ok, 3);
+  s.set('pc_role', 'center'); await s.settle();
+  s.click('kosei'); await s.settle();
+  has('center: no task', last(s).macro, '{{sub=개성 목표치 10}}');
+  s.set('plan_goalv', '20'); s.set('idol_voltage', '19'); await s.settle();
+  eq('not yet', g(s, 'plan_vol_done'), ['0']);
+  s.set('idol_voltage', '21'); await s.settle();
+  eq('voltage reached → checked', g(s, 'plan_vol_done'), ['1']);
+
+  // ── 유닛 시트: 【운명공동체】 · 변조표 · 유닛 파워 · 의상
+  s = keep(makeSim(HTML, { dice: [3, 3] })); s.open(); await s.settle();
+  s.set('route', 'unit'); await s.settle();
+  eq('fate community on first unit', g(s, 'unit_init', 'up1_name', 'up1_type'), ['1', '운명공동체', '상주']);
+  s.set('up1_name', ''); s.set('route', 'tiara'); await s.settle(); s.set('route', 'unit'); await s.settle();
+  eq('only once', g(s, 'up1_name'), ['']);
+  s.click('cond'); await s.settle();
+  eq('condition 3 checked', [last(s).computed.tres, ...g(s, 'cond3')], ['「실패에 대한 불안」 유닛 멤버의 펌블치가 1점 상승한다.', '1']);
+  s.click('cond'); await s.settle();
+  has('same condition again', last(s).computed.tres, '(이미 받은 변조라 아무 일도 없음)');
+  s.set('up2_name', '한마음'); s.set('up2_type', '보조'); s.set('up2_effect', '판정 +1'); s.set('cos1_brand', '80s'); s.set('cos1_effect', '【멘탈】 상한 80'); await s.settle();
+  s.click('up2'); await s.settle();
+  has('unit power card', last(s).macro, '{{title=【한마음】}} {{sub=유닛 파워 · 보조}} {{eff=판정 +1}}');
+  s.click('cos1'); await s.settle();
+  has('costume card', last(s).macro, '{{title=「80s」}} {{sub=의상}} {{eff=【멘탈】 상한 80}}');
+  eq('unit sheet option', /<option value="unit">유닛 시트<\/option>/.test(HTML), true);
+
+  const errs = errAll;
   eq('no worker errors', errs.map(e => e[1].split('\n')[0]), []);
   console.log(`${pass} pass, ${fail} fail`);
   process.exit(fail ? 1 : 0);

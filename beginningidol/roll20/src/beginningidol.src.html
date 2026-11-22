@@ -1,6 +1,12 @@
-<!-- 비기닝 아이돌 (한국어) — 세로 830px. 배치: 공식 기본 룰북 캐릭터 시트(티아라 노선 · 크라운 노선)를 세로로. 목업: beginningidol/roll20/mockup.html
-     @ 표시 자리는 build.py 가 채운다. .bi 앞의 숨은 칸은 노선(강조색 · 별 모양)을 가르는 거울(형제 선택자용). -->
+<!-- 비기닝 아이돌 (한국어) — 세로 830px. 배치: 공식 기본 룰북 캐릭터 시트(티아라 노선 · 크라운 노선)를 세로로, 유닛 시트는 룰북 5·01 도해대로. 목업: beginningidol/roll20/mockup.html
+     @ 표시 자리는 build.py 가 채운다. .bi 앞의 숨은 칸은 형제 선택자용 거울:
+     t-route 노선(강조색 · 별 모양 · unit = 유닛 시트) · t-role 사이드 PC / 센터 PC / 서포터 · t-m80 멘탈 상한 80 -->
 <input type="hidden" class="t-route" name="attr_route" value="tiara">
+<input type="hidden" class="t-role" name="attr_pc_role" value="side">
+<input type="hidden" class="t-m80" name="attr_mental80" value="0">
+<input type="hidden" name="attr_last_dice" value="">
+<input type="hidden" name="attr_last_roll" value="">
+<input type="hidden" name="attr_unit_init" value="0">
 <input type="hidden" name="attr_sheet_version" value="0">
 <input type="hidden" name="attr_last_left" value="">
 <div class="bi">
@@ -11,11 +17,11 @@
       <div class="logo">
         <div class="t0">IDOL START RPG</div>
         <div class="t1">비기닝 <b>아이돌</b></div>
-        <select name="attr_route" title="노선"><option value="tiara" selected>티아라 노선 캐릭터 시트</option><option value="crown">크라운 노선 캐릭터 시트</option></select>
+        <select name="attr_route" title="노선"><option value="tiara" selected>티아라 노선 캐릭터 시트</option><option value="crown">크라운 노선 캐릭터 시트</option><option value="unit">유닛 시트</option></select>
       </div>
       <div class="portrait"><img name="attr_character_avatar" alt=""></div>
     </div>
-    <div class="pnl prof">
+    <div class="pnl prof pc-only">
       <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>프로필</div>
       <div class="pbody">
         <div class="pr"><span class="chip">아이돌 클래스</span><input type="text" name="attr_idol_class" title="아이돌 클래스"></div>
@@ -29,23 +35,46 @@
         <div class="pr last"><span class="chip">싫어하는 것</span><input type="text" name="attr_dislikes" title="싫어하는 것"></div>
       </div>
     </div>
-    <div class="stats">
+    <div class="stats pc-only">
       <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>능력치</div>
       <div class="sv"><span class="chip">보이스</span><input type="number" name="attr_voice" title="보이스"><button type="action" class="pf" name="act_pvoice"><i></i>퍼포먼스</button></div>
       <div class="sv"><span class="chip">피지컬</span><input type="number" name="attr_physical" title="피지컬"><button type="action" class="pf" name="act_pphysical"><i></i>퍼포먼스</button></div>
       <div class="sv"><span class="chip">비주얼</span><input type="number" name="attr_visual" title="비주얼"><button type="action" class="pf" name="act_pvisual"><i></i>퍼포먼스</button></div>
       <div class="kos"><span class="chip">개성 특기</span><input type="text" name="attr_kosei_skill" title="개성 특기"><span class="chip">개성 목표치</span><span class="kt"><input type="text" name="attr_kosei_target" title="개성 목표치"><button type="action" class="dic" name="act_kosei" title="【일예돌파】 판정"></button></span></div>
     </div>
+    <!-- 유닛 시트: ① 유닛 멤버 ② 월드 세팅 ③ 유닛 테마 ④ 유닛명 -->
+    <div class="pnl uinfo unit-only">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>유닛</div>
+      <div class="pbody">
+        <div class="pr"><span class="chip">유닛명</span><input type="text" name="attr_unit_name" title="유닛명"></div>
+        <div class="pr"><span class="chip">유닛 테마</span><input type="text" name="attr_unit_theme" title="유닛 테마"></div>
+        <div class="pr"><span class="chip">월드 세팅</span><input type="text" name="attr_world_setting" title="월드 세팅"></div>
+        <div class="um"><span class="chip">유닛 멤버</span><textarea name="attr_unit_members" title="유닛 멤버"></textarea></div>
+      </div>
+    </div>
   </div>
 
-  <!-- 2단: 특기 리스트 (번호 왼쪽) · 아이돌 링크 (3 칸 × 2 줄) -->
-  <div class="pnl">
-    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>특기 리스트</div>
+  <!-- 유닛 시트: ⑤ 유닛 파워 ⑥ 변조 -->
+  <div class="pnl upw unit-only">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>유닛 파워</div>
+    <div class="sh"><span></span><span>이름</span><span>타입</span><span>효과</span></div>
+<!--@UNIT_POWERS-->
+  </div>
+  <div class="pnl cond unit-only">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>변조<span class="sp"></span><button type="action" class="hbt" name="act_cond" title="변조표 1D6"><i class="tdi"></i>변조표</button></div>
+    <div class="cds">
+<!--@CONDITIONS-->
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 (번호 왼쪽) · 아이돌 링크 (3 칸 × 2 줄). 【연기파 아이돌】 = 왼쪽 끝과 오른쪽 끝이 이어짐 -->
+  <div class="pnl pc-only">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>특기 리스트<span class="sp"></span><label class="hck"><input type="checkbox" name="attr_acting" value="1"><span></span>【연기파 아이돌】</label></div>
     <div class="grid">
 <!--@SKILLS-->
     </div>
   </div>
-  <div class="pnl link">
+  <div class="pnl link pc-only">
     <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>아이돌 링크</div>
     <div class="links">
 <!--@LINKS-->
@@ -53,9 +82,10 @@
   </div>
 
   <!-- 판정 띠 -->
-  <div class="strip">
+  <div class="strip pc-only">
     <button type="action" class="rt" name="act_rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
     <button type="action" class="rt" name="act_sym" title="다른 PC 의 퍼포먼스에 주사위를 더함"><i class="tdi"></i>심포니</button>
+    <button type="action" class="rt" name="act_fix" title="마지막 판정 · 퍼포먼스의 눈을 고치거나 다시 굴림 (익스텐션 · 【추억】 · 싱크로 · 커버 포지션)"><i class="tdi"></i>주사위 고치기</button>
     <span class="rtg"><button type="action" class="rt" name="act_nd1">1D6</button><button type="action" class="rt" name="act_nd2">2D6</button><button type="action" class="rt" name="act_nd3">3D6</button></span>
     <span class="ckn">수정치<input type="number" name="attr_mod" title="다음 판정 수정치"></span>
     <span class="sp"></span>
@@ -66,14 +96,14 @@
   </div>
 
   <!-- 3단: 아이돌 스킬 -->
-  <div class="pnl">
+  <div class="pnl pc-only">
     <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>아이돌 스킬</div>
     <div class="sh"><span></span><span>이름</span><span>타입</span><span>지정특기</span><span>효과</span></div>
 <!--@IDOL_SKILLS-->
   </div>
 
   <!-- 4단: 리액션 표 | 이해 | 추억 -->
-  <div class="r4">
+  <div class="r4 pc-only">
     <div class="pnl">
       <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>리액션 표<span class="sp"></span><button type="action" class="dic" name="act_react" title="1D6 리액션"></button></div>
       <div class="col">
@@ -81,22 +111,43 @@
       </div>
     </div>
     <div class="pnl">
-      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>이해</div>
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>이해<span class="sp"></span><button type="action" class="hbt" name="act_utab" title="이해표 D66">이해표</button><button type="action" class="hbt" name="act_pntab" title="포지네가 이해표 D66">포지네가</button></div>
       <div class="col">
 <!--@UNDERSTANDING-->
       </div>
     </div>
     <div class="pnl">
-      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>추억</div>
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>추억<span class="sp"></span><button type="action" class="hbt" name="act_memrec" title="【추억】 1개를 써서 【멘탈】 1D6 회복"><i class="tdi"></i>멘탈 회복</button></div>
       <div class="col mem">
 <!--@MEMORIES-->
       </div>
     </div>
   </div>
-  <div class="pnl ment">
-    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>멘탈</div>
+  <div class="pnl ment pc-only">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>멘탈<span class="sp"></span><label class="hck"><input type="checkbox" name="attr_mental80" value="1"><span></span>상한 80</label></div>
     <div class="track">
 <!--@MENTAL-->
+    </div>
+  </div>
+
+  <!-- 5단: 마이 플랜 (사이드 PC) · 프로듀스 카드 (센터 PC) · 서포터는 목표만 | 의상 코디 3 칸 -->
+  <div class="r5 pc-only">
+    <div class="pnl plan">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span><span class="no-center">마이 플랜</span><span class="center-only">프로듀스 카드</span><span class="sp"></span>
+        <span class="seg role" title="PC 역할"><label class="sgk"><input type="radio" name="attr_pc_role" value="side" checked><span>사이드 PC</span></label><label class="sgk"><input type="radio" name="attr_pc_role" value="center"><span>센터 PC</span></label><label class="sgk"><input type="radio" name="attr_pc_role" value="support"><span>서포터</span></label></span></div>
+      <div class="pl">
+        <div class="pq tall no-center"><span class="chip">목표</span><textarea name="attr_plan_goal" title="목표"></textarea></div>
+        <div class="pq tall center-only"><span class="chip">내용</span><textarea name="attr_plan_card" title="프로듀스 카드 내용"></textarea></div>
+        <div class="pq support-only"><span class="chip">서포트 대응</span><button type="action" class="rt" name="act_support" title="서포트 대응표 D66"><i class="tdi"></i>서포트 대응표</button></div>
+        <div class="pq no-center no-support"><span class="chip">과제</span><div class="pv"><input type="text" name="attr_plan_task" title="과제"><input type="checkbox" class="ck" name="attr_plan_task_done" value="1" title="달성"><p>달성하면 개성 특기의 목표치가 1점 감소</p></div></div>
+        <div class="pq no-support"><span class="chip">목표 볼티지</span><div class="pv"><input type="number" name="attr_plan_goalv" title="목표 볼티지"><input type="checkbox" class="ck" name="attr_plan_vol_done" value="1" title="달성"><p>달성 시 아이돌 링크를 1개 획득</p></div></div>
+        <div class="pq no-support"><span class="chip">【아이돌 볼티지】</span><div class="pv"><input type="number" class="iv" name="attr_idol_voltage" value="0" title="아이돌 볼티지"></div></div>
+      </div>
+    </div>
+    <div class="pnl cos">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>의상</div>
+      <div class="sh"><span></span><span>브랜드</span><span>효과</span><span></span></div>
+<!--@COSTUMES-->
     </div>
   </div>
 </div>
