@@ -59,10 +59,10 @@ textarea{resize:none;display:block}
 .logo .t0{font:700 10px var(--sans);letter-spacing:.2em;opacity:.85}
 .logo .t1{font:400 44px/1 var(--brush);letter-spacing:.02em}
 .logo .t1 b{font-weight:400;color:var(--red)}
-.logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--accent);color:#fff;font:700 12px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:4px;
+.logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--accent);color:#fff;font:700 12px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;
   background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(-45deg,transparent 50%,#fff 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
 .logo select option{color:var(--ink)}
-.opts{display:flex;justify-content:center;gap:10px;margin-top:5px;font:500 10.5px var(--sans);color:#ddd}
+.opts{display:flex;justify-content:center;align-items:center;gap:9px;margin-top:6px;font:500 11px var(--sans);color:#ddd;white-space:nowrap}
 .opts label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
 .opts .ck{border-color:#bbb;background-color:transparent}
 .portrait{flex:1;min-height:150px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
@@ -159,9 +159,17 @@ textarea{resize:none;display:block}
 .sec{display:flex;align-items:center;gap:6px;background:var(--bar);color:#fff;font:700 10.5px var(--sans);padding:3px 7px;letter-spacing:.1em}
 .blk{flex:1;display:flex;flex-direction:column}
 .blk .kv{flex:1}
+/* 남는 높이는 자유란이 받는다 (혈계 줄은 늘리지 않음) */
+.col>.blk{flex:none}
+.col>.blk.free{flex:1}
 .tbl .th,.tbl .tr{display:grid;align-items:stretch}
-.bl .th,.bl .tr{grid-template-columns:20px 92px 64px 64px minmax(0,1fr) 24px}
-.sk .th,.sk .tr{grid-template-columns:92px 56px 52px 54px 48px minmax(0,1fr) 24px}
+/* 혈위 · 특기: 첫 줄 = 명칭 · 타이밍 …, 둘째 줄 = 해설 (번호 · 말풍선은 두 줄을 차지) */
+.bl .th,.bl .tr{grid-template-columns:20px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 24px}
+.sk .th,.sk .tr{grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr)) 24px}
+.bl .tr .no,.tbl .tr .bb{grid-row:span 2}
+.bl .tr .ef{grid-column:2/5;grid-row:2}
+.sk .tr .ef{grid-column:1/6;grid-row:2;border-left:0}
+.bl .tr .ef,.sk .tr .ef{border-top:1px dotted var(--line);min-height:23px}
 .memo .th,.memo .tr{grid-template-columns:minmax(0,1fr) 70px 150px}
 .th{font:700 10.5px var(--sans);text-align:center;color:#fff;background:#3a3a3a}
 .th span{padding:2px 0}
@@ -262,8 +270,7 @@ textarea{resize:none;display:block}
       <div class="logo">
         <div class="t0">인귀혈맹 RPG</div>
         <div class="t1">블러드<b>패</b>스</div>
-        <select id="stype" aria-label="시트 종류"><option value="h">캐릭터 시트 (인간)</option><option value="v">캐릭터 시트 (흡혈귀)</option></select>
-        <div class="opts"><label><input type="checkbox" class="ck" id="adv" checked>상급자용</label><label><input type="checkbox" class="ck" id="trio">혈맹 3인</label></div>
+        <div class="opts"><select id="stype" aria-label="시트 종류"><option value="h">인간 시트</option><option value="v">흡혈귀 시트</option></select><label><input type="checkbox" class="ck" id="adv" checked>상급자</label><label><input type="checkbox" class="ck" id="trio">3인</label></div>
       </div>
       <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
     </div>
@@ -356,7 +363,7 @@ textarea{resize:none;display:block}
           <b><span class="h-only">약속</span><span class="v-only">협정</span></b><span class="w"><input type="text" aria-label="약속 · 협정"></span>
         </div>
       </div>
-      <div class="bx blk">
+      <div class="bx blk free">
         <div class="hb">자유란<span class="sp"></span><small>설정 · 일러스트 등</small></div>
         <textarea aria-label="자유란" style="flex:1;min-height:80px;padding:6px 8px;font-size:12px">조직에서 흡혈귀 레이와 혈맹을 맺었다.</textarea>
       </div>
@@ -368,13 +375,13 @@ textarea{resize:none;display:block}
       </div>
       <div class="bx tbl bl">
         <div class="hb">혈위</div>
-        <div class="th"><span></span><span>명칭</span><span>타이밍</span><span>대상</span><span>해설</span><span></span></div>
+        <div class="th"><span></span><span>명칭</span><span>타이밍</span><span>대상</span><span></span></div>
         <div id="bl"></div>
         <div class="rule">혈위는 블러드패스의 강도 2 이상에서 사용 가능해지며, 각각 시나리오에 1회 사용할 수 있다.<br><span class="h-only">혈위를 사용하려면 흑의 그림 카드나 흑의 A 를 1장 버려야 한다. 대신 파트너가 버려도 된다.</span><span class="v-only">혈위를 사용하려면 적의 그림 카드나 적의 A 를 1장 버려야 한다. 대신 파트너가 버려도 된다.</span></div>
       </div>
       <div class="bx tbl sk">
         <div class="hb">특기</div>
-        <div class="th"><span>명칭</span><span>타이밍</span><span>대상</span><span>대가</span><span>조건</span><span>해설</span><span></span></div>
+        <div class="th"><span>명칭</span><span>타이밍</span><span>대상</span><span>대가</span><span>조건</span><span></span></div>
         <div id="sk"></div>
       </div>
       <div class="bx tbl memo adv">
@@ -461,17 +468,17 @@ function renderBL() {
   const t = isV() ? 'v' : 'h', lv = level();
   $('bl').innerHTML = [0, 1, 2].map(i => {
     const lock = lv < 2 || (i > 0 && lv < 3);
-    if (i === 0) { const [n, ti, ta, e] = BL_PR[t]; return `<div class="tr pr${lock ? ' lock' : ''}"><span class="no">1</span><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span class="ef">${e}</span><span><button class="bub" type="button" data-bl="0" title="채팅에 올림"></button></span></div>`; }
+    if (i === 0) { const [n, ti, ta, e] = BL_PR[t]; return `<div class="tr pr${lock ? ' lock' : ''}"><span class="no">1</span><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span class="ef">${e}</span><span class="bb"><button class="bub" type="button" data-bl="0" title="채팅에 올림"></button></span></div>`; }
     const [n, ti, ta, e] = BL_EX[i];
-    return `<div class="tr${lock ? ' lock' : ''}"><span class="no">${i + 1}</span><span class="nm"><input type="text" value="${n}" aria-label="혈위 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span><button class="bub" type="button" data-bl="${i}" title="채팅에 올림"></button></span></div>`;
+    return `<div class="tr${lock ? ' lock' : ''}"><span class="no">${i + 1}</span><span class="nm"><input type="text" value="${n}" aria-label="혈위 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span class="bb"><button class="bub" type="button" data-bl="${i}" title="채팅에 올림"></button></span></div>`;
   }).join('');
   $('bl').querySelectorAll('[data-bl]').forEach(b => b.onclick = () => useRow(b.closest('.tr'), '혈위', true));
 }
 const SK = [['무기 공격', '공격', '단일', '손패 1장', '없음', '7 이하의 【생명 카드】 1장을 파괴한다.', 1], ['정밀 사격', '공격', '단일', '손패 1장', '없음', '9 이하의 【생명 카드】 1장을 파괴한다.', 0], ['엄호', '준비', '파트너', '손패 1장', '없음', '파트너의 다음 공격에 +2.', 0]];
 $('sk').innerHTML = Array.from({ length: 6 }, (_, i) => {
   const [n, ti, ta, co, cd, e, pr] = SK[i] || ['', '', '', '', '', '', 0];
-  if (pr) return `<div class="tr pr"><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span>${co}</span><span>${cd}</span><span class="ef">${e}</span><span><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
-  return `<div class="tr"><span class="nm"><input type="text" value="${n}" aria-label="특기 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${co}" aria-label="대가"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
+  if (pr) return `<div class="tr pr"><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span>${co}</span><span>${cd}</span><span class="ef">${e}</span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
+  return `<div class="tr"><span class="nm"><input type="text" value="${n}" aria-label="특기 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${co}" aria-label="대가"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
 }).join('');
 $('sk').querySelectorAll('.bub').forEach(b => b.onclick = () => useRow(b.closest('.tr'), '특기', false));
 $('memo').innerHTML = [['엄호', '+2', 1], ['', '', 0], ['', '', 0], ['', '', 0]].map(([k, m, d], i) => `<div class="tr"><span class="ef"><input type="text" value="${k}" aria-label="효과의 종별"></span><span><input type="text" value="${m}" aria-label="수정치"></span><span class="dur"><label><input type="checkbox" class="ck" ${d === 2 ? 'checked' : ''}>상시</label>/<label><input type="checkbox" class="ck" ${d === 1 ? 'checked' : ''}>종료까지</label></span></div>`).join('');

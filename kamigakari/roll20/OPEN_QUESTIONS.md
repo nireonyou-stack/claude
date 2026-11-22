@@ -19,3 +19,7 @@
    목업은 갑옷 이름으로 판단했지만 실제 시트는 갑옷 줄에 「전투계」 체크를 따로 둘 예정.
 
 용어는 일본어 원문을 옮긴 것 (한국어판 없음). 목업 아래 용어표에서 검토.
+
+7. **에너미 시트 칸 이름**
+   기존 영문 Roll20 시트(Selanye)의 Mononoke 칸(class · level · size · cunning · perception · speech · reaction · ID · weakness · movement · 판정치/고정치 · 장갑 · 결계 · 소재)을 옮겨 왔다.
+   룰북의 일본어 칸 이름과 고정치 사용 규칙을 확인해 맞출 것.
