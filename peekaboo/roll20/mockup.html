@@ -1,0 +1,501 @@
+<title>피카부 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Gaegu:400,700|Noto+Sans+KR:400,500,700,900&display=swap">
+<style>
+/* 한 장짜리 목업: 세로 830px 시트(공식 「피카부 개정판」 캐릭터 시트 — 이노센트용 · 스푸키용 데이터) + Roll20 채팅 카드.
+   흰 종이 · 손그림 느낌 둥근 상자 · 보라 하나. 값은 예시 */
+:root{--paper:#ffffff;--ink:#1d1d1d;--sub:#5e5e5e;--line:#c6c6c6;--cell:#f3f3f3;--bar:#1d1d1d;--page:#e3e3e3;
+  --accent:#7a3fc1;--soft:#efe7fa;--navy:#1f3566;--green:#247305;
+  --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--head:'Gaegu','Noto Sans KR',sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+h1.pg{font:900 18px/1.3 var(--sans);margin:0 0 4px;text-wrap:balance}
+p.pg{margin:0 0 12px;color:var(--sub);font-size:12px;max-width:1150px}
+.wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.scroll{overflow-x:auto;max-width:100%}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],textarea{border:0;background:transparent;width:100%;min-width:0;padding:0 4px;outline:0}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+textarea{resize:none;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── 시트 ── */
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
+.sheet[data-t=in] .sp-only,.sheet[data-t=sp] .in-only{display:none}
+.rbox{border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+.hb{background:var(--bar);color:#fff;font:700 18px/1 var(--head);padding:4px 10px 3px;display:flex;align-items:center;gap:6px}
+.hb small{font:400 10.5px var(--sans);opacity:.85}
+.hb .sp{flex:1}
+.chip{flex:none;font:700 11.5px/1 var(--sans);white-space:nowrap}
+.chip::after{content:" \25B6";font-size:8px;vertical-align:1px}
+.sp{flex:1}
+.tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
+
+/* 1단: 제목 · 시트 종류 · 그림 | 데이터 */
+.r1{display:grid;grid-template-columns:230px minmax(0,1fr);gap:8px}
+.title{display:flex;flex-direction:column;gap:6px}
+.logo{border:2px solid var(--ink);border-radius:14px;padding:8px 8px 10px;text-align:center;background:radial-gradient(circle at 85% 20%,var(--soft) 0 22px,transparent 23px),#fff}
+.logo .t0{font:700 11px var(--sans);letter-spacing:.06em;color:var(--sub)}
+.logo .t1{font:700 46px/1 var(--head);color:var(--ink);letter-spacing:.02em}
+.logo .t1 b{color:var(--accent)}
+.logo .t2{font:700 12px var(--head);color:var(--sub)}
+.logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1.5px solid var(--accent);font:700 12.5px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:6px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(-45deg,transparent 50%,var(--ink) 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
+.portrait{flex:1;min-height:130px;border:2px solid var(--ink);border-radius:14px;background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+.data{display:flex;flex-direction:column;gap:5px;padding:6px}
+.f{display:flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:8px;padding:2px 8px;min-height:30px}
+.f input{height:24px}
+.f textarea{font-size:12px;line-height:1.45;min-height:40px;padding:2px 0}
+.f.nm{border-radius:16px}
+.f.nm input{font:700 17px var(--sans)}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px}
+.g3{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr);gap:5px}
+.f .unit{font-size:12px;color:var(--sub)}
+.f.big input{font:900 18px var(--sans);text-align:right}
+.squares{display:inline-flex;gap:2px;flex-wrap:wrap}
+.squares label{cursor:pointer}
+.squares input{display:none}
+.squares span{display:block;width:13px;height:13px;border:1.5px solid var(--ink);background:#fff}
+.squares input:checked+span{background:var(--accent);border-color:var(--accent)}
+.mk{display:flex;align-items:center;gap:6px;background:var(--cell);border-radius:8px;padding:4px 8px;font:700 11.5px var(--sans)}
+.mk small{font-weight:400;color:var(--sub)}
+.mslot{display:grid;grid-template-columns:20px repeat(10,minmax(0,1fr));border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
+.mslot .lb{grid-row:1/4;background:var(--bar);color:#fff;writing-mode:vertical-rl;font:700 10px/1 var(--sans);display:flex;align-items:center;justify-content:center;letter-spacing:.1em}
+.mslot label{cursor:pointer;border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.mslot input{display:none}
+.mslot span{display:block;text-align:center;font:700 11px/20px var(--sans)}
+.mslot input:checked+span{background:var(--accent);color:#fff}
+
+/* 2단: 특기 리스트 (분야 이름 옆 □ = 원기 슬롯) */
+.grid{display:grid;grid-template-columns:26px 10px repeat(5,minmax(0,1fr) 10px) minmax(0,1fr);grid-template-rows:30px repeat(11,25px);padding:4px;position:relative}
+.no{background:var(--bar);color:#fff;font:700 15px/1 var(--head);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.no.corner{border-bottom:0;background:transparent}
+.fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:700 19px/1 var(--head);margin:0 1px;border-radius:8px 8px 0 0}
+.slot{width:14px;height:14px;margin:0;padding:0;background:#fff;border:0;cursor:pointer}
+.slot.lost{background:linear-gradient(45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),linear-gradient(-45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),#fff}
+.gap{grid-row:1/-1;cursor:pointer;display:block;position:relative}
+.gap input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.gap span{position:absolute;inset:0 2px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.gap input:checked+span{background:var(--ink);border-color:var(--ink)}
+.gap:hover span{background:var(--cell)}
+.c{position:relative;display:flex;align-items:center;justify-content:center;padding-left:8px;border-bottom:1px solid var(--line);margin:0 1px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.c .own{position:absolute;left:2px;top:50%;transform:translateY(-50%);appearance:none;-webkit-appearance:none;width:9px;height:9px;margin:0;border:1px solid var(--line);border-radius:50%;cursor:pointer;background:var(--paper)}
+.c .own:checked{border-color:var(--accent);background:var(--accent)}
+.c .n{border:1px solid transparent;background:none;padding:0 4px;border-radius:10px;font:500 12.5px/17px var(--sans);cursor:pointer;white-space:nowrap;letter-spacing:-.02em}
+.c .n.long{font-size:11px;letter-spacing:-.06em;padding:0 1px}
+.c .n:hover{text-decoration:underline}
+.c .own:checked~.n{border:1.5px solid var(--accent);font-weight:900}
+.c .tn{position:absolute;right:2px;bottom:0;font:700 9.5px/1 var(--sans);color:var(--navy)}
+.c.off{background:repeating-linear-gradient(-45deg,transparent 0 4px,rgba(0,0,0,.08) 4px 5px)}
+.c.off .n{color:var(--sub)}
+
+/* 판정 띠 */
+.strip{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);font-size:11.5px}
+.sr{display:flex;align-items:center;gap:4px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
+.sr+.sr{border-top:1px dotted var(--line)}
+.seg{display:inline-flex;border:1px solid var(--ink)}
+.seg label{cursor:pointer}
+.seg input{display:none}
+.seg span{display:block;padding:0 6px;font:500 11.5px/18px var(--sans)}
+.seg label+label span{border-left:1px solid var(--ink)}
+.seg input:checked+span{background:var(--accent);color:#fff}
+.fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:900 14px/1.2 var(--sans);color:var(--accent)}
+.fum.spc b{border-bottom-color:var(--green);color:var(--green)}
+.adj{display:inline-flex;flex-direction:column;gap:1px;margin-left:1px}
+.adj button{position:relative;width:12px;height:8px;padding:0;border:1px solid var(--line);background:#fff;color:var(--sub);cursor:pointer}
+.adj button::after{content:"";position:absolute;left:2px;top:1px;border-left:3px solid transparent;border-right:3px solid transparent}
+.adj .up::after{border-bottom:4px solid currentColor}
+.adj .dn::after{border-top:4px solid currentColor}
+.adj button:hover,.rs:hover{color:var(--accent)}
+.rs{position:relative;width:12px;height:14px;padding:0;border:0;background:none;color:#c8c8c8;cursor:pointer}
+.rs::before{content:"";position:absolute;inset:2px;border:1.5px solid currentColor;border-radius:50%;border-right-color:transparent}
+.rs::after{content:"";position:absolute;right:1px;top:0;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;border-right:4px solid currentColor;transform:rotate(-35deg)}
+.rs.on{color:var(--accent)}
+.rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 6px;cursor:pointer;font:500 11.5px/18px var(--sans)}
+.rt:hover{border-color:var(--accent);color:var(--accent)}
+.rt .tdi{display:inline-block;flex:none;width:10px;height:10px;margin-right:3px;border:1px solid currentColor;border-radius:2px;color:#c8c8c8;
+  background-image:radial-gradient(circle at 27% 27%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 50% 50%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 73% 73%,currentColor .8px,transparent 1.2px)}
+.rt:hover .tdi{color:inherit}
+.rtg{display:inline-flex}
+.rtg .rt+.rt{border-left:0}
+.gmb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);background:#fff;padding:0 8px 0 6px;font:500 11.5px/18px var(--sans);cursor:pointer}
+.gmb:hover{border-color:var(--accent);color:var(--accent)}
+.gmb i{position:relative;display:inline-block;width:13px;height:9px;border:1.3px solid currentColor;border-radius:3px;margin-bottom:2px}
+.gmb i::after{content:"";position:absolute;left:1px;bottom:-4px;border-top:3px solid currentColor;border-right:3px solid transparent}
+.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
+.ckn input{width:22px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
+.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+
+
+/* 3단: 졸음 슬롯 (이노센트) · 모험 기록 / 몸 · 의상 · 마법 (스푸키) */
+.r3{display:grid;grid-template-columns:330px minmax(0,1fr);gap:8px}
+.sleep{display:grid;grid-template-columns:repeat(5,26px) minmax(0,1fr)}
+.sleep label{cursor:pointer;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sleep input{display:none}
+.sleep span{display:block;text-align:center;font:700 12px/24px var(--sans)}
+.sleep input:checked+span{background:var(--accent);color:#fff}
+.sleep .ef{display:flex;flex-direction:column;justify-content:center;padding:0 6px;border-bottom:1px solid var(--line);font:700 13px/1.15 var(--head)}
+.sleep .ef small{font:400 10px/1.25 var(--sans);color:#333}
+.sleep .ef.cur{background:var(--soft)}
+.sleep .last{grid-column:1/-1;display:grid;grid-template-columns:26px minmax(0,1fr);border-bottom:0}
+.sleep .last .ef{border:0;font:400 10.5px/1.35 var(--sans)}
+.adv{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:0}
+.adv .rec{padding:5px 8px;border-right:1px dotted var(--sub);display:flex;flex-direction:column;gap:4px}
+.adv textarea{min-height:66px;font-size:12px;line-height:1.5;background:var(--cell);border-radius:6px;padding:3px 6px}
+.adv .money{display:flex;align-items:center;gap:6px;border-top:1px dotted var(--sub);padding-top:4px}
+.adv .money input{height:24px}
+.ob{padding:5px 8px;display:flex;flex-direction:column;gap:3px}
+.ob .orow{display:grid;grid-template-columns:16px minmax(0,1fr) 70px;gap:4px;align-items:center;border-bottom:1px dotted var(--sub)}
+.ob .orow i{width:14px;height:16px;border-radius:8px 8px 3px 3px;background:var(--ink);position:relative}
+.ob .orow i::after{content:"";position:absolute;left:3px;top:5px;width:8px;height:3px;background:radial-gradient(circle at 25% 50%,#fff 1.3px,transparent 1.6px),radial-gradient(circle at 75% 50%,#fff 1.3px,transparent 1.6px)}
+.ob .orow input{height:22px}
+.ob .orow input.w{border-left:1px solid var(--line);font-size:11.5px}
+.ob .xp{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.ob .xp div{border:1.5px solid var(--ink);border-radius:8px;text-align:center;font:700 10px var(--sans);padding:2px}
+.ob .xp input{text-align:center;font:900 16px var(--sans);height:24px}
+.bodybox .brow{display:grid;grid-template-columns:70px minmax(0,1fr) 66px minmax(0,1.3fr) 22px;align-items:center;border-bottom:1px dotted var(--sub);min-height:30px}
+.bodybox .brow:last-child{border-bottom:0}
+.bodybox .brow b{font:700 12px var(--sans);padding-left:8px}
+.bodybox .brow b::after{content:" \25B6";font-size:8px}
+.bodybox .brow input{height:26px}
+.bodybox .brow .cost{font-size:11px;color:var(--sub);text-align:right;padding-right:4px;border-left:1px dotted var(--sub)}
+.bodybox .brow .cost input{width:22px;text-align:center;border-bottom:1px solid var(--line);font-weight:700}
+.bodybox .brow textarea{font-size:11.5px;line-height:1.4;min-height:24px;border-left:1px dotted var(--sub);padding:2px 6px}
+
+/* 아이콘 단추 */
+.dic{display:inline-block;flex:none;width:16px;height:16px;padding:0;border:1.5px solid currentColor;border-radius:3px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 50% 50%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 28% 72%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 72%,currentColor 1.2px,transparent 1.7px)}
+.bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
+.bub::after{content:"";position:absolute;left:2px;bottom:-6px;width:0;height:0;border-top:5px solid currentColor;border-right:5px solid transparent}
+.dic:hover,.bub:hover{color:var(--accent)}
+
+/* ── 채팅 ── */
+.chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
+.chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
+.log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1500px;overflow-y:auto}
+.who{font:700 11px var(--sans);color:var(--sub)}
+.who em{font-style:normal;color:var(--accent)}
+.cd{--accent:#e4007f;border:1.5px solid var(--ink);background:#fff;position:relative;overflow:hidden;border-radius:0 0 10px 0}
+.cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:400 15px/1.3 var(--head);border-bottom:3px solid var(--accent)}
+.cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
+.cd .sub{font-size:11px;color:var(--sub)}
+.cd .roll{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px/1 Arial,Helvetica,sans-serif}
+.cd .roll.big .die{width:34px;height:34px;border-width:2px;border-radius:6px;font:800 20px/1 Arial,Helvetica,sans-serif}
+.cd .die.d6{border-color:var(--green);color:var(--green)}
+.cd .die.d1{border-color:var(--accent);color:var(--accent)}
+.cd .die.gone{border-style:dashed;border-color:#bbb;color:#bbb;text-decoration:line-through}
+.cd .eq{color:var(--sub)}
+.cd .tot{font:800 20px/1 Arial,Helvetica,sans-serif;color:var(--navy)}
+.cd .roll.big .tot{font-size:28px}
+.cd .pv{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--sub)}
+.cd .pv b{font:800 30px/1 Arial,Helvetica,sans-serif;color:var(--accent)}
+.cd .stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 6px;font:400 15px/1.2 var(--head);transform:rotate(-4deg);white-space:nowrap}
+.cd .stp.spc,.cd .stp.mir{border-color:var(--accent);color:var(--accent)}
+.cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
+.cd .stp.ng{color:var(--sub);border-color:var(--sub)}
+.cd .note{font:500 11px/1.45 var(--sans);color:var(--accent)}
+.cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
+.cd .rt2{display:flex;gap:6px;align-items:center;font-size:12px}
+.cd .big2{font:900 14px var(--sans)}
+.qm[hidden]{display:none}
+.qm{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.qbox{background:#fff;border:1px solid var(--ink);padding:12px;width:320px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.qbox .qt{font:700 13px var(--sans)}
+.qbox input,.qbox select{border:1px solid var(--line);height:28px}
+.qbox .qb{display:flex;justify-content:flex-end;gap:6px}
+.qbox button{border:1px solid var(--ink);background:#fff;padding:2px 12px;cursor:pointer;font:500 12px var(--sans)}
+.qbox button.ok{background:var(--ink);color:#fff}
+.gl{width:830px;max-width:100%;background:#fff;border:1px solid var(--line);padding:10px 12px;margin-top:16px}
+.gl h2{margin:0 0 6px;font:900 14px var(--sans)}
+.gl .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 12px;font-size:12px}
+.gl .gg span{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);gap:6px}
+.gl .gg i{font-style:normal;color:var(--sub)}
+.note2{width:830px;max-width:100%;margin-top:12px;font-size:12px;color:var(--sub)}
+.note2 b{color:var(--ink)}
+.cd{--accent:#7a3fc1;border-radius:10px}
+.cd .ch{font:700 19px/1.15 var(--head)}
+</style>
+
+<h1 class="pg">피카부 — Roll20 시트 목업</h1>
+<p class="pg">공식 「피카부 개정판」 캐릭터 시트(가로, 왼쪽 이노센트용 · 오른쪽 스푸키용 데이터)를 Roll20 세로 830px 로 옮긴 배치예요. 한 캐릭터는 둘 중 하나라서 제목 칸 드롭다운으로 이노센트 · 스푸키를 골라요. 들어 있는 값은 예시예요. 아래 용어표는 일본어 원문을 옮긴 것이라 고칠 것만 알려 주세요.</p>
+
+<div class="wrap">
+<div class="scroll"><div class="sheet" id="sheet" data-t="in">
+
+  <!-- 1단 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo">
+        <div class="t0">동네 메르헨 RPG</div>
+        <div class="t1">피카<b>부</b>!</div>
+        <div class="t2">개정판</div>
+        <select id="stype" aria-label="시트 종류"><option value="in">이노센트용 데이터</option><option value="sp">스푸키용 데이터</option></select>
+      </div>
+      <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
+    </div>
+    <!-- 이노센트용 데이터 -->
+    <div class="rbox in-only">
+      <div class="hb">이노센트용 데이터</div>
+      <div class="data">
+        <div class="f nm"><span class="chip">이름</span><input type="text" id="cname" value="소라" aria-label="이름"></div>
+        <div class="g3">
+          <div class="f"><span class="chip">플레이어</span><input type="text" value="하루" aria-label="플레이어"></div>
+          <div class="f"><span class="chip">나이</span><input type="text" value="10" aria-label="나이"><span class="unit">살</span></div>
+          <div class="f"><span class="chip">성별</span><input type="text" value="여" aria-label="성별"></div>
+        </div>
+        <div class="f" style="align-items:flex-start"><span class="chip" style="padding-top:4px">설정</span><textarea aria-label="설정">오바케가 보이는 아이. 할머니 집에 산다.</textarea></div>
+        <div class="g2">
+          <div class="f"><span class="chip">재능</span><input type="text" value="달리기" aria-label="재능"><span class="squares" data-n="6" data-v="2" title="재능 사용"></span></div>
+          <div class="f"><span class="chip">약점</span><input type="text" value="벌레" aria-label="약점"></div>
+        </div>
+        <div class="mk">부글부글 포인트<span class="squares" data-n="10" data-v="3"></span></div>
+      </div>
+    </div>
+    <!-- 스푸키용 데이터 -->
+    <div class="rbox sp-only">
+      <div class="hb">스푸키용 데이터</div>
+      <div class="data">
+        <div class="f nm"><span class="chip">이름</span><input type="text" value="퐁" aria-label="이름"></div>
+        <div class="g2">
+          <div class="f"><span class="chip">플레이어</span><input type="text" value="하루" aria-label="플레이어"></div>
+          <div class="f"><span class="chip">링</span><input type="text" value="베개" aria-label="링"><span class="unit">족</span></div>
+        </div>
+        <div class="g2">
+          <div class="f big"><span class="chip">공격력</span><input type="number" value="3" aria-label="공격력"></div>
+          <div class="f big"><span class="chip">방어력</span><input type="number" value="2" aria-label="방어력"></div>
+          <div class="f big"><span class="chip">도움력</span><input type="number" value="4" aria-label="도움력"></div>
+          <div class="f big"><span class="chip">방해력</span><input type="number" value="1" aria-label="방해력"></div>
+          <div class="f big"><span class="chip">마력</span><input type="number" value="12" id="mp" aria-label="마력"></div>
+          <div class="f"><span class="chip">약점</span><input type="text" value="햇빛" aria-label="약점"></div>
+        </div>
+        <div class="mslot" id="mslot"><span class="lb">마력 슬롯</span></div>
+        <div class="mk">부글부글 포인트<span class="squares" data-n="5" data-v="1"></span><small>(최대 5점)</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 -->
+  <div class="rbox">
+    <div class="hb">특기 리스트<span class="sp"></span><small>(특기 분야 오른쪽의 □는 원기 슬롯입니다)</small></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">굴림</span>
+      <button class="rt" type="button" id="fear" title="처음 보는 오바케를 만나면 《용기》 판정"><i class="tdi"></i>공포 판정</button>
+      <button class="rt" type="button" id="rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
+      <span class="rtg"><button class="rt" type="button" data-nd="1">1D6</button><button class="rt" type="button" data-nd="2">2D6</button><button class="rt" type="button" data-nd="3">3D6</button></span>
+      <span class="ckn" id="modw">수정치<input type="number" id="mod" value="" aria-label="다음 판정 수정치"></span>
+      <span class="ckn in-only" id="slw">졸음 <b id="slm" style="margin-left:2px">0</b></span>
+      <span class="sp"></span>
+      <span class="fum" data-k="f">펌블치 <b id="fumble">2</b><span class="adj"><button type="button" class="up" title="펌블치 +1"></button><button type="button" class="dn" title="펌블치 -1"></button></span><button type="button" class="rs" title="2 로 되돌림"></button></span>
+      <span class="fum spc" data-k="s">스페셜치 <b id="special">12</b><span class="adj"><button type="button" class="up" title="스페셜치 +1"></button><button type="button" class="dn" title="스페셜치 -1"></button></span><button type="button" class="rs" title="12 로 되돌림"></button></span>
+    </div>
+    <div class="sr">
+      <span class="tl">공개</span><span class="seg"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
+      <span class="sp"></span>
+      <button class="gmb" type="button" id="gmb" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button>
+    </div>
+  </div>
+
+  <!-- 3단 -->
+  <div class="r3 in-only">
+    <div class="rbox">
+      <div class="hb">졸음 슬롯<span class="sp"></span><small>누르면 그 칸까지</small></div>
+      <div class="sleep" id="sleep"></div>
+    </div>
+    <div class="rbox adv">
+      <div class="rec">
+        <span class="chip">모험의 기록</span>
+        <textarea aria-label="모험의 기록">뒷산 폐가에서 퐁을 만났다.</textarea>
+        <div class="money"><span class="chip">용돈</span><input type="text" value="300엔" aria-label="용돈"></div>
+      </div>
+      <div class="ob">
+        <div class="tl" style="display:flex;justify-content:space-between"><span>만난 적 있는 오바케</span><span>약점</span></div>
+        <div id="obs"></div>
+        <div class="xp"><div>이노센트의 경험치<input type="text" value="2" aria-label="이노센트 경험치"></div><div>스푸키의 경험치<input type="text" aria-label="스푸키 경험치"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="rbox bodybox sp-only">
+    <div class="hb">몸 · 의상 · 마법<span class="sp"></span><small>마법 말풍선 = 사용 (마력에서 코스트를 뺌)</small></div>
+    <div id="body"></div>
+  </div>
+</div></div>
+
+<div class="chat"><h2>Roll20 채팅 (예시)</h2><div class="log" id="log"></div></div>
+</div>
+
+<div class="note2">
+  <p><b>확인 부탁.</b> ① 원기 슬롯(분야 옆 □)에 체크된 분야는 시노비가미의 생명력 슬롯처럼 그 분야의 습득 특기를 목표치 출발점으로 못 쓰게 했어요(빗금). 규칙이 다르면 알려 주세요. ② 졸음 수정치(10~19 −1, 20~29 −2)는 판정에 자동으로 더하고, 실패하면 카드에 "졸음 +n"을 적기만 해요(자동으로 올리지는 않음). ③ 마법 사용은 마력에서 코스트를 자동으로 빼요.</p>
+  <p><b>안 넣은 것.</b> 학교 이벤트표 등 룰북 표, 불가사의 카드, 공식 로고 · 오바케 그림.</p>
+</div>
+
+<div class="gl">
+  <h2>용어표 (일본어 → 한국어, 검토용)</h2>
+  <div class="gg" id="gl"></div>
+</div>
+
+<script>
+const FIELDS = ['불량', '운동', '친구', '놀이', '공부', '어른'];
+const SK = [
+  ['밤샘', '졸기', '무시', '거짓말', '욕', '장난', '꼼수', '숨기', '훔치기', '겁주기', '싸움'],
+  ['수영', '나무 타기', '유연함', '마라톤', '점프', '달리기 시합', '균형', '던지기', '구기', '받아치기', '힘센'],
+  ['인터넷', '소문', '다정함', '참기', '편지', '수다', '자전거', '용기', '약속', '리드하기', '비밀 기지'],
+  ['컴퓨터', '게임', '모으기', '그림', '음악', '공상', '독서', '이야기 짓기', '퀴즈', '마술', '점'],
+  ['실험', '우주', '생물', '공작', '계산', '숙제', '한자', '작문', '역사', '지리', '외국어'],
+  ['법률', '꾸짖기', '치료', '매너', '추리', '계획성', '요리', '장보기', '멋내기', '연애', '도락']];
+const JA = [
+  ['夜ふかし', 'いねむり', '無視', 'ウソつき', '悪口', 'いたずら', 'ズル', '隠れる', 'ぬすむ', 'おどす', 'けんか'],
+  ['泳ぐ', '木登り', '柔らかい', 'マラソン', 'とぶ', 'かけっこ', 'バランス', '投げる', '球技', '打ち返す', '力持ち'],
+  ['ネット', 'うわさ話', '優しさ', 'がまん', 'お手紙', 'おしゃべり', '自転車', '勇気', '約束', '仕切る', '秘密基地'],
+  ['パソコン', 'ゲーム', '集める', '絵', '音楽', '空想', '読書', 'お話づくり', 'クイズ', '手品', '占い'],
+  ['実験', '宇宙', '生き物', '工作', '計算', '宿題', '漢字', '作文', '歴史', '地理', '外国語'],
+  ['法律', 'しかる', '手当て', 'マナー', '推理', '計画性', 'お料理', 'お買い物', 'オシャレ', '恋愛', '道楽']];
+const JA_F = ['不良', '運動', '友達', '遊び', '勉強', '大人'];
+const GAPS = ['A', 'B', 'C', 'D', 'E'], COL = 'ABCDEF';
+const st = { own: new Set(['A9', 'B7', 'C9', 'D8', 'E2', 'F6']), gap: new Set(['C']), slot: { 1: true }, fadj: 0, sadj: 0, sleep: 12, mp: 12 };
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ── 특기 리스트 (번호 왼쪽, 분야 이름 옆 □ = 원기 슬롯)
+const grid = document.getElementById('grid'), cells = {};
+(function build() {
+  const c0 = el('div', 'no corner'); c0.style.gridColumn = '1'; grid.append(c0);
+  FIELDS.forEach((f, i) => {
+    const h = el('div', 'fh', f); h.style.gridColumn = String(3 + i * 2); h.style.gridRow = '1';
+    const s = el('button', 'slot' + (st.slot[i] ? ' lost' : '')); s.type = 'button'; s.title = f + ' 원기 슬롯';
+    s.onclick = () => { st.slot[i] = !st.slot[i]; s.classList.toggle('lost', st.slot[i]); calc(); };
+    h.append(s); grid.append(h);
+  });
+  for (let r = 0; r < 11; r++) {
+    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '1'; no.style.gridRow = String(r + 2); grid.append(no);
+    FIELDS.forEach((f, i) => {
+      const id = COL[i] + (r + 2), c = el('div', 'c'); c.style.gridColumn = String(3 + i * 2); c.style.gridRow = String(r + 2);
+      const own = el('input', 'own'); own.type = 'checkbox'; own.checked = st.own.has(id); own.title = SK[i][r] + ' 습득';
+      own.onchange = () => { own.checked ? st.own.add(id) : st.own.delete(id); calc(); };
+      const n = el('button', 'n' + (SK[i][r].length >= 5 ? ' long' : ''), SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정'; n.onclick = () => rollSkill(i, r);
+      const tn = el('span', 'tn'); c.append(own, n, tn); grid.append(c); cells[id] = { c, tn };
+    });
+  }
+  ['', ...GAPS].forEach((g, k) => {
+    if (!g) return;
+    const l = el('label', 'gap'); l.style.gridColumn = String(4 + (k - 1) * 2); l.title = '공백 칠하기';
+    const i = el('input'); i.type = 'checkbox'; i.checked = st.gap.has(g); i.onchange = () => { i.checked ? st.gap.add(g) : st.gap.delete(g); calc(); };
+    l.append(i, el('span')); grid.append(l);
+  });
+})();
+function dist(a, b) { let d = Math.abs(a.r - b.r); for (let k = Math.min(a.f, b.f); k < Math.max(a.f, b.f); k++) d += st.gap.has(GAPS[k]) ? 1 : 2; return d; }
+function target(f, r) { const src = [...st.own].map(id => ({ f: COL.indexOf(id[0]), r: +id.slice(1) - 2 })).filter(s => !st.slot[s.f]); return src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, { f, r })))) : null; }
+function calc() { FIELDS.forEach((_, f) => { for (let r = 0; r < 11; r++) { const { c, tn } = cells[COL[f] + (r + 2)], t = target(f, r); tn.textContent = t == null ? '' : t; c.classList.toggle('off', !!st.slot[f]); } }); }
+
+// ── □ 칸 (재능 사용 · 부글부글 포인트): 누른 칸까지, 같은 칸 다시 누르면 하나 줄임
+document.querySelectorAll('.squares').forEach(t => {
+  const n = +t.dataset.n, paint = () => t.querySelectorAll('input').forEach((i, k) => { i.checked = k < +t.dataset.v; });
+  for (let k = 1; k <= n; k++) { const l = el('label', '', '<input type="checkbox"><span></span>'); l.querySelector('input').onclick = e => { e.preventDefault(); t.dataset.v = +t.dataset.v === k ? k - 1 : k; paint(); }; t.append(l); }
+  paint();
+});
+// ── 마력 슬롯 1~30 (마력 칸과 같은 값)
+const mslot = document.getElementById('mslot'), mpIn = document.getElementById('mp');
+for (let k = 1; k <= 30; k++) { const l = el('label', '', `<input type="checkbox"><span>${k}</span>`); l.querySelector('input').onclick = e => { e.preventDefault(); setMp(st.mp === k ? k - 1 : k); }; mslot.append(l); }
+function setMp(v) { st.mp = Math.max(0, Math.min(30, v)); mpIn.value = st.mp; mslot.querySelectorAll('input').forEach((i, k) => { i.checked = k < st.mp; }); }
+mpIn.oninput = () => setMp(+mpIn.value || 0);
+
+// ── 졸음 슬롯 0~30 (공식 시트의 효과 글)
+const SLEEP = [['아직아직 괜찮아', ''], ['나른나른', '판정에 실패하면 졸음 +1'], ['졸려졸려', '판정에 실패하면 졸음 +1 · 판정에 −1 수정'], ['꾸벅꾸벅', '판정에 실패하면 졸음 +2 · 판정에 −1 수정'], ['멍해멍해', '판정에 실패하면 졸음 +2 · 판정에 −2 수정'], ['비틀비틀', '판정에 실패하면 졸음 +3 · 판정에 −2 수정']];
+const sleepBox = document.getElementById('sleep');
+function drawSleep() {
+  sleepBox.innerHTML = '';
+  for (let b = 0; b < 6; b++) {
+    for (let k = b * 5; k < b * 5 + 5; k++) { const l = el('label', '', `<input type="radio" name="sl"${k === st.sleep ? ' checked' : ''}><span>${k}</span>`); l.onclick = () => { st.sleep = k; drawSleep(); }; sleepBox.append(l); }
+    sleepBox.append(el('div', 'ef' + (Math.floor(st.sleep / 5) === b && st.sleep < 30 ? ' cur' : ''), `${SLEEP[b][0]}${SLEEP[b][1] ? '*' : ''}${SLEEP[b][1] ? `<small>${SLEEP[b][1]}</small>` : ''}`));
+  }
+  const last = el('div', 'last'), l = el('label', '', `<input type="radio" name="sl"${st.sleep === 30 ? ' checked' : ''}><span>30</span>`); l.onclick = () => { st.sleep = 30; drawSleep(); };
+  last.append(l, el('div', 'ef' + (st.sleep === 30 ? ' cur' : ''), '행동 불능. 【졸음】이 29점 이하가 될 때까지 자유 행동이나 전투 행동을 할 수 없게 된다'));
+  sleepBox.append(last);
+  document.getElementById('slm').textContent = sleepMod() ? String(sleepMod()) : '0';
+  document.getElementById('slw').classList.toggle('on', !!sleepMod());
+}
+const sleepMod = () => (st.sleep >= 30 ? 0 : st.sleep >= 20 ? -2 : st.sleep >= 10 ? -1 : 0);
+const sleepUp = () => (st.sleep >= 25 ? 3 : st.sleep >= 15 ? 2 : st.sleep >= 5 ? 1 : 0);
+// ── 만난 적 있는 오바케 5 줄 · 몸 · 의상 · 마법
+const OBS = [['베개족 퐁', '햇빛'], ['', '']];
+document.getElementById('obs').innerHTML = Array.from({ length: 5 }, (_, i) => { const [n, w] = OBS[i] || ['', '']; return `<div class="orow"><i></i><input type="text" value="${n}" aria-label="오바케 ${i + 1}"><input type="text" class="w" value="${w}" aria-label="약점 ${i + 1}"></div>`; }).join('');
+const BODY = [['몸', '베개', null, '푹신푹신한 베개 몸.'], ['의상 1', '잠옷 모자', null, ''], ['의상 2', '', null, ''], ['마법 1', '꿈나라 보내기', 3, '목표 한 명을 잠들게 한다.'], ['마법 2', '베개 던지기', 1, '공격 판정에 +1.'], ['마법 3', '', 0, '']];
+const body = document.getElementById('body');
+BODY.forEach(([k, n, c, e]) => {
+  const r = el('div', 'brow'), magic = c !== null;
+  r.innerHTML = `<b>${k}</b><input type="text" value="${n}" aria-label="${k}">` + (magic ? `<span class="cost">코스트 <input type="text" value="${c || ''}" aria-label="${k} 코스트"></span>` : '<span></span>') +
+    `<textarea aria-label="${k} 효과">${e}</textarea>` + `<span>${magic ? '<button class="bub" type="button" title="사용 (마력에서 코스트를 뺌)"></button>' : ''}</span>`;
+  if (magic) r.querySelector('.bub').onclick = () => { const cost = +r.querySelector('.cost input').value || 0, nm = r.querySelector('input').value || k, before = st.mp; setMp(st.mp - cost); card({ title: `【마법】 ${nm}`, sub: `코스트 ${cost} · 마력 ${before} → ${st.mp}`, eff: r.querySelector('textarea').value }); };
+  body.append(r);
+});
+
+// ── 펌블치 · 스페셜치
+document.querySelectorAll('.fum[data-k]').forEach(w => {
+  const k = w.dataset.k, set = v => { st[k + 'adj'] = Math.max(-12, Math.min(12, v)); sync(); };
+  w.querySelector('.up').onclick = () => set(st[k + 'adj'] + 1); w.querySelector('.dn').onclick = () => set(st[k + 'adj'] - 1); w.querySelector('.rs').onclick = () => set(0);
+});
+const fumble = () => 2 + st.fadj, special = () => 12 + st.sadj;
+function sync() { document.getElementById('fumble').textContent = fumble(); document.getElementById('special').textContent = special(); document.querySelectorAll('.fum[data-k]').forEach(w => w.querySelector('.rs').classList.toggle('on', st[w.dataset.k + 'adj'] !== 0)); }
+const modIn = document.getElementById('mod'); modIn.oninput = () => document.getElementById('modw').classList.toggle('on', !!+modIn.value);
+
+// ── 채팅 카드
+const log = document.getElementById('log');
+const sheetEl = document.getElementById('sheet'), isIn = () => sheetEl.dataset.t === 'in';
+const name = () => (isIn() ? document.getElementById('cname').value : document.querySelector('.sp-only .nm input').value) || '이름 없음';
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+const die = v => `<span class="die${v === 6 ? ' d6' : v === 1 ? ' d1' : ''}">${v}</span>`;
+function judge(s, t, tot) { if (s >= special()) return ['스페셜', 'spc']; if (s <= fumble()) return ['펌블', 'fb']; return t == null ? null : tot >= t ? ['성공', ''] : ['실패', 'ng']; }
+function card({ title, sub, roll, add = 0, eff, table, dice, notes = [], to }) {
+  const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
+  const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
+  let b = sub ? `<div class="sub">${esc(sub)}</div>` : '';
+  if (roll) { const s = roll[0] + roll[1], tot = s + add, j = judge(s, roll[2], tot);
+    b += `<div class="roll big">${die(roll[0])}${die(roll[1])}${add ? `<span class="eq">${add > 0 ? '+' : ''}${add}</span>` : ''}<span class="eq">=</span><span class="tot">${tot}</span>${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
+    if (j && (j[1] === 'ng' || j[1] === 'fb') && isIn() && sleepUp()) notes = [...notes, `실패 · 졸음 +${sleepUp()}`]; }
+  if (table) b += `<div class="rt2">${table.dice.map(die).join('')}<span class="big2">${esc(table.text)}</span></div>`;
+  if (dice) b += `<div class="roll">${dice.map(die).join('')}<span class="eq">=</span><span class="tot">${dice.reduce((a, c) => a + c, 0)}</span></div>`;
+  b += notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+  if (eff) b += `<div class="eff">${esc(eff)}</div>`;
+  w.append(el('div', 'cd', `${title ? `<div class="ch">${esc(title)}</div>` : ''}<div class="cb">${b}</div>`)); log.append(w); log.scrollTop = log.scrollHeight;
+}
+const tgs = t => (t == null ? '' : ` · 목표치 ${t}`);
+const mods = () => (+modIn.value || 0) + (isIn() ? sleepMod() : 0);
+const modTail = () => { const m = +modIn.value || 0, s = isIn() ? sleepMod() : 0; return (m ? ` · 수정치 ${m > 0 ? '+' : ''}${m}` : '') + (s ? ` · 졸음 ${s}` : ''); };
+const tail = () => (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : '');
+function rollSkill(f, r, title) {
+  if (isIn() && st.sleep >= 30) return card({ title: title || `《${SK[f][r]}》 판정`, notes: ['졸음 30 · 행동 불능'] });
+  const t = target(f, r); card({ title: title || `《${SK[f][r]}》 판정`, sub: FIELDS[f] + tgs(t) + modTail() + tail(), roll: [d6(), d6(), t], add: mods() });
+}
+document.getElementById('fear').onclick = () => rollSkill(2, 7, '공포 판정 《용기》');
+document.getElementById('rsk').onclick = () => { const a = d6(), b = d6(), c = d6(); card({ title: '랜덤 특기', table: { dice: [a, b, c], text: `${FIELDS[a - 1]} · 《${SK[a - 1][b + c - 2]}》` } }); };
+document.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => card({ title: `${b.dataset.nd}D6`, dice: Array.from({ length: +b.dataset.nd }, d6) }));
+const qm = el('div', 'qm', '<div class="qbox" role="dialog" aria-label="GM 에게 귓속말"><div class="qt">GM 에게 귓속말</div><input type="text" id="qin"><div class="qb"><button type="button" class="no">취소</button><button type="button" class="ok">확인</button></div></div>');
+qm.hidden = true; document.body.append(qm);
+const qin = qm.querySelector('#qin'), qclose = () => { qm.hidden = true; qin.value = ''; };
+document.getElementById('gmb').onclick = () => { qm.hidden = false; qin.focus(); };
+qm.querySelector('.ok').onclick = () => { if (qin.value.trim()) card({ title: '', eff: qin.value, to: 'GM 에게' }); qclose(); };
+qm.querySelector('.no').onclick = qclose;
+document.getElementById('stype').onchange = e => { sheetEl.dataset.t = e.target.value; };
+
+// 용어표
+const GL = [['イノセント', '이노센트'], ['スプーキー', '스푸키'], ['〜用データ', '~용 데이터'], ['設定', '설정'], ['才能', '재능'], ['弱点', '약점'], ['ムカムカポイント', '부글부글 포인트'], ['リング', '링'], ['〜族', '~족'],
+  ['攻撃力', '공격력'], ['防御力', '방어력'], ['お助け力', '도움력'], ['お邪魔力', '방해력'], ['魔力', '마력'], ['魔力スロット', '마력 슬롯'], ['元気スロット', '원기 슬롯'], ['眠気', '졸음'], ['眠気スロット', '졸음 슬롯'],
+  ['まだまだへいき', '아직아직 괜찮아'], ['だるだる', '나른나른'], ['ねむねむ', '졸려졸려'], ['うとうと', '꾸벅꾸벅'], ['ほけほけ', '멍해멍해'], ['ふらふら', '비틀비틀'], ['行動不能', '행동 불능'],
+  ['冒険の記録', '모험의 기록'], ['会ったことのあるオバケ', '만난 적 있는 오바케'], ['経験値', '경험치'], ['おこづかい', '용돈'], ['からだ', '몸'], ['衣装', '의상'], ['魔法', '마법'], ['コスト', '코스트'], ['恐怖判定', '공포 판정'], ['オバケ', '오바케'],
+  ...JA_F.map((j, i) => [j, FIELDS[i]]), ...JA.flatMap((col, f) => col.map((j, r) => [j, SK[f][r]]))];
+document.getElementById('gl').innerHTML = GL.map(([j, k]) => `<span><i>${j}</i>${k}</span>`).join('');
+
+// 처음 화면
+calc(); sync(); drawSleep(); setMp(12);
+card({ title: '《용기》 판정', sub: '친구 · 목표치 5 · 졸음 -1', roll: [4, 3, 5], add: -1 });
+card({ title: '공포 판정 《용기》', sub: '친구 · 목표치 5 · 졸음 -1', roll: [2, 2, 5], add: -1 });
+card({ title: '【마법】 꿈나라 보내기', sub: '코스트 3 · 마력 15 → 12', eff: '목표 한 명을 잠들게 한다.' });
+</script>
