@@ -329,7 +329,7 @@ textarea{resize:none;display:block}
 </div>
 
 <div class="note">
-  <p><b>여쭐 것.</b> 서머리에는 판정의 펌블 · 스페셜 조건이 적혀 있지 않아요. 목업은 시노비가미처럼 2 이하 펌블 · 12 스페셜을 기본으로 하고 띠의 위아래 단추로 고치게 했어요. 공격 판정에서 【리스크】가 펌블치가 되는 규칙이라면(예: 리스크 4 어빌리티는 4 이하 펌블) 알려 주세요 — 그렇게 자동 계산할게요.</p>
+  <p><b>펌블치.</b> 공격 판정은 그 어빌리티의 【리스크】가 펌블치예요 (리스크 4 어빌리티는 4 이하 펌블). 그 밖의 판정은 2 이하 펌블 · 12 스페셜. 띠의 위아래 단추로 고치면 리스크 펌블치에도 같이 더해져요.</p>
   <p><b>안 넣은 것.</b> 시청률 · 피버 · 테코이레 등 GM 이 관리하는 값, 소울 방출표 · 서브플롯표 등 룰북에만 있는 표(공개 서머리에 없음), HELL TV 로고.</p>
 </div>
 
@@ -469,12 +469,13 @@ const log = document.getElementById('log');
 const name = () => document.getElementById('cname').value || '이름 없음';
 const d6 = () => 1 + Math.floor(Math.random() * 6);
 const die = v => `<span class="die${v === 6 ? ' d6' : v === 1 ? ' d1' : ''}">${v}</span>`;
-function judge(s, t) { if (s >= special()) return ['스페셜', 'spc']; if (s <= fumble()) return ['펌블', 'fb']; return t == null ? null : s >= t ? ['성공', ''] : ['실패', 'ng']; }
+// 공격 판정은 【리스크】가 펌블치 (fb 로 넘김), 그 밖은 2
+function judge(s, t, fb = fumble()) { if (s >= special()) return ['스페셜', 'spc']; if (s <= fb) return ['펌블', 'fb']; return t == null ? null : s >= t ? ['성공', ''] : ['실패', 'ng']; }
 function card({ title, sub, roll, add = 0, eff, kv, table, dice, to }) {
   const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
   const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
   let b = sub ? `<div class="sub">${esc(sub)}</div>` : '';
-  if (roll) { const s = roll[0] + roll[1] + add, j = judge(roll[0] + roll[1], roll[2]);
+  if (roll) { const s = roll[0] + roll[1] + add, j = judge(roll[0] + roll[1], roll[2], roll[3] ?? fumble());
     b += `<div class="roll big">${die(roll[0])}${die(roll[1])}${add ? `<span class="eq">+${add}</span>` : ''}<span class="eq">=</span><span class="tot">${s}</span>${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`; }
   if (table) b += `<div class="rt2">${table.dice.map(die).join('')}<span class="big2">${esc(table.text)}</span></div>`;
   if (dice) b += `<div class="roll">${dice.map(die).join('')}<span class="eq">=</span><span class="tot">${dice.reduce((a, c) => a + c, 0)}</span></div>`;
@@ -490,8 +491,9 @@ const tail = () => (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (specia
 function rollSkill(f, r) { const t = target(f, r); card({ title: `《${SK[f][r]}》 판정`, sub: FIELDS[f] + tgs(t) + modTail() + tail(), roll: [d6(), d6(), t], add: +modIn.value || 0 }); }
 function rollAbility(k, row) {
   const q = row.querySelectorAll('input[type=text]'), nm = q[0].value || '어빌리티', lv = k === 7 ? '' : q[1].value, sk = q[k === 7 ? 1 : 2].value, s = findSkill(sk), t = s ? target(...s) : null, ch = charge();
-  card({ title: `【${nm}】 공격 판정`, sub: [`리스크 ${k}`, lv && `레벨 ${lv}`, sk && `《${sk}》`].filter(Boolean).join(' · ') + tgs(t) + (ch ? ` · 차지 +${ch}` : '') + modTail() + tail(),
-    roll: [d6(), d6(), t == null ? null : t], add: ch + (+modIn.value || 0), eff: row.querySelector('textarea').value });
+  const fb = k + st.fadj;
+  card({ title: `【${nm}】 공격 판정`, sub: [`리스크 ${k}`, lv && `레벨 ${lv}`, sk && `《${sk}》`].filter(Boolean).join(' · ') + tgs(t) + (ch ? ` · 차지 +${ch}` : '') + modTail() + ` · 펌블치 ${fb}` + (special() !== 12 ? ` · 스페셜치 ${special()}` : ''),
+    roll: [d6(), d6(), t == null ? null : t, fb], add: ch + (+modIn.value || 0), eff: row.querySelector('textarea').value });
 }
 document.getElementById('rsk').onclick = () => { const a = d6(), b = d6(), c = d6(); card({ title: '랜덤 특기', table: { dice: [a, b, c], text: `${FIELDS[a - 1]} · 《${SK[a - 1][b + c - 2]}》` } }); };
 document.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => card({ title: `${b.dataset.nd}D6`, dice: Array.from({ length: +b.dataset.nd }, d6) }));
@@ -516,7 +518,7 @@ document.getElementById('gl').innerHTML = GL.map(([j, k]) => `<span><i>${j}</i>$
 // 처음 화면
 calc(); sync();
 card({ title: '《베기》 판정', sub: '동작 · 목표치 5', roll: [4, 3, 5] });
-card({ title: '【연속 베기】 공격 판정', sub: '리스크 4 · 레벨 2 · 《베기》 · 목표치 5 · 차지 +1', roll: [6, 6, 5], add: 1, eff: AB[4][2] });
+card({ title: '【연속 베기】 공격 판정', sub: '리스크 4 · 레벨 2 · 《베기》 · 목표치 5 · 차지 +1 · 펌블치 4', roll: [6, 6, 5, 4], add: 1, eff: AB[4][2] });
 card({ title: '랜덤 특기', table: { dice: [5, 3, 4], text: '정동 · 《자부》' } });
 card({ title: '【서브플롯】 마지막 무대', kv: [['클리어 조건', '사이클 종료 시 【시청률】이 60% 이상'], ['보수', '200【소울】']] });
 </script>

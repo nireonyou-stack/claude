@@ -90,16 +90,20 @@ textarea{resize:none;display:block}
 .sr+.sr{border-top:1px dotted var(--line)}
 .tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap;min-width:26px}
 .pad{display:inline-flex}
-.pad button{min-width:24px;height:22px;border:1px solid var(--line);background:#fff;padding:0 3px;font:700 11.5px/1 Georgia,'Times New Roman',serif;cursor:pointer}
+.pad button{min-width:24px;height:22px;border:1px solid var(--line);background:#fff;padding:0 3px;font:700 11.5px/1 var(--sans);font-variant-numeric:lining-nums;cursor:pointer}
 .pad button+button{border-left:0}
 .pad button:hover{background:var(--ink);color:#fff}
 .pad.rd button{color:var(--red)}
 .pad.rd button:hover{background:var(--red);color:#fff}
 .pad button.jk{font:700 10.5px var(--sans);padding:0 5px}
-.hand{display:flex;gap:3px;flex-wrap:wrap;min-height:26px;align-items:center;flex:1}
-.pc{display:inline-flex;align-items:center;justify-content:center;gap:1px;width:24px;height:30px;border:1.3px solid var(--ink);border-radius:3px;background:#fff;font:700 12px/1 Georgia,'Times New Roman',serif;cursor:pointer;flex-direction:column}
+.hand{display:flex;gap:4px;flex-wrap:wrap;min-height:44px;align-items:center;flex:1}
+/* 트럼프 칩: 왼쪽 위 숫자 · 가운데 큰 무늬. 숫자는 고딕(라이닝 숫자)으로 크기를 맞춤 */
+.pc{position:relative;display:inline-block;flex:none;width:30px;height:42px;border:1.3px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer;box-shadow:1px 1px 0 rgba(0,0,0,.18)}
 .pc.rd{color:var(--red);border-color:var(--red)}
-.pc small{font-size:10px;line-height:1}
+.pc b{position:absolute;left:3px;top:3px;font:900 11px/1 var(--sans);font-variant-numeric:lining-nums;letter-spacing:-.06em}
+.pc i{position:absolute;left:0;right:0;bottom:4px;text-align:center;font:400 20px/1 'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',sans-serif;font-style:normal}
+.pc.jk b{font-size:9px;letter-spacing:0}
+.pc.jk i{font-size:17px}
 .hand .empty{font-size:11px;color:#9a9a9a}
 .sum{font:700 11.5px var(--sans);white-space:nowrap}
 .sum b{font-size:14px}
@@ -177,26 +181,35 @@ textarea{resize:none;display:block}
 .log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1700px;overflow-y:auto}
 .who{font:700 11px var(--sans);color:var(--sub)}
 .who em{font-style:normal;color:var(--red)}
-/* 채팅 카드: 먹색 머리 + 적색 겹줄 · 트럼프 모양 카드 칩 · 「기동」 적색 도장 */
-.cd{border:1.5px solid var(--ink);background:#fff;position:relative}
-.cd::after{content:"";position:absolute;right:3px;bottom:3px;width:10px;height:10px;border-right:1.5px solid var(--red);border-bottom:1.5px solid var(--red);border-radius:0 0 7px 0}
-.cd .ch{background:var(--bar);color:#fff;padding:6px 9px 5px;font:900 14px/1.3 var(--head);letter-spacing:.04em;box-shadow:inset 0 -2px 0 var(--red),inset 0 -4px 0 var(--bar),inset 0 -5px 0 var(--red)}
-.cd .ch small{display:block;font:500 10.5px/1.4 var(--sans);opacity:.75;letter-spacing:0;padding-bottom:3px}
-.cd .cb{padding:7px 9px 9px;display:flex;flex-direction:column;gap:6px}
-.cd .bootl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:700 11.5px var(--sans)}
-.cd .bootl .req{border:1px solid var(--ink);padding:0 6px;font:700 11.5px/20px var(--sans)}
-.cd .hand2{display:flex;gap:3px;flex-wrap:wrap;align-items:center}
-.cd .pc{cursor:default;width:26px;height:34px;font-size:13px}
-.cd .tot{font:700 11.5px var(--sans);color:var(--sub)}
-.cd .tot b{font:900 18px var(--sans);color:var(--ink)}
+/* 채팅 카드: 겹테 · 먹색 머리 + 영문 부제 · 체크무늬 띠(시트 제목 장식) · 부채꼴 트럼프 · 「기동」 봉랍 도장 */
+.cd{border:1.5px solid var(--ink);padding:2px;background:#fff}
+.cd .fr{border:1px solid var(--ink);position:relative}
+.cd .fr::after{content:"";position:absolute;right:3px;bottom:3px;width:10px;height:10px;border-right:1.5px solid var(--red);border-bottom:1.5px solid var(--red);border-radius:0 0 7px 0}
+.cd .ch{background:var(--bar);color:#fff;padding:6px 9px 5px;display:flex;align-items:baseline;gap:8px;font:900 15px/1.3 var(--head);letter-spacing:.04em}
+.cd .ch .en{margin-left:auto;font:italic 500 10px/1 var(--head);color:#a8a8a8;letter-spacing:.14em;white-space:nowrap}
+.cd .chk{height:8px;background:linear-gradient(45deg,var(--ink) 25%,transparent 25% 75%,var(--ink) 75%),linear-gradient(45deg,var(--ink) 25%,#fff 25% 75%,var(--ink) 75%);background-size:8px 8px;background-position:0 0,4px 4px;border-bottom:2px solid var(--red)}
+.cd .cb{padding:8px 10px 11px;display:flex;flex-direction:column;gap:7px}
+.cd .hd{font:500 11px var(--sans);color:var(--sub)}
+.cd .bootl{display:flex;align-items:center;gap:8px;min-height:44px}
+.cd .req{display:inline-flex;align-items:center;gap:5px;background:var(--ink);color:#fff;padding:0 9px;font:700 12px/24px var(--sans);white-space:nowrap}
+.cd .req i{font-style:normal;font-size:14px}
+.cd .req i.r{color:#ff6b7f}
+.cd .hand2{display:flex;align-items:flex-end;gap:10px}
+.cd .fan{display:flex;align-items:flex-end;padding:3px 0 0 3px}
+.cd .fan .pc{cursor:default}
+.cd .fan .pc+.pc{margin-left:-8px}
+.cd .fan .pc:nth-child(odd){transform:rotate(-4deg)}
+.cd .fan .pc:nth-child(even){transform:rotate(3deg) translateY(-1px)}
+.cd .tot{display:flex;flex-direction:column;gap:1px;font:500 11px/1.25 var(--sans);color:var(--sub)}
+.cd .tot b{font:900 15px var(--sans);color:var(--ink)}
 .cd .tot b.r{color:var(--red)}
-.cd .stp{margin-left:auto;border:2px solid var(--red);color:var(--red);padding:1px 8px;font:900 13px/1.3 var(--head);letter-spacing:.2em;transform:rotate(-5deg)}
-.cd .stp.ng{border-color:#9a9a9a;color:#8a8a8a;border-style:dashed}
+.cd .stp{margin-left:auto;flex:none;width:44px;height:44px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font:900 13px/1 var(--head);letter-spacing:.06em;transform:rotate(-12deg);box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 3.5px rgba(255,255,255,.75),0 1px 2px rgba(0,0,0,.3)}
+.cd .stp.ng{background:#fff;color:#8a8a8a;box-shadow:none;border:1.5px dashed #9a9a9a}
 .cd .tags{display:flex;gap:4px}
-.cd .tags span{border:1px solid var(--ink);padding:0 6px;font:700 10.5px/17px var(--sans)}
-.cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.55;white-space:pre-wrap;border-left:3px solid var(--red)}
+.cd .tags span{border:1px solid var(--ink);padding:0 7px;font:700 11px/18px var(--sans)}
+.cd .eff{background:var(--cell);padding:7px 8px;font-size:12px;line-height:1.55;white-space:pre-wrap;border-radius:2px}
 .cd .lvx{font-size:11px;color:var(--sub)}
-.cd .big{display:flex;align-items:baseline;gap:6px}
+.cd .big{display:flex;align-items:baseline;gap:8px}
 .cd .big b{font:900 30px/1 var(--sans);color:var(--red)}
 .cd .big span{font-size:11.5px;color:var(--sub)}
 .cd .note{font:500 11px/1.45 var(--sans);color:var(--red)}
@@ -400,7 +413,7 @@ let hand = [{ c: 'b', k: '7', s: 0 }];
   pad.innerHTML = RANKS.map(k => `<button type="button" data-k="${k}">${k}</button>`).join('') + `<button type="button" class="jk" data-k="광대">광대</button>`;
   pad.onclick = e => { const b = e.target.closest('button'); if (!b) return; hand.push({ c, k: b.dataset.k, s: hand.filter(h => h.c === c).length % 2 }); renderHand(); };
 });
-const chip = h => `<span class="pc${h.c === 'r' ? ' rd' : ''}" title="${h.c === 'r' ? '적' : '흑'} ${h.k} (${val(h)})"><small>${h.k === '광대' ? '★' : SUIT[h.c][h.s]}</small>${h.k === '광대' ? '<small>JK</small>' : h.k}</span>`;
+const chip = h => { const jk = h.k === '광대'; return `<span class="pc${h.c === 'r' ? ' rd' : ''}${jk ? ' jk' : ''}" title="${h.c === 'r' ? '적' : '흑'} ${h.k} (${val(h)})"><b>${jk ? 'JK' : h.k}</b><i>${jk ? '★' : SUIT[h.c][h.s]}</i></span>`; };
 const sums = () => ({ b: hand.filter(h => h.c === 'b').reduce((a, h) => a + val(h), 0), r: hand.filter(h => h.c === 'r').reduce((a, h) => a + val(h), 0) });
 function renderHand() {
   $('hand').innerHTML = hand.length ? hand.map((h, i) => chip(h).replace('<span class="pc', `<span data-i="${i}" class="pc`)).join('') : '<span class="empty">카드 패드에서 낸 카드를 고르세요 · 칩을 누르면 뺌</span>';
@@ -412,18 +425,21 @@ $('clr').onclick = () => { hand = []; renderHand(); };
 // ── 채팅 카드
 const log = $('log');
 const name = () => $('cname').value || '이름 없음';
-function card({ title, head, boot, cards, tags, lvx, big, notes = [], eff, to }) {
+function card({ title, head, en = '', boot, cards, tags, lvx, big, notes = [], eff, to }) {
   const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
   const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
-  let b = '';
+  let b = head ? `<div class="hd">${esc(head)}</div>` : '';
   if (tags && tags.length) b += `<div class="tags">${tags.map(t => `<span>${t}</span>`).join('')}</div>`;
-  if (boot) b += `<div class="bootl"><span class="req">〔기동〕 ${esc(boot.req)}</span>${boot.ok == null ? '' : `<span class="stp${boot.ok ? '' : ' ng'}">${boot.ok ? '기동' : '부족'}</span>`}</div>`;
-  if (cards) b += `<div class="hand2">${cards.length ? cards.map(chip).join('') : '<span class="tot">낸 카드 없음</span>'}${cards.length ? `<span class="tot" style="margin-left:6px">흑 <b>${cards.s.b}</b> · 적 <b class="r">${cards.s.r}</b> · ${cards.length}장</span>` : ''}</div>`;
+  if (boot) {
+    const suit = /^흑/.test(boot.req) ? '<i>♠</i>' : /^적/.test(boot.req) ? '<i class="r">♥</i>' : '';
+    const hand = cards && cards.length ? `<div class="hand2"><span class="fan">${cards.map(chip).join('')}</span><span class="tot"><span>흑 <b>${cards.s.b}</b></span><span>적 <b class="r">${cards.s.r}</b></span><span>${cards.length}장</span></span></div>` : '';
+    b += `<div class="bootl"><span class="req">${suit}〔기동〕 ${esc(boot.req)}</span>${boot.ok == null ? '' : `<span class="stp${boot.ok ? '' : ' ng'}">${boot.ok ? '기동' : '부족'}</span>`}</div>${hand}`;
+  }
   if (big) b += `<div class="big"><b>${big.v}</b><span>${esc(big.how)}</span></div>`;
   b += notes.filter(Boolean).map(n => `<div class="note">${esc(n)}</div>`).join('');
   if (lvx) b += `<div class="lvx">${esc(lvx)}</div>`;
   if (eff) b += `<div class="eff">${esc(eff)}</div>`;
-  w.append(el('div', 'cd', `<div class="ch">${esc(title)}${head ? `<small>${esc(head)}</small>` : ''}</div><div class="cb">${b}</div>`)); log.append(w); log.scrollTop = log.scrollHeight;
+  w.append(el('div', 'cd', `<div class="fr"><div class="ch">${esc(title)}${en ? `<span class="en">${en}</span>` : ''}</div><div class="chk"></div><div class="cb">${b}</div></div>`)); log.append(w); log.scrollTop = log.scrollHeight;
 }
 // 〔기동〕 해석: 「흑：12」「적：5」「？：10」「—」
 function check(req) {
@@ -441,12 +457,12 @@ document.querySelector('.sheet').addEventListener('click', e => {
   const c = check(req), cards = hand.slice(); cards.s = sums();
   const tags = kind === '권한' ? [...m.querySelectorAll('.tg:checked')].map(t => t.dataset.t) : [];
   const lvx = m.querySelector('.lvx')?.value;
-  card({ title: nm, head: `${kind === '권한' ? '권한 마법' : '선언 마법'}${lv ? ` · LV ${lv}` : ''}`, boot: { req, ok: c ? c.ok : null }, cards, tags,
+  card({ title: nm, en: { basic: 'BASIC CALLING', noble: 'NOBLE CALLING', auth: 'BATTLE MAGIC' }[m.closest('.g3').id], head: `${kind === '권한' ? '권한 마법' : '선언 마법'}${lv ? ` · LV ${lv}` : ''}`, boot: { req, ok: c ? c.ok : null }, cards, tags,
     notes: [c && !c.ok && `${c.col === '？' ? '합계' : c.col + ' 합계'} ${c.have} / 필요 ${c.need}`], lvx: lv > 1 ? lvx : '', eff: txt });
   if (!c || c.ok) { hand = []; renderHand(); }
 });
-$('atk').onclick = () => { const p = +$('pw').value || 0, n = +$('ct').value || 0; card({ title: '고발 공격', head: '적대 진영에', big: { v: p * n, how: `위력 ${p} × 횟수 ${n}` } }); };
-$('gmb').onclick = () => card({ title: 'GM 에게', head: '귓속말', eff: '다음 차례에 비밀 각본 공개 조건을 확인하고 싶어요.', to: 'GM 에게' });
+$('atk').onclick = () => { const p = +$('pw').value || 0, n = +$('ct').value || 0; card({ title: '고발 공격', en: 'ACCUSATION', head: '적대 진영에', big: { v: p * n, how: `위력 ${p} × 횟수 ${n}` } }); };
+$('gmb').onclick = () => card({ title: 'GM 에게', en: 'WHISPER', head: '귓속말', eff: '다음 차례에 비밀 각본 공개 조건을 확인하고 싶어요.', to: 'GM 에게' });
 
 // ── 용어표
 const G1 = [['捏造ミステリーTRPG', '날조 미스터리 TRPG'], ['赤と黒', '적과 흑'], ['自己証明', '자기 증명'], ['系譜', '계보'], ['名前・称号', '이름·칭호'], ['爵位 領主／枢機卿', '작위 영주 / 추기경'], ['性別・年齢', '성별·나이'], ['偽装・派閥', '위장·파벌'], ['出自', '출신'], ['原理', '원리'], ['魔法体系', '마법 체계'], ['詳細情報', '상세 정보'],
