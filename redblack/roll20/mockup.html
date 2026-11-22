@@ -188,9 +188,9 @@ textarea{resize:none;display:block}
 .cd .ch{background:var(--bar);color:#fff;padding:6px 9px 5px;display:flex;align-items:baseline;gap:8px;font:900 15px/1.3 var(--head);letter-spacing:.04em}
 .cd .ch .en{margin-left:auto;font:italic 500 10px/1 var(--head);color:#a8a8a8;letter-spacing:.14em;white-space:nowrap}
 .cd .chk{height:8px;background:linear-gradient(45deg,var(--ink) 25%,transparent 25% 75%,var(--ink) 75%),linear-gradient(45deg,var(--ink) 25%,#fff 25% 75%,var(--ink) 75%);background-size:8px 8px;background-position:0 0,4px 4px;border-bottom:2px solid var(--red)}
-.cd .cb{padding:8px 10px 11px;display:flex;flex-direction:column;gap:7px}
+.cd .cb{position:relative;padding:8px 10px 11px;display:flex;flex-direction:column;gap:7px}
 .cd .hd{font:500 11px var(--sans);color:var(--sub)}
-.cd .bootl{display:flex;align-items:center;gap:8px;min-height:44px}
+.cd .bootl{display:flex;align-items:center;gap:8px}
 .cd .req{display:inline-flex;align-items:center;gap:5px;background:var(--ink);color:#fff;padding:0 9px;font:700 12px/24px var(--sans);white-space:nowrap}
 .cd .req i{font-style:normal;font-size:14px}
 .cd .req i.r{color:#ff6b7f}
@@ -203,7 +203,7 @@ textarea{resize:none;display:block}
 .cd .tot{display:flex;flex-direction:column;gap:1px;font:500 11px/1.25 var(--sans);color:var(--sub)}
 .cd .tot b{font:900 15px var(--sans);color:var(--ink)}
 .cd .tot b.r{color:var(--red)}
-.cd .stp{margin-left:auto;flex:none;width:44px;height:44px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font:900 13px/1 var(--head);letter-spacing:.06em;transform:rotate(-12deg);box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 3.5px rgba(255,255,255,.75),0 1px 2px rgba(0,0,0,.3)}
+.cd .stp{position:absolute;right:14px;top:12px;flex:none;width:52px;height:52px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font:900 15px/1 var(--head);letter-spacing:.06em;transform:rotate(-12deg);box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 3.5px rgba(255,255,255,.75),0 1px 2px rgba(0,0,0,.3)}
 .cd .stp.ng{background:#fff;color:#8a8a8a;box-shadow:none;border:1.5px dashed #9a9a9a}
 .cd .tags{display:flex;gap:4px}
 .cd .tags span{border:1px solid var(--ink);padding:0 7px;font:700 11px/18px var(--sans)}
@@ -432,7 +432,7 @@ function card({ title, head, en = '', boot, cards, tags, lvx, big, notes = [], e
   if (tags && tags.length) b += `<div class="tags">${tags.map(t => `<span>${t}</span>`).join('')}</div>`;
   if (boot) {
     const suit = /^흑/.test(boot.req) ? '<i>♠</i>' : /^적/.test(boot.req) ? '<i class="r">♥</i>' : '';
-    const hand = cards && cards.length ? `<div class="hand2"><span class="fan">${cards.map(chip).join('')}</span><span class="tot"><span>흑 <b>${cards.s.b}</b></span><span>적 <b class="r">${cards.s.r}</b></span><span>${cards.length}장</span></span></div>` : '';
+    const hand = !cards ? '' : cards.length ? `<div class="hand2"><span class="fan">${cards.map(chip).join('')}</span><span class="tot"><span>흑 <b>${cards.s.b}</b></span><span>적 <b class="r">${cards.s.r}</b></span><span>${cards.length}장</span></span></div>` : '<div class="hand2" style="min-height:44px"><span class="tot">낸 카드 없음</span></div>';
     b += `<div class="bootl"><span class="req">${suit}〔기동〕 ${esc(boot.req)}</span>${boot.ok == null ? '' : `<span class="stp${boot.ok ? '' : ' ng'}">${boot.ok ? '기동' : '부족'}</span>`}</div>${hand}`;
   }
   if (big) b += `<div class="big"><b>${big.v}</b><span>${esc(big.how)}</span></div>`;

@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Gaegu:400,700|Noto+Sans+KR:400,500,700,900&display=swap">
 <style>
 /* 한 장짜리 목업: 세로 830px 시트(공식 「피카부 개정판」 캐릭터 시트 — 이노센트용 · 스푸키용 데이터) + Roll20 채팅 카드.
-   흰 종이 · 손그림 느낌 둥근 상자 · 이노센트용 노랑 / 스푸키용 보라 (룰북 표지). 값은 예시 */
+   흰 종이 · 손그림 느낌 둥근 상자 · 이노센트용 노랑(명도 낮춤) / 스푸키용 보라 (룰북 표지). 값은 예시 */
 :root{--paper:#ffffff;--ink:#1d1d1d;--sub:#5e5e5e;--line:#c6c6c6;--cell:#f3f3f3;--bar:#1d1d1d;--page:#e3e3e3;
   --accent:#7a3fc1;--soft:#efe7fa;--navy:#1f3566;--green:#247305;--acct:#7a3fc1;--acctx:#fff;--bartx:#fff;
   --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--head:'Gaegu','Noto Sans KR',sans-serif;color-scheme:light}
@@ -24,8 +24,8 @@ textarea{resize:none;display:block}
 .sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
 .sheet[data-t=in] .sp-only,.sheet[data-t=sp] .in-only{display:none}
 /* 이노센트용 = 노란 테마 (룰북 표지의 노랑 · 고동색 글자), 스푸키용 = 보라 */
-.sheet[data-t=in],.cd.in{--bar:#fcea3a;--bartx:#2b1d1a;--accent:#f2c300;--acctx:#2b1d1a;--acct:#8c6400;--soft:#fff6b8}
-.sheet[data-t=in] .no{border-bottom-color:#e2cf2a}
+.sheet[data-t=in],.cd.in{--bar:#e3cc4c;--bartx:#2b1d1a;--accent:#d6b23a;--acctx:#2b1d1a;--acct:#7d5c00;--soft:#f8efc8}
+.sheet[data-t=in] .no{border-bottom-color:#cdb63c}
 .rbox{border:2px solid var(--ink);border-radius:10px;overflow:hidden}
 .hb{background:var(--bar);color:var(--bartx);font:700 18px/1 var(--head);padding:4px 10px 3px;display:flex;align-items:center;gap:6px}
 .hb small{font:400 10.5px var(--sans);opacity:.85}
@@ -205,10 +205,14 @@ textarea{resize:none;display:block}
 .cd .roll.big .tot{font-size:28px}
 .cd .pv{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--sub)}
 .cd .pv b{font:800 30px/1 Arial,Helvetica,sans-serif;color:var(--acct)}
-.cd .stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 6px;font:400 15px/1.2 var(--head);transform:rotate(-4deg);white-space:nowrap}
-.cd .stp.spc,.cd .stp.mir{border-color:var(--accent);color:var(--acct)}
-.cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
-.cd .stp.ng{color:var(--sub);border-color:var(--sub)}
+/* 판정 도장: 유치원 「참 잘했어요」 하나마루처럼 — 빨간 겹동그라미 + 꽃잎 테 */
+.cd .roll.big{min-height:58px}
+.cd .stp{--sc:#e0393e;position:relative;margin:0 8px 0 auto;flex:none;width:46px;height:46px;border-radius:50%;border:2.5px solid var(--sc);color:var(--sc);display:flex;align-items:center;justify-content:center;font:700 16px/1 var(--head);white-space:nowrap;transform:rotate(-10deg);box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 4.5px var(--sc)}
+.cd .stp::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:4px dotted var(--sc)}
+.cd .stp.spc,.cd .stp.mir{--sc:#d4206a;font-size:14px}
+.cd .stp.fb{--sc:#8a8a8a;border-style:dashed;box-shadow:none}
+.cd .stp.fb::before,.cd .stp.ng::before{content:none}
+.cd .stp.ng{--sc:#8a8a8a;box-shadow:none}
 .cd .note{font:500 11px/1.45 var(--sans);color:var(--acct)}
 .cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
 .cd .rt2{display:flex;gap:6px;align-items:center;font-size:12px}
@@ -229,7 +233,7 @@ textarea{resize:none;display:block}
 .note2{width:830px;max-width:100%;margin-top:12px;font-size:12px;color:var(--sub)}
 .note2 b{color:var(--ink)}
 .cd{--accent:#7a3fc1;border-radius:10px}
-.cd .ch{font:700 19px/1.15 var(--head)}
+.cd .ch{font:700 19px/1 var(--head);padding:8px 10px 5px}
 </style>
 
 <h1 class="pg">피카부 — Roll20 시트 목업</h1>
@@ -285,14 +289,14 @@ textarea{resize:none;display:block}
           <div class="f"><span class="chip">약점</span><input type="text" value="햇빛" aria-label="약점"></div>
         </div>
         <div class="mslot" id="mslot"><span class="lb">마력 슬롯</span></div>
-        <div class="mk">부글부글 포인트<span class="squares" data-n="5" data-v="1"></span><small>(최대 5점)</small></div>
+        <div class="mk">부글부글 포인트<span class="squares" data-n="5" data-v="1"></span></div>
       </div>
     </div>
   </div>
 
   <!-- 2단: 특기 리스트 -->
   <div class="rbox">
-    <div class="hb">특기 리스트<span class="sp"></span><small>(특기 분야 오른쪽의 □는 원기 슬롯입니다)</small></div>
+    <div class="hb">특기 리스트</div>
     <div class="grid" id="grid"></div>
   </div>
 
