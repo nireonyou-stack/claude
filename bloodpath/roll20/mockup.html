@@ -1,0 +1,578 @@
+<title>블러드패스 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nanum+Brush+Script|Noto+Sans+KR:400,500,700,900&display=swap">
+<style>
+/* 한 장짜리 목업: 세로 830px 시트(공식 「인귀혈맹 RPG 블러드패스」 캐릭터 시트 인간 · 흡혈귀, 상급자용 v2 의 상호 칸 + 레코드 시트의 내구치 · 강도) + Roll20 채팅 카드.
+   흰 종이 · 먹색 띠 · 로고의 붓글씨 느낌. 인간 = 청록, 흡혈귀 = 진홍 (로고의 두 색). 값은 예시 */
+:root{--paper:#ffffff;--ink:#151515;--sub:#5f5f5f;--line:#c9c9c9;--cell:#f3f3f3;--bar:#151515;--page:#e3e3e3;
+  --accent:#2a7c82;--soft:#e2f0f0;--red:#b5121b;
+  --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--brush:'Nanum Brush Script','Noto Sans KR',sans-serif;color-scheme:light}
+.sheet[data-t=v]{--accent:#b5121b;--soft:#f8e3e4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+h1.pg{font:900 18px/1.3 var(--sans);margin:0 0 4px;text-wrap:balance}
+p.pg{margin:0 0 12px;color:var(--sub);font-size:12px;max-width:1150px}
+.wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.scroll{overflow-x:auto;max-width:100%}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],textarea{border:0;background:transparent;width:100%;min-width:0;padding:0 4px;outline:0}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+textarea{resize:none;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sheet[data-t=h] .v-only,.sheet[data-t=v] .h-only{display:none}
+.sheet[data-adv="0"] .adv{display:none}
+.sheet[data-trio="0"] .trio{display:none}
+
+/* ── 시트 ── */
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
+.bx{border:1.5px solid var(--ink);display:flex;flex-direction:column;min-width:0}
+.hb{background:var(--bar);color:#fff;font:700 13px/1 var(--sans);padding:5px 8px 4px;display:flex;align-items:center;gap:6px;letter-spacing:.06em}
+.hb small{font:400 10.5px var(--sans);opacity:.8;letter-spacing:0}
+.sp{flex:1}
+.lb{font:700 11.5px/1 var(--sans);white-space:nowrap}
+.ck{appearance:none;-webkit-appearance:none;width:13px;height:13px;margin:0;border:1.3px solid var(--ink);background:#fff;cursor:pointer;flex:none}
+.ck:checked{background:linear-gradient(45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%)}
+.sheet input.ck{width:13px;height:13px;padding:0}
+.bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
+.bub::after{content:"";position:absolute;left:2px;bottom:-6px;width:0;height:0;border-top:5px solid currentColor;border-right:5px solid transparent}
+.bub:hover{color:var(--accent)}
+.btn{border:1px solid var(--ink);background:#fff;padding:0 8px;font:500 11.5px/20px var(--sans);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.dk{background:var(--ink);color:#fff}
+.btn.dk:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.seg{display:inline-flex;border:1px solid var(--ink)}
+.seg label{cursor:pointer}
+.seg input{display:none}
+.seg span{display:block;padding:0 7px;font:500 11.5px/20px var(--sans)}
+.seg label+label span{border-left:1px solid var(--ink)}
+.seg input:checked+span{background:var(--accent);color:#fff}
+.chip{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font:500 11px var(--sans);color:var(--sub)}
+
+/* 1단: 제목 · 그림 | 프로필 | 기록 (내구치 · 선제치 · 강도) */
+.r1{display:grid;grid-template-columns:236px minmax(0,1fr) 206px;gap:8px}
+.title{display:flex;flex-direction:column;gap:6px}
+.logo{position:relative;background:var(--bar);color:#fff;padding:9px 10px 8px;text-align:center;overflow:hidden}
+.logo::before{content:"";position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;border:6px double var(--accent);opacity:.55}
+.logo .t0{font:700 10px var(--sans);letter-spacing:.2em;opacity:.85}
+.logo .t1{font:400 44px/1 var(--brush);letter-spacing:.02em}
+.logo .t1 b{font-weight:400;color:var(--red)}
+.logo .t2{font:700 9px var(--sans);letter-spacing:.3em;opacity:.6}
+.logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--accent);color:#fff;font:700 12px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:4px;
+  background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(-45deg,transparent 50%,#fff 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
+.logo select option{color:var(--ink)}
+.opts{display:flex;justify-content:center;gap:10px;margin-top:5px;font:500 10.5px var(--sans);color:#ddd}
+.opts label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
+.opts .ck{border-color:#bbb;background:transparent}
+.portrait{flex:1;min-height:150px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+.prof{display:grid;grid-template-columns:auto minmax(0,1fr);grid-auto-rows:minmax(24px,1fr)}
+.prof .k{background:var(--bar);color:#fff;font:700 11px/1 var(--sans);padding:0 8px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.prof .v{border-bottom:1px solid var(--line);display:flex;align-items:center}
+.prof .v input{height:22px}
+.prof .v.nm input{font:700 15px var(--sans)}
+.prof .two{display:grid;grid-template-columns:minmax(0,1fr) auto 70px;align-items:center;width:100%}
+.prof .two b{background:var(--bar);color:#fff;font:700 11px/22px var(--sans);padding:0 8px}
+.prof .age{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.prof .age span{color:var(--sub)}
+.prof>:nth-last-child(-n+2){border-bottom:0}
+.rec{gap:0}
+.gauge{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.gauge .now{width:100%;height:30px;text-align:right;font:900 24px/1 var(--sans);border-bottom:1.5px solid var(--ink)}
+.gauge .mx{font:700 12px var(--sans);color:var(--sub);white-space:nowrap}
+.gauge.ini .now{color:var(--accent)}
+.bp .row{display:grid;grid-template-columns:22px 18px minmax(0,1fr);align-items:center;gap:4px;padding:3px 6px;border-bottom:1px solid var(--line);min-height:30px}
+.bp .row:last-child{border-bottom:0}
+.bp .row i{font-style:normal;font:900 15px/1 var(--sans);text-align:center}
+.bp .row div{font-size:10.5px;line-height:1.3;color:var(--sub)}
+.bp .row div b{display:block;color:var(--ink);font-size:11px}
+.bp .row.on i{color:var(--accent)}
+.bp .row.on div b{color:var(--accent)}
+.bp{flex:1;display:flex;flex-direction:column}
+.bp .row{flex:1}
+.bpst{display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--soft);font:700 11.5px var(--sans)}
+.bpst b{font:900 16px var(--sans);color:var(--accent)}
+
+/* 2단: 팩터 · 숙련도 · 능력치 · 부능력치 */
+.fac{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1.5px solid var(--ink)}
+.fac>div{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:stretch}
+.fac>div+div{border-left:1px solid var(--line)}
+.fac b{background:var(--bar);color:#fff;font:700 12px/1 var(--sans);display:flex;align-items:center;padding:0 16px 0 10px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%)}
+.fac span{display:flex;align-items:center;padding:0 10px;font:700 14px var(--sans)}
+.fac input{height:30px;font:700 13px var(--sans)}
+.abl{display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr);border:1.5px solid var(--ink);min-height:64px}
+.abl .ren{display:grid;grid-template-columns:1fr 54px;align-items:center;background:var(--bar);color:#fff;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%);padding-right:12px}
+.abl .ren b{font:900 18px/1 var(--sans);text-align:center;letter-spacing:.2em}
+.abl .ren input{height:34px;text-align:center;font:900 22px var(--sans);color:#fff;border-bottom:1.5px solid var(--accent)}
+.abl .grp{display:grid;grid-template-columns:22px minmax(0,1fr);border-left:1px solid var(--line)}
+.abl .grp>b{background:var(--bar);color:#fff;font:700 10.5px/1.1 var(--sans);writing-mode:vertical-rl;display:flex;align-items:center;justify-content:center;letter-spacing:.2em}
+.abl .rows{display:grid;grid-auto-rows:1fr}
+.abl .ar{display:grid;grid-template-columns:30px auto minmax(0,1fr);align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid var(--line)}
+.abl .ar:last-child{border-bottom:0}
+.abl .ar .suit{font:400 22px/1 Georgia,serif;text-align:center}
+.abl .ar .suit.rd{color:var(--red)}
+.abl .ar .nm{font:900 17px/1 var(--sans)}
+.abl .ar .nm small{display:block;font:500 9px var(--sans);color:var(--sub);letter-spacing:.1em}
+.abl .ar input{height:28px;text-align:center;font:900 20px var(--sans);border-bottom:1.5px solid var(--accent);max-width:60px;justify-self:end}
+.abl .ar .lbl{font:700 11.5px var(--sans)}
+
+/* 카드 패드 띠 */
+.strip{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);font-size:11.5px}
+.sr{display:flex;align-items:center;gap:4px;padding:4px 2px;flex-wrap:wrap;min-height:30px}
+.sr+.sr{border-top:1px dotted var(--line)}
+.tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
+.suits{display:inline-flex;border:1px solid var(--ink)}
+.suits label{cursor:pointer}
+.suits input{display:none}
+.suits span{display:block;width:24px;text-align:center;font:400 15px/20px Georgia,serif}
+.suits span.rd{color:var(--red)}
+.suits label+label span{border-left:1px solid var(--ink)}
+.suits input:checked+span{background:var(--ink);color:#fff}
+.suits input:checked+span.rd{background:var(--red);color:#fff}
+.pad{display:inline-flex}
+.pad button{min-width:23px;height:22px;border:1px solid var(--line);background:#fff;padding:0 3px;font:700 11.5px/1 var(--sans);font-variant-numeric:lining-nums;cursor:pointer}
+.pad button+button{border-left:0}
+.pad button:hover{background:var(--ink);color:#fff}
+.pad button.jk{font-size:10.5px;padding:0 5px}
+.hand{display:flex;gap:4px;flex-wrap:wrap;min-height:44px;align-items:center;flex:1}
+.pc{position:relative;display:inline-block;flex:none;width:30px;height:42px;border:1.3px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink);cursor:pointer;box-shadow:1px 1px 0 rgba(0,0,0,.18)}
+.pc.rd{color:var(--red);border-color:var(--red)}
+.pc b{position:absolute;left:3px;top:3px;font:900 11px/1 var(--sans);font-variant-numeric:lining-nums;letter-spacing:-.06em}
+.pc i{position:absolute;left:0;right:0;bottom:4px;text-align:center;font:400 20px/1 'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','DejaVu Sans',sans-serif;font-style:normal}
+.pc.jk b{font-size:9px;letter-spacing:0}
+.pc.jk i{font-size:17px}
+.sum{font:700 11.5px var(--sans);white-space:nowrap}
+.sum b{font-size:14px}
+.tsel{height:22px;border:1px solid var(--line);font:500 11.5px var(--sans);background:#fff}
+
+/* 3단: 혈계 (왼쪽) | 상호 · 혈위 · 특기 · 효과 메모 (오른쪽) */
+.r3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:8px}
+.col{display:flex;flex-direction:column;gap:8px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);grid-auto-rows:minmax(23px,auto)}
+.kv>b{background:var(--bar);color:#fff;font:700 10.5px/1 var(--sans);padding:0 7px;display:flex;align-items:center;border-bottom:1px solid #444;white-space:nowrap}
+.kv>span{border-bottom:1px solid var(--line);display:flex;align-items:center}
+.kv>span input{height:22px}
+.kv>.w{grid-column:2/-1}
+.kv textarea{height:40px;font-size:12px;padding:3px 5px}
+.kv .agv{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;width:100%}
+.kv .agv i{font-style:normal;color:var(--sub)}
+.sec{display:flex;align-items:center;gap:6px;background:var(--bar);color:#fff;font:700 10.5px var(--sans);padding:3px 7px;letter-spacing:.1em}
+.blk{flex:1;display:flex;flex-direction:column}
+.blk .kv{flex:1}
+.tbl .th,.tbl .tr{display:grid;align-items:stretch}
+.bl .th,.bl .tr{grid-template-columns:20px 92px 64px 64px minmax(0,1fr) 24px}
+.sk .th,.sk .tr{grid-template-columns:92px 56px 52px 54px 48px minmax(0,1fr) 24px}
+.memo .th,.memo .tr{grid-template-columns:minmax(0,1fr) 70px 150px}
+.th{font:700 10.5px var(--sans);text-align:center;color:#fff;background:#3a3a3a}
+.th span{padding:2px 0}
+.tr{min-height:25px;border-bottom:1px solid var(--line)}
+.tr:last-child{border-bottom:0}
+.tr>*{border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;min-width:0}
+.tr>:first-child{border-left:0}
+.tr input{text-align:center;font-size:11.5px;height:23px}
+.tr .nm input{font-weight:700;text-align:left}
+.tr .ef{justify-content:flex-start}
+.tr .ef input{text-align:left}
+.tr.pr{background:#f7f7f7}
+.tr.pr .nm{justify-content:flex-start;padding-left:5px;font-weight:700}
+.tr.pr .ef{padding:2px 5px;line-height:1.35}
+.tr .no{font:700 11px var(--sans);color:var(--sub)}
+.tr.lock{opacity:.42}
+.bl .rule{padding:4px 8px;font-size:10.5px;color:var(--sub);line-height:1.45;border-top:1px solid var(--line)}
+.memo .tr .dur{gap:6px;font-size:11px}
+.memo .tr .dur label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
+.scar .kv{grid-template-columns:auto minmax(0,1fr)}
+.scar textarea{height:44px}
+
+/* 4단: 조사 진행도 · 혈전의 진행 · 규칙 상자 */
+.prog{display:flex;gap:3px;padding:6px 8px;align-items:center}
+.prog label{cursor:pointer}
+.prog input{display:none}
+.prog span{display:block;min-width:30px;height:24px;padding:0 10px 0 6px;font:700 11.5px/24px var(--sans);text-align:center;background:#e6e6e6;color:var(--sub);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%,8px 50%)}
+.prog label:first-child span{clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%)}
+.prog .gold span{background:#c9c9c9;color:var(--ink)}
+.prog .on span{background:var(--accent);color:#fff}
+.flow{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:2px;padding:6px 8px}
+.flow div{background:var(--ink);color:#fff;font:700 10px/1.25 var(--sans);text-align:center;padding:6px 8px 6px 10px;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%,7px 50%);display:flex;flex-direction:column;justify-content:center;min-height:52px}
+.flow div:nth-child(even){background:#d9d9d9;color:var(--ink)}
+.flow div:nth-child(even) b{color:var(--ink)}
+.flow div:first-child{clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%)}
+.flow div b{font:900 11px var(--sans);color:#ddd}
+.flow div small{font:400 8.5px/1.2 var(--sans);opacity:.75;margin-top:2px}
+.rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.rules .bx{font-size:10.5px;line-height:1.45}
+.rules .hb{justify-content:center;font-size:11px;padding:3px}
+.rules .tx{padding:5px 7px;flex:1}
+.rules .cv{display:grid;grid-template-columns:auto 1fr;flex:1}
+.rules .cv b{background:var(--bar);color:#fff;font-weight:700;padding:1px 7px;border-bottom:1px solid #444;text-align:center}
+.rules .cv span{border-bottom:1px solid var(--line);padding:1px 7px;text-align:center}
+
+/* ── 채팅 ── */
+.chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
+.chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
+.log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1700px;overflow-y:auto}
+.who{font:700 11px var(--sans);color:var(--sub)}
+.who em{font-style:normal;color:var(--red)}
+/* 채팅 카드: 먹색 머리 + 붓글씨 제목 · 오른쪽 위 진홍(흡혈귀)/청록(인간) 이중 원 · 트럼프 칩 · 혈흔 도장 */
+.cd{--ac:#2a7c82;border:1.5px solid var(--ink);background:#fff;position:relative;overflow:hidden}
+.cd.v{--ac:#b5121b}
+.cd .ch{position:relative;background:var(--bar);color:#fff;padding:5px 40px 4px 10px;font:400 22px/1.15 var(--brush);letter-spacing:.02em;border-bottom:3px solid var(--ac)}
+.cd .ch::after{content:"";position:absolute;right:-10px;top:-12px;width:42px;height:42px;border-radius:50%;border:5px double var(--ac);opacity:.8}
+.cd .ch small{display:block;font:500 10.5px/1.4 var(--sans);opacity:.75;letter-spacing:0}
+.cd .cb{position:relative;padding:8px 10px 10px;display:flex;flex-direction:column;gap:7px}
+.cd .hand2{display:flex;align-items:center;gap:10px}
+.cd .fan{display:flex;align-items:flex-end;padding:3px 0 0 3px}
+.cd .fan .pc{cursor:default}
+.cd .fan .pc+.pc{margin-left:-8px}
+.cd .fan .pc:nth-child(even){transform:rotate(4deg)}
+.cd .calc{display:flex;align-items:baseline;gap:5px;font:500 11.5px var(--sans);color:var(--sub)}
+.cd .calc b{font:900 15px var(--sans);color:var(--ink)}
+.cd .calc .tot{font:900 28px/1 var(--sans);color:var(--ac)}
+.cd .stp{position:absolute;right:12px;top:10px;width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:400 22px/1 var(--brush);color:#fff;background:var(--red);transform:rotate(-12deg);
+  box-shadow:0 0 0 3px #fff,0 0 0 5px var(--red),3px 4px 0 3px rgba(181,18,27,.25)}
+.cd .stp.ng{background:#fff;color:#7a7a7a;box-shadow:0 0 0 2px #9a9a9a}
+.cd .kv2{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:11.5px}
+.cd .kv2 b{font-weight:700}
+.cd .note{font:500 11px/1.45 var(--sans);color:var(--ac)}
+.cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.55;white-space:pre-wrap;border-radius:2px}
+.cd .rt2{display:flex;gap:8px;align-items:flex-start}
+.cd .rt2 .big2{font:700 13px/1.5 var(--sans)}
+.cd .rt2 .big2 small{display:block;font:400 11.5px/1.45 var(--sans);color:var(--sub)}
+.gl{width:830px;max-width:100%;background:#fff;border:1px solid var(--line);padding:10px 12px;margin-top:16px}
+.gl h2{margin:0 0 6px;font:900 14px var(--sans)}
+.gl h3{margin:10px 0 4px;font:700 12px var(--sans);color:var(--sub)}
+.gl .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:2px 12px;font-size:12px}
+.gl .gg span{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);gap:6px}
+.gl .gg i{font-style:normal;color:var(--sub)}
+.note2{width:830px;max-width:100%;margin-top:12px;font-size:12px;color:var(--sub)}
+.note2 b{color:var(--ink)}
+.note2 li{margin:2px 0}
+</style>
+
+<h1 class="pg">블러드패스 — Roll20 시트 목업</h1>
+<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 캐릭터 시트(인간 · 흡혈귀)와 레코드 시트의 내구치 · 블러드패스 강도를 Roll20 세로 830px 한 장으로 합친 배치예요. 값은 예시예요. 제목 칸에서 인간 · 흡혈귀를 고르고, 「상급자용」을 켜면 상급자용 시트(v2)의 상호 · 특기 효과 메모 칸이, 「혈맹 3인」을 켜면 혈계 2(흡혈귀는 연혈귀) 칸이 나와요. 트럼프를 쓰는 게임이라 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요. 아래 용어표는 일본어 원문을 제가 옮긴 것이라 고칠 것만 알려 주세요.</p>
+
+<div class="wrap">
+<div class="scroll"><div class="sheet" id="sheet" data-t="h" data-adv="1" data-trio="0">
+
+  <!-- 1단 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo">
+        <div class="t0">인귀혈맹 RPG</div>
+        <div class="t1">블러드<b>패</b>스</div>
+        <div class="t2">THE BLOOD PATH RPG</div>
+        <select id="stype" aria-label="시트 종류"><option value="h">캐릭터 시트 (인간)</option><option value="v">캐릭터 시트 (흡혈귀)</option></select>
+        <div class="opts"><label><input type="checkbox" class="ck" id="adv" checked>상급자용</label><label><input type="checkbox" class="ck" id="trio">혈맹 3인</label></div>
+      </div>
+      <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
+    </div>
+    <div class="bx prof">
+      <div class="k">플레이어</div><div class="v"><input type="text" value="하루" aria-label="플레이어 이름"></div>
+      <div class="k">이름</div><div class="v nm"><input type="text" id="cname" value="키리시마 소우" aria-label="이름"></div>
+      <div class="k">나이</div><div class="v"><div class="two"><span class="h-only"><input type="text" value="24" aria-label="나이"></span><span class="v-only age"><input type="text" value="17" aria-label="외견 나이"><span>/</span><input type="text" value="312" aria-label="실제 나이"></span><b>성별</b><input type="text" value="남" aria-label="성별"></div></div>
+      <div class="k">소속</div><div class="v"><input type="text" value="혈맹 사무소 「야간 순찰」" aria-label="소속"></div>
+      <div class="k">과거</div><div class="v"><input type="text" value="경찰관이었다" aria-label="과거"></div>
+      <div class="k">경위</div><div class="v"><input type="text" value="흡혈귀 사건에서 살아남았다" aria-label="경위"></div>
+      <div class="k"><span class="h-only">상실</span><span class="v-only">결락</span></div><div class="v"><input type="text" value="가족" aria-label="상실 · 결락"></div>
+      <div class="k">외견적 특징</div><div class="v"><input type="text" value="왼손의 화상 자국" aria-label="외견적 특징"></div>
+      <div class="k">거처</div><div class="v"><input type="text" value="사무소 2층" aria-label="거처"></div>
+      <div class="k">사용 무기</div><div class="v"><input type="text" value="리볼버" aria-label="사용 무기"></div>
+    </div>
+    <div class="bx rec">
+      <div class="hb">내구치</div>
+      <div class="gauge"><span class="lb">현재</span><input class="now" type="number" id="dur" value="18" aria-label="현재 내구치"><span class="mx">/ <b id="durmax">18</b></span></div>
+      <div class="gauge ini"><span class="lb">선제치</span><input class="now" type="number" id="ini" value="6" aria-label="선제치" readonly><span></span></div>
+      <div class="hb">블러드패스</div>
+      <div class="bp" id="bp"></div>
+      <div class="bpst">손패 <b id="handn">3</b>장 · 혈위 <b id="blv">—</b></div>
+    </div>
+  </div>
+
+  <!-- 2단: 팩터 -->
+  <div class="fac">
+    <div><b>팩터</b><span><span class="h-only">인간</span><span class="v-only">흡혈귀</span></span></div>
+    <div><b><span class="h-only">신념</span><span class="v-only">기원</span></b><input type="text" value="지키는 자" aria-label="신념 · 기원"></div>
+    <div><b><span class="h-only">직능</span><span class="v-only">유의</span></b><input type="text" value="수사관" aria-label="직능 · 유의"></div>
+  </div>
+  <div class="abl">
+    <div class="ren"><b>숙련도</b><input type="number" id="ren" value="1" aria-label="숙련도"></div>
+    <div class="grp"><b>능력치</b><div class="rows" id="abl"></div></div>
+    <div class="grp"><b>부능력치</b><div class="rows">
+      <div class="ar"><span></span><span class="lbl">내구치</span><input type="number" id="dmax" value="18" aria-label="내구치"></div>
+      <div class="ar"><span></span><span class="lbl">선제치</span><input type="number" id="imax" value="6" aria-label="선제치"></div>
+    </div></div>
+  </div>
+
+  <!-- 카드 패드 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">카드</span>
+      <span class="suits" id="suits"><label><input type="radio" name="suit" value="s" checked><span>♠</span></label><label><input type="radio" name="suit" value="c"><span>♣</span></label><label><input type="radio" name="suit" value="h"><span class="rd">♥</span></label><label><input type="radio" name="suit" value="d"><span class="rd">♦</span></label></span>
+      <span class="pad" id="pad"></span>
+      <span class="sp"></span>
+      <span class="seg"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
+    </div>
+    <div class="sr">
+      <span class="tl">낸 카드</span><div class="hand" id="hand"></div>
+      <span class="sum" id="sum"></span>
+      <button class="btn dk" type="button" id="inv">조사</button><button class="btn" type="button" id="clr">비우기</button>
+      <span class="tl">표</span>
+      <select class="tsel" id="tsel"></select><button class="btn" type="button" id="tdraw">카드 뽑기</button>
+      <button class="btn" type="button" id="gmb">GM 귓속말</button>
+    </div>
+  </div>
+
+  <!-- 3단: 혈계 | 상호 · 혈위 · 특기 · 효과 메모 -->
+  <div class="r3">
+    <div class="col">
+      <div class="bx blk">
+        <div class="hb">혈계</div>
+        <div class="sec">파트너</div>
+        <div class="kv">
+          <b>이름</b><span><input type="text" value="레이" aria-label="파트너 이름"></span><b><span class="h-only">기원 / 유의</span><span class="v-only">신념 / 직능</span></b><span><input type="text" value="진조 / 검술" aria-label="기원 / 유의"></span>
+          <b>나이</b><span><span class="agv"><input type="text" value="16" aria-label="외견 나이"><i>/</i><input type="text" value="280" aria-label="실제 나이"></span></span><b><span class="h-only">결락</span><span class="v-only">상실</span></b><span><input type="text" value="체온" aria-label="결락"></span>
+          <b>특징 등</b><span class="w"><textarea aria-label="특징 등">달콤한 것을 좋아한다.</textarea></span>
+        </div>
+        <div class="sec">흔인 1</div>
+        <div class="kv">
+          <b>흔인의 위치</b><span><input type="text" value="목덜미" aria-label="흔인의 위치"></span><b>상대에게서의 감정 1</b><span><input type="text" value="신뢰" aria-label="감정 1"></span>
+          <b>흔인의 형상</b><span><input type="text" value="장미 덩굴" aria-label="흔인의 형상"></span><b>상대에게서의 감정 2</b><span><input type="text" value="걱정" aria-label="감정 2"></span>
+          <b>약속</b><span class="w"><input type="text" value="반드시 살아서 돌아온다" aria-label="약속"></span>
+        </div>
+      </div>
+      <div class="bx blk trio">
+        <div class="hb"><span class="h-only">혈계 2</span><span class="v-only">연혈귀</span><span class="sp"></span><small>혈맹이 3인인 경우</small></div>
+        <div class="sec"><span class="h-only">파트너</span><span class="v-only">또 한 명의 흡혈귀</span></div>
+        <div class="kv">
+          <b>이름</b><span><input type="text" aria-label="이름"></span><b>기원 / 유의</b><span><input type="text" aria-label="기원 / 유의"></span>
+          <b>나이</b><span><span class="agv"><input type="text" aria-label="외견 나이"><i>/</i><input type="text" aria-label="실제 나이"></span></span><b>결락</b><span><input type="text" aria-label="결락"></span>
+          <b>특징 등</b><span class="w"><textarea aria-label="특징 등"></textarea></span>
+        </div>
+        <div class="sec"><span class="h-only">흔인 2</span><span class="v-only">상대에게서의 감정</span></div>
+        <div class="kv">
+          <b class="h-only">흔인의 위치</b><span class="h-only"><input type="text" aria-label="흔인의 위치"></span><b>상대에게서의 감정 1</b><span><input type="text" aria-label="감정 1"></span>
+          <b class="h-only">흔인의 형상</b><span class="h-only"><input type="text" aria-label="흔인의 형상"></span><b>상대에게서의 감정 2</b><span><input type="text" aria-label="감정 2"></span>
+          <b><span class="h-only">약속</span><span class="v-only">협정</span></b><span class="w"><input type="text" aria-label="약속 · 협정"></span>
+        </div>
+      </div>
+      <div class="bx blk">
+        <div class="hb">자유란<span class="sp"></span><small>설정 · 일러스트 등</small></div>
+        <textarea aria-label="자유란" style="flex:1;min-height:80px;padding:6px 8px;font-size:12px">조직에서 흡혈귀 레이와 혈맹을 맺었다.</textarea>
+      </div>
+    </div>
+    <div class="col">
+      <div class="bx scar adv">
+        <div class="hb">상호</div>
+        <div class="kv"><b>상호명</b><span><input type="text" value="달을 쏘는 자" aria-label="상호명"></span><b>설정</b><span><textarea aria-label="상호 설정">사냥한 흡혈귀의 수만큼 탄피를 모은다.</textarea></span></div>
+      </div>
+      <div class="bx tbl bl">
+        <div class="hb">혈위</div>
+        <div class="th"><span></span><span>명칭</span><span>타이밍</span><span>대상</span><span>해설</span><span></span></div>
+        <div id="bl"></div>
+        <div class="rule">혈위는 블러드패스의 강도 2 이상에서 사용 가능해지며, 각각 시나리오에 1회 사용할 수 있다.<br><span class="h-only">혈위를 사용하려면 흑의 그림 카드나 흑의 A 를 1장 버려야 한다. 대신 파트너가 버려도 된다.</span><span class="v-only">혈위를 사용하려면 적의 그림 카드나 적의 A 를 1장 버려야 한다. 대신 파트너가 버려도 된다.</span></div>
+      </div>
+      <div class="bx tbl sk">
+        <div class="hb">특기</div>
+        <div class="th"><span>명칭</span><span>타이밍</span><span>대상</span><span>대가</span><span>조건</span><span>해설</span><span></span></div>
+        <div id="sk"></div>
+      </div>
+      <div class="bx tbl memo adv">
+        <div class="hb">특기 효과 메모란</div>
+        <div class="th"><span>효과의 종별</span><span>수정치</span><span>효과 시간</span></div>
+        <div id="memo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4단: 조사 진행도 · 혈전의 진행 · 규칙 -->
+  <div class="bx">
+    <div class="hb">조사 진행도</div>
+    <div class="prog" id="prog"></div>
+  </div>
+  <div class="bx">
+    <div class="hb">혈전의 진행</div>
+    <div class="flow">
+      <div><b>Ⅰ</b>혈전의 개시</div><div><b>Ⅱ</b>혈전의 스탠바이</div><div><b>Ⅲ-1</b>라운드 개시<small>「타이밍: 개시」의 특기 · 혈위를 사용</small></div><div><b>Ⅲ-2</b>선제치 확인</div><div><b>Ⅲ-3</b>선수 PC 차례</div>
+      <div><b>Ⅲ-4</b>보스 에너미 차례</div><div><b>Ⅲ-5</b>후수 PC 차례</div><div><b>Ⅲ-6</b>모브 에너미 차례</div><div><b>Ⅲ-7</b>라운드 종료<small>「타이밍: 종료」의 특기 · 혈위를 사용. 그 뒤 Ⅲ-1 로</small></div><div><b>Ⅳ</b>혈전 종료<small>종료 조건을 채우면 혈전이 끝난다</small></div>
+    </div>
+  </div>
+  <div class="rules">
+    <div class="bx"><div class="hb">카드의 숫자에 대해</div><div class="cv"><b>2~10</b><span>카드의 숫자와 같음</span><b>J/Q/K</b><span>10</span><b>A</b><span>11</span><b>조커</b><span>임의의 카드에 상당</span></div></div>
+    <div class="bx"><div class="hb">손패에 대해</div><div class="tx">손패의 장수는 「블러드패스」의 강도에 따라 바뀐다. 손패에서 카드를 냈다면, 반드시 「그때의 손패 장수」가 되도록 덱에서 카드를 보충한다.</div></div>
+    <div class="bx"><div class="hb">차례에 대해</div><div class="tx">차례를 얻은 캐릭터는 다음을 순서대로 할 수 있다.<br>1: 「타이밍: 준비」의 특기 · 혈위를 사용한다.<br>2: 「타이밍: 공격」의 특기 · 혈위를 사용한다.<br>각각 쓸 수 있는 것이 없으면 「아무것도 하지 않는다」를 골라도 된다.</div></div>
+    <div class="bx"><div class="hb">미행동과 행동 종료</div><div class="tx">라운드가 시작하고 차례를 하지 않은 캐릭터는 【미행동】 상태다. 차례를 한 캐릭터는 【행동 종료】 상태가 된다. 「타이밍: 공격」에서 아무것도 하지 않기를 골라도 【행동 종료】가 된다.</div></div>
+  </div>
+</div></div>
+
+<div class="chat"><h2>Roll20 채팅 (예시)</h2><div class="log" id="log"></div></div>
+</div>
+
+<div class="note2">
+  <b>판정 방식 (레코드 시트 「조사의 룰」 기준)</b>
+  <ul>
+    <li>손패에서 카드 1장을 내고 그 숫자에 대응하는 【능력치】를 더한 값 = 조사력. 인간 【기】 = ♠, 【정】 = ♣ / 흡혈귀 【혈】 = ♥, 【상】 = ♦. 조사력 15 이상 = 성공 (조사 진행도 +2), 그 밖 = 실패 (+1).</li>
+    <li>카드 값: 2~10 = 숫자, J · Q · K = 10, A = 11, 조커 = 임의의 카드.</li>
+    <li>블러드패스 강도: 1 = 시나리오 테마 설정 (손패 3장) · 2 = 턴 테마 1 달성 (손패 4장, 혈위 1) · 3 = 턴 테마 2 달성 (손패 5장, 혈위 2 · 3). 체크한 칸만큼 강도가 올라가고 혈위 줄이 풀려요.</li>
+    <li><b>확인할 것 — OPEN_QUESTIONS:</b> 모양이 맞지 않는 카드(인간이 ♥ · ♦ 를 냈을 때)는 능력치를 더하지 않는 것으로 가정. 조커는 A(11) + 높은 쪽 능력치로 가정. 「14 미만 실패」 표기는 15 미만으로 읽었어요.</li>
+    <li>표: 공식 표 PDF 의 28개(일상표 · 교류표 · 조사표 · 턴 테마표, 장소별) 중 목업에는 교류표 2개와 턴 테마표(범용)만 넣었어요. 카드 1장을 무작위로 뽑아 해당 칸을 보여 줘요 (DOC = 뽑기 또는 고르기).</li>
+  </ul>
+</div>
+
+<div class="gl">
+  <h2>용어표 (일본어 → 목업 표기)</h2>
+  <h3>시트</h3>
+  <div class="gg" id="g1"></div>
+  <h3>규칙 · 혈전</h3>
+  <div class="gg" id="g2"></div>
+</div>
+
+<script>
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = id => document.getElementById(id);
+const sheet = $('sheet'), isV = () => sheet.dataset.t === 'v';
+
+// ── 능력치 (인간 기 ♠ · 정 ♣ / 흡혈귀 혈 ♥ · 상 ♦)
+const ABL = { h: [['s', '기', 'スペード', 3], ['c', '정', 'クラブ', 2]], v: [['h', '혈', 'ハート', 3], ['d', '상', 'ダイヤ', 2]] };
+const SUIT = { s: '♠', c: '♣', h: '♥', d: '♦' };
+const vals = { s: 4, c: 3, h: 4, d: 3 };
+function renderAbl() {
+  const t = isV() ? 'v' : 'h';
+  $('abl').innerHTML = ABL[t].map(([su, nm, ru]) => `<div class="ar"><span class="suit${su === 'h' || su === 'd' ? ' rd' : ''}">${SUIT[su]}</span><span class="nm">${nm}</span><input type="number" value="${vals[su]}" data-su="${su}" aria-label="${nm}"></div>`).join('');
+  $('abl').querySelectorAll('input').forEach(i => i.oninput = () => { vals[i.dataset.su] = +i.value || 0; });
+}
+
+// ── 블러드패스 강도 (레코드 시트): 1 은 시나리오 테마 설정으로 늘 켜짐, 2 · 3 은 턴 테마 달성 체크
+const BP = [['시나리오 테마 설정', '손패 3장', '내용: 사라진 혈맹을 찾는다'], ['턴 테마 1 달성', '손패 4장 · 혈위 1 사용 가능', '테마 1: 협력'], ['턴 테마 2 달성', '손패 5장 · 혈위 2 · 3 사용 가능', '테마 2: 말하지 못한 것']];
+let bpOn = [true, true, false];
+function renderBP() {
+  $('bp').innerHTML = BP.map(([c, e, m], i) => `<div class="row${bpOn[i] ? ' on' : ''}"><i>${i + 1}</i>${i ? `<input type="checkbox" class="ck" data-bp="${i}" ${bpOn[i] ? 'checked' : ''} aria-label="강도 ${i + 1}">` : '<span></span>'}<div><b>${c}</b>${e} · ${m}</div></div>`).join('');
+  $('bp').querySelectorAll('[data-bp]').forEach(c => c.onchange = () => { bpOn[+c.dataset.bp] = c.checked; if (!bpOn[1]) bpOn[2] = false; renderBP(); renderBL(); });
+  const lv = bpOn[2] ? 3 : bpOn[1] ? 2 : 1;
+  $('handn').textContent = lv + 2; $('blv').textContent = lv === 1 ? '—' : lv === 2 ? '1' : '1 · 2 · 3';
+}
+const level = () => (bpOn[2] ? 3 : bpOn[1] ? 2 : 1);
+
+// ── 혈위 3줄 (1번은 인쇄된 줄) · 특기 6줄 (무기 공격 인쇄) · 효과 메모 4줄
+const BL_PR = { h: ['암명시', '언제든지', '해설 참조', '뒷면의 【생명 카드】 2장을 앞면으로 한다.'], v: ['절명공격', '언제든지', '단일※', '파트너와 1장씩 손패를 버리고, 【카드의 합계 이하】의 【생명 카드】 1장을 파괴한다.'] };
+const BL_EX = [['', '', '', ''], ['피의 서약', '공격', '단일', '이번 공격으로 파괴하는 【생명 카드】를 1장 늘린다.'], ['', '', '', '']];
+function renderBL() {
+  const t = isV() ? 'v' : 'h', lv = level();
+  $('bl').innerHTML = [0, 1, 2].map(i => {
+    const lock = lv < 2 || (i > 0 && lv < 3);
+    if (i === 0) { const [n, ti, ta, e] = BL_PR[t]; return `<div class="tr pr${lock ? ' lock' : ''}"><span class="no">1</span><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span class="ef">${e}</span><span><button class="bub" type="button" data-bl="0" title="채팅에 올림"></button></span></div>`; }
+    const [n, ti, ta, e] = BL_EX[i];
+    return `<div class="tr${lock ? ' lock' : ''}"><span class="no">${i + 1}</span><span class="nm"><input type="text" value="${n}" aria-label="혈위 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span><button class="bub" type="button" data-bl="${i}" title="채팅에 올림"></button></span></div>`;
+  }).join('');
+  $('bl').querySelectorAll('[data-bl]').forEach(b => b.onclick = () => useRow(b.closest('.tr'), '혈위', true));
+}
+const SK = [['무기 공격', '공격', '단일', '손패 1장', '없음', '7 이하의 【생명 카드】 1장을 파괴한다.', 1], ['정밀 사격', '공격', '단일', '손패 1장', '없음', '9 이하의 【생명 카드】 1장을 파괴한다.', 0], ['엄호', '준비', '파트너', '손패 1장', '없음', '파트너의 다음 공격에 +2.', 0]];
+$('sk').innerHTML = Array.from({ length: 6 }, (_, i) => {
+  const [n, ti, ta, co, cd, e, pr] = SK[i] || ['', '', '', '', '', '', 0];
+  if (pr) return `<div class="tr pr"><span class="nm">${n}</span><span>${ti}</span><span>${ta}</span><span>${co}</span><span>${cd}</span><span class="ef">${e}</span><span><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
+  return `<div class="tr"><span class="nm"><input type="text" value="${n}" aria-label="특기 이름"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${co}" aria-label="대가"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><input type="text" value="${e}" aria-label="해설"></span><span><button class="bub" type="button" title="채팅에 올림"></button></span></div>`;
+}).join('');
+$('sk').querySelectorAll('.bub').forEach(b => b.onclick = () => useRow(b.closest('.tr'), '특기', false));
+$('memo').innerHTML = [['엄호', '+2', 1], ['', '', 0], ['', '', 0], ['', '', 0]].map(([k, m, d], i) => `<div class="tr"><span class="ef"><input type="text" value="${k}" aria-label="효과의 종별"></span><span><input type="text" value="${m}" aria-label="수정치"></span><span class="dur"><label><input type="checkbox" class="ck" ${d === 2 ? 'checked' : ''}>상시</label>/<label><input type="checkbox" class="ck" ${d === 1 ? 'checked' : ''}>종료까지</label></span></div>`).join('');
+
+// ── 조사 진행도 1~15 (5 · 10 · 15 진한 칸)
+let prog = 4;
+function renderProg() {
+  $('prog').innerHTML = Array.from({ length: 15 }, (_, i) => `<label class="${i + 1 <= prog ? 'on' : ''}${(i + 1) % 5 === 0 ? ' gold' : ''}"><input type="radio" name="prog"><span>${i + 1}</span></label>`).join('');
+  $('prog').querySelectorAll('label').forEach((l, i) => l.onclick = () => { prog = prog === i + 1 ? i : i + 1; renderProg(); });
+}
+
+// ── 카드 패드: 모양 고르고 숫자
+const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const val = c => c.k === 'JK' ? 11 : c.k === 'A' ? 11 : /[JQK]/.test(c.k) ? 10 : +c.k;
+let hand = [];
+$('pad').innerHTML = RANKS.map(k => `<button type="button" data-k="${k}">${k}</button>`).join('') + '<button type="button" class="jk" data-k="JK">조커</button>';
+$('pad').onclick = e => { const b = e.target.closest('button'); if (!b) return; hand.push({ s: document.querySelector('input[name=suit]:checked').value, k: b.dataset.k }); renderHand(); };
+const red = s => s === 'h' || s === 'd';
+const chip = c => c.k === 'JK' ? '<span class="pc jk" title="조커"><b>JK</b><i>★</i></span>' : `<span class="pc${red(c.s) ? ' rd' : ''}" title="${c.k}"><b>${c.k}</b><i>${SUIT[c.s]}</i></span>`;
+function renderHand() {
+  $('hand').innerHTML = hand.map((c, i) => chip(c).replace('<span class="pc', `<span data-i="${i}" class="pc`)).join('');
+  $('sum').innerHTML = hand.length ? `합계 <b>${hand.reduce((a, c) => a + val(c), 0)}</b> · ${hand.length}장` : '';
+}
+$('hand').onclick = e => { const p = e.target.closest('[data-i]'); if (p) { hand.splice(+p.dataset.i, 1); renderHand(); } };
+$('clr').onclick = () => { hand = []; renderHand(); };
+
+// ── 채팅 카드
+const log = $('log');
+const name = () => $('cname').value || '이름 없음';
+function card({ title, head, cards, calc, stamp, kv, notes = [], eff, table, to }) {
+  const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
+  const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
+  let b = '';
+  if (cards && cards.length) b += `<div class="hand2"><span class="fan">${cards.map(chip).join('')}</span></div>`;
+  if (calc) b += `<div class="calc">${calc}</div>`;
+  if (stamp) b += `<span class="stp${stamp.ok ? '' : ' ng'}">${stamp.t}</span>`;
+  if (table) b += `<div class="rt2"><span class="fan">${chip(table.card)}</span><span class="big2">${esc(table.text)}${table.sm ? `<small>${esc(table.sm)}</small>` : ''}</span></div>`;
+  if (kv) b += `<div class="kv2">${kv.filter(([, v]) => v).map(([k, v]) => `<span>${k} <b>${esc(v)}</b></span>`).join('')}</div>`;
+  b += notes.filter(Boolean).map(n => `<div class="note">${esc(n)}</div>`).join('');
+  if (eff) b += `<div class="eff">${esc(eff)}</div>`;
+  w.append(el('div', 'cd' + (isV() ? ' v' : ''), `<div class="ch">${esc(title)}${head ? `<small>${esc(head)}</small>` : ''}</div><div class="cb">${b}</div>`));
+  log.append(w); log.scrollTop = log.scrollHeight;
+}
+
+// 조사: 낸 카드 1장 + 그 모양에 대응하는 능력치 (대응 없으면 0, 조커 = A + 높은 능력치 로 가정)
+function investigate() {
+  const c = hand[0];
+  if (!c) { card({ title: '조사', notes: ['카드 패드에서 낼 카드를 고르세요'] }); return; }
+  const abl = ABL[isV() ? 'v' : 'h'];
+  const a = c.k === 'JK' ? abl.reduce((m, x) => (vals[x[0]] > vals[m[0]] ? x : m)) : abl.find(x => x[0] === c.s);
+  const add = a ? vals[a[0]] : 0, tot = val(c) + add, ok = tot >= 15;
+  card({ title: '조사', head: a ? `【${a[1]}】 ${SUIT[a[0]]}` : '', cards: [c], calc: `카드 <b>${val(c)}</b> + 능력치 <b>${add}</b> = <span class="tot">${tot}</span>`, stamp: { ok, t: ok ? '성공' : '실패' }, notes: [a ? '' : '대응하는 능력치 없음', ok ? '조사 진행도 +2' : '조사 진행도 +1'] });
+  hand = []; renderHand();
+}
+$('inv').onclick = investigate;
+function useRow(tr, kind, isBl) {
+  const v = tr.classList.contains('pr') ? [...tr.children].map(c => c.textContent.trim()) : [...tr.querySelectorAll('input')].map(i => i.value);
+  const off = isBl ? (tr.classList.contains('pr') ? 1 : 0) : 0, nm = isBl ? v[off] : v[0];
+  if (!nm) return;
+  const kv = isBl ? [['타이밍', v[off + 1]], ['대상', v[off + 2]]] : [['타이밍', v[1]], ['대상', v[2]], ['대가', v[3]], ['조건', v[4]]];
+  const notes = isBl && tr.classList.contains('lock') ? ['블러드패스 강도가 모자람'] : [];
+  card({ title: nm, head: kind, cards: hand.slice(), calc: hand.length ? `낸 카드 합계 <b>${hand.reduce((a, c) => a + val(c), 0)}</b> · ${hand.length}장` : '', kv, notes, eff: isBl ? v[off + 3] : v[5] });
+  hand = []; renderHand();
+}
+
+// ── 표 (DOC: 덱에서 카드를 앞면으로 뒤집어 해당 칸, 또는 고르기)
+const TABLES = {
+  '교류표 · 장소': [[3, '오피스', '조직의 오피스나 대기실.'], [5, '카페', '찻집이나 커피숍.'], [7, '병원', '의원이나 병원, 혹은 무면허 의사의 의원.'], [9, '자료실', '자료실이나 도서관, 혹은 서재 등.'], [11, '현장', '사건이 일어난 현장 중 하나.'], [13, '차 안', '차나 전철 같은 차량 안.'], [99, '공원', '공원이나 정원 등 탁 트인 곳.']],
+  '교류표 · 내용': [[3, '적', '앞으로 싸울 적에 대해, 어떤 인상을 품었는지 궁금해졌다.'], [5, '피해자', '이 사건의 피해자에 대해 이야기해 보자.'], [7, '잠깐 휴식', '어려운 것은 생각하지 말고 몸과 마음을 쉬기로 하자.'], [9, '불안한 것', '걱정거리, 불안한 것에 대해 파트너와 상담하자.'], [11, '사전 준비', '싸움에 대비해 무기를 정비하거나 작전을 확인하자.'], [13, '조사 솜씨', '파트너의 조사 솜씨를 칭찬하기로 했다.'], [99, '새로운 목표', '이 사건을 통해 새로운 목표나 목적을 찾았을까. 잠깐 서로 이야기해 보자.']],
+  '턴 테마표 · 범용': [[2, '감사', '늘 힘을 빌려주는 파트너에게, 가끔은 감사의 말을 전하자. 어떤 말로 할까…….'], [3, '경쟁', '누가 조사에 더 공헌할 수 있는지 겨뤄 보는 것도 나쁘지 않다.'], [4, '협력', '이 사건은 파트너와 협력하지 않으면 해결이 어려울 것 같다.'], [5, '아직 모르는 일면', '파트너의 아직 모르는 일면을 볼 수 있을…… 것 같은 기분이 든다. 조금 신경 써 보자.'], [6, '수련', '자신이 성장하고 있다는 것을 파트너에게도 보여 주자.'], [7, '내기', '사건의 진상이나 적의 목적에 대해 내기를 하기로 했다. 무엇을 걸까.'], [8, '찾는 것', '둘 중 하나가 잃어버린 것, 갖고 싶어 하는 것을 겸사겸사 찾아보자. 찾을 수 있을지는 별개로.'], [9, '화해', '사소한 일로 싸우고 말았다. 서로 화해의 실마리를 찾아야 하는데…….'], [10, '끝나면……', '이 싸움이 끝나면 함께 무언가 하자. 약속이다.'], [11, '궁금했던 것', '전부터 궁금했던 것을 물어볼 좋은 기회일지도 모른다. 대답해 줄지는 별개로.'], [12, '엔조이', '일이긴 하지만 모처럼의 기회니, 이 상황에서 즐거움을 찾자. 하면 된다!'], [13, '서프라이즈', '파트너가 놀랄 무언가를 준비하자. 과연 깜짝 놀라 줄까?'], [14, '말하지 못한 것', '서로 계속 파트너에게 비밀로 해 왔던 것이 있다. 슬슬 털어놓을 때가 온 것 같다.'], [99, '약점 찾기', '조사를 통해 파트너의 약점을 알아보자. 도울지 이용할지는 당신에게 달렸다.']]
+};
+$('tsel').innerHTML = Object.keys(TABLES).map(k => `<option>${k}</option>`).join('');
+const rankNo = c => c.k === 'JK' ? 99 : c.k === 'A' ? 14 : c.k === 'K' ? 13 : c.k === 'Q' ? 12 : c.k === 'J' ? 11 : +c.k;
+function drawCard() { const n = Math.floor(Math.random() * 53); if (n === 52) return { k: 'JK' }; return { s: 'schd'[n % 4], k: RANKS[Math.floor(n / 4)] }; }
+$('tdraw').onclick = () => {
+  const k = $('tsel').value, c = drawCard(), r = rankNo(c), row = TABLES[k].find(([lim]) => (k.startsWith('턴') ? r === lim || (lim === 99 && r === 99) : r <= lim)) || TABLES[k][TABLES[k].length - 1];
+  card({ title: k, head: 'DOC · 카드 뽑기', table: { card: c, text: row[1], sm: row[2] } });
+};
+$('gmb').onclick = () => card({ title: 'GM 에게', head: '귓속말', eff: '레이와의 교류 장면을 먼저 하고 싶어요.', to: 'GM 에게' });
+
+// ── 시트 종류 · 옵션
+$('stype').onchange = e => { sheet.dataset.t = e.target.value; renderAbl(); renderBL(); };
+$('adv').onchange = e => { sheet.dataset.adv = e.target.checked ? '1' : '0'; };
+$('trio').onchange = e => { sheet.dataset.trio = e.target.checked ? '1' : '0'; };
+$('dmax').oninput = () => { $('durmax').textContent = $('dmax').value; };
+$('imax').oninput = () => { $('ini').value = $('imax').value; };
+
+// ── 용어표
+const G1 = [['人鬼血盟RPG', '인귀혈맹 RPG'], ['ブラッドパス', '블러드패스'], ['キャラクターシート（人間/吸血鬼）', '캐릭터 시트 (인간 / 흡혈귀)'], ['上級者用 (傷号欄あり)', '상급자용 (상호 칸)'], ['プレイヤー名', '플레이어'], ['名前 · 年齢 · 性別', '이름 · 나이 · 성별'], ['年齢 外見/実', '나이 외견 / 실제'], ['所属', '소속'], ['過去', '과거'], ['経緯', '경위'], ['喪失 (人間)', '상실'], ['欠落 (吸血鬼)', '결락'], ['外見的特徴', '외견적 특징'], ['住まい', '거처'], ['使用武器', '사용 무기'], ['自由欄（設定・イラストなど）', '자유란 (설정 · 일러스트 등)'],
+  ['ファクター', '팩터'], ['人間 / 吸血鬼', '인간 / 흡혈귀'], ['信念 / 職能', '신념 / 직능'], ['起源 / 流儀', '기원 / 유의'], ['練度', '숙련도'], ['能力値', '능력치'], ['技（スペード）', '기 (♠)'], ['情（クラブ）', '정 (♣)'], ['血（ハート）', '혈 (♥)'], ['想（ダイヤ）', '상 (♦)'], ['副能力値', '부능력치'], ['耐久値 / 先制値', '내구치 / 선제치'],
+  ['血契（ちぎり）', '혈계'], ['血契2（血盟が3人の場合）', '혈계 2 (혈맹이 3인인 경우)'], ['連血鬼', '연혈귀'], ['もうひとりの吸血鬼', '또 한 명의 흡혈귀'], ['パートナー', '파트너'], ['特徴など', '특징 등'], ['痕印', '흔인'], ['痕印の位置 / 形状', '흔인의 위치 / 형상'], ['相手からの感情', '상대에게서의 감정'], ['約束 / 協定', '약속 / 협정'],
+  ['傷号 / 傷号名 / 設定', '상호 / 상호명 / 설정'], ['血威（けつい）', '혈위'], ['特技', '특기'], ['名称 タイミング 対象 代償 条件 解説', '명칭 타이밍 대상 대가 조건 해설'], ['特技効果メモ欄', '특기 효과 메모란'], ['効果の種別 / 修正値 / 効果時間', '효과의 종별 / 수정치 / 효과 시간'], ['常時 / 終了まで', '상시 / 종료까지'], ['闇明視', '암명시'], ['絶命共撃', '절명공격'], ['武器攻撃', '무기 공격'], ['レコードシート', '레코드 시트']];
+const G2 = [['ブラッドパスの強度', '블러드패스의 강도'], ['シナリオテーマ / ターンテーマ', '시나리오 테마 / 턴 테마'], ['手札 / 山札', '손패 / 덱'], ['生命カード', '생명 카드'], ['絵札 / A / ジョーカー', '그림 카드 / A / 조커'], ['黒 / 赤', '흑 / 적'], ['調査 / 調査力 / 調査進行度', '조사 / 조사력 / 조사 진행도'], ['情報 / 開示値', '정보 / 개시치'], ['日常表 / 交流表 / 調査表', '일상표 / 교류표 / 조사표'], ['ターンテーマ表', '턴 테마표'], ['ベーシック / ダイナミック', '베이직 / 다이내믹'], ['DOC (draw or choice)', 'DOC (뽑기 또는 고르기)'],
+  ['血戦（けっせん）', '혈전'], ['血戦の開始 / スタンバイ', '혈전의 개시 / 스탠바이'], ['ラウンド開始 / 終了', '라운드 개시 / 종료'], ['先制値の確認', '선제치 확인'], ['先手PC / 後手PC 手番', '선수 PC / 후수 PC 차례'], ['ボスエネミー / モブエネミー', '보스 에너미 / 모브 에너미'], ['手番', '차례'], ['未行動 / 行動終了', '미행동 / 행동 종료'], ['タイミング：準備 / 攻撃 / 開始 / 終了', '타이밍: 준비 / 공격 / 개시 / 종료'], ['いつでも / 単体 / 解説参照', '언제든지 / 단일 / 해설 참조'], ['血盟', '혈맹'], ['業血鬼 / 血僕', '업혈귀 / 혈복']];
+const gg = (id, rows) => $(id).innerHTML = rows.map(([a, b]) => `<span><i>${a}</i><b>${b}</b></span>`).join('');
+gg('g1', G1); gg('g2', G2);
+
+// ── 첫 화면
+renderAbl(); renderBP(); renderBL(); renderProg(); renderHand();
+hand = [{ s: 's', k: 'A' }]; investigate();
+hand = [{ s: 'c', k: '9' }]; investigate();
+hand = [{ s: 'c', k: '9' }]; document.querySelector('#sk .tr.pr .bub').click();
+card({ title: '턴 테마표 · 범용', head: 'DOC · 카드 뽑기', table: { card: { s: 'h', k: 'A' }, text: '말하지 못한 것', sm: '서로 계속 파트너에게 비밀로 해 왔던 것이 있다. 슬슬 털어놓을 때가 온 것 같다.' } });
+</script>
