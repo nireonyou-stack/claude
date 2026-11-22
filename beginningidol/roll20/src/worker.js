@@ -246,7 +246,7 @@ on('clicked:fix', () => getAttrs(['roll_display_to', 'route', 'fumble', 'special
   });
 }));
 
-// ── D66 표 (작은 눈이 십의 자리): 이해표 · 포지네가 이해표 (룰북 6·01·03 ⑤) · 서포트 대응표 (8·01)
+// ── D66 표 (작은 눈이 십의 자리): 이해표 · 긍정 · 부정 이해표 (ポジネガ理解表, 룰북 6·01·03 ⑤) · 서포트 대응표 (8·01)
 const D66 = (a, b) => Math.min(a, b) * 10 + Math.max(a, b);
 const KEYS66 = [11, 12, 13, 14, 15, 16, 22, 23, 24, 25, 26, 33, 34, 35, 36, 44, 45, 46, 55, 56, 66];
 const tab66 = list => Object.fromEntries(KEYS66.map((k, i) => [k, list[i]]));
@@ -272,7 +272,7 @@ const roll66 = (v, title, tab) => post(`${head(v)} {{tres=[[0]]}} {{te1=[[1d6]]}
   return { tres: `${k} ${tab[k]}` };
 });
 on('clicked:utab', () => getAttrs(['roll_display_to', 'route'], v => roll66(v, '이해표', UTAB)));
-on('clicked:pntab', () => getAttrs(['roll_display_to', 'route'], v => roll66(v, '포지네가 이해표', PNTAB)));
+on('clicked:pntab', () => getAttrs(['roll_display_to', 'route'], v => roll66(v, '긍정 · 부정 이해표', PNTAB)));
 //   서포트 대응표: 굵은 줄 = 할 일 (특훈 · 링크 · 트러블 판정 《특기》), 아래 = 표의 글. 23 은 출신 분야 무작위 특기 (숨은 2D6 h1 · h2)
 on('clicked:support', () => getAttrs(['roll_display_to', 'route'], v => {
   post(`${head(v)} {{tres=[[0]]}} {{tlong=[[0]]}} {{te1=[[1d6]]}} {{te2=[[1d6]]}} {{h1=[[1d6]]}} {{h2=[[1d6]]}}${route(v)}${field('title', '서포트 대응표')}`, R => {

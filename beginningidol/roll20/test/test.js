@@ -167,7 +167,7 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   eq('support 34 → skill from text', last(s).computed.tres, '34 트러블 판정 《배려》');
   eq('support button only for supporter', /class="pq support-only">[^]*?name="act_support"/.test(HTML), true);
 
-  // ── 이해표 · 포지네가 이해표 (작은 눈이 앞)
+  // ── 이해표 · 긍정 · 부정 이해표 (작은 눈이 앞)
   s = keep(makeSim(HTML, { dice: [6, 1, 5, 5] })); s.open(); await s.settle();
   s.click('utab'); await s.settle();
   eq('understanding 6 1 → 16', last(s).computed, { tres: '16 목표' });
