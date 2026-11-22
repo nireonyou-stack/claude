@@ -27,18 +27,25 @@ const findSkill = s => {
   return null;
 };
 
-// ── 기본 목표치 = 5 + 거리 (세로 한 칸 1, 옆 분야 2, 최대 12). 공식 시트에 공백 칸이 없어 공백 칠하기는 없다. 판정 때 난이도를 더한다
-const dist = (a, b) => Math.abs(a.r - b.r) + 2 * Math.abs(a.f - b.f);
+// ── 기본 목표치 = 5 + 칸 수 (룰북 150쪽): 세로 한 칸 1, 옆 분야는 분야 1 + 공백 1, 칠한 공백은 없는 것으로. 상한 없음 (특급 《운동》 22 예시).
+//    판정 때 난이도를 더한다
+const GAPS = ['gap_a', 'gap_b', 'gap_c', 'gap_d', 'gap_e'];
+function dist(a, b, gap) {
+  let d = Math.abs(a.r - b.r);
+  for (let k = Math.min(a.f, b.f); k < Math.max(a.f, b.f); k++) d += gap[k];
+  return d;
+}
+const TKEYS = [...SKILL_IDS, ...GAPS];
 function targets(v) {
-  const src = SKILL_IDS.filter(id => on1(v[id])).map(pos), out = {};
-  SKILL_IDS.forEach(id => { const p = pos(id); out[id] = src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, p)))) : null; });
+  const gap = GAPS.map(g => (on1(v[g]) ? 1 : 2)), src = SKILL_IDS.filter(id => on1(v[id])).map(pos), out = {};
+  SKILL_IDS.forEach(id => { const p = pos(id); out[id] = src.length ? 5 + Math.min(...src.map(s => dist(s, p, gap))) : null; });
   return out;
 }
-const calcTargets = () => getAttrs(SKILL_IDS, v => {
+const calcTargets = () => getAttrs(TKEYS, v => {
   const T = targets(v);
   setAttrs(Object.fromEntries(SKILL_IDS.map(id => [`${id}_value`, T[id] == null ? '' : String(T[id])])), { silent: true });
 });
-on([...SKILL_IDS.map(k => `change:${k.toLowerCase()}`), 'sheet:opened'].join(' '), calcTargets);
+on([...TKEYS.map(k => `change:${k.toLowerCase()}`), 'sheet:opened'].join(' '), calcTargets);
 
 // ── 생명력 기본치 = 레벨 (룰북 113쪽 ⑨, 레벨이 바뀌면 다시 맞춤 · 그 뒤 손으로 고쳐도 됨) · 총합 = 기본치 + 장비품
 on('change:level', () => getAttrs(['level'], v => { const lv = num(v.level); if (lv != null) setAttrs({ hp_base: lv }); }));
@@ -47,14 +54,6 @@ on('change:hp_base change:hp_equip sheet:opened', () => getAttrs(['hp_base', 'hp
   setAttrs({ hp_max: b == null && e == null ? '' : (b || 0) + (e || 0) }, { silent: true });
 }));
 
-// ── 펌블치 · 스페셜치: 기본 2 · 12 + 손 수정
-const calcFumble = () => getAttrs(['fumble_adj', 'special_adj'], v => setAttrs({ fumble: 2 + (num(v.fumble_adj) || 0), special: 12 + (num(v.special_adj) || 0) }, { silent: true }));
-on('change:fumble_adj change:special_adj sheet:opened', calcFumble);
-[['fup', 'fumble_adj', 1], ['fdn', 'fumble_adj', -1], ['sup', 'special_adj', 1], ['sdn', 'special_adj', -1]].forEach(([b, k, d]) => {
-  on(`clicked:${b}`, () => getAttrs([k], v => setAttrs({ [k]: Math.max(-12, Math.min(12, (num(v[k]) || 0) + d)) })));
-});
-on('clicked:frs', () => setAttrs({ fumble_adj: 0 }));
-on('clicked:srs', () => setAttrs({ special_adj: 0 }));
 
 // ── 아이템 개수 칸 (0~3): 누른 칸까지, 채워진 마지막 칸을 다시 누르면 하나 줄임
 for (let i = 1; i <= 6; i++) for (let k = 1; k <= 3; k++) on(`clicked:it${i}c${k}`, () => getAttrs([`it${i}_n`], v => setAttrs({ [`it${i}_n`]: (num(v[`it${i}_n`]) || 0) === k ? k - 1 : k })));
@@ -74,42 +73,85 @@ const TPL = '&{template:samuraiblade}';
 const post = (s, computed) => startRoll(s, r => finishRoll(r.rollId, computed ? computed(r.results) : {}));
 const info = (v, { title, sub, eff, note }) => post(`${prefix(v)}${TPL}${field('title', title)}${field('sub', sub)}${field('note', note)}${field('eff', eff)}`);
 
-const fumOf = v => { const f = num(v.fumble); return f === null ? 2 : f; };
-const spcOf = v => { const s = num(v.special); return s === null ? 12 : s; };
 const sgn = n => (n > 0 ? `+${n}` : String(n));
 const DIF = { 0: '하급', 5: '중급', 10: '상급', 15: '특급' };
-const CTX = [...SKILL_IDS, 'roll_display_to', 'fumble', 'special', 'mod', 'boost', 'dif', 'awakened', 'gs1', 'bs2'];
+const CTX = [...TKEYS, 'roll_display_to', 'mod', 'boost', 'dif', 'awakened', 'gs1', 'gs2', 'bs2', 'defense'];
 const withCtx = (extra, cb) => getAttrs([...CTX, ...extra], v => cb(v, targets(v)));
 
-// 판정: 2D6 + 부스트 1 마다 1D6, 모두 더함. 처음 두 주사위 합 ≥ 스페셜치 → 스페셜, ≤ 펌블치 → 펌블, 아니면 합 + 수정이 목표치 이상이면 성공.
-// 목표치 = 기본 목표치 + 난이도 (BS 주박이면 한 단계 위). 【각성】 부스트 +1, 공격(타이밍에 '공격') 때 GS 고양 부스트 +1
+// 행위 판정 (룰북 150 · 151쪽): 2D6 + 부스트 1 마다 1D6, 모든 눈의 합 + 수정 = 달성치 ≥ 목표치면 성공.
+//   6 이 2개 이상 = 스페셜 (달성치와 관계없이 성공), 1 이 2개 이상 = 펌블 (실패 · 펌블 표). 둘 다면 스페셜.
+//   공격 판정의 스페셜 = 크리티컬 히트: 대미지 × 6 의 개수 (165쪽).
+// 목표치 = 기본 목표치 + 난이도 (BS 주박이면 한 단계 위). 【각성】 부스트 +1, 공격(타이밍에 '공격') 때 GS 고양 +1, 방어 판정 때 GS 축복 +1
 //   blade: 무령도 공격 — 이동 / 전력을 묻고 대미지를 계산 (dmg · dkind · dhow)
+const MAXD = 12;
+const FUMBLE = ['부조 — 뭔가 상태가 이상하다. 이 사이클 동안 화투와 어빌리티를 사용할 수 없게 된다.', '불운 — 정신 차려 보니 없어졌다! 임의의 아이템 1개를 잃어버린다.',
+  '습격 — 방심했다! 자신의 【생명력】을 1D6점 잃는다.', '계산 밖 — 통한의 실수! 자신 이외의 PC의 【생명력】을 1D6점 잃게 한다.',
+  '책모 — 적의 음모인가? 무작위로 【BS】 1개를 받는다.', '소실 — 화투가 사라진다! 자신에게 손패가 있을 경우, 원하는 손패 1장을 버린다.'];
+function judge(dice, add, t, ft) {
+  const six = dice.filter(d => d === 6).length, one = dice.filter(d => d === 1).length, total = dice.reduce((a, d) => a + d, 0) + add;
+  const ok = six >= 2 ? 1 : one >= 2 ? 2 : t == null ? 0 : total >= t ? 3 : 4;
+  return ok === 2 ? { ok, total, six, fres: FUMBLE[(ft || 1) - 1] } : { ok, total, six };
+}
+// 무령도 대미지: 무기 + 전력 1 + GS 신격 1 − BS 공포 1 (0 미만 없음), 크리티컬이면 × 6 의 개수
+function bladeDmg(b, full, crit, six) {
+  const parts = [`무기 ${b.base}`];
+  let d = b.base + (full ? 1 : 0) + (b.gs5 ? 1 : 0) - (b.bs4 ? 1 : 0);
+  if (full) parts.push('전력 +1');
+  if (b.gs5) parts.push('GS 신격 +1');
+  if (b.bs4) parts.push('BS 공포 −1');
+  d = Math.max(0, d);
+  if (crit && d) { parts.push(`× 크리티컬 ${six}`); d *= six; }
+  return { dmg: d, dkind: full ? '전력공격' : '이동공격', dhow: parts.length > 1 ? `(${parts.join(' ')})` : '' };
+}
+const critOf = (r, attack) => (attack && r.ok === 1 ? `크리티컬 히트 — 대미지 × ${r.six} (6 의 개수)` : '');
+// 마지막 판정 (주사위 고치기 단추가 씀): last_dice = 눈을 이어 적은 글 (최대 12개), last_roll = 다시 계산에 필요한 것 (JSON)
+const remember = (dice, roll) => setAttrs({ last_dice: dice.join(''), last_roll: JSON.stringify(roll) }, { silent: true });
 function check(v, T, { title, id, attack = false, eff, head, blade }) {
-  const p = pos(id), base = T[id];
+  const p = pos(id), base = T[id], defense = !attack && on1(v.defense);
   const sel = [0, 5, 10, 15].includes(num(v.dif)) ? num(v.dif) : 0, curse = on1(v.bs2) ? 5 : 0, dif = Math.min(15, sel + curse);
-  const boost = Math.max(0, num(v.boost) || 0) + (on1(v.awakened) ? 1 : 0) + (attack && on1(v.gs1) ? 1 : 0);
-  const nd = Math.min(8, 2 + boost), m = num(v.mod) || 0, t = base == null ? null : base + dif, fb = fumOf(v), sp = spcOf(v);
-  const sub = [head, FIELD_NAMES[p.f], `${DIF[dif]}${dif ? ` +${dif}` : ''}`, t != null && `목표치 ${t}`, boost && `부스트 +${boost}`, m && `수정치 ${sgn(m)}`,
-    fb !== 2 && `펌블치 ${fb}`, sp !== 12 && `스페셜치 ${sp}`].filter(Boolean).join(' · ');
-  const notes = [curse && 'BS 주박 · 난이도 한 단계 위', on1(v.awakened) && '각성 · 부스트 +1', attack && on1(v.gs1) && 'GS 고양 · 부스트 +1'].filter(Boolean).join(' / ');
+  const boost = Math.max(0, num(v.boost) || 0) + (on1(v.awakened) ? 1 : 0) + (attack && on1(v.gs1) ? 1 : 0) + (defense && on1(v.gs2) ? 1 : 0);
+  const nd = Math.min(MAXD, 2 + boost), m = num(v.mod) || 0, t = base == null ? null : base + dif;
+  const sub = [head, defense && '방어 판정', FIELD_NAMES[p.f], `${DIF[dif]}${dif ? ` +${dif}` : ''}`, t != null && `목표치 ${t}`, boost && `부스트 +${boost}`, m && `수정치 ${sgn(m)}`].filter(Boolean).join(' · ');
+  const notes = [curse && 'BS 주박 · 난이도 한 단계 위', on1(v.awakened) && '각성 · 부스트 +1', attack && on1(v.gs1) && 'GS 고양 · 부스트 +1', defense && on1(v.gs2) && 'GS 축복 · 부스트 +1'].filter(Boolean).join(' / ');
   const ks = Array.from({ length: nd }, (_, i) => `d${i + 1}`);
   const bq = blade ? ' {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}} {{full=[[?{공격|이동공격,0|전력공격 (대미지 +1),1}]]}}' : '';
-  const s = `${prefix(v)}${TPL} {{ok=[[0]]}} {{total=[[0]]}}${bq} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')}${m ? field('add', sgn(m)) : ''}${field('title', title)}${field('sub', sub)}${field('note', notes)}${field('eff', eff)}`;
+  const s = `${prefix(v)}${TPL} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}}${bq} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')} {{ft=[[1d6]]}}`
+    + `${attack ? ' {{atk=1}}' : ''}${m ? field('add', sgn(m)) : ''}${field('title', title)}${field('sub', sub)}${field('note', notes)}${field('eff', eff)}`;
   post(s, R => {
-    const two = R.d1.result + R.d2.result, tot = ks.reduce((a, k) => a + R[k].result, 0) + m;
-    const out = { ok: two >= sp ? 1 : two <= fb ? 2 : t == null ? 0 : tot >= t ? 3 : 4, total: tot };
-    if (blade) {
-      const full = R.full.result === 1, parts = [`무기 ${blade.base}`];
-      let d = blade.base + (full ? 1 : 0) + (blade.gs5 ? 1 : 0) - (blade.bs4 ? 1 : 0);
-      if (full) parts.push('전력 +1');
-      if (blade.gs5) parts.push('GS 신격 +1');
-      if (blade.bs4) parts.push('BS 공포 −1');
-      d = Math.max(0, d);
-      Object.assign(out, { dmg: d, dkind: full ? '전력공격' : '이동공격', dhow: parts.length > 1 ? `(${parts.join(' ')})` : '' });
-    }
+    const dice = ks.map(k => R[k].result), r = judge(dice, m, t, R.ft.result), full = blade ? R.full.result === 1 : false;
+    remember(dice, { title, t, m, attack, blade: blade || null, full, eff: eff || '' });
+    const out = { ok: r.ok, total: r.total, crit: critOf(r, attack) };
+    if (r.fres) out.fres = r.fres;
+    if (blade) Object.assign(out, bladeDmg(blade, full, r.ok === 1, r.six));
     return out;
   });
 }
+
+// ── 주사위 고치기: 마지막 판정의 눈을 물음 창에 보여 주고, 고친 눈으로 다시 계산 (룰북 152쪽 화투 「다시 굴리기」,
+//    【운명유전】 · 【명경지수】 같은 눈 바꾸기). 바꿀 눈은 숫자를 고쳐 적고, 다시 굴릴 눈은 0. 앞자리 0 은 숫자에서 빠지므로 왼쪽을 0 으로 채움
+const FIXQ = '주사위 눈 (바꿀 눈은 고쳐 적고 다시 굴릴 눈은 0)';
+on('clicked:fix', () => getAttrs(['roll_display_to', 'last_dice', 'last_roll'], v => {
+  let L = null;
+  try { L = JSON.parse(v.last_roll || 'null'); } catch (e) { L = null; }
+  const old = String(v.last_dice || '').replace(/[^1-6]/g, '').split('').map(Number);
+  if (!L || !old.length) return info(v, { title: '주사위 고치기', eff: '고칠 판정이 없습니다. 판정을 먼저 굴려 주세요.' });
+  const n = old.length, idx = Array.from({ length: n }, (_, i) => i + 1);
+  const s = `${prefix(v)}${TPL} {{fsub=[[0]]}} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}}${L.blade ? ' {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}}' : ''}`
+    + ` ${idx.map(i => `{{f${i}=[[0]]}}`).join(' ')} {{fq=[[?{${FIXQ}|${old.join('')}}]]}} ${idx.map(i => `{{x${i}=[[1d6]]}}`).join(' ')} {{ft=[[1d6]]}} {{fx=1}}`
+    + `${L.attack ? ' {{atk=1}}' : ''}${L.m ? field('add', sgn(L.m)) : ''}${field('title', `${L.title || '판정'} · 주사위 고침`)}${field('eff', L.eff)}`;
+  post(s, R => {
+    const typed = String(Math.abs(Math.round(R.fq.result || 0))).padStart(n, '0').slice(0, n).split('').map(Number);
+    let re = 0;
+    const dice = typed.map((d, i) => (d === 0 ? (re++, R[`x${i + 1}`].result) : d >= 1 && d <= 6 ? d : old[i]));
+    const r = judge(dice, L.m || 0, L.t == null ? null : L.t, R.ft.result);
+    remember(dice, L);
+    const out = { fsub: `${old.join(' ')} → ${dice.join(' ')}${re ? ` (다시 굴림 ${re}개)` : ''}`, ok: r.ok, total: r.total, crit: critOf(r, L.attack),
+      ...Object.fromEntries(dice.map((d, i) => [`f${i + 1}`, d])) };
+    if (r.fres) out.fres = r.fres;
+    if (L.blade) Object.assign(out, bladeDmg(L.blade, L.full, r.ok === 1, r.six));
+    return out;
+  });
+}));
 
 // 특기 칸 이름 → 그 특기로 판정
 on(SKILL_IDS.map(id => `clicked:r${id.toLowerCase()}`).join(' '), e => {

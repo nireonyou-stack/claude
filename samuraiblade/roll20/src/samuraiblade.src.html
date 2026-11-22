@@ -1,6 +1,8 @@
 <!-- 사무라이 블레이드 (한국어) — 세로 830px. 배치: 공식 「사무라이 블레이드 TRPG」 캐릭터 시트를 세로로. 목업: samuraiblade/roll20/mockup.html
      용어는 TR꿈악어 님 한국어 캐릭터 시트를 따른다. @ 표시 자리는 build.py 가 채운다. -->
 <input type="hidden" name="attr_sheet_version" value="0">
+<input type="hidden" name="attr_last_dice" value="">
+<input type="hidden" name="attr_last_roll" value="">
 <div class="sbd">
 
   <!-- 1단: 제목 · 그림 | 프로필 | 생명력 · 각성 · 공적점 -->
@@ -54,8 +56,8 @@
       <span class="ckn">부스트<input type="number" name="attr_boost" min="0" title="부스트"></span>
       <span class="ckn">수정치<input type="number" name="attr_mod" title="다음 판정 수정치"></span>
       <span class="sp"></span>
-      <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="2 로 되돌림"></button></span>
-      <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="12 로 되돌림"></button></span>
+      <label class="dfk" title="에너미의 공격에 대한 방어 판정 (GS 축복 부스트 +1)"><input type="checkbox" class="ck" name="attr_defense" value="1">방어 판정</label>
+      <button type="action" class="rt" name="act_fix" title="마지막 판정의 눈을 고치거나 다시 굴림 (화투 「다시 굴리기」 · 어빌리티)"><i class="tdi"></i>주사위 고치기</button>
     </div>
     <div class="sr">
       <span class="tl">굴림표</span>

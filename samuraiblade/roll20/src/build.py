@@ -27,7 +27,7 @@ PRINTED = [('무령각성', '혼백사', '선언', '없음', '없음', '자신',
            ('혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화투동조】와 같은 효과. 세션 종료 시 【은퇴】')]
 GS = [('고양', '공격판정에 부스트+1한다'), ('축복', '방어판정에 부스트+1한다'), ('가속', '통상 이동공격은 +1칸, 전력이동은 +2칸한다.'),
       ('철벽', '자신이 받는 대미지가 1점 감소한다.'), ('신격', '자신이 부여하는 대미지를 1점 추가한다.'), ('무쌍', '【대상:단일】을 【대상:라인】으로 변경.')]
-BS = [('맹독', '차례의 행동을 할 때마다 1점의 대미지를 받는다.'), ('주박', '모든 판정 난이도가 1단계 상승한다. (행위판정에 +5)'),
+BS = [('맹독', '행동을 할 때마다 1점의 대미지를 받는다.'), ('주박', '모든 판정 난이도가 1단계 상승한다. (행위판정에 +5)'),
       ('발묶임', '이동공격을 할 수 없고, 전력이동은 1칸 이동이 된다.'), ('공포', '자신이 부여하는 대미지가 1점 감소한다 (0점이라면 대미지가 부여X)'),
       ('부상', '자신이 받는 대미지가 1점 추가된다.'), ('혼란', '【횟수: 사이클】과 【횟수:배틀】어빌리티 사용불가.')]
 EQUIP = ['무기', '보조무기', '방어구', '보조방어구', '장식품']
@@ -35,18 +35,25 @@ ITEMS = [('방진', '배치 롤을 2회 실행해, 원하는 쪽을 선택할 �
          ('영측', '상급·특급 봉마 1체의 데이터를 알 수 있다. 봉마 어빌리티는 알 수 없다.'), ('약품', '생명력 완쾌나 BS 전체 해제. 전투 중엔 생명력 1D6 회복 or BS 1개 해제'),
          ('탈것', '즉시 전력 이동 한다. BS 【발묶임】이라도 사용 가능.'), ('호부', '【횟수: 사이클】인 사용완료 어빌리티를 재사용할 수 있다.')]
 EN_ROWS = 6
+GAPS = ['a', 'b', 'c', 'd', 'e']   # 분야 사이 공백 (a = 재능|숙달 … e = 감성|심연). 1칸으로 세고, 칠하면 없는 것으로 (룰북 150쪽)
 AN = ' class="an"'
 
 
+def gap(g, head=False):
+    return (f'<label class="gap{" gh" if head else ""}"><input type="checkbox" name="attr_gap_{g}" value="1" title="공백 {g.upper()} 칠하기">'
+            '<span></span></label>')
+
+
 def skills():
-    out = ['<div class="no corner"></div>' + ''.join(f'<div class="fh"><i><b>{num}</b></i>{name}</div>' for _, num, name, _ in FIELDS) + '<div class="no corner"></div>']
+    out = ['<div class="no corner"></div>' + ''.join(f'<div class="fh"><i><b>{num}</b></i>{name}</div>' + (gap(GAPS[i], True) if i < 5 else '')
+                                                     for i, (_, num, name, _) in enumerate(FIELDS)) + '<div class="no corner"></div>']
     for r in range(2, 13):
         line = f'<div class="no">{r}</div>'
-        for col, _, _, names in FIELDS:
+        for i, (col, _, _, names) in enumerate(FIELDS):
             n = names[r - 2]
             line += (f'<div class="c"><input type="checkbox" class="own" name="attr_{col}{r}" value="1" title="{n} 습득">'
                      f'<button type="action" class="n" name="act_r{col.lower()}{r}" title="{n} 판정">{n}</button>'
-                     f'<span class="tn" name="attr_{col}{r}_value"></span></div>')
+                     f'<span class="tn" name="attr_{col}{r}_value"></span></div>') + (gap(GAPS[i]) if i < 5 else '')
         out.append(line + f'<div class="no">{r}</div>')
     return '\n'.join(out)
 
