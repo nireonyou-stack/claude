@@ -1,0 +1,24 @@
+<!-- 채팅 카드: 검은 머리띠(노선 별 + 노선색 밑줄) + 흰 본문. 굴림은 sheet worker 가 startRoll 로 보내고 computed:: 칸은 finishRoll 로 채운다.
+     computed 칸은 매크로 앞쪽에 있어야 하므로 워커가 맨 앞에 넣는다. cr = 크라운 노선(파랑 · ☆).
+     판정: d1 · d2 + add = total | 도장 ok 1 스페셜 · 2 펌블 · 3 성공 · 4 실패 (0 이면 도장 없음)
+     퍼포먼스(perf): p1~p6, gN 1 = 같은 눈이라 제거 | 퍼포먼스 값 pv | 도장 pst 1 미라클 · 2 퍼펙트 미라클
+     심포니(sy): 새 주사위 q1~q6 중 uN 1 만 보임 · sym = 남은 눈 + 새 눈 → 남은 눈 | pv · pst (3 미라클 싱크로)
+     표: te1(~te3) 와 결과(tres). nD6: n1~n3 = total. -->
+<rolltemplate class="sheet-rolltemplate-beginningidol">
+  <div class="sheet-card">
+    {{#cr}}<div class="sheet-crown"></div>{{/cr}}
+    {{#title}}<div class="sheet-hd"><span class="sheet-sym">{{#cr}}&#x2606;{{/cr}}{{^cr}}&#x2605;{{/cr}}</span>{{title}}</div>{{/title}}
+    <div class="sheet-bd">
+      {{#sub}}<div class="sheet-sub">{{sub}}</div>{{/sub}}
+      {{#d1}}<div class="sheet-roll sheet-big"><span class="sheet-die">{{d1}}</span><span class="sheet-die">{{d2}}</span>{{#add}}<span class="sheet-eq">{{add}}</span>{{/add}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span>{{#rollTotal() computed::ok 1}}<span class="sheet-stp sheet-spc">스페셜</span>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<span class="sheet-stp sheet-fb">펌블</span>{{/rollTotal() computed::ok 2}}{{#rollTotal() computed::ok 3}}<span class="sheet-stp">성공</span>{{/rollTotal() computed::ok 3}}{{#rollTotal() computed::ok 4}}<span class="sheet-stp sheet-ng">실패</span>{{/rollTotal() computed::ok 4}}</div>{{/d1}}
+      {{#perf}}<div class="sheet-roll sheet-big">{{#p1}}{{#rollTotal() computed::g1 1}}<span class="sheet-die sheet-gone">{{p1}}</span>{{/rollTotal() computed::g1 1}}{{#^rollTotal() computed::g1 1}}<span class="sheet-die">{{p1}}</span>{{/^rollTotal() computed::g1 1}}{{/p1}}{{#p2}}{{#rollTotal() computed::g2 1}}<span class="sheet-die sheet-gone">{{p2}}</span>{{/rollTotal() computed::g2 1}}{{#^rollTotal() computed::g2 1}}<span class="sheet-die">{{p2}}</span>{{/^rollTotal() computed::g2 1}}{{/p2}}{{#p3}}{{#rollTotal() computed::g3 1}}<span class="sheet-die sheet-gone">{{p3}}</span>{{/rollTotal() computed::g3 1}}{{#^rollTotal() computed::g3 1}}<span class="sheet-die">{{p3}}</span>{{/^rollTotal() computed::g3 1}}{{/p3}}{{#p4}}{{#rollTotal() computed::g4 1}}<span class="sheet-die sheet-gone">{{p4}}</span>{{/rollTotal() computed::g4 1}}{{#^rollTotal() computed::g4 1}}<span class="sheet-die">{{p4}}</span>{{/^rollTotal() computed::g4 1}}{{/p4}}{{#p5}}{{#rollTotal() computed::g5 1}}<span class="sheet-die sheet-gone">{{p5}}</span>{{/rollTotal() computed::g5 1}}{{#^rollTotal() computed::g5 1}}<span class="sheet-die">{{p5}}</span>{{/^rollTotal() computed::g5 1}}{{/p5}}{{#p6}}{{#rollTotal() computed::g6 1}}<span class="sheet-die sheet-gone">{{p6}}</span>{{/rollTotal() computed::g6 1}}{{#^rollTotal() computed::g6 1}}<span class="sheet-die">{{p6}}</span>{{/^rollTotal() computed::g6 1}}{{/p6}}</div>{{/perf}}
+      {{#sy}}<div class="sheet-roll sheet-big">{{#rollTotal() computed::u1 1}}<span class="sheet-die">{{q1}}</span>{{/rollTotal() computed::u1 1}}{{#rollTotal() computed::u2 1}}<span class="sheet-die">{{q2}}</span>{{/rollTotal() computed::u2 1}}{{#rollTotal() computed::u3 1}}<span class="sheet-die">{{q3}}</span>{{/rollTotal() computed::u3 1}}{{#rollTotal() computed::u4 1}}<span class="sheet-die">{{q4}}</span>{{/rollTotal() computed::u4 1}}{{#rollTotal() computed::u5 1}}<span class="sheet-die">{{q5}}</span>{{/rollTotal() computed::u5 1}}{{#rollTotal() computed::u6 1}}<span class="sheet-die">{{q6}}</span>{{/rollTotal() computed::u6 1}}</div><div class="sheet-sub">{{computed::sym}}</div>{{/sy}}
+      {{#pv}}<div class="sheet-pv">퍼포먼스 값 <b>{{computed::pv}}</b>{{#rollTotal() computed::pst 1}}<span class="sheet-stp sheet-mir">미라클</span>{{/rollTotal() computed::pst 1}}{{#rollTotal() computed::pst 2}}<span class="sheet-stp sheet-mir">퍼펙트 미라클</span>{{/rollTotal() computed::pst 2}}{{#rollTotal() computed::pst 3}}<span class="sheet-stp sheet-mir">미라클 싱크로</span>{{/rollTotal() computed::pst 3}}</div>{{/pv}}
+      {{#te1}}<div class="sheet-rt"><span class="sheet-die">{{te1}}</span>{{#te2}}<span class="sheet-die">{{te2}}</span>{{/te2}}{{#te3}}<span class="sheet-die">{{te3}}</span>{{/te3}}<span class="sheet-rtx">{{computed::tres}}</span></div>{{/te1}}
+      {{#n1}}<div class="sheet-roll"><span class="sheet-die">{{n1}}</span>{{#n2}}<span class="sheet-die">{{n2}}</span>{{/n2}}{{#n3}}<span class="sheet-die">{{n3}}</span>{{/n3}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span></div>{{/n1}}
+      {{#note}}<div class="sheet-note">{{note}}</div>{{/note}}
+      {{#eff}}<div class="sheet-eff">{{eff}}</div>{{/eff}}
+      {{#plain}}<div class="sheet-plain">{{plain}}</div>{{/plain}}
+    </div>
+  </div>
+</rolltemplate>

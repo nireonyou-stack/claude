@@ -1,0 +1,104 @@
+<!-- 비기닝 아이돌 (한국어) — 세로 830px. 배치: 공식 기본 룰북 캐릭터 시트(티아라 노선 · 크라운 노선)를 세로로. 목업: beginningidol/roll20/mockup.html
+     @ 표시 자리는 build.py 가 채운다. .bi 앞의 숨은 칸은 노선(강조색 · 별 모양)을 가르는 거울(형제 선택자용). -->
+<input type="hidden" class="t-route" name="attr_route" value="tiara">
+<input type="hidden" name="attr_sheet_version" value="0">
+<input type="hidden" name="attr_last_left" value="">
+<div class="bi">
+
+  <!-- 1단: 제목 · 그림 | 프로필 | 능력치 · 개성 특기 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo">
+        <div class="t0">IDOL START RPG</div>
+        <div class="t1">비기닝 <b>아이돌</b></div>
+        <select name="attr_route" title="노선"><option value="tiara" selected>티아라 노선 캐릭터 시트</option><option value="crown">크라운 노선 캐릭터 시트</option></select>
+      </div>
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
+    </div>
+    <div class="panel prof">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>프로필</div>
+      <div class="pbody">
+        <div class="pr"><span class="chip">아이돌 클래스</span><input type="text" name="attr_idol_class" title="아이돌 클래스"></div>
+        <div class="pr"><span class="chip">배경</span><input type="text" name="attr_background" title="배경"></div>
+        <div class="pr2"><div class="pr nm"><span class="chip">이름</span><input type="text" name="attr_character_name" title="이름"></div><div class="pr ag"><span class="chip">나이</span><input type="text" name="attr_age" title="나이"></div></div>
+        <div class="pr"><span class="chip">플레이어</span><input type="text" name="attr_player" title="플레이어"></div>
+        <div class="pr"><span class="chip">이미지 컬러</span><input type="text" name="attr_image_color" title="이미지 컬러"></div>
+        <div class="pr"><span class="chip">특징 1</span><input type="text" name="attr_feature1" title="특징 1"></div>
+        <div class="pr"><span class="chip">특징 2</span><input type="text" name="attr_feature2" title="특징 2"></div>
+        <div class="pr"><span class="chip">좋아하는 것</span><input type="text" name="attr_likes" title="좋아하는 것"></div>
+        <div class="pr last"><span class="chip">싫어하는 것</span><input type="text" name="attr_dislikes" title="싫어하는 것"></div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>능력치</div>
+      <div class="sv"><span class="chip">보이스</span><input type="number" name="attr_voice" title="보이스"><button type="action" class="pf" name="act_pvoice"><i></i>퍼포먼스</button></div>
+      <div class="sv"><span class="chip">피지컬</span><input type="number" name="attr_physical" title="피지컬"><button type="action" class="pf" name="act_pphysical"><i></i>퍼포먼스</button></div>
+      <div class="sv"><span class="chip">비주얼</span><input type="number" name="attr_visual" title="비주얼"><button type="action" class="pf" name="act_pvisual"><i></i>퍼포먼스</button></div>
+      <div class="kos"><span class="chip">개성 특기</span><input type="text" name="attr_kosei_skill" title="개성 특기"><span class="chip">개성 목표치</span><input type="text" name="attr_kosei_target" title="개성 목표치"></div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 (번호 왼쪽) · 아이돌 링크 (3 칸 × 2 줄) -->
+  <div class="panel">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>특기 리스트</div>
+    <div class="grid">
+<!--@SKILLS-->
+    </div>
+  </div>
+  <div class="panel link">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>아이돌 링크</div>
+    <div class="links">
+<!--@LINKS-->
+    </div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <button type="action" class="rt" name="act_rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
+    <button type="action" class="rt" name="act_sym" title="다른 PC 의 퍼포먼스에 주사위를 더함"><i class="tdi"></i>심포니</button>
+    <span class="rtg"><button type="action" class="rt" name="act_nd1">1D6</button><button type="action" class="rt" name="act_nd2">2D6</button><button type="action" class="rt" name="act_nd3">3D6</button></span>
+    <span class="ckn">수정치<input type="number" name="attr_mod" title="다음 판정 수정치"></span>
+    <span class="sp"></span>
+    <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="2 로 되돌림"></button></span>
+    <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="12 로 되돌림"></button></span>
+    <span class="seg" title="공개 범위"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span>
+    <button type="roll" class="gmb" name="roll_gmw" title="GM 에게 귓속말 (물음 창)" value="/w gm &{template:beginningidol} {{plain=?{GM 에게 귓속말}}}"><i></i>GM 귓속말</button>
+  </div>
+
+  <!-- 3단: 아이돌 스킬 -->
+  <div class="panel">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>아이돌 스킬</div>
+    <div class="sh"><span></span><span>이름</span><span>타입</span><span>지정특기</span><span>효과</span></div>
+<!--@IDOL_SKILLS-->
+  </div>
+
+  <!-- 4단: 리액션 표 | 이해 | 추억 -->
+  <div class="r4">
+    <div class="panel">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>리액션 표<span class="sp"></span><button type="action" class="dic" name="act_react" title="1D6 리액션"></button></div>
+      <div class="col">
+<!--@REACTIONS-->
+      </div>
+    </div>
+    <div class="panel">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>이해</div>
+      <div class="col">
+<!--@UNDERSTANDING-->
+      </div>
+    </div>
+    <div class="panel">
+      <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>추억</div>
+      <div class="col mem">
+<!--@MEMORIES-->
+      </div>
+    </div>
+  </div>
+  <div class="panel ment">
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>멘탈</div>
+    <div class="track">
+<!--@MENTAL-->
+    </div>
+  </div>
+</div>
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->

@@ -1,0 +1,9 @@
+[
+  {"name": "하루노 미쿠 (티아라 예시)", "attrs": {"idol_class": "루키", "background": "평범한 고등학생", "character_name": "하루노 미쿠", "age": "16", "player": "하루", "image_color": "벚꽃색", "feature1": "큰 리본", "likes": "딸기 파르페", "dislikes": "천둥",
+    "voice": "5", "physical": "3", "visual": "7", "kosei_skill": "《미소》", "kosei_target": "5",
+    "C7": "1", "B6": "1", "D2": "1", "E10": "1", "F7": "1", "gap_c": "1", "D7_name": "츤데레", "link1_used": "1",
+    "sk1_name": "스마일 어택", "sk1_type": "보조", "sk1_skill": "미소", "sk1_effect": "판정에 +2 의 수정치를 받는다.", "sk2_name": "노래하는 천사", "sk2_type": "상주", "sk2_effect": "【보이스】를 사용한 퍼포먼스 판정의 퍼포먼스 값 +3.",
+    "re1": "손으로 얼굴을 가린다", "re2": "“에헤헤…”", "re3": "볼을 부풀린다", "un1_name": "아오이", "un1": "1", "un2_name": "린", "mem1_used": "1", "mem1": "첫 무대의 박수", "mental": "32"}},
+  {"name": "크라운 노선 (예시)", "attrs": {"route": "crown", "character_name": "아오이", "voice": "4", "physical": "6", "visual": "3", "B11": "1", "E9": "1", "mental": "20"}},
+  {"name": "새 캐릭터", "attrs": {}}
+]
