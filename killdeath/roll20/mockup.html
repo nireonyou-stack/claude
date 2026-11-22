@@ -140,6 +140,13 @@ textarea{resize:none;display:block}
 .rr .ctr input{text-align:center}
 .ck{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin:0;border:1.5px solid var(--ink);background:#fff;cursor:pointer}
 .ck:checked{background:linear-gradient(45deg,transparent 44%,var(--ink) 45% 55%,transparent 56%),linear-gradient(-45deg,transparent 44%,var(--ink) 45% 55%,transparent 56%)}
+/* 빈 여백 없이: 줄 수가 적은 칸은 줄을 늘려 옆 칸 높이에 맞춤 */
+.box.cy,.box.rel{display:flex;flex-direction:column}
+#cy,#rel{flex:1;display:flex;flex-direction:column}
+#cy .rr,#rel .rr{flex:1}
+.r4 .stat .st{flex:1}
+.r5 .stat .st:last-child{flex:1;align-items:stretch}
+.r5 .stat .st:last-child textarea{height:auto}
 .r5{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:8px}
 .sub .sb{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 6px;padding:6px;align-items:start}
 .sub textarea{min-height:44px;font-size:12px;line-height:1.45;background:var(--cell);padding:3px 5px}

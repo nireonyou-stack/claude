@@ -52,6 +52,7 @@ textarea{resize:none;display:block}
 .pr.nm input{font:700 16px var(--sans)}
 .pr2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:8px}
 .stats{display:flex;flex-direction:column;gap:6px}
+.stats .sv,.stats .kos{flex:1}
 .sv{display:grid;grid-template-columns:62px 40px minmax(0,1fr);align-items:center;gap:6px;border:1.5px solid var(--ink);padding:4px 6px;border-radius:0 0 8px 0}
 .sv .chip{font:400 15px/1 var(--head)}
 .sv input{height:30px;text-align:center;font:900 22px/1 var(--sans);border-bottom:2px solid var(--accent);padding:0}
@@ -63,7 +64,9 @@ textarea{resize:none;display:block}
 
 /* 2단: 특기 리스트 | 아이돌 링크 */
 .r2{display:grid;grid-template-columns:minmax(0,1fr) 214px;gap:8px}
-.grid{display:grid;grid-template-columns:22px repeat(5,minmax(0,1fr) 12px) minmax(0,1fr);grid-template-rows:28px repeat(11,24.5px);padding:3px;position:relative}
+.r2>.panel:first-child{display:flex;flex-direction:column}
+.r2>.panel:first-child .grid{flex:1}
+.grid{display:grid;grid-template-columns:22px repeat(5,minmax(0,1fr) 12px) minmax(0,1fr);grid-template-rows:28px repeat(11,minmax(24.5px,1fr));padding:3px;position:relative}
 .no{background:var(--bar);color:#fff;font:700 11px/1 var(--sans);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
 .no.corner{border-bottom:0;background:transparent}
 .fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:400 15px/1 var(--head);margin:0 1px}
@@ -163,6 +166,9 @@ textarea{resize:none;display:block}
 .un span{font-size:11.5px;color:#333}
 .box{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin:0;border:1.5px solid var(--ink);background:#fff;cursor:pointer}
 .box:checked{background:linear-gradient(45deg,transparent 44%,var(--accent) 45% 55%,transparent 56%),linear-gradient(-45deg,transparent 44%,var(--accent) 45% 55%,transparent 56%)}
+.r4>.panel{display:flex;flex-direction:column}
+.r4>.panel>div:last-child{flex:1;display:flex;flex-direction:column}
+.r4>.panel>div:last-child>*{flex:1}
 .mem{display:flex;flex-direction:column;gap:4px;padding:5px}
 .mi{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:4px;border-bottom:1px dotted var(--sub);padding-bottom:3px}
 .heart{position:relative;width:30px;height:27px;cursor:pointer}

@@ -43,6 +43,15 @@ textarea{resize:none;display:block}
 .logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1.5px solid var(--accent);font:700 12.5px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:6px;
   background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(-45deg,transparent 50%,var(--ink) 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
 .portrait{flex:1;min-height:130px;border:2px solid var(--ink);border-radius:14px;background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+/* 빈 여백 없이: 칸 안 줄을 늘려 옆 칸 높이에 맞춤 */
+.r1 .rbox,.r3 .rbox:not(.adv){display:flex;flex-direction:column}
+.r3 .rbox:not(.adv) .sleep{flex:1;grid-auto-rows:1fr}
+.r1 .data{flex:1}
+.r1 .f.grow{flex:1;align-items:stretch}
+.r1 .f.grow textarea{height:auto}
+.adv .rec textarea{flex:1}
+.ob #obs{flex:1;display:flex;flex-direction:column}
+.ob #obs .orow{flex:1}
 .data{display:flex;flex-direction:column;gap:5px;padding:6px}
 .f{display:flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:8px;padding:2px 8px;min-height:30px}
 .f input{height:24px}
@@ -247,7 +256,7 @@ textarea{resize:none;display:block}
           <div class="f"><span class="chip">나이</span><input type="text" value="10" aria-label="나이"><span class="unit">살</span></div>
           <div class="f"><span class="chip">성별</span><input type="text" value="여" aria-label="성별"></div>
         </div>
-        <div class="f" style="align-items:flex-start"><span class="chip" style="padding-top:4px">설정</span><textarea aria-label="설정">오바케가 보이는 아이. 할머니 집에 산다.</textarea></div>
+        <div class="f grow" style="align-items:flex-start"><span class="chip" style="padding-top:4px">설정</span><textarea aria-label="설정">오바케가 보이는 아이. 할머니 집에 산다.</textarea></div>
         <div class="g2">
           <div class="f"><span class="chip">재능</span><input type="text" value="달리기" aria-label="재능"><span class="squares" data-n="6" data-v="2" title="재능 사용"></span></div>
           <div class="f"><span class="chip">약점</span><input type="text" value="벌레" aria-label="약점"></div>

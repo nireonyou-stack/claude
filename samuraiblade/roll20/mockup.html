@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Song+Myung|Noto+Sans+KR:400,500,700,900&display=swap">
 <style>
 /* 한 장짜리 목업: 세로 830px 시트(공식 「사무라이 블레이드 TRPG」 캐릭터 시트) + Roll20 채팅 카드.
-   흰 종이 · 먹색 띠 · 주홍 하나(화찰의 붉은 단책). 값은 예시 */
+   흰 종이 · 먹색 띠 · 주홍 하나(화투의 붉은 단책). 값은 예시 */
 :root{--paper:#ffffff;--ink:#161616;--sub:#5e5e5e;--line:#c6c6c6;--cell:#f3f3f3;--bar:#161616;--page:#e3e3e3;
   --accent:#c2361f;--soft:#fbe9e5;--navy:#1f3566;--green:#247305;
   --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--head:'Song Myung','Noto Serif KR',serif;color-scheme:light}
@@ -62,11 +62,11 @@ textarea{resize:none;display:block}
 .awk{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--line);font-size:10.5px;color:#333}
 .awk b{font:400 18px/1 var(--head);color:var(--accent)}
 .awk .ck{width:16px;height:16px}
-.merit{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1.5px solid var(--ink)}
+.merit{flex:1;display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1.5px solid var(--ink)}
 .merit input{height:26px;text-align:right;font:900 16px var(--sans)}
 
 /* 2단: 특기 리스트 (괄호 = 목표치, 번호 오른쪽, 壱~陸 = 1D6 분야) */
-.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr)) 26px;grid-template-rows:30px repeat(11,25px);padding:4px;column-gap:3px}
+.grid{display:grid;grid-template-columns:24px repeat(6,minmax(0,1fr)) 24px;grid-template-rows:30px repeat(11,25px);padding:4px;column-gap:3px}
 .no{background:var(--bar);color:#fff;font:400 14px/1 var(--head);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
 .no.corner{border-bottom:0;background:transparent}
 .fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;font:400 16px/1 var(--head)}
@@ -142,6 +142,9 @@ textarea{resize:none;display:block}
 
 /* 4단: 사명 · 삶의 방식 | 연 / GS · BS | 장비품 / 아이템 */
 .r4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.bx.mis,.bx.en,.bx.st{display:flex;flex-direction:column}
+#en,#gs,#bs{flex:1;display:flex;flex-direction:column}
+.mis .mr,#en .er,#gs .sr2,#bs .sr2{flex:1}
 .mis .mr{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--line);padding:0 6px;min-height:26px}
 .mis .mr input{height:24px}
 .mis .mr b{font:400 13px var(--head);white-space:nowrap}
@@ -238,14 +241,14 @@ textarea{resize:none;display:block}
   <!-- 1단 -->
   <div class="r1">
     <div class="title">
-      <div class="logo"><div class="t0">SAMURAI BLADE</div><div class="t1">사무라이<br>블레이드</div><div class="t2">화찰 춤추는 퇴마의 검극</div></div>
+      <div class="logo"><div class="t0">SAMURAI BLADE</div><div class="t1">사무라이<br>블레이드</div><div class="t2">화투 춤추는 퇴마의 검극</div></div>
       <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
     </div>
     <div class="bx prof">
       <div class="pf w nm"><span class="lb">이름</span><input type="text" id="cname" value="사쿠라기 이오리" aria-label="이름"></div>
       <div class="pf"><span class="lb">성별</span><input type="text" value="여" aria-label="성별"></div>
-      <div class="pf"><span class="lb">나이</span><input type="text" value="17" aria-label="나이"></div>
-      <div class="pf"><span class="lb">플레이어</span><input type="text" value="하루" aria-label="플레이어"></div>
+      <div class="pf"><span class="lb">연령</span><input type="text" value="17" aria-label="연령"></div>
+      <div class="pf"><span class="lb">플레이어 명</span><input type="text" value="하루" aria-label="플레이어 명"></div>
       <div class="pf"><span class="lb">PC 작성일</span><input type="text" value="2026. 11. 22" aria-label="PC 작성일"></div>
       <div class="pf"><span class="lb">혼백</span><input type="text" value="검사" aria-label="혼백"></div>
       <div class="pf"><span class="lb">레벨</span><input type="text" value="1" aria-label="레벨"></div>
@@ -254,18 +257,18 @@ textarea{resize:none;display:block}
       <div class="pf w"><span class="lb">경력</span><div class="sk2"><input type="text" value="학생" aria-label="경력"><span>특기</span><input type="text" value="학문 · 운동" aria-label="경력 특기"></div></div>
       <div class="pf w"><span class="lb">직업</span><input type="text" value="퇴마사 견습" aria-label="직업"></div>
       <div class="pf w"><span class="lb">출신</span><div class="sk2"><input type="text" value="신사의 딸" aria-label="출신"><span>특기</span><input type="text" value="기도" aria-label="출신 특기"></div></div>
-      <div class="pf w"><span class="lb">각성</span><div class="sk2"><input type="text" value="역마에게 습격당함" aria-label="각성(目覚め)"><span>특기</span><input type="text" value="도검" aria-label="각성 특기"></div></div>
+      <div class="pf w"><span class="lb">각성</span><div class="sk2"><input type="text" value="봉마에게 습격당함" aria-label="각성(目覚め)"><span>특기</span><input type="text" value="도검" aria-label="각성 특기"></div></div>
       <div class="pf w" style="border-bottom:0"><span class="lb">무령도 이름</span><div class="sk2"><input type="text" value="사쿠라후부키" aria-label="무령도 이름"><span>화신</span><input type="text" value="벚꽃 여우" aria-label="화신"></div></div>
     </div>
     <div class="bx hp">
       <div class="hb">생명력</div>
       <div class="now"><span class="lb">현재</span><input type="number" id="hpnow" value="14" aria-label="현재 생명력"></div>
       <div class="rows">
-        <div class="row"><span class="lb">기본값</span><input type="number" id="hpb" value="12" aria-label="기본값"></div>
+        <div class="row"><span class="lb">기본치</span><input type="number" id="hpb" value="12" aria-label="기본치"></div>
         <div class="row"><span class="lb">장비품</span><input type="number" id="hpe" value="2" aria-label="장비품"></div>
-        <div class="row tot"><span class="lb">합계</span><input type="number" id="hpt" value="14" readonly aria-label="합계"></div>
+        <div class="row tot"><span class="lb">총합</span><input type="number" id="hpt" value="14" readonly aria-label="총합"></div>
       </div>
-      <div class="awk"><input type="checkbox" class="ck" id="awk" aria-label="각성"><span>【각성】 상태가 되면 모든 판정이 「부스트+1」된다</span><b>각성</b></div>
+      <div class="awk"><input type="checkbox" class="ck" id="awk" aria-label="각성"><span>【각성】 상태일 때, 모든 판정에 부스트 +1</span><b>각성</b></div>
       <div class="merit"><span class="lb">공적점</span><input type="text" value="3" aria-label="공적점"></div>
     </div>
   </div>
@@ -300,23 +303,22 @@ textarea{resize:none;display:block}
   <!-- 3단: 어빌리티 -->
   <div class="bx">
     <div class="hb">어빌리티<span class="sp"></span><small>□ = 사용함 · 주사위 = 그 특기로 판정</small></div>
-    <div class="ah"><span></span><span>레벨</span><span>어빌리티</span><span>조건</span><span>타이밍</span><span>특기</span><span>간격</span><span>대상</span><span>횟수</span><span>효과</span><span></span></div>
+    <div class="ah"><span></span><span>레벨</span><span>어빌리티</span><span>조건</span><span>타이밍</span><span>기능</span><span>간격</span><span>대상</span><span>회수</span><span>효과</span><span></span></div>
     <div id="abil"></div>
   </div>
 
   <!-- 4단: 사명 · 삶의 방식 | 연 -->
   <div class="r4">
     <div class="bx mis">
-      <div class="hb">사명 · 삶의 방식</div>
-      <div class="mr"><b>・</b><span style="font:400 13px var(--head)">역마와 싸운다</span><span class="sp"></span><input type="checkbox" class="ck" aria-label="달성"></div>
-      <div class="mr"><b>・</b><input type="text" value="벚꽃 여우의 기억을 되찾는다" aria-label="사명 2"><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="hb">사명</div>
+      <div class="mr"><b>・</b><input type="text" value="벚꽃 여우의 기억을 되찾는다" aria-label="사명 1"><b>／삶</b><input type="text" value="정의로운 검" aria-label="삶" style="max-width:120px"><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="mr"><b>・</b><span style="font:400 13px var(--head)">봉마와 싸운다</span><span class="sp"></span><input type="checkbox" class="ck" aria-label="달성"></div>
       <div class="mr"><b>・</b><input type="text" aria-label="사명 3"><input type="checkbox" class="ck" aria-label="달성"></div>
-      <div class="mr"><b>・</b><input type="text" aria-label="사명 4"><input type="checkbox" class="ck" aria-label="달성"></div>
-      <div class="mr" style="border-bottom:0"><b>삶의 방식</b><input type="text" value="정의로운 검" aria-label="삶의 방식"></div>
+      <div class="mr" style="border-bottom:0"><b>・</b><input type="text" aria-label="사명 4"><input type="checkbox" class="ck" aria-label="달성"></div>
     </div>
     <div class="bx en">
-      <div class="hb">연(縁)</div>
-      <div class="eh"><span>이름</span><span>감정</span><span>유대</span></div>
+      <div class="hb">인연</div>
+      <div class="eh"><span>인연</span><span>감정</span><span>유대</span></div>
       <div id="en"></div>
     </div>
   </div>
@@ -344,24 +346,24 @@ textarea{resize:none;display:block}
 
 <div class="note2">
   <p><b>확인 부탁.</b> 공개 서머리로 알 수 있는 것만으로 만든 부분이 있어요. ① 목표치 = 5 + 거리(세로 1 · 옆 분야 2, 공식 시트에 공백 칸이 없어 공백 칠하기는 뺐어요) + 난이도. ② 부스트 1 마다 주사위 1개를 더해 모두 더함. ③ 펌블 · 스페셜은 처음 두 주사위(2D6)로 2 · 12 — 실제 규칙(예: 6 두 개 이상이면 스페셜)이 다르면 알려 주세요. ④ 【각성】은 부스트 +1, BS【주박】은 난이도 한 단계 위(+5), GS【고양】은 공격 어빌리티 판정에 부스트 +1 을 자동으로 붙였어요.</p>
-  <p><b>안 넣은 것.</b> 화찰(패 · 장패 · 역)은 탁자에서 쓰는 카드라 시트에 넣지 않았어요(필요하면 손패 메모 칸을 둘 수 있어요). 전투 시트, 공식 로고.</p>
+  <p><b>안 넣은 것.</b> 화투(손패 · 장패 · 역)는 탁자에서 쓰는 카드라 시트에 넣지 않았어요(필요하면 손패 메모 칸을 둘 수 있어요). 전투 시트, 공식 로고.</p>
 </div>
 
 <div class="gl">
-  <h2>용어표 (일본어 → 한국어, 검토용)</h2>
+  <h2>용어표 (일본어 → 한국어 · TR꿈악어 님 한국어 캐릭터 시트 기준)</h2>
   <div class="gg" id="gl"></div>
 </div>
 
 <script>
-const FIELDS = ['재능', '연달', '이지', '신체', '감성', '심연'];
+const FIELDS = ['재능', '숙달', '이지', '신체', '감성', '심연'];
 const NUM = ['壱', '弐', '参', '肆', '伍', '陸'];
 const SK = [
   ['질서', '괴물', '인덕', '천계', '방패', '꿈', '신기', '성신', '의료', '기도', '사랑'],
-  ['현세', '이형', '경비', '규율', '맨손', '땅', '곤봉', '수행', '기계', '각인', '기쁨'],
+  ['현세', '이형', '경비', '규칙', '맨손', '땅', '곤봉', '수행', '기계', '각인', '기쁨'],
   ['창조', '요괴', '교섭', '계승', '총', '물', '활', '탐구', '학문', '주문', '슬픔'],
-  ['파괴', '짐승', '운동', '혈통', '도검', '불', '장병', '파사', '조종', '기공', '분노'],
-  ['상야', '빙의', '지각', '운명', '채찍 · 사슬', '바람', '닌자 도구', '환상', '전뇌', '염력', '즐거움'],
-  ['혼돈', '죽음', '은밀', '신비', '발톱 · 이빨', '영', '주물', '윤회', '범죄', '마법', '미움']];
+  ['파괴', '짐승', '운동', '혈통', '도검', '불꽃', '장병', '파사', '조종', '기공', '분노'],
+  ['상야', '빙의', '지각', '운명', '편쇄', '바람', '닌구', '환상', '전뇌', '염력', '안락'],
+  ['혼돈', '죽음', '은밀', '신비', '조아', '영혼', '주물', '윤회', '범죄', '마법', '미움']];
 const JA = [
   ['秩序', '怪物', '人徳', '天啓', '盾', '夢', '神器', '星辰', '医療', '祈祷', '愛'],
   ['現世', '異形', '警備', '掟', '無手', '地', '棍', '修行', '機械', '刻印', '喜'],
@@ -378,17 +380,17 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 // ── 특기 리스트 (번호 오른쪽, 괄호 = 목표치)
 const grid = document.getElementById('grid'), cells = {};
 (function build() {
-  FIELDS.forEach((f, i) => { const h = el('div', 'fh', `<i><b>${NUM[i]}</b></i>${f}`); h.style.gridColumn = String(1 + i); h.style.gridRow = '1'; grid.append(h); });
-  const c0 = el('div', 'no corner'); c0.style.gridColumn = '7'; c0.style.gridRow = '1'; grid.append(c0);
+  FIELDS.forEach((f, i) => { const h = el('div', 'fh', `<i><b>${NUM[i]}</b></i>${f}`); h.style.gridColumn = String(2 + i); h.style.gridRow = '1'; grid.append(h); });
+  ['1', '8'].forEach(c => { const c0 = el('div', 'no corner'); c0.style.gridColumn = c; c0.style.gridRow = '1'; grid.append(c0); });
   for (let r = 0; r < 11; r++) {
     FIELDS.forEach((f, i) => {
-      const id = COL[i] + (r + 2), c = el('div', 'c'); c.style.gridColumn = String(1 + i); c.style.gridRow = String(r + 2);
+      const id = COL[i] + (r + 2), c = el('div', 'c'); c.style.gridColumn = String(2 + i); c.style.gridRow = String(r + 2);
       const own = el('input', 'own'); own.type = 'checkbox'; own.checked = st.own.has(id); own.title = SK[i][r] + ' 습득';
       own.onchange = () => { own.checked ? st.own.add(id) : st.own.delete(id); calc(); };
       const n = el('button', 'n', SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정'; n.onclick = () => rollSkill(i, r);
       const tn = el('span', 'tn'); c.append(own, n, tn); grid.append(c); cells[id] = tn;
     });
-    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '7'; no.style.gridRow = String(r + 2); grid.append(no);
+    ['1', '8'].forEach(col => { const no = el('div', 'no', String(r + 2)); no.style.gridColumn = col; no.style.gridRow = String(r + 2); grid.append(no); });
   }
 })();
 const dist = (a, b) => Math.abs(a.r - b.r) + 2 * Math.abs(a.f - b.f);
@@ -396,16 +398,16 @@ function base(f, r) { const src = [...st.own].map(id => ({ f: COL.indexOf(id[0])
 function calc() { FIELDS.forEach((_, f) => { for (let r = 0; r < 11; r++) { const t = base(f, r); cells[COL[f] + (r + 2)].textContent = t == null ? '' : t; } }); }
 
 // ── 어빌리티 (인쇄된 줄 + 레벨 2~7)
-const PRINTED = [['—', '무령각성', '혼백사', '선언', '없음', '없음', '자신', '세션', '생명력 전부 회복, BS 전부 해제하고 【각성】한다'],
-  ['—', '참찰전개', '혼백사', '선언', '없음', '없음', '자신', '세션', '패 중에서 완성한 역을 【참찰】로 전개한다'],
-  ['—', '화찰동조', '혼백사', '선언', '없음', '없음', '자신', '세션', '패가 최대가 될 때까지 화찰을 얻는다'],
-  ['—', '혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화찰동조】와 같은 효과, 세션 종료 후 【은퇴】'],
-  ['1', '† 무령도', '혼백사', '이동공격 · 전력공격', '', '무기', '단체', '무제한', '이동공격 　점 / 전력공격은 +1점']];
-const AB = { 2: ['벚꽃 베기', '검술', '이동공격', '도검', '1', '단체', '사이클', '대미지 +2'] };
+const PRINTED = [['—', '무령각성', '혼백사', '선언', '없음', '없음', '자신', '세션', '생명력 전부 회복, BS 전체 해제 후 【각성】'],
+  ['—', '참찰전개', '혼백사', '선언', '없음', '없음', '자신', '세션', '손패에서 완성된 역을 【참패】로 전개'],
+  ['—', '화투동조', '혼백사', '선언', '없음', '없음', '자신', '세션', '손패가 최대가 될 때까지 화투 습득'],
+  ['—', '혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화투동조】와 같은 효과. 세션 종료 시 【은퇴】'],
+  ['1', '† 무령도', '혼백사', '이동공격 · 전력공격', '', '무기', '단일', '무제한', '이동공격 　점 / 전력공격에는 +1점']];
+const AB = { 2: ['벚꽃 베기', '검술', '이동공격', '도검', '1', '단일', '사이클', '대미지 +2'] };
 const abil = document.getElementById('abil');
 PRINTED.forEach(([lv, n, cond, tim, sk, rng, tgt, cnt, ef], i) => {
   const r = el('div', 'ar pr');
-  r.innerHTML = `<span>${i === 4 ? '<button class="dic" type="button" title="판정"></button>' : ''}</span><span class="lv">${lv}</span><span class="an">${n}</span><span>${cond}</span><span>${tim}</span><span>${i === 4 ? '<input type="text" value="도검" aria-label="무령도 특기">' : sk}</span><span>${rng}</span><span>${tgt}</span><span>${cnt}</span><span class="ef">${i === 4 ? '이동공격 <input type="text" value="3" style="width:24px;display:inline-block" aria-label="이동공격 대미지">점 / 전력공격은 +1점' : ef}</span><span class="cks">${i < 4 ? '<input type="checkbox" class="ck" aria-label="사용함">' : ''}</span>`;
+  r.innerHTML = `<span>${i === 4 ? '<button class="dic" type="button" title="판정"></button>' : ''}</span><span class="lv">${lv}</span><span class="an">${n}</span><span>${cond}</span><span>${tim}</span><span>${i === 4 ? '<input type="text" value="도검" aria-label="무령도 특기">' : sk}</span><span>${rng}</span><span>${tgt}</span><span>${cnt}</span><span class="ef">${i === 4 ? '이동공격 <input type="text" value="3" style="width:24px;display:inline-block" aria-label="이동공격 대미지">점 / 전력공격에는 +1점' : ef}</span><span class="cks">${i < 4 ? '<input type="checkbox" class="ck" aria-label="사용함">' : ''}</span>`;
   if (i === 4) r.querySelector('.dic').onclick = () => rollAbility(r, '† 무령도', true);
   abil.append(r);
 });
@@ -419,16 +421,16 @@ for (let lv = 2; lv <= 7; lv++) {
 }
 // ── 연 6 줄 · GS · BS · 장비품 · 아이템
 const EN = [['미나토', '우정 (+)', true], ['벚꽃 여우', '애정 (+)', false]];
-document.getElementById('en').innerHTML = Array.from({ length: 6 }, (_, i) => { const [n, e, c] = EN[i] || ['', '', false]; return `<div class="er"><span><input type="text" value="${n}" aria-label="연 이름"></span><span><input type="text" value="${e}" aria-label="감정" style="text-align:center"></span><span><input type="checkbox" class="ck" ${c ? 'checked' : ''} aria-label="유대"></span></div>`; }).join('');
-const GS = [['고양', '공격 판정을 부스트+1 한다'], ['축복', '방어 판정을 부스트+1 한다'], ['가속', '통상 이동공격은 +1칸, 전력 이동은 +2칸 한다'], ['철벽', '자신이 받는 대미지가 1점 감소한다'], ['신격', '자신이 주는 대미지를 1점 추가한다'], ['무쌍', '【대상: 단체】를 【대상: 라인】으로 바꾼다']];
-const BS = [['맹독', '수번의 행동을 할 때마다 1점의 대미지를 받는다'], ['주박', '모든 판정 난이도가 한 단계 상승한다 (행위 판정에 +5)'], ['족지', '이동공격을 할 수 없고, 전력 이동은 1칸 이동이 된다'], ['공포', '자신이 주는 대미지가 1점 감소한다 (0점이면 대미지를 줄 수 없다)'], ['부상', '자신이 받는 대미지가 1점 추가된다'], ['혼란', '【횟수: 사이클】과 【횟수: 배틀】 어빌리티를 사용할 수 없다']];
+document.getElementById('en').innerHTML = Array.from({ length: 6 }, (_, i) => { const [n, e, c] = EN[i] || ['', '', false]; return `<div class="er"><span><input type="text" value="${n}" aria-label="인연"></span><span><input type="text" value="${e}" aria-label="감정" style="text-align:center"></span><span><input type="checkbox" class="ck" ${c ? 'checked' : ''} aria-label="유대"></span></div>`; }).join('');
+const GS = [['고양', '공격판정에 부스트+1한다'], ['축복', '방어판정에 부스트+1한다'], ['가속', '통상 이동공격은 +1칸, 전력이동은 +2칸한다.'], ['철벽', '자신이 받는 대미지가 1점 감소한다.'], ['신격', '자신이 부여하는 대미지를 1점 추가한다.'], ['무쌍', '【대상:단일】을 【대상:라인】으로 변경.']];
+const BS = [['맹독', '수동행동을 실행할 때 1점의 대미지를 받는다.'], ['주박', '모든 판정 난이도가 1단계 상승한다. (행위판정에 +5)'], ['발묶임', '이동공격을 할 수 없고, 전력이동은 1칸 이동이 된다.'], ['공포', '자신이 부여하는 대미지가 1점 감소한다 (0점이라면 대미지가 부여X)'], ['부상', '자신이 받는 대미지가 1점 추가된다.'], ['혼란', '【횟수: 사이클】과 【횟수:배틀】어빌리티 사용불가.']];
 const stRows = (id, rows, on) => { document.getElementById(id).innerHTML = rows.map(([n, e], i) => `<div class="sr2"><i>${i + 1}</i><b>${n}</b><span>${e}</span><input type="checkbox" class="ck" data-k="${n}" ${on.includes(i) ? 'checked' : ''} aria-label="${n}"></div>`).join(''); };
 stRows('gs', GS, [0]); stRows('bs', BS, []);
 const isOn = k => !!document.querySelector(`.ck[data-k="${k}"]`)?.checked;
-const EQ = [['무기', '무령도', '검', '1'], ['보조 무기', '', '', ''], ['방어구', '교복', '의복', ''], ['보조 방어구', '', '', ''], ['장신구', '부적 머리끈', '', '']];
-document.getElementById('eq').innerHTML = EQ.map(([k, n, t, r]) => `<div class="qr"><b>${k}</b><input type="text" value="${n}" aria-label="${k}"><input type="text" class="s" value="${t}" aria-label="종별"><input type="text" class="s" value="${r}" aria-label="간격"></div>`).join('') + '<div class="qr note">장신구는 전투 시 사용 불가</div>';
-const ITEMS = [['방진', '배치 롤을 2회 하고, 원하는 쪽을 고를 수 있다', 1], ['병기', '하급 역마 1체를 전투 시트 위에서 배제한다', 0], ['영측', '상급 역마 또는 특급 역마 1체의 데이터를 알 수 있다. 역마 어빌리티는 알 수 없다', 0],
-  ['약품', '생명력 전부 회복이나 BS 전부 해제. 전투 중에는 생명력 1D6점 회복이나 BS 1개 해제', 2], ['탈것', '즉시 전력 이동을 한다. 【BS: 족지】여도 사용 가능', 0], ['호부', '【횟수: 사이클】의 사용한 어빌리티를 다시 사용할 수 있다', 1]];
+const EQ = [['무기', '무령도', '검', '1'], ['보조무기', '', '', ''], ['방어구', '교복', '의복', ''], ['보조방어구', '', '', ''], ['장식품', '부적 머리끈', '', '']];
+document.getElementById('eq').innerHTML = EQ.map(([k, n, t, r]) => `<div class="qr"><b>${k}</b><input type="text" value="${n}" aria-label="${k}"><input type="text" class="s" value="${t}" aria-label="종별"><input type="text" class="s" value="${r}" aria-label="간격"></div>`).join('') + '<div class="qr note">장식품은 전투시 사용불가</div>';
+const ITEMS = [['방진', '배치 롤을 2회 실행해, 원하는 쪽을 선택할 수 있다.', 1], ['병기', '하급 봉마 1체를 전투 시트 상에서 배제할 수 있다.', 0], ['영측', '상급·특급 봉마 1체의 데이터를 알 수 있다. 봉마 어빌리티는 알 수 없다.', 0],
+  ['약품', '생명력 완쾌나 BS 전체 해제. 전투 중엔 생명력 1D6 회복 or BS 1개 해제', 2], ['탈것', '즉시 전력 이동 한다. BS 【발묶임】이라도 사용 가능.', 0], ['호부', '【횟수: 사이클】인 사용완료 어빌리티를 재사용할 수 있다.', 1]];
 document.getElementById('items').innerHTML = ITEMS.map(([n, e, c], i) => `<div class="it"><i>${i + 1}</i><b>${n}</b><span>${e}</span><span class="cks">${[1, 2, 3].map(k => `<input type="checkbox" class="ck cnt" ${k <= c ? 'checked' : ''} aria-label="${n} ${k}">`).join('')}</span><button class="bub" type="button" data-it="${i}" title="사용"></button></div>`).join('');
 document.querySelectorAll('[data-it]').forEach(b => b.onclick = () => {
   const [n, e] = ITEMS[+b.dataset.it], boxes = [...b.parentElement.querySelectorAll('.ck')], left = boxes.filter(x => x.checked).length;
@@ -440,9 +442,9 @@ const hpSync = () => { document.getElementById('hpt').value = (+document.getElem
 document.getElementById('hpb').oninput = hpSync; document.getElementById('hpe').oninput = hpSync;
 
 // ── 띠: 굴림표 · 펌블치 · 스페셜치
-const TABLES = [['범용 장면 표', 2, { 2: '피 냄새가 콧속을 간질인다. 사건인가 사고인가? 무령도가 싸움의 기척을 알린다.', 3: '청렴한 분위기가 감돈다. 귀를 기울이면 새나 벌레 소리, 바람에 흔들리는 나무 소리가 들려온다.', 4: '높은 건물의 옥상. 주위를 한눈에 둘러볼 수 있는 곳에 서서 아래를 내려다본다.', 5: '세계의 끝 같은 암흑. 어둠 속에서 누군가의 기척이 꿈틀거린다…….', 6: '평온한 시간이 지나간다. 잠시나마 싸움을 잊을 수 있을 것 같다.', 7: '밝은 햇살에 감싸인다. 설령 절망의 구렁텅이에 있더라도 한 가닥 희망을 확신할 수 있다. 이 장면에서 개시 판정을 할 경우 「부스트+1」할 수 있다.', 8: '역마의 시각, 상야와 현세의 경계선이 흔들리는 시각. 어디선가 분명치 않은 목소리나 소리가 새어 나온다.', 9: '갑자기 하늘을 구름이 뒤덮는다. 비가 내리기 시작하자 사람들이 처마를 찾아 뛰어간다.', 10: '한 줄기 바람이 지나간다. 머리카락과 옷이 크게 흔들리고, 무언가 일어날 예감이 든다.', 11: '사람들이 오가고 거리의 소란이 들려온다. 여느 때의 번화가 풍경이지만…….', 12: '이건…… 꿈인가? 끝났을 터인 과거가 기억 속에서 되살아난다.' }],
+const TABLES = [['범용 장면 표', 2, { 2: '피 냄새가 콧속을 간질인다. 사건인가 사고인가? 무령도가 싸움의 기척을 알린다.', 3: '청렴한 분위기가 감돈다. 귀를 기울이면 새나 벌레 소리, 바람에 흔들리는 나무 소리가 들려온다.', 4: '높은 건물의 옥상. 주위를 한눈에 둘러볼 수 있는 곳에 서서 아래를 내려다본다.', 5: '세계의 끝 같은 암흑. 어둠 속에서 누군가의 기척이 꿈틀거린다…….', 6: '평온한 시간이 지나간다. 잠시나마 싸움을 잊을 수 있을 것 같다.', 7: '밝은 햇살에 감싸인다. 설령 절망의 구렁텅이에 있더라도 한 가닥 희망을 확신할 수 있다. 이 장면에서 개시 판정을 할 경우 「부스트+1」할 수 있다.', 8: '봉마의 시각, 상야와 현세의 경계선이 흔들리는 시각. 어디선가 분명치 않은 목소리나 소리가 새어 나온다.', 9: '갑자기 하늘을 구름이 뒤덮는다. 비가 내리기 시작하자 사람들이 처마를 찾아 뛰어간다.', 10: '한 줄기 바람이 지나간다. 머리카락과 옷이 크게 흔들리고, 무언가 일어날 예감이 든다.', 11: '사람들이 오가고 거리의 소란이 들려온다. 여느 때의 번화가 풍경이지만…….', 12: '이건…… 꿈인가? 끝났을 터인 과거가 기억 속에서 되살아난다.' }],
   ['카르마 장면 표', 2, { 2: '과거 기억의 한 페이지. 세피아 빛 세계는 마치 오래된 사진 같다.', 3: '눈이 내리는 차가운 하늘 아래, 온통 은빛 세계가 펼쳐져 있다.', 4: '청렴한 숲 속, 나뭇잎 사이로 햇살이 쏟아진다.', 5: '칠흑 같은 어둠. 하지만 어딘가 다정함을 느낄 수 있다.', 6: '하늘 가득한 별. 금방이라도 별이 쏟아질 것 같다.', 7: '커다란 빛에 감싸인 실루엣이 서서히 형태를 띠며 나타난다.', 8: '풀과 나무가 흔들리는 초원, 먼 하늘에 무지개가 걸려 있다.', 9: '바람이 휘몰아치는 옛 전장. 지난날의 싸움이 흔적으로 남아 있다.', 10: '마천루의 거리. 네온 속에는 자기 혼자밖에 없다.', 11: '쨍쨍 빛나는 태양 아래, 바다의 파도 소리가 들려온다.', 12: '미래 세계의 풍경. 그 세계에 자신은 있는 것일까!?' }],
-  ['펌블 표', 1, { 1: '부조 — 뭔가 상태가 이상하다. 이 사이클 동안 화찰과 어빌리티를 사용할 수 없게 된다.', 2: '불운 — 정신 차려 보니 없어졌다! 임의의 아이템 1개를 잃어버린다.', 3: '습격 — 방심했다! 자신의 【생명력】을 1D6점 잃는다.', 4: '계산 밖 — 통한의 실수! 자신 이외의 PC의 【생명력】을 1D6점 잃게 한다.', 5: '책모 — 적의 음모인가? 무작위로 【BS】 1개를 받는다.', 6: '소실 — 화찰이 사라진다! 자신에게 패가 있을 경우, 원하는 패 1장을 버린다.' }],
+  ['펌블 표', 1, { 1: '부조 — 뭔가 상태가 이상하다. 이 사이클 동안 화투와 어빌리티를 사용할 수 없게 된다.', 2: '불운 — 정신 차려 보니 없어졌다! 임의의 아이템 1개를 잃어버린다.', 3: '습격 — 방심했다! 자신의 【생명력】을 1D6점 잃는다.', 4: '계산 밖 — 통한의 실수! 자신 이외의 PC의 【생명력】을 1D6점 잃게 한다.', 5: '책모 — 적의 음모인가? 무작위로 【BS】 1개를 받는다.', 6: '소실 — 화투가 사라진다! 자신에게 손패가 있을 경우, 원하는 손패 1장을 버린다.' }],
   ['감정 표', 1, { 1: '공감(+감정) / 불신(−감정)', 2: '우정(+감정) / 분노(−감정)', 3: '애정(+감정) / 질투(−감정)', 4: '충성(+감정) / 모멸(−감정)', 5: '동경(+감정) / 열등감(−감정)', 6: '광신(+감정) / 살의(−감정)' }]];
 const tbar = document.getElementById('tables');
 TABLES.forEach(([n, d, tab]) => { const b = el('button', 'rt', `<i class="tdi"></i>${n}`); b.type = 'button'; b.onclick = () => { const a = d6(), c = d === 2 ? d6() : null; card({ title: n, table: { dice: c ? [a, c] : [a], text: tab[a + (c || 0)] } }); }; tbar.append(b); });
@@ -503,12 +505,12 @@ qm.querySelector('.ok').onclick = () => { if (qin.value.trim()) card({ title: ''
 qm.querySelector('.no').onclick = qclose;
 
 // 용어표
-const GL = [['魂魄', '혼백'], ['レベル', '레벨'], ['主流派', '주류파'], ['副流派', '부류파'], ['経歴', '경력'], ['職業', '직업'], ['出自', '출신'], ['目覚め', '각성(目覚め)'], ['武霊刀名', '무령도 이름'], ['化身', '화신'], ['PC作成日', 'PC 작성일'],
-  ['生命力', '생명력'], ['基本値', '기본값'], ['装備品', '장비품'], ['合計', '합계'], ['覚醒', '각성(覚醒)'], ['功績点', '공적점'], ['特技', '특기'], ['アビリティ', '어빌리티'], ['条件', '조건'], ['タイミング', '타이밍'], ['間合', '간격'], ['対象', '대상'], ['回数', '횟수'], ['効果', '효과'],
-  ['魂魄士', '혼백사'], ['宣言', '선언'], ['武霊覚醒', '무령각성'], ['斬札展開', '참찰전개'], ['華札同調', '화찰동조'], ['魂魄散華', '혼백산화'], ['武霊刀', '무령도'], ['移動攻撃', '이동공격'], ['全力攻撃', '전력공격'], ['全力移動', '전력 이동'], ['単体', '단체'], ['ライン', '라인'], ['無制限', '무제한'],
-  ['士命', '사명'], ['生き様', '삶의 방식'], ['逢魔', '역마'], ['縁', '연'], ['感情', '감정'], ['絆', '유대'], ['グッドステータス', '굿 스테이터스'], ['バッドステータス', '배드 스테이터스'], ['高揚', '고양'], ['祝福', '축복'], ['加速', '가속'], ['鉄壁', '철벽'], ['神撃', '신격'], ['無双', '무쌍'],
-  ['猛毒', '맹독'], ['呪縛', '주박'], ['足止', '족지'], ['恐怖', '공포'], ['負傷', '부상'], ['混乱', '혼란'], ['武器', '무기'], ['補助武器', '보조 무기'], ['防具', '방어구'], ['補助防具', '보조 방어구'], ['装身具', '장신구'], ['種別', '종별'],
-  ['アイテム', '아이템'], ['方陣', '방진'], ['兵器', '병기'], ['霊測', '영측'], ['薬品', '약품'], ['乗物', '탈것'], ['護符', '호부'], ['華札', '화찰'], ['ブースト', '부스트'], ['難易度', '난이도'], ['下級 · 中級 · 上級 · 特級', '하급 · 중급 · 상급 · 특급'], ['常夜 · 現世', '상야 · 현세'],
+const GL = [['年齢', '연령'], ['プレイヤー名', '플레이어 명'], ['魂魄', '혼백'], ['レベル', '레벨'], ['主流派', '주류파'], ['副流派', '부류파'], ['経歴', '경력'], ['職業', '직업'], ['出自', '출신'], ['目覚め', '각성(目覚め)'], ['武霊刀名', '무령도 이름'], ['化身', '화신'], ['PC作成日', 'PC 작성일'],
+  ['生命力', '생명력'], ['基本値', '기본치'], ['装備品', '장비품'], ['合計', '총합'], ['覚醒', '각성(覚醒)'], ['功績点', '공적점'], ['特技', '특기 (어빌리티 표는 기능)'], ['アビリティ', '어빌리티'], ['条件', '조건'], ['タイミング', '타이밍'], ['間合', '간격'], ['対象', '대상'], ['回数', '회수'], ['効果', '효과'],
+  ['魂魄士', '혼백사'], ['宣言', '선언'], ['武霊覚醒', '무령각성'], ['斬札展開', '참찰전개'], ['斬札', '참패'], ['華札同調', '화투동조'], ['魂魄散華', '혼백산화'], ['武霊刀', '무령도'], ['移動攻撃', '이동공격'], ['全力攻撃', '전력공격'], ['全力移動', '전력이동'], ['単体', '단일'], ['ライン', '라인'], ['無制限', '무제한'],
+  ['士命', '사명'], ['生き様', '삶'], ['逢魔', '봉마'], ['縁', '인연'], ['感情', '감정'], ['絆', '유대'], ['グッドステータス', '굿 스테이터스'], ['バッドステータス', '배드 스테이터스'], ['高揚', '고양'], ['祝福', '축복'], ['加速', '가속'], ['鉄壁', '철벽'], ['神撃', '신격'], ['無双', '무쌍'],
+  ['猛毒', '맹독'], ['呪縛', '주박'], ['足止', '발묶임'], ['恐怖', '공포'], ['負傷', '부상'], ['混乱', '혼란'], ['武器', '무기'], ['補助武器', '보조무기'], ['防具', '방어구'], ['補助防具', '보조방어구'], ['装身具', '장식품'], ['種別', '종별'],
+  ['アイテム', '아이템'], ['方陣', '방진'], ['兵器', '병기'], ['霊測', '영측'], ['薬品', '약품'], ['乗物', '탈것'], ['護符', '호부'], ['華札', '화투'], ['ブースト', '부스트'], ['難易度', '난이도'], ['下級 · 中級 · 上級 · 特級', '하급 · 중급 · 상급 · 특급'], ['常夜 · 現世', '상야 · 현세'],
   ...JA_F.map((j, i) => [j, FIELDS[i]]), ...JA.flatMap((col, f) => col.map((j, r) => [j, SK[f][r]]))];
 document.getElementById('gl').innerHTML = GL.map(([j, k]) => `<span><i>${j}</i>${k}</span>`).join('');
 
