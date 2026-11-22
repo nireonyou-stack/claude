@@ -58,3 +58,5 @@
 - 커밋 제목 꼴: `[시트 이름] New Sheet: …` · `[시트 이름] Bugfix: …`
 - 새 시트 PR 은 `?expand=1&template=new_sheet.md` 를 붙인 compare 링크로 연다 (게임 정보 · 체크리스트 양식). 룰 텍스트 칸은 블러드문 · 둘이서 수사 모두 체크 + 설명(게임 용어만 / 공식 시트 인쇄 문구만)
 - PR 봇의 알림 중 `translation.json 없음` · `새 시트라 DB 등록 필요` 는 정보일 뿐 — 고칠 것 없음
+- 병합 상자의 `Character Sheet Validation — Pull Request failed to validate` 는 **새 시트면 늘 실패** — Roll20 이 사이트 쪽 설정을 하기 전에 실수로 병합하지 않게 두는 표시 (관리자 답변: #14724 · #15273). 구체적 문제(예: sheet.json 없음)를 적지 않으면 무시 (시노비가미 #15704)
+- 관리자가 다른 새 시트 PR 에서 고치라고 한 것: `<html>` · `<head>` · `<body>` 태그 빼기, script 요소는 하나로, `<table>` 금지, PR 체크리스트 문구 그대로 두기, 번역 파일은 Crowdin 으로만
