@@ -35,11 +35,11 @@ textarea{resize:none;display:block}
 .tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
 
 /* 1단: 제목 · 그림 | 프로필 | 능력치 · 개성 특기 */
-.r1{display:grid;grid-template-columns:190px minmax(0,1fr) 220px;gap:8px}
+.r1{display:grid;grid-template-columns:236px minmax(0,1fr) 196px;gap:8px}
 .title{display:flex;flex-direction:column;gap:6px}
 .logo{background:var(--bar);color:#fff;padding:10px 8px 8px;text-align:center;border-bottom:4px solid var(--accent);border-radius:0 0 12px 0}
 .logo .t0{font:700 10px var(--sans);letter-spacing:.18em;opacity:.8}
-.logo .t1{font:400 31px/1.05 var(--head);color:#fff}
+.logo .t1{font:400 31px/1.05 var(--head);color:#fff;white-space:nowrap}
 .logo .t1 b{font-weight:400;color:var(--accent)}
 .logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--accent);color:#fff;font:700 12px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:6px;
   background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(-45deg,transparent 50%,#fff 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
@@ -53,7 +53,7 @@ textarea{resize:none;display:block}
 .pr2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:8px}
 .stats{display:flex;flex-direction:column;gap:6px}
 .stats .sv,.stats .kos{flex:1}
-.sv{display:grid;grid-template-columns:62px 40px minmax(0,1fr);align-items:center;gap:6px;border:1.5px solid var(--ink);padding:4px 6px;border-radius:0 0 8px 0}
+.sv{display:grid;grid-template-columns:54px 36px minmax(0,1fr);align-items:center;gap:6px;border:1.5px solid var(--ink);padding:4px 6px;border-radius:0 0 8px 0}
 .sv .chip{font:400 15px/1 var(--head)}
 .sv input{height:30px;text-align:center;font:900 22px/1 var(--sans);border-bottom:2px solid var(--accent);padding:0}
 .pf{display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1.5px solid var(--accent);color:var(--accent);background:#fff;border-radius:14px;height:24px;padding:0 6px;cursor:pointer;font:700 11px var(--sans);white-space:nowrap}
@@ -63,7 +63,7 @@ textarea{resize:none;display:block}
 .kos input{height:24px;border-bottom:1px dotted var(--sub)}
 
 /* 2단: 특기 리스트 | 아이돌 링크 */
-.r2{display:grid;grid-template-columns:minmax(0,1fr) 214px;gap:8px}
+.r2{display:grid;grid-template-columns:minmax(0,1fr) 184px;gap:8px}
 .r2>.panel:first-child{display:flex;flex-direction:column}
 .r2>.panel:first-child .grid{flex:1}
 .grid{display:grid;grid-template-columns:22px repeat(5,minmax(0,1fr) 12px) minmax(0,1fr);grid-template-rows:28px repeat(11,minmax(24.5px,1fr));padding:3px;position:relative}
@@ -251,7 +251,7 @@ textarea{resize:none;display:block}
     <div class="title">
       <div class="logo">
         <div class="t0">IDOL START RPG</div>
-        <div class="t1">비기닝<br><b>아이돌</b></div>
+        <div class="t1">비기닝 <b>아이돌</b></div>
         <select id="route" aria-label="노선"><option value="tiara">티아라 노선 캐릭터 시트</option><option value="crown">크라운 노선 캐릭터 시트</option></select>
       </div>
       <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
@@ -395,7 +395,7 @@ const grid = document.getElementById('grid'), cells = {};
         inp.oninput = () => { st.free[id] = inp.value; };
         const b = el('button', 'dic'); b.type = 'button'; b.title = '판정'; b.onclick = () => rollSkill(i, r);
         c.append(inp, b);
-      } else { const n = el('button', 'n' + (SK[i][r].length >= 5 ? ' long' : ''), SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정'; n.onclick = () => rollSkill(i, r); c.append(n); }
+      } else { const n = el('button', 'n' + (SK[i][r].length >= 6 ? ' long' : ''), SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정'; n.onclick = () => rollSkill(i, r); c.append(n); }
       const tn = el('span', 'tn'); c.append(tn); grid.append(c); cells[id] = tn;
     });
   }
