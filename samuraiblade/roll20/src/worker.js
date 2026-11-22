@@ -40,7 +40,8 @@ const calcTargets = () => getAttrs(SKILL_IDS, v => {
 });
 on([...SKILL_IDS.map(k => `change:${k.toLowerCase()}`), 'sheet:opened'].join(' '), calcTargets);
 
-// ── 생명력 총합 = 기본치 + 장비품
+// ── 생명력 기본치 = 레벨 (룰북 113쪽 ⑨, 레벨이 바뀌면 다시 맞춤 · 그 뒤 손으로 고쳐도 됨) · 총합 = 기본치 + 장비품
+on('change:level', () => getAttrs(['level'], v => { const lv = num(v.level); if (lv != null) setAttrs({ hp_base: lv }); }));
 on('change:hp_base change:hp_equip sheet:opened', () => getAttrs(['hp_base', 'hp_equip'], v => {
   const b = num(v.hp_base), e = num(v.hp_equip);
   setAttrs({ hp_max: b == null && e == null ? '' : (b || 0) + (e || 0) }, { silent: true });
@@ -82,7 +83,8 @@ const withCtx = (extra, cb) => getAttrs([...CTX, ...extra], v => cb(v, targets(v
 
 // 판정: 2D6 + 부스트 1 마다 1D6, 모두 더함. 처음 두 주사위 합 ≥ 스페셜치 → 스페셜, ≤ 펌블치 → 펌블, 아니면 합 + 수정이 목표치 이상이면 성공.
 // 목표치 = 기본 목표치 + 난이도 (BS 주박이면 한 단계 위). 【각성】 부스트 +1, 공격(타이밍에 '공격') 때 GS 고양 부스트 +1
-function check(v, T, { title, id, attack = false, eff, head }) {
+//   blade: 무령도 공격 — 이동 / 전력을 묻고 대미지를 계산 (dmg · dkind · dhow)
+function check(v, T, { title, id, attack = false, eff, head, blade }) {
   const p = pos(id), base = T[id];
   const sel = [0, 5, 10, 15].includes(num(v.dif)) ? num(v.dif) : 0, curse = on1(v.bs2) ? 5 : 0, dif = Math.min(15, sel + curse);
   const boost = Math.max(0, num(v.boost) || 0) + (on1(v.awakened) ? 1 : 0) + (attack && on1(v.gs1) ? 1 : 0);
@@ -91,10 +93,21 @@ function check(v, T, { title, id, attack = false, eff, head }) {
     fb !== 2 && `펌블치 ${fb}`, sp !== 12 && `스페셜치 ${sp}`].filter(Boolean).join(' · ');
   const notes = [curse && 'BS 주박 · 난이도 한 단계 위', on1(v.awakened) && '각성 · 부스트 +1', attack && on1(v.gs1) && 'GS 고양 · 부스트 +1'].filter(Boolean).join(' / ');
   const ks = Array.from({ length: nd }, (_, i) => `d${i + 1}`);
-  const s = `${prefix(v)}${TPL} {{ok=[[0]]}} {{total=[[0]]}} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')}${m ? field('add', sgn(m)) : ''}${field('title', title)}${field('sub', sub)}${field('note', notes)}${field('eff', eff)}`;
+  const bq = blade ? ' {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}} {{full=[[?{공격|이동공격,0|전력공격 (대미지 +1),1}]]}}' : '';
+  const s = `${prefix(v)}${TPL} {{ok=[[0]]}} {{total=[[0]]}}${bq} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')}${m ? field('add', sgn(m)) : ''}${field('title', title)}${field('sub', sub)}${field('note', notes)}${field('eff', eff)}`;
   post(s, R => {
     const two = R.d1.result + R.d2.result, tot = ks.reduce((a, k) => a + R[k].result, 0) + m;
-    return { ok: two >= sp ? 1 : two <= fb ? 2 : t == null ? 0 : tot >= t ? 3 : 4, total: tot };
+    const out = { ok: two >= sp ? 1 : two <= fb ? 2 : t == null ? 0 : tot >= t ? 3 : 4, total: tot };
+    if (blade) {
+      const full = R.full.result === 1, parts = [`무기 ${blade.base}`];
+      let d = blade.base + (full ? 1 : 0) + (blade.gs5 ? 1 : 0) - (blade.bs4 ? 1 : 0);
+      if (full) parts.push('전력 +1');
+      if (blade.gs5) parts.push('GS 신격 +1');
+      if (blade.bs4) parts.push('BS 공포 −1');
+      d = Math.max(0, d);
+      Object.assign(out, { dmg: d, dkind: full ? '전력공격' : '이동공격', dhow: parts.length > 1 ? `(${parts.join(' ')})` : '' });
+    }
+    return out;
   });
 }
 
@@ -115,10 +128,12 @@ for (let lv = 2; lv <= 7; lv++) {
     check(v, T, { title: `【${nm}】`, id: s.id, attack: /공격/.test(tim), eff: v[`ab${lv}_effect`], head: [tim, `《${sk}》`].filter(Boolean).join(' · ') });
   }));
 }
-on('clicked:mr', () => withCtx(['mr_skill', 'mr_dmg'], (v, T) => {
-  const sk = (v.mr_skill || '').replace(/[《》]/g, '').trim(), s = findSkill(sk), d = (v.mr_dmg || '').trim(), eff = `이동공격 ${d || '　'}점 / 전력공격에는 +1점`;
+// 【† 무령도】 (룰북 142쪽): 장비한 무령도의 【종별】 특기로 공격 — 기능 칸이 비면 장비품 「무기」의 종별을 쓴다.
+//   이동공격은 무령도 대미지, 전력공격은 +1점
+on('clicked:mr', () => withCtx(['mr_skill', 'mr_dmg', 'eq1_type', 'gs5', 'bs4'], (v, T) => {
+  const sk = ((v.mr_skill || '').trim() || (v.eq1_type || '').trim()).replace(/[《》]/g, ''), s = findSkill(sk), d = (v.mr_dmg || '').trim(), eff = `이동공격 ${d || '　'}점 / 전력공격에는 +1점`;
   if (!s) return info(v, { title: '【† 무령도】', sub: '이동공격 · 전력공격', eff });
-  check(v, T, { title: '【† 무령도】', id: s.id, attack: true, eff, head: `이동공격 · 전력공격 · 《${sk}》` });
+  check(v, T, { title: '【† 무령도】', id: s.id, attack: true, eff, head: `이동공격 · 전력공격 · 《${sk}》`, blade: { base: Math.max(0, num(d) || 0), gs5: on1(v.gs5), bs4: on1(v.bs4) } });
 }));
 PRINTED.forEach(([n, cond, tim, tgt, cnt, ef], i) => on(`clicked:pab${i + 1}`, () => getAttrs(['roll_display_to'], v => info(v, { title: `【${n}】`, sub: `조건 ${cond} · 타이밍 ${tim} · 대상 ${tgt} · 회수 ${cnt}`, eff: ef }))));
 

@@ -27,7 +27,7 @@ PRINTED = [('무령각성', '혼백사', '선언', '없음', '없음', '자신',
            ('혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화투동조】와 같은 효과. 세션 종료 시 【은퇴】')]
 GS = [('고양', '공격판정에 부스트+1한다'), ('축복', '방어판정에 부스트+1한다'), ('가속', '통상 이동공격은 +1칸, 전력이동은 +2칸한다.'),
       ('철벽', '자신이 받는 대미지가 1점 감소한다.'), ('신격', '자신이 부여하는 대미지를 1점 추가한다.'), ('무쌍', '【대상:단일】을 【대상:라인】으로 변경.')]
-BS = [('맹독', '수동행동을 실행할 때 1점의 대미지를 받는다.'), ('주박', '모든 판정 난이도가 1단계 상승한다. (행위판정에 +5)'),
+BS = [('맹독', '차례의 행동을 할 때마다 1점의 대미지를 받는다.'), ('주박', '모든 판정 난이도가 1단계 상승한다. (행위판정에 +5)'),
       ('발묶임', '이동공격을 할 수 없고, 전력이동은 1칸 이동이 된다.'), ('공포', '자신이 부여하는 대미지가 1점 감소한다 (0점이라면 대미지가 부여X)'),
       ('부상', '자신이 받는 대미지가 1점 추가된다.'), ('혼란', '【횟수: 사이클】과 【횟수:배틀】어빌리티 사용불가.')]
 EQUIP = ['무기', '보조무기', '방어구', '보조방어구', '장식품']
@@ -81,8 +81,10 @@ def status(key, rows):
 
 
 def equip():
+    # 공식 시트: 장비품 · 종별 · 간격 · 효과 (효과는 둘째 줄)
     return '\n'.join(f'<div class="qr"><b>{k}</b><input type="text" name="attr_eq{i}_name" title="{k}"><input type="text" class="s" name="attr_eq{i}_type" title="종별">'
-                     f'<input type="text" class="s" name="attr_eq{i}_range" title="간격"></div>' for i, k in enumerate(EQUIP, 1)) + '\n<div class="qr qn">장식품은 전투시 사용불가</div>'
+                     f'<input type="text" class="s" name="attr_eq{i}_range" title="간격"><input type="text" class="ef" name="attr_eq{i}_effect" title="{k} 효과"></div>'
+                     for i, k in enumerate(EQUIP, 1)) + '\n<div class="qr qn">장식품은 전투시 사용불가</div>'
 
 
 def items():

@@ -29,6 +29,10 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   // ── 생명력 총합
   s.set('hp_base', '12'); s.set('hp_equip', '2'); await s.settle();
   eq('hp total', g(s, 'hp_max'), ['14']);
+  s.set('level', '7'); await s.settle();
+  eq('level → life base (p.113)', g(s, 'hp_base', 'hp_max'), ['7', '9']);
+  eq('equipment effect fields', (HTML.match(/name="attr_eq\d_effect"/g) || []).length, 5);
+  eq('poison wording', /차례의 행동을 할 때마다 1점의 대미지/.test(HTML), true);
 
   // ── 판정: 난이도 · 부스트 · 각성 · 주박 · 고양
   s = makeSim(HTML, { dice: [5, 4, 3, 1, 1, 6, 6, 2, 3, 3, 3, 3, 4, 4, 4] }); s.open(); await s.settle();
@@ -89,6 +93,18 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.click('nd2'); await s.settle();
   eq('2D6', last(s).computed, { total: 6 });
   eq('gm whisper roll button', /name="roll_gmw"[^>]*value="\/w gm &\{template:samuraiblade\} \{\{plain=\?\{GM 에게 귓속말\}\}\}"/.test(HTML), true);
+
+  // ── 무령도 (142쪽): 기능이 비면 무기 종별 · 이동/전력 · 신격/공포
+  s = makeSim(HTML, { dice: [4, 4, 3, 3], queries: { '공격': '1' } }); s.open(); await s.settle();
+  s.set('D6', '1'); s.set('eq1_type', '도검'); s.set('mr_dmg', '2'); s.set('gs5', '1'); await s.settle();
+  s.click('mr'); await s.settle();
+  has('blade falls back to weapon type', last(s).macro, '《도검》');
+  has('blade computed first', last(s).macro, '{{ok=[[0]]}} {{total=[[0]]}} {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}} {{full=[[?{공격|이동공격,0|전력공격 (대미지 +1),1}]]}}');
+  eq('full attack 2 +1 +1', [last(s).computed.dmg, last(s).computed.dkind, last(s).computed.dhow], [4, '전력공격', '(무기 2 전력 +1 GS 신격 +1)']);
+  s = makeSim(HTML, { dice: [4, 4], queries: { '공격': '0' } }); s.open(); await s.settle();
+  s.set('D6', '1'); s.set('mr_skill', '도검'); s.set('mr_dmg', '1'); s.set('bs4', '1'); await s.settle();
+  s.click('mr'); await s.settle();
+  eq('move attack 1 −1 = 0', [last(s).computed.dmg, last(s).computed.dkind], [0, '이동공격']);
 
   const errs = s.log.filter(l => l[0] === 'ERROR');
   eq('no worker errors', errs.map(e => e[1].split('\n')[0]), []);
