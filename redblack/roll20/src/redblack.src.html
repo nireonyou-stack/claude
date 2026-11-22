@@ -1,0 +1,125 @@
+<!-- 적과 흑 (한국어) — 세로 830px. 배치: 공식 「날조 미스터리 TRPG 적과 흑」 캐릭터 시트를 세로로. 목업: redblack/roll20/mockup.html
+     @ 표시 자리는 build.py 가 채운다. 주사위 대신 트럼프: 카드 패드로 낸 카드를 고르고, 마법 말풍선이 〔기동〕 조건을 계산한다. -->
+<input type="hidden" name="attr_sheet_version" value="0">
+<div class="rb">
+
+  <!-- 1단: 자기 증명 + 제목 · 상세 정보 | 초상 -->
+  <div class="r1">
+    <div class="idn">
+      <div class="sec"><b>자기 증명</b><i>IDENTITY</i></div>
+      <div class="ir orn"><b>계보</b><div class="f"><input type="text" name="attr_lineage" title="계보"></div></div>
+      <div class="ir orn nm"><b>이름·칭호</b><div class="f"><input type="text" name="attr_character_name" title="이름·칭호"></div></div>
+      <div class="ir orn"><b>작위</b><div class="f"><div class="two">
+        <span class="seg"><input type="radio" class="hid" name="attr_rank" value="" checked><label class="sgk"><input type="radio" name="attr_rank" value="영주"><span>영주</span></label><label class="sgk"><input type="radio" name="attr_rank" value="추기경"><span>추기경</span></label></span><span></span>
+        <b>성별·나이</b><input type="text" name="attr_gender_age" title="성별·나이"></div></div></div>
+      <div class="ir orn"><b>위장·파벌</b><div class="f"><input type="text" name="attr_disguise" title="위장·파벌"></div></div>
+      <div class="ir orn"><b>출신</b><div class="f"><input type="text" name="attr_origin" title="출신"></div></div>
+      <div class="ir orn"><b>원리</b><div class="f"><input type="text" name="attr_principle" title="원리"></div></div>
+      <div class="ir orn"><b>마법 체계</b><div class="f"><div class="tri"><input type="text" name="attr_ms1" title="마법 체계 1"><span>/</span><input type="text" name="attr_ms2" title="마법 체계 2"><span>/</span><input type="text" name="attr_ms3" title="마법 체계 3"></div></div></div>
+      <div class="lower">
+        <div class="logo"><div class="v">날조 미스터리 TRPG</div><div class="big"><em>적</em>과 흑</div><div class="v">캐릭터 시트</div></div>
+        <div class="det orn"><span class="tg">상세 정보</span><textarea name="attr_detail" title="상세 정보"></textarea></div>
+      </div>
+    </div>
+    <div class="por">
+      <div class="sec"><b>초상</b><i>PORTRAIT</i></div>
+      <div class="lm"><label class="lmk orn"><b>로직</b><input type="number" name="attr_logic" title="로직"></label><label class="lmk orn"><b>매직</b><input type="number" name="attr_magic" title="매직"></label></div>
+      <div class="portrait orn"><img name="attr_character_avatar" alt=""></div>
+    </div>
+  </div>
+
+  <!-- 2단: HP · 마력 (+ 사건 보고서 줄: 현재 값 · 영광) -->
+  <div class="sec"><b>HP · 마력</b><i>HP / ETHER</i></div>
+  <div class="hpr">
+    <div class="hp orn"><b>HP</b><div class="f">초기치 /<input type="number" name="attr_hp_init" title="HP 초기치"><span class="sp"></span>복원치 /<input type="number" name="attr_hp_restore" title="HP 복원치"></div></div>
+    <div class="hp orn"><b>흑의 마력</b><div class="f">초기치 /<input type="number" name="attr_mb_init" title="흑의 마력 초기치"></div></div>
+    <div class="hp orn"><b class="rbg">적의 마력</b><div class="f">초기치 /<input type="number" name="attr_mr_init" title="적의 마력 초기치"></div></div>
+  </div>
+  <div class="rep"><span>사건 보고서</span>
+    <label class="rpk">HP<span class="now"><input type="number" name="attr_hp" title="현재 HP"><small>/ <span name="attr_hp_init"></span></small></span></label>
+    <label class="rpk">흑의 마력<input type="number" name="attr_mb" title="현재 흑의 마력"></label>
+    <label class="rpk r">적의 마력<input type="number" name="attr_mr" title="현재 적의 마력"></label>
+    <label class="rpk">영광<input type="number" name="attr_glory" title="영광"></label>
+  </div>
+
+  <!-- 카드 패드 띠 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">흑</span><!--@PAD_B-->
+      <span class="sp"></span>
+      <span class="tl">공개</span><span class="seg"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span>
+    </div>
+    <div class="sr">
+      <span class="tl rt">적</span><!--@PAD_R-->
+      <span class="sp"></span>
+      <button type="roll" class="gmb" name="roll_gmw" title="GM 에게 귓속말 (물음 창)" value="/w gm &{template:redblack} {{title=GM 에게}} {{en=WHISPER}} {{plain=?{GM 에게 귓속말}}}"><i></i>GM 귓속말</button>
+    </div>
+    <div class="sr">
+      <span class="tl">낸 카드</span><div class="hand"><!--@HAND--></div>
+      <span class="sum">흑 <span class="sv" name="attr_sum_b">0</span> · <span class="r">적 <span class="sv" name="attr_sum_r">0</span></span> · <span name="attr_sum_n">0</span>장</span>
+      <button type="action" class="pbtn" name="act_clr">비우기</button>
+    </div>
+    <div class="sr">
+      <span class="tl">고발</span>
+      <span class="ckn">위력<input type="number" name="attr_acc_power" title="위력"></span>
+      <span class="ckn">횟수<input type="number" name="attr_acc_count" title="횟수"></span>
+      <button type="action" class="pbtn dk" name="act_atk">고발 공격</button>
+      <span class="sp"></span>
+      <span class="ckn">어택<input type="number" name="attr_attack" title="어택"></span>
+      <span class="ckn">실드<input type="number" name="attr_shield" title="실드"></span>
+    </div>
+  </div>
+
+  <!-- 3단: 문장 -->
+  <div class="sec"><b>문장</b><i>UNLOCK</i></div>
+  <div class="g3">
+<!--@CRESTS-->
+  </div>
+
+  <!-- 4단: 기본 선언 -->
+  <div class="sec"><b>기본 선언</b><i>BASIC CALLING</i></div>
+  <div class="g3">
+<!--@BASIC-->
+  </div>
+
+  <!-- 5단: 상급 선언 -->
+  <div class="sec"><b>상급 선언</b><i>NOBLE CALLING</i></div>
+  <div class="g3">
+<!--@NOBLE-->
+  </div>
+
+  <!-- 6단: 권한 마법 -->
+  <div class="sec"><b>권한 마법</b><i>BATTLE MAGIC</i></div>
+  <div class="g3">
+<!--@AUTH-->
+  </div>
+
+  <!-- 7단: 룰 개요 (공식 시트 인쇄) -->
+  <div class="rule">
+    <div class="rh"><b>룰 개요</b><span>숫자 카드 = 숫자 · 그림 카드 = 10 · A 카드 = 15 · 광대 = 15</span></div>
+    <div class="rg">
+      <div>
+        <div class="rgh">■ 프로젝트 진행 (⇒ 기본 44쪽)</div>
+        <div class="kv"><b class="d">도입</b><span>시나리오 도입 / 사용 룰 설명</span><b class="d">반면 구축</b><span>반면 상황 / 등장 캐스트 소개</span><b class="d">선언 국면</b><span>선언 마법에 의한 조사 / 날조</span><b class="d">고발 국면</b><span>고발 / 원호 중 하나를 골라 전투 (선언 국면과 반복)</span><b class="d">종국</b><span>결말 마법으로 엔딩을 결정</span><b class="d">성장</b><span>로직이나 매직 획득 / 캐릭터 성장</span></div>
+        <div class="rgh">■ 재초기화 · 차례 결정 (⇒ 기본 53쪽)</div>
+        <div class="kv"><b class="d">재초기화</b><span>5장 세트 (3장 공개) 를 인원수만큼 준비. 앞 국면의 차례 순으로 세트 1개를 고른다.</span><b class="d">차례 결정</b><span>손패 1장을 순패로 고른다. 공개해 숫자가 큰 순으로 차례. 같은 값은 뒤집어 최소로 취급. 앞 차례의 첫 번째는 순패를 뒤집은 채로.</span></div>
+      </div>
+      <div>
+        <div class="rgh">■ 선언 국면 (⇒ 기본 52쪽)</div>
+        <p>손패를 플레이해 선언 마법을 기동. 조사, 날조를 하고 선언을 모은다.</p>
+        <div class="kv"><b>등록</b><span>정보를 고발에 쓸 수 있도록 기록하는 것</span><b>선언</b><span>등록되어 선언 기록에 배치된 정보</span><b>각본</b><span>미리 준비된 정보, 마력 입수 가능</span><b>조서</b><span>고발 국면에서 답해야 할 수수께끼</span></div>
+        <div class="rgh">■ 선언 강도 (⇒ 기본 47쪽)</div>
+        <p>진실은 환상을 이기고, 먼저 등록된 선언이 이긴다.</p>
+        <div class="kv"><b>진실</b><span>선언 마법의 증언, GM 의 선언 등으로 얻은 정보</span><b>환상</b><span>선언 마법 등으로 날조한 정보</span><b>비밀</b><span>내용 비닉으로 등록된 선언, 공개 조건 있음</span></div>
+      </div>
+      <div>
+        <div class="rgh">■ 고발 국면 (⇒ 기본 70쪽)</div>
+        <p>차례에는 고발 / 원호 중 하나를 선택.</p>
+        <div class="kv"><b class="d">고발 선택 때</b><span>조서에 답을 시도 / 고발 때용 권한 마법을 기동</span><b>고발 성립</b><span>GM 이 검증해 답이 된다고 인정할 것. 성립 보너스를 얻는다.<span class="li">조서에 대한 답일 것</span><span class="li">캐스트나 오브젝트가 표준일 것</span><span class="li">논거가 필요하면 선언을 고를 것</span><span class="li">진실, 다른 고발과 모순되지 않을 것</span></span>
+          <b>성립 보너스</b><span>진영 전체의 마력 획득, 문장 해금, 고발 공격 실시 등</span><b>고발 공격</b><span>위력 × 횟수 대미지를 적대 진영에 준다</span><b>정답 보너스</b><span>시나리오에서 설정된 정답이었을 때 획득</span><b class="d">원호</b><span>원호 때용 권한 마법을 기동한다</span><b class="d">권한 마법</b><span>고발 국면에서 쓸 수 있는 전투용 마법</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->
