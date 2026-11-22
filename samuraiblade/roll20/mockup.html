@@ -1,0 +1,520 @@
+<title>사무라이 블레이드 시트 목업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Song+Myung|Noto+Sans+KR:400,500,700,900&display=swap">
+<style>
+/* 한 장짜리 목업: 세로 830px 시트(공식 「사무라이 블레이드 TRPG」 캐릭터 시트) + Roll20 채팅 카드.
+   흰 종이 · 먹색 띠 · 주홍 하나(화찰의 붉은 단책). 값은 예시 */
+:root{--paper:#ffffff;--ink:#161616;--sub:#5e5e5e;--line:#c6c6c6;--cell:#f3f3f3;--bar:#161616;--page:#e3e3e3;
+  --accent:#c2361f;--soft:#fbe9e5;--navy:#1f3566;--green:#247305;
+  --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--head:'Song Myung','Noto Serif KR',serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+h1.pg{font:900 18px/1.3 var(--sans);margin:0 0 4px;text-wrap:balance}
+p.pg{margin:0 0 12px;color:var(--sub);font-size:12px;max-width:1150px}
+.wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.scroll{overflow-x:auto;max-width:100%}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],textarea{border:0;background:transparent;width:100%;min-width:0;padding:0 4px;outline:0}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+textarea{resize:none;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ── 시트 ── */
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
+.bx{border:1.5px solid var(--ink)}
+.hb{background:var(--bar);color:#fff;font:400 15px/1 var(--head);padding:5px 8px 4px;display:flex;align-items:center;gap:6px;letter-spacing:.06em}
+.hb small{font:400 10.5px var(--sans);opacity:.85;letter-spacing:0}
+.hb .sp{flex:1}
+.lb{font:400 13px/1 var(--head);white-space:nowrap}
+.sp{flex:1}
+.tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
+.ck{appearance:none;-webkit-appearance:none;width:13px;height:13px;margin:0;border:1.3px solid var(--ink);background:#fff;cursor:pointer;flex:none}
+.ck:checked{background:linear-gradient(45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%)}
+.cks{display:inline-flex;gap:2px}
+.sheet .bx input.ck{height:13px;width:13px;padding:0}
+.sheet input.ck.cnt:checked{background:var(--ink)}
+
+/* 1단: 제목 · 그림 | 프로필 | 생명력 · 공적점 */
+.r1{display:grid;grid-template-columns:180px minmax(0,1fr) 190px;gap:8px}
+.title{display:flex;flex-direction:column;gap:6px}
+.logo{background:var(--bar);color:#fff;text-align:center;padding:12px 6px 10px;border-radius:50% 50% 0 0/30% 30% 0 0;border-bottom:4px solid var(--accent)}
+.logo .t0{font:700 10px var(--sans);letter-spacing:.12em;opacity:.8}
+.logo .t1{font:400 30px/1.05 var(--head)}
+.logo .t2{font:400 11px var(--head);opacity:.85}
+.portrait{flex:1;min-height:120px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
+.prof{display:grid;grid-template-columns:1fr 1fr;align-content:start}
+.pf{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px;border-bottom:1px solid var(--line);padding:0 6px;min-height:28px}
+.pf:nth-child(odd){border-right:1px solid var(--line)}
+.pf input{height:24px}
+.pf.w{grid-column:1/-1;border-right:0}
+.pf.nm input{font:700 16px var(--sans)}
+.pf .sk2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,.9fr);align-items:center;gap:4px}
+.pf .sk2 span{font:400 11px var(--head);color:var(--sub)}
+.hp{display:flex;flex-direction:column}
+.hp .rows{padding:4px 8px;display:flex;flex-direction:column;gap:2px}
+.hp .row{display:grid;grid-template-columns:minmax(0,1fr) 52px;align-items:center;border-bottom:1px solid var(--line)}
+.hp .row input{height:24px;text-align:center;font:900 15px var(--sans)}
+.hp .row.tot{border-bottom:0;border-top:2px solid var(--ink)}
+.hp .row.tot input{font-size:20px;color:var(--accent)}
+.hp .now{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;background:var(--soft)}
+.hp .now input{width:56px;height:28px;text-align:center;font:900 20px var(--sans);border-bottom:2px solid var(--accent)}
+.awk{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--line);font-size:10.5px;color:#333}
+.awk b{font:400 18px/1 var(--head);color:var(--accent)}
+.awk .ck{width:16px;height:16px}
+.merit{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1.5px solid var(--ink)}
+.merit input{height:26px;text-align:right;font:900 16px var(--sans)}
+
+/* 2단: 특기 리스트 (괄호 = 목표치, 번호 오른쪽, 壱~陸 = 1D6 분야) */
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr)) 26px;grid-template-rows:30px repeat(11,25px);padding:4px;column-gap:3px}
+.no{background:var(--bar);color:#fff;font:400 14px/1 var(--head);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.no.corner{border-bottom:0;background:transparent}
+.fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;font:400 16px/1 var(--head)}
+.fh i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;transform:rotate(45deg);background:#fff}
+.fh i b{transform:rotate(-45deg);color:var(--ink);font:400 11px/1 var(--head)}
+.c{position:relative;display:flex;align-items:center;gap:2px;padding:0 3px 0 15px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.c .own{position:absolute;left:3px;top:50%;transform:translateY(-50%);appearance:none;-webkit-appearance:none;width:9px;height:9px;margin:0;border:1px solid var(--line);border-radius:50%;cursor:pointer;background:var(--paper)}
+.c .own:checked{border-color:var(--accent);background:var(--accent)}
+.c .n{border:1px solid transparent;background:none;padding:0 4px;border-radius:10px;font:400 14px/18px var(--head);cursor:pointer;white-space:nowrap}
+.c .n:hover{text-decoration:underline}
+.c .own:checked~.n{border:1.5px solid var(--accent)}
+.c .tn{margin-left:auto;font:700 11px/1 var(--sans);color:var(--navy);white-space:nowrap}
+.c .tn::before{content:"(";color:var(--sub);font-weight:400}
+.c .tn::after{content:")";color:var(--sub);font-weight:400}
+
+/* 판정 띠 */
+.strip{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);font-size:11.5px}
+.sr{display:flex;align-items:center;gap:4px;padding:3px 2px;flex-wrap:wrap;min-height:28px}
+.sr+.sr{border-top:1px dotted var(--line)}
+.seg{display:inline-flex;border:1px solid var(--ink)}
+.seg label{cursor:pointer}
+.seg input{display:none}
+.seg span{display:block;padding:0 6px;font:500 11.5px/18px var(--sans)}
+.seg label+label span{border-left:1px solid var(--ink)}
+.seg input:checked+span{background:var(--accent);color:#fff}
+.fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:900 14px/1.2 var(--sans);color:var(--accent)}
+.fum.spc b{border-bottom-color:var(--green);color:var(--green)}
+.adj{display:inline-flex;flex-direction:column;gap:1px;margin-left:1px}
+.adj button{position:relative;width:12px;height:8px;padding:0;border:1px solid var(--line);background:#fff;color:var(--sub);cursor:pointer}
+.adj button::after{content:"";position:absolute;left:2px;top:1px;border-left:3px solid transparent;border-right:3px solid transparent}
+.adj .up::after{border-bottom:4px solid currentColor}
+.adj .dn::after{border-top:4px solid currentColor}
+.adj button:hover,.rs:hover{color:var(--accent)}
+.rs{position:relative;width:12px;height:14px;padding:0;border:0;background:none;color:#c8c8c8;cursor:pointer}
+.rs::before{content:"";position:absolute;inset:2px;border:1.5px solid currentColor;border-radius:50%;border-right-color:transparent}
+.rs::after{content:"";position:absolute;right:1px;top:0;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;border-right:4px solid currentColor;transform:rotate(-35deg)}
+.rs.on{color:var(--accent)}
+.rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 6px;cursor:pointer;font:500 11.5px/18px var(--sans)}
+.rt:hover{border-color:var(--accent);color:var(--accent)}
+.rt .tdi{display:inline-block;flex:none;width:10px;height:10px;margin-right:3px;border:1px solid currentColor;border-radius:2px;color:#c8c8c8;
+  background-image:radial-gradient(circle at 27% 27%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 50% 50%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 73% 73%,currentColor .8px,transparent 1.2px)}
+.rt:hover .tdi{color:inherit}
+.rtg{display:inline-flex}
+.rtg .rt+.rt{border-left:0}
+.gmb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);background:#fff;padding:0 8px 0 6px;font:500 11.5px/18px var(--sans);cursor:pointer}
+.gmb:hover{border-color:var(--accent);color:var(--accent)}
+.gmb i{position:relative;display:inline-block;width:13px;height:9px;border:1.3px solid currentColor;border-radius:3px;margin-bottom:2px}
+.gmb i::after{content:"";position:absolute;left:1px;bottom:-4px;border-top:3px solid currentColor;border-right:3px solid transparent}
+.ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
+.ckn input{width:22px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
+.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+
+.strip .seg.dif span{padding:0 5px}
+
+/* 3단: 어빌리티 */
+.ah,.ar{display:grid;grid-template-columns:22px 30px 96px 60px 50px 52px 34px 34px 50px minmax(0,1fr) 46px;align-items:stretch}
+.ah{font:700 10px var(--sans);text-align:center;color:var(--sub);border-bottom:1px solid var(--ink)}
+.ah span{padding:2px 0}
+.ar{min-height:25px;border-bottom:1px solid var(--line)}
+.ar:last-child{border-bottom:0}
+.ar>*{border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px}
+.ar>:first-child{border-left:0}
+.ar input{height:23px;text-align:center;font-size:11.5px}
+.ar .an{justify-content:flex-start}
+.ar .an input{text-align:left;font:400 13.5px var(--head)}
+.ar .ef{justify-content:flex-start;text-align:left}
+.ar textarea{font-size:11px;line-height:1.35;min-height:22px;padding:2px 4px}
+.ar.pr{background:#fafafa}
+.ar.pr .an{font:400 13.5px var(--head);padding-left:4px}
+.ar.pr .ef{padding:2px 4px;font-size:10.5px;line-height:1.35}
+.ar .lv{font:900 13px var(--sans)}
+
+/* 4단: 사명 · 삶의 방식 | 연 / GS · BS | 장비품 / 아이템 */
+.r4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.mis .mr{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--line);padding:0 6px;min-height:26px}
+.mis .mr input{height:24px}
+.mis .mr b{font:400 13px var(--head);white-space:nowrap}
+.en .eh,.en .er{display:grid;grid-template-columns:minmax(0,1fr) 110px 30px;align-items:center}
+.en .eh{font:400 12px var(--head);text-align:center;border-bottom:1px solid var(--ink)}
+.en .er{border-bottom:1px solid var(--line);min-height:26px}
+.en .er>*{border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;height:100%}
+.en .er>:first-child{border-left:0}
+.en .er input{height:24px}
+.r5{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 250px;gap:8px}
+.st .sr2{display:grid;grid-template-columns:18px 40px minmax(0,1fr) 18px;align-items:center;border-bottom:1px solid var(--line);min-height:24px;gap:3px;padding:0 4px}
+.st .sr2:last-child{border-bottom:0}
+.st .sr2 i{font:700 11px var(--sans);font-style:normal;text-align:center}
+.st .sr2 b{font:400 13px var(--head)}
+.st .sr2 span{font-size:10px;line-height:1.3;color:#333}
+.st.bs .hb{background:#3a0d07}
+.eq .qr{display:grid;grid-template-columns:62px minmax(0,1fr) 34px 34px;align-items:center;border-bottom:1px solid var(--line);min-height:26px}
+.eq .qh{display:grid;grid-template-columns:62px minmax(0,1fr) 34px 34px;font:400 11px var(--head);text-align:center;border-bottom:1px solid var(--ink)}
+.eq .qr b{font:400 11.5px var(--head);padding-left:4px}
+.eq .qr input{height:24px;font-size:11.5px}
+.eq .qr input.s{text-align:center;border-left:1px solid var(--line)}
+.eq .qr.note{grid-template-columns:1fr;font-size:10px;color:var(--sub);padding:0 4px;min-height:18px}
+.items{display:grid;grid-template-columns:1fr 1fr}
+.items .it{display:grid;grid-template-columns:22px 46px minmax(0,1fr) auto 20px;align-items:center;gap:4px;border-bottom:1px solid var(--line);padding:2px 4px;min-height:28px}
+.items .it:nth-child(odd){border-right:1px solid var(--line)}
+.items .it i{font:900 12px var(--sans);font-style:normal;background:var(--bar);color:#fff;text-align:center;line-height:20px}
+.items .it b{font:400 14px var(--head)}
+.items .it span{font-size:10.5px;line-height:1.3;color:#333}
+
+/* 아이콘 단추 */
+.dic{display:inline-block;flex:none;width:16px;height:16px;padding:0;border:1.5px solid currentColor;border-radius:3px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 28%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 50% 50%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 28% 72%,currentColor 1.2px,transparent 1.7px),radial-gradient(circle at 72% 72%,currentColor 1.2px,transparent 1.7px)}
+.bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
+  background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
+.bub::after{content:"";position:absolute;left:2px;bottom:-6px;width:0;height:0;border-top:5px solid currentColor;border-right:5px solid transparent}
+.dic:hover,.bub:hover{color:var(--accent)}
+
+/* ── 채팅 ── */
+.chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
+.chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
+.log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1500px;overflow-y:auto}
+.who{font:700 11px var(--sans);color:var(--sub)}
+.who em{font-style:normal;color:var(--accent)}
+.cd{--accent:#e4007f;border:1.5px solid var(--ink);background:#fff;position:relative;overflow:hidden;border-radius:0 0 10px 0}
+.cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:400 15px/1.3 var(--head);border-bottom:3px solid var(--accent)}
+.cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
+.cd .sub{font-size:11px;color:var(--sub)}
+.cd .roll{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px/1 Arial,Helvetica,sans-serif}
+.cd .roll.big .die{width:34px;height:34px;border-width:2px;border-radius:6px;font:800 20px/1 Arial,Helvetica,sans-serif}
+.cd .die.d6{border-color:var(--green);color:var(--green)}
+.cd .die.d1{border-color:var(--accent);color:var(--accent)}
+.cd .die.gone{border-style:dashed;border-color:#bbb;color:#bbb;text-decoration:line-through}
+.cd .eq{color:var(--sub)}
+.cd .tot{font:800 20px/1 Arial,Helvetica,sans-serif;color:var(--navy)}
+.cd .roll.big .tot{font-size:28px}
+.cd .pv{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--sub)}
+.cd .pv b{font:800 30px/1 Arial,Helvetica,sans-serif;color:var(--accent)}
+.cd .stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 6px;font:400 15px/1.2 var(--head);transform:rotate(-4deg);white-space:nowrap}
+.cd .stp.spc,.cd .stp.mir{border-color:var(--accent);color:var(--accent)}
+.cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
+.cd .stp.ng{color:var(--sub);border-color:var(--sub)}
+.cd .note{font:500 11px/1.45 var(--sans);color:var(--accent)}
+.cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
+.cd .rt2{display:flex;gap:6px;align-items:center;font-size:12px}
+.cd .big2{font:900 14px var(--sans)}
+.qm[hidden]{display:none}
+.qm{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.qbox{background:#fff;border:1px solid var(--ink);padding:12px;width:320px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.qbox .qt{font:700 13px var(--sans)}
+.qbox input,.qbox select{border:1px solid var(--line);height:28px}
+.qbox .qb{display:flex;justify-content:flex-end;gap:6px}
+.qbox button{border:1px solid var(--ink);background:#fff;padding:2px 12px;cursor:pointer;font:500 12px var(--sans)}
+.qbox button.ok{background:var(--ink);color:#fff}
+.gl{width:830px;max-width:100%;background:#fff;border:1px solid var(--line);padding:10px 12px;margin-top:16px}
+.gl h2{margin:0 0 6px;font:900 14px var(--sans)}
+.gl .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 12px;font-size:12px}
+.gl .gg span{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);gap:6px}
+.gl .gg i{font-style:normal;color:var(--sub)}
+.note2{width:830px;max-width:100%;margin-top:12px;font-size:12px;color:var(--sub)}
+.note2 b{color:var(--ink)}
+.cd{--accent:#c2361f}
+.cd .rt2{align-items:flex-start}
+.cd .rt2 .die{flex:none}
+.cd .ch{font:400 15px/1.3 var(--head);letter-spacing:.03em}
+</style>
+
+<h1 class="pg">사무라이 블레이드 — Roll20 시트 목업</h1>
+<p class="pg">공식 「사무라이 블레이드 TRPG」 캐릭터 시트를 Roll20 세로 830px 로 옮긴 배치예요. 들어 있는 값은 예시예요. 특기 이름을 누르면 띠에서 고른 난이도 · 부스트로 판정하고, 어빌리티 주사위는 그 어빌리티의 특기로 판정해요. 아래 용어표는 일본어 원문을 옮긴 것이라 고칠 것만 알려 주세요.</p>
+
+<div class="wrap">
+<div class="scroll"><div class="sheet" id="sheet">
+
+  <!-- 1단 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo"><div class="t0">SAMURAI BLADE</div><div class="t1">사무라이<br>블레이드</div><div class="t2">화찰 춤추는 퇴마의 검극</div></div>
+      <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
+    </div>
+    <div class="bx prof">
+      <div class="pf w nm"><span class="lb">이름</span><input type="text" id="cname" value="사쿠라기 이오리" aria-label="이름"></div>
+      <div class="pf"><span class="lb">성별</span><input type="text" value="여" aria-label="성별"></div>
+      <div class="pf"><span class="lb">나이</span><input type="text" value="17" aria-label="나이"></div>
+      <div class="pf"><span class="lb">플레이어</span><input type="text" value="하루" aria-label="플레이어"></div>
+      <div class="pf"><span class="lb">PC 작성일</span><input type="text" value="2026. 11. 22" aria-label="PC 작성일"></div>
+      <div class="pf"><span class="lb">혼백</span><input type="text" value="검사" aria-label="혼백"></div>
+      <div class="pf"><span class="lb">레벨</span><input type="text" value="1" aria-label="레벨"></div>
+      <div class="pf"><span class="lb">주류파</span><input type="text" value="검술" aria-label="주류파"></div>
+      <div class="pf"><span class="lb">부류파</span><input type="text" value="음양" aria-label="부류파"></div>
+      <div class="pf w"><span class="lb">경력</span><div class="sk2"><input type="text" value="학생" aria-label="경력"><span>특기</span><input type="text" value="학문 · 운동" aria-label="경력 특기"></div></div>
+      <div class="pf w"><span class="lb">직업</span><input type="text" value="퇴마사 견습" aria-label="직업"></div>
+      <div class="pf w"><span class="lb">출신</span><div class="sk2"><input type="text" value="신사의 딸" aria-label="출신"><span>특기</span><input type="text" value="기도" aria-label="출신 특기"></div></div>
+      <div class="pf w"><span class="lb">각성</span><div class="sk2"><input type="text" value="역마에게 습격당함" aria-label="각성(目覚め)"><span>특기</span><input type="text" value="도검" aria-label="각성 특기"></div></div>
+      <div class="pf w" style="border-bottom:0"><span class="lb">무령도 이름</span><div class="sk2"><input type="text" value="사쿠라후부키" aria-label="무령도 이름"><span>화신</span><input type="text" value="벚꽃 여우" aria-label="화신"></div></div>
+    </div>
+    <div class="bx hp">
+      <div class="hb">생명력</div>
+      <div class="now"><span class="lb">현재</span><input type="number" id="hpnow" value="14" aria-label="현재 생명력"></div>
+      <div class="rows">
+        <div class="row"><span class="lb">기본값</span><input type="number" id="hpb" value="12" aria-label="기본값"></div>
+        <div class="row"><span class="lb">장비품</span><input type="number" id="hpe" value="2" aria-label="장비품"></div>
+        <div class="row tot"><span class="lb">합계</span><input type="number" id="hpt" value="14" readonly aria-label="합계"></div>
+      </div>
+      <div class="awk"><input type="checkbox" class="ck" id="awk" aria-label="각성"><span>【각성】 상태가 되면 모든 판정이 「부스트+1」된다</span><b>각성</b></div>
+      <div class="merit"><span class="lb">공적점</span><input type="text" value="3" aria-label="공적점"></div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 -->
+  <div class="bx">
+    <div class="hb">특기<span class="sp"></span><small>괄호 = 목표치 (하급) · 壱~陸 = 1D6 분야</small></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <div class="sr">
+      <span class="tl">난이도</span>
+      <span class="seg dif" id="dif"><label><input type="radio" name="dif" value="0" checked><span>하급 ±0</span></label><label><input type="radio" name="dif" value="5"><span>중급 +5</span></label><label><input type="radio" name="dif" value="10"><span>상급 +10</span></label><label><input type="radio" name="dif" value="15"><span>특급 +15</span></label></span>
+      <span class="ckn" id="bw">부스트<input type="number" id="boost" value="" min="0" aria-label="부스트"></span>
+      <span class="ckn" id="modw">수정치<input type="number" id="mod" value="" aria-label="다음 판정 수정치"></span>
+      <span class="sp"></span>
+      <span class="fum" data-k="f">펌블치 <b id="fumble">2</b><span class="adj"><button type="button" class="up" title="펌블치 +1"></button><button type="button" class="dn" title="펌블치 -1"></button></span><button type="button" class="rs" title="2 로 되돌림"></button></span>
+      <span class="fum spc" data-k="s">스페셜치 <b id="special">12</b><span class="adj"><button type="button" class="up" title="스페셜치 +1"></button><button type="button" class="dn" title="스페셜치 -1"></button></span><button type="button" class="rs" title="12 로 되돌림"></button></span>
+    </div>
+    <div class="sr">
+      <span class="tl">굴림표</span>
+      <span id="tables"></span>
+      <span class="rtg"><button class="rt" type="button" data-nd="1">1D6</button><button class="rt" type="button" data-nd="2">2D6</button></span>
+      <span class="sp"></span>
+      <span class="tl">공개</span><span class="seg"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
+      <button class="gmb" type="button" id="gmb" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button>
+    </div>
+  </div>
+
+  <!-- 3단: 어빌리티 -->
+  <div class="bx">
+    <div class="hb">어빌리티<span class="sp"></span><small>□ = 사용함 · 주사위 = 그 특기로 판정</small></div>
+    <div class="ah"><span></span><span>레벨</span><span>어빌리티</span><span>조건</span><span>타이밍</span><span>특기</span><span>간격</span><span>대상</span><span>횟수</span><span>효과</span><span></span></div>
+    <div id="abil"></div>
+  </div>
+
+  <!-- 4단: 사명 · 삶의 방식 | 연 -->
+  <div class="r4">
+    <div class="bx mis">
+      <div class="hb">사명 · 삶의 방식</div>
+      <div class="mr"><b>・</b><span style="font:400 13px var(--head)">역마와 싸운다</span><span class="sp"></span><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="mr"><b>・</b><input type="text" value="벚꽃 여우의 기억을 되찾는다" aria-label="사명 2"><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="mr"><b>・</b><input type="text" aria-label="사명 3"><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="mr"><b>・</b><input type="text" aria-label="사명 4"><input type="checkbox" class="ck" aria-label="달성"></div>
+      <div class="mr" style="border-bottom:0"><b>삶의 방식</b><input type="text" value="정의로운 검" aria-label="삶의 방식"></div>
+    </div>
+    <div class="bx en">
+      <div class="hb">연(縁)</div>
+      <div class="eh"><span>이름</span><span>감정</span><span>유대</span></div>
+      <div id="en"></div>
+    </div>
+  </div>
+
+  <!-- 5단: GS | BS | 장비품 -->
+  <div class="r5">
+    <div class="bx st"><div class="hb">굿 스테이터스 (GS)</div><div id="gs"></div></div>
+    <div class="bx st bs"><div class="hb">배드 스테이터스 (BS)</div><div id="bs"></div></div>
+    <div class="bx eq">
+      <div class="hb">장비품</div>
+      <div class="qh"><span></span><span>이름</span><span>종별</span><span>간격</span></div>
+      <div id="eq"></div>
+    </div>
+  </div>
+
+  <!-- 6단: 아이템 -->
+  <div class="bx">
+    <div class="hb">아이템<span class="sp"></span><small>□ = 개수 · 말풍선 = 사용</small></div>
+    <div class="items" id="items"></div>
+  </div>
+</div></div>
+
+<div class="chat"><h2>Roll20 채팅 (예시)</h2><div class="log" id="log"></div></div>
+</div>
+
+<div class="note2">
+  <p><b>확인 부탁.</b> 공개 서머리로 알 수 있는 것만으로 만든 부분이 있어요. ① 목표치 = 5 + 거리(세로 1 · 옆 분야 2, 공식 시트에 공백 칸이 없어 공백 칠하기는 뺐어요) + 난이도. ② 부스트 1 마다 주사위 1개를 더해 모두 더함. ③ 펌블 · 스페셜은 처음 두 주사위(2D6)로 2 · 12 — 실제 규칙(예: 6 두 개 이상이면 스페셜)이 다르면 알려 주세요. ④ 【각성】은 부스트 +1, BS【주박】은 난이도 한 단계 위(+5), GS【고양】은 공격 어빌리티 판정에 부스트 +1 을 자동으로 붙였어요.</p>
+  <p><b>안 넣은 것.</b> 화찰(패 · 장패 · 역)은 탁자에서 쓰는 카드라 시트에 넣지 않았어요(필요하면 손패 메모 칸을 둘 수 있어요). 전투 시트, 공식 로고.</p>
+</div>
+
+<div class="gl">
+  <h2>용어표 (일본어 → 한국어, 검토용)</h2>
+  <div class="gg" id="gl"></div>
+</div>
+
+<script>
+const FIELDS = ['재능', '연달', '이지', '신체', '감성', '심연'];
+const NUM = ['壱', '弐', '参', '肆', '伍', '陸'];
+const SK = [
+  ['질서', '괴물', '인덕', '천계', '방패', '꿈', '신기', '성신', '의료', '기도', '사랑'],
+  ['현세', '이형', '경비', '규율', '맨손', '땅', '곤봉', '수행', '기계', '각인', '기쁨'],
+  ['창조', '요괴', '교섭', '계승', '총', '물', '활', '탐구', '학문', '주문', '슬픔'],
+  ['파괴', '짐승', '운동', '혈통', '도검', '불', '장병', '파사', '조종', '기공', '분노'],
+  ['상야', '빙의', '지각', '운명', '채찍 · 사슬', '바람', '닌자 도구', '환상', '전뇌', '염력', '즐거움'],
+  ['혼돈', '죽음', '은밀', '신비', '발톱 · 이빨', '영', '주물', '윤회', '범죄', '마법', '미움']];
+const JA = [
+  ['秩序', '怪物', '人徳', '天啓', '盾', '夢', '神器', '星辰', '医療', '祈祷', '愛'],
+  ['現世', '異形', '警備', '掟', '無手', '地', '棍', '修行', '機械', '刻印', '喜'],
+  ['創造', '妖', '交渉', '継承', '銃', '水', '弓', '探究', '学問', '呪文', '悲'],
+  ['破壊', '獣', '運動', '血統', '刀剣', '火', '長柄', '破邪', '操縦', '気功', '怒'],
+  ['常夜', '憑依', '知覚', '運命', '鞭鎖', '風', '忍具', '幻想', '電脳', '念力', '楽'],
+  ['混沌', '死', '隠密', '神秘', '爪牙', '霊', '呪物', '輪廻', '犯罪', '魔法', '憎']];
+const JA_F = ['才能', '練達', '理知', '身体', '感性', '深淵'];
+const COL = 'ABCDEF';
+const st = { own: new Set(['A11', 'B7', 'C10', 'D6', 'E4', 'F5']), fadj: 0, sadj: 0 };
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ── 특기 리스트 (번호 오른쪽, 괄호 = 목표치)
+const grid = document.getElementById('grid'), cells = {};
+(function build() {
+  FIELDS.forEach((f, i) => { const h = el('div', 'fh', `<i><b>${NUM[i]}</b></i>${f}`); h.style.gridColumn = String(1 + i); h.style.gridRow = '1'; grid.append(h); });
+  const c0 = el('div', 'no corner'); c0.style.gridColumn = '7'; c0.style.gridRow = '1'; grid.append(c0);
+  for (let r = 0; r < 11; r++) {
+    FIELDS.forEach((f, i) => {
+      const id = COL[i] + (r + 2), c = el('div', 'c'); c.style.gridColumn = String(1 + i); c.style.gridRow = String(r + 2);
+      const own = el('input', 'own'); own.type = 'checkbox'; own.checked = st.own.has(id); own.title = SK[i][r] + ' 습득';
+      own.onchange = () => { own.checked ? st.own.add(id) : st.own.delete(id); calc(); };
+      const n = el('button', 'n', SK[i][r]); n.type = 'button'; n.title = SK[i][r] + ' 판정'; n.onclick = () => rollSkill(i, r);
+      const tn = el('span', 'tn'); c.append(own, n, tn); grid.append(c); cells[id] = tn;
+    });
+    const no = el('div', 'no', String(r + 2)); no.style.gridColumn = '7'; no.style.gridRow = String(r + 2); grid.append(no);
+  }
+})();
+const dist = (a, b) => Math.abs(a.r - b.r) + 2 * Math.abs(a.f - b.f);
+function base(f, r) { const src = [...st.own].map(id => ({ f: COL.indexOf(id[0]), r: +id.slice(1) - 2 })); return src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, { f, r })))) : null; }
+function calc() { FIELDS.forEach((_, f) => { for (let r = 0; r < 11; r++) { const t = base(f, r); cells[COL[f] + (r + 2)].textContent = t == null ? '' : t; } }); }
+
+// ── 어빌리티 (인쇄된 줄 + 레벨 2~7)
+const PRINTED = [['—', '무령각성', '혼백사', '선언', '없음', '없음', '자신', '세션', '생명력 전부 회복, BS 전부 해제하고 【각성】한다'],
+  ['—', '참찰전개', '혼백사', '선언', '없음', '없음', '자신', '세션', '패 중에서 완성한 역을 【참찰】로 전개한다'],
+  ['—', '화찰동조', '혼백사', '선언', '없음', '없음', '자신', '세션', '패가 최대가 될 때까지 화찰을 얻는다'],
+  ['—', '혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화찰동조】와 같은 효과, 세션 종료 후 【은퇴】'],
+  ['1', '† 무령도', '혼백사', '이동공격 · 전력공격', '', '무기', '단체', '무제한', '이동공격 　점 / 전력공격은 +1점']];
+const AB = { 2: ['벚꽃 베기', '검술', '이동공격', '도검', '1', '단체', '사이클', '대미지 +2'] };
+const abil = document.getElementById('abil');
+PRINTED.forEach(([lv, n, cond, tim, sk, rng, tgt, cnt, ef], i) => {
+  const r = el('div', 'ar pr');
+  r.innerHTML = `<span>${i === 4 ? '<button class="dic" type="button" title="판정"></button>' : ''}</span><span class="lv">${lv}</span><span class="an">${n}</span><span>${cond}</span><span>${tim}</span><span>${i === 4 ? '<input type="text" value="도검" aria-label="무령도 특기">' : sk}</span><span>${rng}</span><span>${tgt}</span><span>${cnt}</span><span class="ef">${i === 4 ? '이동공격 <input type="text" value="3" style="width:24px;display:inline-block" aria-label="이동공격 대미지">점 / 전력공격은 +1점' : ef}</span><span class="cks">${i < 4 ? '<input type="checkbox" class="ck" aria-label="사용함">' : ''}</span>`;
+  if (i === 4) r.querySelector('.dic').onclick = () => rollAbility(r, '† 무령도', true);
+  abil.append(r);
+});
+for (let lv = 2; lv <= 7; lv++) {
+  const [n, cond, tim, sk, rng, tgt, cnt, ef] = AB[lv] || ['', '', '', '', '', '', '', ''], r = el('div', 'ar');
+  r.innerHTML = `<span><button class="dic" type="button" title="판정"></button></span><span class="lv">${lv}</span>` +
+    [n, cond, tim, sk, rng, tgt, cnt].map((v, k) => `<span${k === 0 ? ' class="an"' : ''}><input type="text" value="${v}" aria-label="어빌리티 칸"></span>`).join('') +
+    `<span class="ef"><textarea aria-label="효과">${ef}</textarea></span><span class="cks"><input type="checkbox" class="ck"><input type="checkbox" class="ck"><input type="checkbox" class="ck"></span>`;
+  r.querySelector('.dic').onclick = () => rollAbility(r);
+  abil.append(r);
+}
+// ── 연 6 줄 · GS · BS · 장비품 · 아이템
+const EN = [['미나토', '우정 (+)', true], ['벚꽃 여우', '애정 (+)', false]];
+document.getElementById('en').innerHTML = Array.from({ length: 6 }, (_, i) => { const [n, e, c] = EN[i] || ['', '', false]; return `<div class="er"><span><input type="text" value="${n}" aria-label="연 이름"></span><span><input type="text" value="${e}" aria-label="감정" style="text-align:center"></span><span><input type="checkbox" class="ck" ${c ? 'checked' : ''} aria-label="유대"></span></div>`; }).join('');
+const GS = [['고양', '공격 판정을 부스트+1 한다'], ['축복', '방어 판정을 부스트+1 한다'], ['가속', '통상 이동공격은 +1칸, 전력 이동은 +2칸 한다'], ['철벽', '자신이 받는 대미지가 1점 감소한다'], ['신격', '자신이 주는 대미지를 1점 추가한다'], ['무쌍', '【대상: 단체】를 【대상: 라인】으로 바꾼다']];
+const BS = [['맹독', '수번의 행동을 할 때마다 1점의 대미지를 받는다'], ['주박', '모든 판정 난이도가 한 단계 상승한다 (행위 판정에 +5)'], ['족지', '이동공격을 할 수 없고, 전력 이동은 1칸 이동이 된다'], ['공포', '자신이 주는 대미지가 1점 감소한다 (0점이면 대미지를 줄 수 없다)'], ['부상', '자신이 받는 대미지가 1점 추가된다'], ['혼란', '【횟수: 사이클】과 【횟수: 배틀】 어빌리티를 사용할 수 없다']];
+const stRows = (id, rows, on) => { document.getElementById(id).innerHTML = rows.map(([n, e], i) => `<div class="sr2"><i>${i + 1}</i><b>${n}</b><span>${e}</span><input type="checkbox" class="ck" data-k="${n}" ${on.includes(i) ? 'checked' : ''} aria-label="${n}"></div>`).join(''); };
+stRows('gs', GS, [0]); stRows('bs', BS, []);
+const isOn = k => !!document.querySelector(`.ck[data-k="${k}"]`)?.checked;
+const EQ = [['무기', '무령도', '검', '1'], ['보조 무기', '', '', ''], ['방어구', '교복', '의복', ''], ['보조 방어구', '', '', ''], ['장신구', '부적 머리끈', '', '']];
+document.getElementById('eq').innerHTML = EQ.map(([k, n, t, r]) => `<div class="qr"><b>${k}</b><input type="text" value="${n}" aria-label="${k}"><input type="text" class="s" value="${t}" aria-label="종별"><input type="text" class="s" value="${r}" aria-label="간격"></div>`).join('') + '<div class="qr note">장신구는 전투 시 사용 불가</div>';
+const ITEMS = [['방진', '배치 롤을 2회 하고, 원하는 쪽을 고를 수 있다', 1], ['병기', '하급 역마 1체를 전투 시트 위에서 배제한다', 0], ['영측', '상급 역마 또는 특급 역마 1체의 데이터를 알 수 있다. 역마 어빌리티는 알 수 없다', 0],
+  ['약품', '생명력 전부 회복이나 BS 전부 해제. 전투 중에는 생명력 1D6점 회복이나 BS 1개 해제', 2], ['탈것', '즉시 전력 이동을 한다. 【BS: 족지】여도 사용 가능', 0], ['호부', '【횟수: 사이클】의 사용한 어빌리티를 다시 사용할 수 있다', 1]];
+document.getElementById('items').innerHTML = ITEMS.map(([n, e, c], i) => `<div class="it"><i>${i + 1}</i><b>${n}</b><span>${e}</span><span class="cks">${[1, 2, 3].map(k => `<input type="checkbox" class="ck cnt" ${k <= c ? 'checked' : ''} aria-label="${n} ${k}">`).join('')}</span><button class="bub" type="button" data-it="${i}" title="사용"></button></div>`).join('');
+document.querySelectorAll('[data-it]').forEach(b => b.onclick = () => {
+  const [n, e] = ITEMS[+b.dataset.it], boxes = [...b.parentElement.querySelectorAll('.ck')], left = boxes.filter(x => x.checked).length;
+  if (!left) return card({ title: n, sub: '남은 개수 0', to: 'GM 에게' });
+  boxes[left - 1].checked = false; card({ title: `【아이템】 ${n} 사용`, sub: `남은 개수 ${left} → ${left - 1}`, eff: e });
+});
+// ── 생명력 합계
+const hpSync = () => { document.getElementById('hpt').value = (+document.getElementById('hpb').value || 0) + (+document.getElementById('hpe').value || 0); };
+document.getElementById('hpb').oninput = hpSync; document.getElementById('hpe').oninput = hpSync;
+
+// ── 띠: 굴림표 · 펌블치 · 스페셜치
+const TABLES = [['범용 장면 표', 2, { 2: '피 냄새가 콧속을 간질인다. 사건인가 사고인가? 무령도가 싸움의 기척을 알린다.', 3: '청렴한 분위기가 감돈다. 귀를 기울이면 새나 벌레 소리, 바람에 흔들리는 나무 소리가 들려온다.', 4: '높은 건물의 옥상. 주위를 한눈에 둘러볼 수 있는 곳에 서서 아래를 내려다본다.', 5: '세계의 끝 같은 암흑. 어둠 속에서 누군가의 기척이 꿈틀거린다…….', 6: '평온한 시간이 지나간다. 잠시나마 싸움을 잊을 수 있을 것 같다.', 7: '밝은 햇살에 감싸인다. 설령 절망의 구렁텅이에 있더라도 한 가닥 희망을 확신할 수 있다. 이 장면에서 개시 판정을 할 경우 「부스트+1」할 수 있다.', 8: '역마의 시각, 상야와 현세의 경계선이 흔들리는 시각. 어디선가 분명치 않은 목소리나 소리가 새어 나온다.', 9: '갑자기 하늘을 구름이 뒤덮는다. 비가 내리기 시작하자 사람들이 처마를 찾아 뛰어간다.', 10: '한 줄기 바람이 지나간다. 머리카락과 옷이 크게 흔들리고, 무언가 일어날 예감이 든다.', 11: '사람들이 오가고 거리의 소란이 들려온다. 여느 때의 번화가 풍경이지만…….', 12: '이건…… 꿈인가? 끝났을 터인 과거가 기억 속에서 되살아난다.' }],
+  ['카르마 장면 표', 2, { 2: '과거 기억의 한 페이지. 세피아 빛 세계는 마치 오래된 사진 같다.', 3: '눈이 내리는 차가운 하늘 아래, 온통 은빛 세계가 펼쳐져 있다.', 4: '청렴한 숲 속, 나뭇잎 사이로 햇살이 쏟아진다.', 5: '칠흑 같은 어둠. 하지만 어딘가 다정함을 느낄 수 있다.', 6: '하늘 가득한 별. 금방이라도 별이 쏟아질 것 같다.', 7: '커다란 빛에 감싸인 실루엣이 서서히 형태를 띠며 나타난다.', 8: '풀과 나무가 흔들리는 초원, 먼 하늘에 무지개가 걸려 있다.', 9: '바람이 휘몰아치는 옛 전장. 지난날의 싸움이 흔적으로 남아 있다.', 10: '마천루의 거리. 네온 속에는 자기 혼자밖에 없다.', 11: '쨍쨍 빛나는 태양 아래, 바다의 파도 소리가 들려온다.', 12: '미래 세계의 풍경. 그 세계에 자신은 있는 것일까!?' }],
+  ['펌블 표', 1, { 1: '부조 — 뭔가 상태가 이상하다. 이 사이클 동안 화찰과 어빌리티를 사용할 수 없게 된다.', 2: '불운 — 정신 차려 보니 없어졌다! 임의의 아이템 1개를 잃어버린다.', 3: '습격 — 방심했다! 자신의 【생명력】을 1D6점 잃는다.', 4: '계산 밖 — 통한의 실수! 자신 이외의 PC의 【생명력】을 1D6점 잃게 한다.', 5: '책모 — 적의 음모인가? 무작위로 【BS】 1개를 받는다.', 6: '소실 — 화찰이 사라진다! 자신에게 패가 있을 경우, 원하는 패 1장을 버린다.' }],
+  ['감정 표', 1, { 1: '공감(+감정) / 불신(−감정)', 2: '우정(+감정) / 분노(−감정)', 3: '애정(+감정) / 질투(−감정)', 4: '충성(+감정) / 모멸(−감정)', 5: '동경(+감정) / 열등감(−감정)', 6: '광신(+감정) / 살의(−감정)' }]];
+const tbar = document.getElementById('tables');
+TABLES.forEach(([n, d, tab]) => { const b = el('button', 'rt', `<i class="tdi"></i>${n}`); b.type = 'button'; b.onclick = () => { const a = d6(), c = d === 2 ? d6() : null; card({ title: n, table: { dice: c ? [a, c] : [a], text: tab[a + (c || 0)] } }); }; tbar.append(b); });
+tbar.style.cssText = 'display:inline-flex;gap:4px';
+document.querySelectorAll('.fum[data-k]').forEach(w => {
+  const k = w.dataset.k, set = v => { st[k + 'adj'] = Math.max(-12, Math.min(12, v)); sync(); };
+  w.querySelector('.up').onclick = () => set(st[k + 'adj'] + 1); w.querySelector('.dn').onclick = () => set(st[k + 'adj'] - 1); w.querySelector('.rs').onclick = () => set(0);
+});
+const fumble = () => 2 + st.fadj, special = () => 12 + st.sadj;
+function sync() { document.getElementById('fumble').textContent = fumble(); document.getElementById('special').textContent = special(); document.querySelectorAll('.fum[data-k]').forEach(w => w.querySelector('.rs').classList.toggle('on', st[w.dataset.k + 'adj'] !== 0)); }
+const modIn = document.getElementById('mod'), boostIn = document.getElementById('boost');
+modIn.oninput = () => document.getElementById('modw').classList.toggle('on', !!+modIn.value);
+boostIn.oninput = () => document.getElementById('bw').classList.toggle('on', !!+boostIn.value);
+
+// ── 채팅 카드
+const log = document.getElementById('log');
+const name = () => document.getElementById('cname').value || '이름 없음';
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+const die = v => `<span class="die${v === 6 ? ' d6' : v === 1 ? ' d1' : ''}">${v}</span>`;
+function card({ title, sub, roll, eff, table, dice, notes = [], to }) {
+  const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
+  const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
+  let b = sub ? `<div class="sub">${esc(sub)}</div>` : '';
+  if (roll) {
+    const two = roll.dice[0] + roll.dice[1], tot = roll.dice.reduce((a, c) => a + c, 0) + roll.add;
+    const j = two >= special() ? ['스페셜', 'spc'] : two <= fumble() ? ['펌블', 'fb'] : roll.t == null ? null : tot >= roll.t ? ['성공', ''] : ['실패', 'ng'];
+    b += `<div class="roll big">${roll.dice.map(die).join('')}${roll.add ? `<span class="eq">${roll.add > 0 ? '+' : ''}${roll.add}</span>` : ''}<span class="eq">=</span><span class="tot">${tot}</span>${j ? `<span class="stp ${j[1]}">${j[0]}</span>` : ''}</div>`;
+  }
+  if (table) b += `<div class="rt2">${table.dice.map(die).join('')}<span class="big2" style="font:500 12px/1.5 var(--sans)">${esc(table.text)}</span></div>`;
+  if (dice) b += `<div class="roll">${dice.map(die).join('')}<span class="eq">=</span><span class="tot">${dice.reduce((a, c) => a + c, 0)}</span></div>`;
+  b += notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+  if (eff) b += `<div class="eff">${esc(eff)}</div>`;
+  w.append(el('div', 'cd', `${title ? `<div class="ch">${esc(title)}</div>` : ''}<div class="cb">${b}</div>`)); log.append(w); log.scrollTop = log.scrollHeight;
+}
+const DIF = { 0: '하급', 5: '중급', 10: '상급', 15: '특급' };
+function check(title, f, r, { attack = false, eff = '', head = '' } = {}) {
+  const b0 = base(f, r), dsel = +document.querySelector('input[name=dif]:checked').value, curse = isOn('주박') ? 5 : 0, dif = Math.min(15, dsel + curse);
+  const boost = (+boostIn.value || 0) + (document.getElementById('awk').checked ? 1 : 0) + (attack && isOn('고양') ? 1 : 0), m = +modIn.value || 0;
+  const t = b0 == null ? null : b0 + dif;
+  const parts = [head, FIELDS[f], `${DIF[dif] || '특급'}${dif ? ` +${dif}` : ''}`, t != null && `목표치 ${t}`, boost && `부스트 +${boost}`, m && `수정치 ${m > 0 ? '+' : ''}${m}`].filter(Boolean);
+  const notes = [curse && 'BS 주박 · 난이도 한 단계 위', document.getElementById('awk').checked && '각성 · 부스트 +1', attack && isOn('고양') && 'GS 고양 · 부스트 +1'].filter(Boolean);
+  card({ title, sub: parts.join(' · ') + (fumble() !== 2 ? ` · 펌블치 ${fumble()}` : '') + (special() !== 12 ? ` · 스페셜치 ${special()}` : ''), roll: { dice: Array.from({ length: 2 + boost }, d6), add: m, t }, notes, eff });
+}
+const rollSkill = (f, r) => check(`《${SK[f][r]}》 판정`, f, r);
+const findSkill = s => { const n = s.replace(/[《》\s]/g, ''); for (let f = 0; f < 6; f++) { const r = SK[f].findIndex(x => x.replace(/\s/g, '') === n); if (r >= 0) return [f, r]; } return null; };
+function rollAbility(row, fixedName, printed) {
+  const q = row.querySelectorAll('input[type=text]'), nm = fixedName || q[0].value || '어빌리티', sk = printed ? q[0].value : q[3].value, s = findSkill(sk || '');
+  const tim = printed ? '이동공격 · 전력공격' : q[2].value, eff = printed ? `이동공격 ${q[1].value}점 / 전력공격은 +1점` : row.querySelector('textarea').value;
+  if (!s) return card({ title: `【${nm}】`, sub: tim, eff });
+  check(`【${nm}】`, ...s, { attack: /공격/.test(tim), eff, head: `${tim} · 《${sk}》` });
+}
+document.querySelectorAll('[data-nd]').forEach(b => b.onclick = () => card({ title: `${b.dataset.nd}D6`, dice: Array.from({ length: +b.dataset.nd }, d6) }));
+const qm = el('div', 'qm', '<div class="qbox" role="dialog" aria-label="GM 에게 귓속말"><div class="qt">GM 에게 귓속말</div><input type="text" id="qin"><div class="qb"><button type="button" class="no">취소</button><button type="button" class="ok">확인</button></div></div>');
+qm.hidden = true; document.body.append(qm);
+const qin = qm.querySelector('#qin'), qclose = () => { qm.hidden = true; qin.value = ''; };
+document.getElementById('gmb').onclick = () => { qm.hidden = false; qin.focus(); };
+qm.querySelector('.ok').onclick = () => { if (qin.value.trim()) card({ title: '', eff: qin.value, to: 'GM 에게' }); qclose(); };
+qm.querySelector('.no').onclick = qclose;
+
+// 용어표
+const GL = [['魂魄', '혼백'], ['レベル', '레벨'], ['主流派', '주류파'], ['副流派', '부류파'], ['経歴', '경력'], ['職業', '직업'], ['出自', '출신'], ['目覚め', '각성(目覚め)'], ['武霊刀名', '무령도 이름'], ['化身', '화신'], ['PC作成日', 'PC 작성일'],
+  ['生命力', '생명력'], ['基本値', '기본값'], ['装備品', '장비품'], ['合計', '합계'], ['覚醒', '각성(覚醒)'], ['功績点', '공적점'], ['特技', '특기'], ['アビリティ', '어빌리티'], ['条件', '조건'], ['タイミング', '타이밍'], ['間合', '간격'], ['対象', '대상'], ['回数', '횟수'], ['効果', '효과'],
+  ['魂魄士', '혼백사'], ['宣言', '선언'], ['武霊覚醒', '무령각성'], ['斬札展開', '참찰전개'], ['華札同調', '화찰동조'], ['魂魄散華', '혼백산화'], ['武霊刀', '무령도'], ['移動攻撃', '이동공격'], ['全力攻撃', '전력공격'], ['全力移動', '전력 이동'], ['単体', '단체'], ['ライン', '라인'], ['無制限', '무제한'],
+  ['士命', '사명'], ['生き様', '삶의 방식'], ['逢魔', '역마'], ['縁', '연'], ['感情', '감정'], ['絆', '유대'], ['グッドステータス', '굿 스테이터스'], ['バッドステータス', '배드 스테이터스'], ['高揚', '고양'], ['祝福', '축복'], ['加速', '가속'], ['鉄壁', '철벽'], ['神撃', '신격'], ['無双', '무쌍'],
+  ['猛毒', '맹독'], ['呪縛', '주박'], ['足止', '족지'], ['恐怖', '공포'], ['負傷', '부상'], ['混乱', '혼란'], ['武器', '무기'], ['補助武器', '보조 무기'], ['防具', '방어구'], ['補助防具', '보조 방어구'], ['装身具', '장신구'], ['種別', '종별'],
+  ['アイテム', '아이템'], ['方陣', '방진'], ['兵器', '병기'], ['霊測', '영측'], ['薬品', '약품'], ['乗物', '탈것'], ['護符', '호부'], ['華札', '화찰'], ['ブースト', '부스트'], ['難易度', '난이도'], ['下級 · 中級 · 上級 · 特級', '하급 · 중급 · 상급 · 특급'], ['常夜 · 現世', '상야 · 현세'],
+  ...JA_F.map((j, i) => [j, FIELDS[i]]), ...JA.flatMap((col, f) => col.map((j, r) => [j, SK[f][r]]))];
+document.getElementById('gl').innerHTML = GL.map(([j, k]) => `<span><i>${j}</i>${k}</span>`).join('');
+
+// 처음 화면
+calc(); sync();
+card({ title: '《도검》 판정', sub: '신체 · 중급 +5 · 목표치 10 · 부스트 +1', roll: { dice: [5, 4, 3], add: 0, t: 10 } });
+card({ title: '【벚꽃 베기】', sub: '이동공격 · 《도검》 · 신체 · 하급 · 목표치 5 · 부스트 +1', roll: { dice: [6, 6, 2], add: 0, t: 5 }, notes: ['GS 고양 · 부스트 +1'], eff: '대미지 +2' });
+card({ title: '범용 장면 표', table: { dice: [3, 4], text: TABLES[0][2][7] } });
+</script>
