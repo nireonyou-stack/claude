@@ -30,7 +30,9 @@ textarea{resize:none;display:block}
 .sp{flex:1}
 .tl{font:700 11px var(--sans);color:var(--sub);white-space:nowrap}
 .ck{appearance:none;-webkit-appearance:none;width:13px;height:13px;margin:0;border:1.3px solid var(--ink);background:#fff;cursor:pointer;flex:none}
-.ck:checked{background:linear-gradient(45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%)}
+/* 체크 = V (달성 · 유대 · 각성), 어빌리티의 사용함 칸만 X */
+.ck:checked{background-image:linear-gradient(to top right,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px)),linear-gradient(to top left,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px));background-size:5px 5px,7px 10px;background-position:0 4px,3px 0;background-repeat:no-repeat}
+.cks .ck:checked{background-image:linear-gradient(45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%);background-size:auto;background-position:0 0}
 .cks{display:inline-flex;gap:2px}
 .sheet .bx input.ck{height:13px;width:13px;padding:0}
 .sheet input.ck.cnt:checked{background:var(--ink)}
@@ -39,7 +41,6 @@ textarea{resize:none;display:block}
 .r1{display:grid;grid-template-columns:236px minmax(0,1fr) 186px;gap:8px}
 .title{display:flex;flex-direction:column;gap:6px}
 .logo{background:radial-gradient(circle at calc(100% - 17px) 17px,var(--accent) 0 8px,transparent 9px),var(--bar);color:#fff;text-align:center;padding:9px 6px 8px;border-radius:8px;border:2px solid var(--bar);box-shadow:inset 0 0 0 3px var(--bar),inset 0 0 0 4px var(--accent)}
-.logo .t0{font:700 10px var(--sans);letter-spacing:.12em;opacity:.8}
 .logo .t1{font:400 23px/1.2 var(--head);white-space:nowrap}
 .logo .t2{font:400 11px var(--head);opacity:.85}
 .portrait{flex:1;min-height:120px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
@@ -134,7 +135,10 @@ textarea{resize:none;display:block}
 .ar .an{justify-content:flex-start}
 .ar .an input{text-align:left;font:400 13.5px var(--head)}
 .ar .ef{justify-content:flex-start;text-align:left}
-.ar textarea{font-size:11px;line-height:1.35;min-height:22px;padding:2px 4px}
+/* 효과 칸: 숨은 거울 글이 높이를 잡고 textarea 가 그 위를 덮음 (Roll20 에서는 같은 attr 의 span) */
+.auto{position:relative;width:100%;align-self:stretch}
+.auto .mir{display:block;visibility:hidden;white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.35;padding:3px 4px;min-height:23px}
+.auto textarea{position:absolute;inset:0;height:100%;overflow:hidden;font-size:11px;line-height:1.35;padding:3px 4px}
 .ar.pr{background:#fafafa}
 .ar.pr .an{font:400 13.5px var(--head);padding-left:4px}
 .ar.pr .ef{padding:2px 4px;font-size:10.5px;line-height:1.35}
@@ -259,7 +263,7 @@ textarea{resize:none;display:block}
   <!-- 1단 -->
   <div class="r1">
     <div class="title">
-      <div class="logo"><div class="t0">SAMURAI BLADE</div><div class="t1">사무라이 블레이드</div><div class="t2">화투 춤추는 퇴마의 검극</div></div>
+      <div class="logo"><div class="t1">사무라이 블레이드</div><div class="t2">화투 춤추는 퇴마의 검극</div></div>
       <div class="portrait">캐릭터 그림 (Roll20 아바타)</div>
     </div>
     <div class="bx prof">
@@ -421,7 +425,7 @@ const PRINTED = [['—', '무령각성', '혼백사', '선언', '없음', '없�
   ['—', '화투동조', '혼백사', '선언', '없음', '없음', '자신', '세션', '손패가 최대가 될 때까지 화투 습득'],
   ['—', '혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화투동조】와 같은 효과. 세션 종료 시 【은퇴】'],
   ['1', '† 무령도', '혼백사', '이동공격 · 전력공격', '', '무기', '단일', '무제한', '이동공격 　점 / 전력공격에는 +1점']];
-const AB = { 2: ['벚꽃 베기', '검술', '이동공격', '도검', '1', '단일', '사이클', '대미지 +2'] };
+const AB = { 2: ['벚꽃 베기', '검술', '이동공격', '도검', '1', '단일', '사이클', '대미지 +2'], 3: ['꽃보라', '검술', '전력공격', '도검', '1', '라인', '배틀', '대상 라인의 적 전원에게 대미지 2점. 이 공격으로 【봉마】를 쓰러뜨렸다면 손패에서 화투 1장을 버리고 1장 습득한다.'] };
 const abil = document.getElementById('abil');
 PRINTED.forEach(([lv, n, cond, tim, sk, rng, tgt, cnt, ef], i) => {
   const r = el('div', 'ar pr');
@@ -434,8 +438,9 @@ for (let lv = 2; lv <= 7; lv++) {
   const [n, cond, tim, sk, rng, tgt, cnt, ef] = AB[lv] || ['', '', '', '', '', '', '', ''], r = el('div', 'ar');
   r.innerHTML = `<span><button class="dic" type="button" title="판정"></button></span><span class="lv">${lv}</span>` +
     [n, cond, tim, sk, rng, tgt, cnt].map((v, k) => `<span${k === 0 ? ' class="an"' : ''}><input type="text" value="${v}" aria-label="어빌리티 칸"></span>`).join('') +
-    `<span class="ef"><textarea aria-label="효과">${ef}</textarea></span><span class="cks"><input type="checkbox" class="ck"><input type="checkbox" class="ck"><input type="checkbox" class="ck"></span>`;
+    `<span class="ef"><div class="auto"><span class="mir">${ef} </span><textarea aria-label="효과">${ef}</textarea></div></span><span class="cks"><input type="checkbox" class="ck"><input type="checkbox" class="ck"><input type="checkbox" class="ck"></span>`;
   r.querySelector('.dic').onclick = () => rollAbility(r);
+  const ta = r.querySelector('textarea'), mir = r.querySelector('.mir'); ta.oninput = () => { mir.textContent = ta.value + ' '; };
   abil.append(r);
 }
 // ── 연 6 줄 · GS · BS · 장비품 · 아이템

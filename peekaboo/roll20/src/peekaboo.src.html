@@ -1,0 +1,112 @@
+<!-- 피카부 (한국어) — 세로 830px. 배치: 공식 「피카부 개정판」 캐릭터 시트(이노센트용 · 스푸키용 데이터)를 세로로. 목업: peekaboo/roll20/mockup.html
+     @ 표시 자리는 build.py 가 채운다. .pk 앞의 숨은 칸은 시트 종류(이노센트 · 스푸키)를 가르는 거울(형제 선택자용). -->
+<input type="hidden" class="t-type" name="attr_sheet_type" value="in">
+<input type="hidden" name="attr_sheet_version" value="0">
+<div class="pk">
+
+  <!-- 1단: 제목 · 시트 종류 · 그림 | 이노센트용 데이터 · 스푸키용 데이터 -->
+  <div class="r1">
+    <div class="title">
+      <div class="logo">
+        <div class="t0">이웃집 메르헨 RPG</div>
+        <div class="t1">피카<b>부</b>!</div>
+        <div class="t2">개정판</div>
+        <select name="attr_sheet_type" title="시트 종류"><option value="in" selected>이노센트용 데이터</option><option value="sp">스푸키용 데이터</option></select>
+      </div>
+      <div class="portrait"><img name="attr_character_avatar" alt=""></div>
+    </div>
+    <div class="rbox tin">
+      <div class="hb">이노센트용 데이터</div>
+      <div class="data">
+        <div class="f nm"><span class="chip">이름</span><input type="text" name="attr_character_name" title="이름"></div>
+        <div class="g3">
+          <div class="f"><span class="chip">플레이어</span><input type="text" name="attr_player" title="플레이어"></div>
+          <div class="f"><span class="chip">나이</span><input type="text" name="attr_age" title="나이"><span class="unit">살</span></div>
+          <div class="f"><span class="chip">성별</span><input type="text" name="attr_gender" title="성별"></div>
+        </div>
+        <div class="f grow"><span class="chip">설정</span><textarea name="attr_setting" title="설정"></textarea></div>
+        <div class="g2">
+          <div class="f"><span class="chip">재능</span><input type="text" name="attr_talent" title="재능"><!--@TOK_TALENT--></div>
+          <div class="f"><span class="chip">약점</span><input type="text" name="attr_weakness" title="약점"></div>
+        </div>
+        <div class="mk">부글부글 포인트<!--@TOK_MUKA_IN--></div>
+      </div>
+    </div>
+    <div class="rbox tsp">
+      <div class="hb">스푸키용 데이터</div>
+      <div class="data">
+        <div class="f nm"><span class="chip">이름</span><input type="text" name="attr_character_name" title="이름"></div>
+        <div class="g2">
+          <div class="f"><span class="chip">플레이어</span><input type="text" name="attr_player" title="플레이어"></div>
+          <div class="f"><span class="chip">링</span><input type="text" name="attr_ring" title="링"><span class="unit">족</span></div>
+        </div>
+        <div class="g2">
+          <div class="f big"><span class="chip">공격력</span><input type="number" name="attr_attack" title="공격력"></div>
+          <div class="f big"><span class="chip">방어력</span><input type="number" name="attr_defense" title="방어력"></div>
+          <div class="f big"><span class="chip">도움력</span><input type="number" name="attr_help" title="도움력"></div>
+          <div class="f big"><span class="chip">방해력</span><input type="number" name="attr_hinder" title="방해력"></div>
+          <div class="f big"><span class="chip">마력</span><input type="number" name="attr_mp" title="마력"></div>
+          <div class="f"><span class="chip">약점</span><input type="text" name="attr_weakness" title="약점"></div>
+        </div>
+        <div class="mslot"><span class="lb">마력 슬롯</span><!--@TOK_MANA--></div>
+        <div class="mk">부글부글 포인트<!--@TOK_MUKA_SP--></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2단: 특기 리스트 (번호 왼쪽, 분야 이름 옆 □ = 원기 슬롯) -->
+  <div class="rbox">
+    <div class="hb">특기 리스트</div>
+<!--@SLOT_MIRRORS-->
+    <div class="grid">
+<!--@SKILLS-->
+    </div>
+  </div>
+
+  <!-- 판정 띠 -->
+  <div class="strip">
+    <button type="action" class="rt" name="act_fear" title="《용기》 판정"><i class="tdi"></i>공포 판정</button>
+    <button type="action" class="rt" name="act_rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
+    <span class="rtg"><button type="action" class="rt" name="act_nd1">1D6</button><button type="action" class="rt" name="act_nd2">2D6</button><button type="action" class="rt" name="act_nd3">3D6</button></span>
+    <span class="ckn">수정치<input type="number" name="attr_mod" title="다음 판정 수정치"></span>
+    <input type="hidden" class="slmv" name="attr_sleep_mod" value="0"><span class="ckn slw tin">졸음 <span class="slv" name="attr_sleep_mod">0</span></span>
+    <span class="sp"></span>
+    <span class="fum">펌블치 <span class="fv" name="attr_fumble">2</span><span class="adj"><button type="action" class="up" name="act_fup" title="펌블치 +1"></button><button type="action" class="dn" name="act_fdn" title="펌블치 -1"></button></span><input type="hidden" class="adjv" name="attr_fumble_adj" value="0"><button type="action" class="rs" name="act_frs" title="2 로 되돌림"></button></span>
+    <span class="fum spc">스페셜치 <span class="fv" name="attr_special">12</span><span class="adj"><button type="action" class="up" name="act_sup" title="스페셜치 +1"></button><button type="action" class="dn" name="act_sdn" title="스페셜치 -1"></button></span><input type="hidden" class="adjv" name="attr_special_adj" value="0"><button type="action" class="rs" name="act_srs" title="12 로 되돌림"></button></span>
+    <span class="seg" title="공개 범위"><label class="sgk"><input type="radio" name="attr_roll_display_to" value=" " checked><span>모두에게</span></label><label class="sgk"><input type="radio" name="attr_roll_display_to" value="/w gm "><span>GM에게</span></label></span>
+    <button type="roll" class="gmb" name="roll_gmw" title="GM 에게 귓속말 (물음 창)" value="/w gm &{template:peekaboo} {{plain=?{GM 에게 귓속말}}}"><i></i>GM 귓속말</button>
+  </div>
+
+  <!-- 3단 (이노센트): 졸음 슬롯 | 모험의 기록 · 용돈 · 만난 적 있는 오바케 · 경험치 -->
+  <div class="r3 tin">
+    <div class="rbox">
+      <div class="hb">졸음 슬롯</div>
+      <input type="hidden" class="sbm" name="attr_sleep_band" value="0">
+      <div class="sleep">
+<!--@SLEEP-->
+      </div>
+    </div>
+    <div class="rbox adv">
+      <div class="rec">
+        <span class="chip">모험의 기록</span>
+        <textarea name="attr_adventure" title="모험의 기록"></textarea>
+        <div class="money"><span class="chip">용돈</span><input type="text" name="attr_money" title="용돈"></div>
+      </div>
+      <div class="ob">
+        <div class="oh"><span>만난 적 있는 오바케</span><span>약점</span></div>
+        <div class="obs">
+<!--@OBAKE-->
+        </div>
+        <div class="xp"><div>이노센트의 경험치<input type="text" name="attr_xp_in" title="이노센트의 경험치"></div><div>스푸키의 경험치<input type="text" name="attr_xp_sp" title="스푸키의 경험치"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3단 (스푸키): 몸 · 의상 · 마법 -->
+  <div class="rbox bodybox tsp">
+    <div class="hb">몸 · 의상 · 마법</div>
+<!--@BODY-->
+  </div>
+</div>
+<!--@ROLLTEMPLATE-->
+<!--@WORKER-->

@@ -1,0 +1,11 @@
+[
+  {"name": "소라 (이노센트 예시)", "attrs": {"character_name": "소라", "player": "하루", "age": "10", "gender": "여", "setting": "오바케가 보이는 아이. 할머니 집에 산다.",
+    "talent": "달리기", "talent_used": "2", "weakness": "벌레", "muka": "3",
+    "A9": "1", "B7": "1", "C9": "1", "D8": "1", "E2": "1", "F6": "1", "gap_c": "1", "slot_b": "1", "sleep": "12",
+    "adventure": "뒷산 폐가에서 퐁을 만났다.", "money": "300엔", "ob1_name": "베개족 퐁", "ob1_weak": "햇빛", "xp_in": "2"}},
+  {"name": "퐁 (스푸키 예시)", "attrs": {"sheet_type": "sp", "character_name": "퐁", "player": "하루", "ring": "베개", "attack": "3", "defense": "2", "help": "4", "hinder": "1",
+    "mp": "12", "weakness": "햇빛", "muka": "1", "C2": "1", "D6": "1",
+    "body_name": "베개", "body_effect": "푹신푹신한 베개 몸.", "cos1_name": "잠옷 모자",
+    "mg1_name": "꿈나라 보내기", "mg1_cost": "3", "mg1_effect": "목표 한 명을 잠들게 한다.", "mg2_name": "베개 던지기", "mg2_cost": "1", "mg2_effect": "공격 판정에 +1."}},
+  {"name": "새 캐릭터", "attrs": {}}
+]

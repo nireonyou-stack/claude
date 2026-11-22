@@ -32,7 +32,8 @@ textarea{resize:none;display:block}
 .sp{flex:1}
 .lb{font:700 11.5px/1 var(--sans);white-space:nowrap}
 .ck{appearance:none;-webkit-appearance:none;width:13px;height:13px;margin:0;border:1.3px solid var(--ink);background:#fff;cursor:pointer;flex:none}
-.ck:checked{background:linear-gradient(45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%),linear-gradient(-45deg,transparent 42%,var(--accent) 43% 57%,transparent 58%)}
+/* 체크 = V (그라디언트 두 줄: 짧은 획 + 긴 획) */
+.ck:checked{background-image:linear-gradient(to top right,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px)),linear-gradient(to top left,transparent calc(50% - 1px),var(--accent) calc(50% - 1px) calc(50% + 1px),transparent calc(50% + 1px));background-size:5px 5px,7px 10px;background-position:0 4px,3px 0;background-repeat:no-repeat}
 .sheet input.ck{width:13px;height:13px;padding:0}
 .bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
   background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
@@ -58,13 +59,12 @@ textarea{resize:none;display:block}
 .logo .t0{font:700 10px var(--sans);letter-spacing:.2em;opacity:.85}
 .logo .t1{font:400 44px/1 var(--brush);letter-spacing:.02em}
 .logo .t1 b{font-weight:400;color:var(--red)}
-.logo .t2{font:700 9px var(--sans);letter-spacing:.3em;opacity:.6}
 .logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1px solid var(--accent);color:#fff;font:700 12px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:4px;
   background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(-45deg,transparent 50%,#fff 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
 .logo select option{color:var(--ink)}
 .opts{display:flex;justify-content:center;gap:10px;margin-top:5px;font:500 10.5px var(--sans);color:#ddd}
 .opts label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
-.opts .ck{border-color:#bbb;background:transparent}
+.opts .ck{border-color:#bbb;background-color:transparent}
 .portrait{flex:1;min-height:150px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f2f2f2 0 8px,#fafafa 8px 16px);display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--sub)}
 .prof{display:grid;grid-template-columns:auto minmax(0,1fr);grid-auto-rows:minmax(24px,1fr)}
 .prof .k{background:var(--bar);color:#fff;font:700 11px/1 var(--sans);padding:0 8px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
@@ -189,6 +189,7 @@ textarea{resize:none;display:block}
 .prog label{cursor:pointer}
 .prog input{display:none}
 .prog span{display:block;min-width:30px;height:24px;padding:0 10px 0 6px;font:700 11.5px/24px var(--sans);text-align:center;background:#e6e6e6;color:var(--sub);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%,8px 50%)}
+.prog label+label span{padding:0 7px 0 9px}
 .prog label:first-child span{clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%)}
 .prog .gold span{background:#c9c9c9;color:var(--ink)}
 .prog .on span{background:var(--accent);color:#fff}
@@ -261,7 +262,6 @@ textarea{resize:none;display:block}
       <div class="logo">
         <div class="t0">인귀혈맹 RPG</div>
         <div class="t1">블러드<b>패</b>스</div>
-        <div class="t2">THE BLOOD PATH RPG</div>
         <select id="stype" aria-label="시트 종류"><option value="h">캐릭터 시트 (인간)</option><option value="v">캐릭터 시트 (흡혈귀)</option></select>
         <div class="opts"><label><input type="checkbox" class="ck" id="adv" checked>상급자용</label><label><input type="checkbox" class="ck" id="trio">혈맹 3인</label></div>
       </div>
