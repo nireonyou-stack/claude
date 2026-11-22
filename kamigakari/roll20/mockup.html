@@ -211,8 +211,6 @@ textarea{resize:none;display:block}
 .it b{font-weight:700;white-space:nowrap}
 .it span{color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
 .it i{font-style:normal;color:var(--accent);font-weight:700}
-.memo{border-top:1.5px solid var(--ink);flex:none}
-.memo textarea{height:64px;padding:4px 6px;font-size:12px}
 .burn .br{display:grid;grid-template-columns:34px minmax(0,1fr) 54px 58px;align-items:center;border-bottom:1px solid var(--line);min-height:34px}
 .burn .br>*{padding:0 5px}
 .burn .br i{font-style:normal;font:700 11px var(--sans);color:var(--sub);text-align:center}
@@ -221,7 +219,8 @@ textarea{resize:none;display:block}
 .burn .br em{font-style:normal;font:700 11px var(--sans);text-align:center;white-space:nowrap}
 .burn .br.off{opacity:.42}
 .burn .br .btn{padding:0 2px;font-size:11px}
-.rate{display:grid;grid-template-columns:28px repeat(6,1fr) 1.3fr;font:500 11px/19px Arial,Helvetica,sans-serif;text-align:center}
+.rate{display:grid;grid-template-columns:28px repeat(6,1fr) 1.3fr;grid-auto-rows:minmax(19px,1fr);flex:1;font:500 11px/19px Arial,Helvetica,sans-serif;text-align:center}
+.rate>*{display:flex;align-items:center;justify-content:center}
 .rate>*{border-bottom:1px solid var(--line);border-left:1px solid var(--line)}
 .rate>:nth-child(8n+1){border-left:0;font-weight:700}
 .rate .h{background:#5a4c48;color:#fff;font-weight:700}
@@ -326,7 +325,7 @@ textarea{resize:none;display:block}
       <div class="gauge"><span class="lb">현재</span><input class="now" type="number" id="hp" value="43" aria-label="현재 생명력"><span class="mx">/ <b id="hpmax">47</b></span></div>
       <div class="hb">영문</div>
       <div class="gauge cr"><span class="lb">현재</span><input class="now" type="number" id="crest" value="22" aria-label="현재 영문"><span class="mx">/ <input type="number" id="crestmax" value="22" aria-label="영문 최대치"></span></div>
-      <div class="hb">사용 영력<span class="sp"></span><small>눈을 눌러 바꿈</small></div>
+      <div class="hb">사용 영력</div>
       <div class="pool">
         <div class="pd" id="pool"></div>
         <div class="ov">초과 영력 <span id="ovf"></span></div>
@@ -334,7 +333,7 @@ textarea{resize:none;display:block}
       </div>
       <div class="man">
         <div class="ld" id="last"><b>영력 조작</b></div>
-        <div class="hint" id="mhint">판정을 굴리면 여기에 눈이 나와요.</div>
+        <div class="hint" id="mhint"></div>
         <div class="pb"><button class="btn" type="button" id="mSend" disabled>조작 결과 보내기</button><button class="btn" type="button" id="mUndo" disabled>되돌리기</button></div>
       </div>
     </div>
@@ -356,7 +355,7 @@ textarea{resize:none;display:block}
       </div>
     </div>
     <div class="bx">
-      <div class="hb">감정을 맺은 캐릭터<span class="sp"></span><small id="emoN">1개</small></div>
+      <div class="hb">감정을 맺은 캐릭터</div>
       <div class="lst" id="emos"></div>
     </div>
   </div>
@@ -393,13 +392,13 @@ textarea{resize:none;display:block}
 
   <!-- 3단: 능력치 -->
   <div class="bx">
-    <div class="hb">능력치<span class="sp"></span><small>주능력치 주사위 = 행위 판정 · 수정은 메인 칭호에서 자동</small></div>
+    <div class="hb">능력치</div>
     <div class="st" id="st"></div>
   </div>
 
   <!-- 4단: 장비 -->
   <div class="bx">
-    <div class="hb">장비 중인 아이템<span class="sp"></span><small>《영력결계》 사용 때 자동으로 장비 · 검정 = 물리 공격 · 흰색 = 마법 공격 · 빗금 = 기타</small></div>
+    <div class="hb">장비 중인 아이템<small>(이것들은 《영력결계》 사용 때 자동으로 【장비】할 수 있다)</small></div>
     <div class="eqg" id="eqg"></div>
     <div class="mvr">
       <div>이동 행위<small>1턴에 어느 하나 1회</small></div>
@@ -411,21 +410,20 @@ textarea{resize:none;display:block}
 
   <!-- 5단: 잠재 특성 · 탤런트 -->
   <div class="bx">
-    <div class="hb">잠재 특성 · 탤런트<span class="sp"></span><small>▲ 종족 · ※ 칭호 · 숫자 = 세계간섭 LV · 말풍선 = 채팅에 올림</small></div>
+    <div class="hb">잠재 특성 · 탤런트</div>
     <div id="tal"></div>
   </div>
 
   <!-- 6단: 소지품 | 영문 연소 · 레이트 · 소지금 -->
   <div class="r6">
     <div class="bx">
-      <div class="hb">소지 중인 아이템 · 획득 소재<span class="sp"></span><small>× = 소모품</small></div>
+      <div class="hb">소지 중인 아이템 · 획득 소재</div>
       <div class="items" id="items"></div>
-      <div class="memo"><textarea aria-label="메모"></textarea></div>
     </div>
     <div class="bx">
-      <div class="hb">영문 연소<span class="sp"></span><small>감정 수로 해금</small></div>
+      <div class="hb">영문 연소</div>
       <div class="burn" id="burn"></div>
-      <div class="hb">대미지 레이트<span class="sp"></span><small>장비 무기 랭크 강조</small></div>
+      <div class="hb">대미지 레이트</div>
       <div class="rate" id="rate"></div>
       <div class="money"><span class="lb">소지금</span><input type="text" value="5000" aria-label="소지금"><span class="lb">G</span></div>
     </div>
@@ -535,7 +533,7 @@ function cvals() { const m = mods(), s = subs(); return [...S.main.map((v, i) =>
 function eqSum() { return EQC.map((_, c) => S.eq.reduce((a, r) => a + (+r.v[c] || 0), 0)); }
 function totals() { const c = cvals(), e = eqSum(); return [...c.map((v, i) => v + e[i]), e[9], e[10]]; }
 function renderStats() {
-  const st = $('st'), m = mods(), s = subs(), c = cvals(), F = ['체력÷2 (올림)', '지성÷2 (올림)', '민첩+5', '체력+정신+LV×3'];
+  const st = $('st'), m = mods(), s = subs(), c = cvals(), F = ['체력÷2', '지성÷2', '민첩+5', '체력+정신+(LV×3)'];
   const SUBN = ['물D', '마D', '행동치', '생명력'];
   let h = `<div class="rl h0"></div>` + MAIN.map(n => `<div class="h">${n}</div>`).join('') + `<div class="gap"></div>` + SUBN.map(n => `<div class="h">${n}</div>`).join('');
   h += `<div class="rl"><b>능력치</b></div>` + S.main.map((v, i) => `<div class="mv"><input type="number" value="${v}" data-m="${i}" aria-label="${MAIN[i]}"><button class="dic" type="button" data-act="${i}" title="${MAIN[i]} 행위 판정"></button></div>`).join('') +
@@ -575,7 +573,7 @@ function renderEq() {
         `<button class="btn" type="button" data-atk="${ri}">공격</button><button class="btn" type="button" data-dmg="${ri}">대미지</button></div>`;
     }
   });
-  h += `<div class="tk">총계<small>전투치 + 장비</small></div>` + EQC.map((n, i) => `<div class="tot" id="t${i}">0${i < 5 ? `<button class="dic" type="button" data-cv="${i}" title="${n} 판정"></button>` : ''}</div>`).join('');
+  h += `<div class="tk">총계</div>` + EQC.map((n, i) => `<div class="tot" id="t${i}">0${i < 5 ? `<button class="dic" type="button" data-cv="${i}" title="${n} 판정"></button>` : ''}</div>`).join('');
   g.innerHTML = h;
   g.querySelectorAll('[data-e]').forEach(i => i.onchange = () => { const [r, c] = i.dataset.e.split(':').map(Number); S.eq[r].v[c] = i.value; renderTotals(); });
   g.querySelectorAll('[data-rk]').forEach(i => i.onchange = () => { S.eq[+i.dataset.rk].w.k = +i.value || ''; renderRate(); });
@@ -623,12 +621,12 @@ const ITEMS = [['모바일', '미등장·퇴장 때도 대화 가능', 1], ['구
   ['포맨더', '등장 판정 자동 성공', 0, 1], ['오치미즈', '회복 20', 0, 1], ['슬라주', '【수면·맹독】 해제', 0, 1], ['오석산', '【고통·마비·부동】 해제', 0, 1], ['영력 장갑', '【소거】 때 【체력】 +1', 0], ['영조의 깃털', '【소거】 때 【민첩】 +1', 0],
   ['심령 카메라', '【소거】 때 【지성】 +1', 0], ['주부', '【소거】 때 【정신】 +1', 1], ['범의 눈', '【소거】 때 【행운】 +1', 0], ['자동차', '', 0], ['암리타', '【기절】 해제', 0, 1], ['칼로리 블록', '휴식 회복치 +5', 1, 1],
   ['성수', '【종별: 불사】의 랭크 +1', 0, 1], ['금지의 쐐기', '【소거】 때 【체력】 +1', 0, 1], ['가방', '', 1], ['카메라', '', 0], ['오토바이', '', 0], ['갈아입을 옷', '', 1],
-  ['멋진 옷', '', 0], ['식신부', '【소거】 때 【민첩】 +1', 0, 1], ['매직 캔들', '【소거】 때 【지성】 +1', 0, 1], ['마향', '【소거】 때 【정신】 +1', 0, 1], ['일회용 주물', '대미지 산출 +1d', 0, 1], ['', '', 0]];
+  ['멋진 옷', '', 0], ['식신부', '【소거】 때 【민첩】 +1', 0, 1], ['매직 캔들', '【소거】 때 【지성】 +1', 0, 1], ['마향', '【소거】 때 【정신】 +1', 0, 1], ['일회용 주물', '대미지 산출 +1d', 0, 1], ...Array(7).fill(['', '', 0])];
 $('items').innerHTML = ITEMS.map(([n, e, c, x]) => n ? `<div class="it"><input type="checkbox" class="ck" ${c ? 'checked' : ''} aria-label="${n}"><b>${n}${x ? ' <i>×</i>' : ''}</b><span>${e}</span></div>` : `<div class="it"><input type="checkbox" class="ck" aria-label="추가 아이템"><input type="text" aria-label="추가 아이템" style="height:20px"></div>`).join('');
 const BURN = [['①~', '물리초월', '판정 전에 롤 다이스 +1~3개', '1개당 1d', 1], ['④~', '생명연소', '1전투 1회. 【해제: 기절】 · 【생명력】을 【체력】 값으로', '2d', 4], ['⑦', '개념파괴', '대미지 산출 때 【랭크】 +1d', '2d', 7]];
 function renderBurn() {
-  const n = emoCount(); $('emoN').textContent = `${n}개`;
-  $('burn').innerHTML = BURN.map(([k, nm, e, c, need], i) => `<div class="br${n < need ? ' off' : ''}"><i>${k}</i><div><b>${nm}</b><span>${e}</span></div><em>${c}</em><div>${i === 1 ? `<button class="btn" type="button" id="lifeB" ${n < need ? 'disabled' : ''}>사용</button>` : `<span style="font-size:10px;color:var(--sub);white-space:nowrap">${i ? '띠에서 켬' : `최대 +${Math.max(1, Math.min(3, n))}d`}</span>`}</div></div>`).join('');
+  const n = emoCount();
+  $('burn').innerHTML = BURN.map(([k, nm, e, c, need], i) => `<div class="br${n < need ? ' off' : ''}"><i>${k}</i><div><b>${nm}</b><span>${e}</span></div><em>${c}</em><div>${i === 1 ? `<button class="btn" type="button" id="lifeB" ${n < need ? 'disabled' : ''}>사용</button>` : ''}</div></div>`).join('');
   if ($('lifeB')) $('lifeB').onclick = lifeBurn;
   $('psw').style.opacity = n < 1 ? .45 : 1; document.querySelector('.chip.ef').style.opacity = n < 7 ? .45 : 1;
 }
@@ -695,11 +693,11 @@ function roll({ title, base, kind, head = '', extraT = null, extraMod = 0, extra
 function renderLast() {
   const L = S.last, ld = $('last');
   ld.innerHTML = '<b>영력 조작</b>';
-  if (!L) { $('mhint').textContent = '판정을 굴리면 여기에 눈이 나와요. 크리티컬 · 펌블 때는 조작할 수 없어요.'; $('mSend').disabled = $('mUndo').disabled = true; return; }
+  if (!L) { $('mhint').textContent = ''; $('mSend').disabled = $('mUndo').disabled = true; return; }
   L.dice.forEach((v, i) => { const b = el('button', (L.sel === i ? 'pk' : '') + (L.swaps.some(s => s.d === i) ? ' sw' : ''), String(v)); b.type = 'button'; b.onclick = () => { L.sel = L.sel === i ? null : i; renderLast(); renderPool(); }; ld.append(b); });
   ld.append(el('span', 'tt', String(L.dice.reduce((a, c) => a + c, 0) + L.base)));
   const kept = L.dice.length - new Set(L.swaps.map(s => s.d)).size;
-  $('mhint').textContent = L.sel == null ? `${L.title} · 바꿀 눈을 누른 뒤 위의 영력을 누르세요. 1개는 남겨야 해요.` : '이제 맞바꿀 영력을 누르세요.';
+  $('mhint').textContent = '';
   $('mSend').disabled = !L.swaps.length; $('mUndo').disabled = !L.swaps.length;
 }
 function swap(pi) {

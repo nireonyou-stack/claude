@@ -258,7 +258,7 @@ textarea{resize:none;display:block}
   </div>
 
   <!-- 2단: HP · 마력 -->
-  <div class="sec"><b>HP · 마력</b><i>HP / ETHER</i><small>현재값과 「영광」은 원래 「사건 보고서」에 적는 칸 — Roll20 에서는 아래 줄에서 관리</small></div>
+  <div class="sec"><b>HP · 마력</b><i>HP / ETHER</i></div>
   <div class="hpr">
     <div class="hp orn"><b>HP</b><div class="f">초기치 /<input type="number" id="hpi" value="7" aria-label="HP 초기치"><span class="sp"></span>복원치 /<input type="number" value="4" aria-label="HP 복원치"></div></div>
     <div class="hp orn"><b>흑의 마력</b><div class="f">초기치 /<input type="number" value="3" aria-label="흑의 마력 초기치"></div></div>
@@ -300,11 +300,11 @@ textarea{resize:none;display:block}
   </div>
 
   <!-- 3단: 문장 -->
-  <div class="sec"><b>문장</b><i>UNLOCK</i><small>성립 보너스로 해금하면 체크</small></div>
+  <div class="sec"><b>문장</b><i>UNLOCK</i></div>
   <div class="g3" id="crests"></div>
 
   <!-- 4단: 기본 선언 -->
-  <div class="sec"><b>기본 선언</b><i>BASIC CALLING</i><small>말풍선 = 낸 카드로 기동해 채팅에 올림</small></div>
+  <div class="sec"><b>기본 선언</b><i>BASIC CALLING</i></div>
   <div class="g3" id="basic"></div>
 
   <!-- 5단: 상급 선언 -->
@@ -416,7 +416,7 @@ let hand = [{ c: 'b', k: '7', s: 0 }];
 const chip = h => { const jk = h.k === '광대'; return `<span class="pc${h.c === 'r' ? ' rd' : ''}${jk ? ' jk' : ''}" title="${h.c === 'r' ? '적' : '흑'} ${h.k} (${val(h)})"><b>${jk ? 'JK' : h.k}</b><i>${jk ? '★' : SUIT[h.c][h.s]}</i></span>`; };
 const sums = () => ({ b: hand.filter(h => h.c === 'b').reduce((a, h) => a + val(h), 0), r: hand.filter(h => h.c === 'r').reduce((a, h) => a + val(h), 0) });
 function renderHand() {
-  $('hand').innerHTML = hand.length ? hand.map((h, i) => chip(h).replace('<span class="pc', `<span data-i="${i}" class="pc`)).join('') : '<span class="empty">카드 패드에서 낸 카드를 고르세요 · 칩을 누르면 뺌</span>';
+  $('hand').innerHTML = hand.length ? hand.map((h, i) => chip(h).replace('<span class="pc', `<span data-i="${i}" class="pc`)).join('') : '';
   const s = sums(); $('sum').innerHTML = `흑 <b>${s.b}</b> · <span class="r">적 <b>${s.r}</b></span> · ${hand.length}장`;
 }
 $('hand').onclick = e => { const p = e.target.closest('[data-i]'); if (p) { hand.splice(+p.dataset.i, 1); renderHand(); } };

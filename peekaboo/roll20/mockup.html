@@ -3,9 +3,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Gaegu:400,700|Noto+Sans+KR:400,500,700,900&display=swap">
 <style>
 /* 한 장짜리 목업: 세로 830px 시트(공식 「피카부 개정판」 캐릭터 시트 — 이노센트용 · 스푸키용 데이터) + Roll20 채팅 카드.
-   흰 종이 · 손그림 느낌 둥근 상자 · 보라 하나. 값은 예시 */
+   흰 종이 · 손그림 느낌 둥근 상자 · 이노센트용 노랑 / 스푸키용 보라 (룰북 표지). 값은 예시 */
 :root{--paper:#ffffff;--ink:#1d1d1d;--sub:#5e5e5e;--line:#c6c6c6;--cell:#f3f3f3;--bar:#1d1d1d;--page:#e3e3e3;
-  --accent:#7a3fc1;--soft:#efe7fa;--navy:#1f3566;--green:#247305;
+  --accent:#7a3fc1;--soft:#efe7fa;--navy:#1f3566;--green:#247305;--acct:#7a3fc1;--acctx:#fff;--bartx:#fff;
   --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--head:'Gaegu','Noto Sans KR',sans-serif;color-scheme:light}
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
@@ -23,8 +23,11 @@ textarea{resize:none;display:block}
 /* ── 시트 ── */
 .sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
 .sheet[data-t=in] .sp-only,.sheet[data-t=sp] .in-only{display:none}
+/* 이노센트용 = 노란 테마 (룰북 표지의 노랑 · 고동색 글자), 스푸키용 = 보라 */
+.sheet[data-t=in],.cd.in{--bar:#fcea3a;--bartx:#2b1d1a;--accent:#f2c300;--acctx:#2b1d1a;--acct:#8c6400;--soft:#fff6b8}
+.sheet[data-t=in] .no{border-bottom-color:#e2cf2a}
 .rbox{border:2px solid var(--ink);border-radius:10px;overflow:hidden}
-.hb{background:var(--bar);color:#fff;font:700 18px/1 var(--head);padding:4px 10px 3px;display:flex;align-items:center;gap:6px}
+.hb{background:var(--bar);color:var(--bartx);font:700 18px/1 var(--head);padding:4px 10px 3px;display:flex;align-items:center;gap:6px}
 .hb small{font:400 10.5px var(--sans);opacity:.85}
 .hb .sp{flex:1}
 .chip{flex:none;font:700 11.5px/1 var(--sans);white-space:nowrap}
@@ -38,7 +41,7 @@ textarea{resize:none;display:block}
 .logo{border:2px solid var(--ink);border-radius:14px;padding:8px 8px 10px;text-align:center;background:radial-gradient(circle at 85% 20%,var(--soft) 0 22px,transparent 23px),#fff}
 .logo .t0{font:700 11px var(--sans);letter-spacing:.06em;color:var(--sub)}
 .logo .t1{font:700 46px/1 var(--head);color:var(--ink);letter-spacing:.02em}
-.logo .t1 b{color:var(--accent)}
+.logo .t1 b{color:var(--acct)}
 .logo .t2{font:700 12px var(--head);color:var(--sub)}
 .logo select{appearance:none;-webkit-appearance:none;background:transparent;border:0;border-bottom:1.5px solid var(--accent);font:700 12.5px var(--sans);padding:2px 14px 2px 4px;cursor:pointer;text-align:center;margin-top:6px;
   background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(-45deg,transparent 50%,var(--ink) 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
@@ -70,17 +73,17 @@ textarea{resize:none;display:block}
 .mk{display:flex;align-items:center;gap:6px;background:var(--cell);border-radius:8px;padding:4px 8px;font:700 11.5px var(--sans)}
 .mk small{font-weight:400;color:var(--sub)}
 .mslot{display:grid;grid-template-columns:20px repeat(10,minmax(0,1fr));border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
-.mslot .lb{grid-row:1/4;background:var(--bar);color:#fff;writing-mode:vertical-rl;font:700 10px/1 var(--sans);display:flex;align-items:center;justify-content:center;letter-spacing:.1em}
+.mslot .lb{grid-row:1/4;background:var(--bar);color:var(--bartx);writing-mode:vertical-rl;font:700 10px/1 var(--sans);display:flex;align-items:center;justify-content:center;letter-spacing:.1em}
 .mslot label{cursor:pointer;border-left:1px solid var(--line);border-top:1px solid var(--line)}
 .mslot input{display:none}
 .mslot span{display:block;text-align:center;font:700 11px/20px var(--sans)}
-.mslot input:checked+span{background:var(--accent);color:#fff}
+.mslot input:checked+span{background:var(--accent);color:var(--acctx)}
 
 /* 2단: 특기 리스트 (분야 이름 옆 □ = 원기 슬롯) */
 .grid{display:grid;grid-template-columns:26px 10px repeat(5,minmax(0,1fr) 10px) minmax(0,1fr);grid-template-rows:30px repeat(11,25px);padding:4px;position:relative}
-.no{background:var(--bar);color:#fff;font:700 15px/1 var(--head);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
+.no{background:var(--bar);color:var(--bartx);font:700 15px/1 var(--head);display:flex;align-items:center;justify-content:center;border-bottom:1px solid #444}
 .no.corner{border-bottom:0;background:transparent}
-.fh{background:var(--bar);color:#fff;display:flex;align-items:center;justify-content:center;gap:5px;font:700 19px/1 var(--head);margin:0 1px;border-radius:8px 8px 0 0}
+.fh{background:var(--bar);color:var(--bartx);display:flex;align-items:center;justify-content:center;gap:5px;font:700 19px/1 var(--head);margin:0 1px;border-radius:8px 8px 0 0}
 .slot{width:14px;height:14px;margin:0;padding:0;background:#fff;border:0;cursor:pointer}
 .slot.lost{background:linear-gradient(45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),linear-gradient(-45deg,transparent 38%,var(--accent) 38% 62%,transparent 62%),#fff}
 .gap{grid-row:1/-1;cursor:pointer;display:block;position:relative}
@@ -108,34 +111,34 @@ textarea{resize:none;display:block}
 .seg input{display:none}
 .seg span{display:block;padding:0 6px;font:500 11.5px/18px var(--sans)}
 .seg label+label span{border-left:1px solid var(--ink)}
-.seg input:checked+span{background:var(--accent);color:#fff}
+.seg input:checked+span{background:var(--accent);color:var(--acctx)}
 .fum{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
-.fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:900 14px/1.2 var(--sans);color:var(--accent)}
+.fum b{display:inline-block;min-width:18px;text-align:center;border-bottom:1.5px solid var(--accent);font:900 14px/1.2 var(--sans);color:var(--acct)}
 .fum.spc b{border-bottom-color:var(--green);color:var(--green)}
 .adj{display:inline-flex;flex-direction:column;gap:1px;margin-left:1px}
 .adj button{position:relative;width:12px;height:8px;padding:0;border:1px solid var(--line);background:#fff;color:var(--sub);cursor:pointer}
 .adj button::after{content:"";position:absolute;left:2px;top:1px;border-left:3px solid transparent;border-right:3px solid transparent}
 .adj .up::after{border-bottom:4px solid currentColor}
 .adj .dn::after{border-top:4px solid currentColor}
-.adj button:hover,.rs:hover{color:var(--accent)}
+.adj button:hover,.rs:hover{color:var(--acct)}
 .rs{position:relative;width:12px;height:14px;padding:0;border:0;background:none;color:#c8c8c8;cursor:pointer}
 .rs::before{content:"";position:absolute;inset:2px;border:1.5px solid currentColor;border-radius:50%;border-right-color:transparent}
 .rs::after{content:"";position:absolute;right:1px;top:0;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;border-right:4px solid currentColor;transform:rotate(-35deg)}
-.rs.on{color:var(--accent)}
+.rs.on{color:var(--acct)}
 .rt{display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;padding:0 6px;cursor:pointer;font:500 11.5px/18px var(--sans)}
-.rt:hover{border-color:var(--accent);color:var(--accent)}
+.rt:hover{border-color:var(--accent);color:var(--acct)}
 .rt .tdi{display:inline-block;flex:none;width:10px;height:10px;margin-right:3px;border:1px solid currentColor;border-radius:2px;color:#c8c8c8;
   background-image:radial-gradient(circle at 27% 27%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 50% 50%,currentColor .8px,transparent 1.2px),radial-gradient(circle at 73% 73%,currentColor .8px,transparent 1.2px)}
 .rt:hover .tdi{color:inherit}
 .rtg{display:inline-flex}
 .rtg .rt+.rt{border-left:0}
 .gmb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink);background:#fff;padding:0 8px 0 6px;font:500 11.5px/18px var(--sans);cursor:pointer}
-.gmb:hover{border-color:var(--accent);color:var(--accent)}
+.gmb:hover{border-color:var(--accent);color:var(--acct)}
 .gmb i{position:relative;display:inline-block;width:13px;height:9px;border:1.3px solid currentColor;border-radius:3px;margin-bottom:2px}
 .gmb i::after{content:"";position:absolute;left:1px;bottom:-4px;border-top:3px solid currentColor;border-right:3px solid transparent}
 .ckn{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);padding:0 4px;font:500 11.5px/18px var(--sans);color:var(--sub);background:#fff}
 .ckn input{width:22px;height:16px;padding:0;text-align:center;font:700 11px var(--sans);color:inherit;border-bottom:1px solid currentColor}
-.ckn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.ckn.on{border-color:var(--accent);background:var(--accent);color:var(--acctx)}
 
 
 /* 3단: 졸음 슬롯 (이노센트) · 모험 기록 / 몸 · 의상 · 마법 (스푸키) */
@@ -144,7 +147,7 @@ textarea{resize:none;display:block}
 .sleep label{cursor:pointer;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 .sleep input{display:none}
 .sleep span{display:block;text-align:center;font:700 12px/24px var(--sans)}
-.sleep input:checked+span{background:var(--accent);color:#fff}
+.sleep input:checked+span{background:var(--accent);color:var(--acctx)}
 .sleep .ef{display:flex;flex-direction:column;justify-content:center;padding:0 6px;border-bottom:1px solid var(--line);font:700 13px/1.15 var(--head)}
 .sleep .ef small{font:400 10px/1.25 var(--sans);color:#333}
 .sleep .ef.cur{background:var(--soft)}
@@ -179,34 +182,34 @@ textarea{resize:none;display:block}
 .bub{position:relative;display:inline-block;flex:none;width:18px;height:13px;margin:0 0 5px;padding:0;border:1.5px solid currentColor;border-radius:5px;background-color:transparent;color:var(--sub);cursor:pointer;
   background-image:radial-gradient(circle at 28% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 50% 50%,currentColor 1px,transparent 1.5px),radial-gradient(circle at 72% 50%,currentColor 1px,transparent 1.5px)}
 .bub::after{content:"";position:absolute;left:2px;bottom:-6px;width:0;height:0;border-top:5px solid currentColor;border-right:5px solid transparent}
-.dic:hover,.bub:hover{color:var(--accent)}
+.dic:hover,.bub:hover{color:var(--acct)}
 
 /* ── 채팅 ── */
 .chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
 .chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
 .log{display:flex;flex-direction:column;gap:10px;padding:10px;max-height:1500px;overflow-y:auto}
 .who{font:700 11px var(--sans);color:var(--sub)}
-.who em{font-style:normal;color:var(--accent)}
-.cd{--accent:#e4007f;border:1.5px solid var(--ink);background:#fff;position:relative;overflow:hidden;border-radius:0 0 10px 0}
-.cd .ch{background:var(--bar);color:#fff;padding:5px 8px;font:400 15px/1.3 var(--head);border-bottom:3px solid var(--accent)}
+.who em{font-style:normal;color:var(--acct)}
+.cd{border:1.5px solid var(--ink);background:#fff;position:relative;overflow:hidden;border-radius:0 0 10px 0}
+.cd .ch{background:var(--bar);color:var(--bartx);padding:5px 8px;font:400 15px/1.3 var(--head);border-bottom:3px solid var(--accent)}
 .cd .cb{padding:7px 8px;display:flex;flex-direction:column;gap:6px}
 .cd .sub{font-size:11px;color:var(--sub)}
 .cd .roll{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .cd .die{width:24px;height:24px;border:1.5px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font:700 14px/1 Arial,Helvetica,sans-serif}
 .cd .roll.big .die{width:34px;height:34px;border-width:2px;border-radius:6px;font:800 20px/1 Arial,Helvetica,sans-serif}
 .cd .die.d6{border-color:var(--green);color:var(--green)}
-.cd .die.d1{border-color:var(--accent);color:var(--accent)}
+.cd .die.d1{border-color:var(--accent);color:var(--acct)}
 .cd .die.gone{border-style:dashed;border-color:#bbb;color:#bbb;text-decoration:line-through}
 .cd .eq{color:var(--sub)}
 .cd .tot{font:800 20px/1 Arial,Helvetica,sans-serif;color:var(--navy)}
 .cd .roll.big .tot{font-size:28px}
 .cd .pv{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--sub)}
-.cd .pv b{font:800 30px/1 Arial,Helvetica,sans-serif;color:var(--accent)}
+.cd .pv b{font:800 30px/1 Arial,Helvetica,sans-serif;color:var(--acct)}
 .cd .stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 6px;font:400 15px/1.2 var(--head);transform:rotate(-4deg);white-space:nowrap}
-.cd .stp.spc,.cd .stp.mir{border-color:var(--accent);color:var(--accent)}
+.cd .stp.spc,.cd .stp.mir{border-color:var(--accent);color:var(--acct)}
 .cd .stp.fb{border-style:dashed;color:var(--sub);border-color:var(--sub)}
 .cd .stp.ng{color:var(--sub);border-color:var(--sub)}
-.cd .note{font:500 11px/1.45 var(--sans);color:var(--accent)}
+.cd .note{font:500 11px/1.45 var(--sans);color:var(--acct)}
 .cd .eff{background:var(--cell);padding:6px 7px;font-size:12px;line-height:1.5;white-space:pre-wrap}
 .cd .rt2{display:flex;gap:6px;align-items:center;font-size:12px}
 .cd .big2{font:900 14px var(--sans)}
@@ -296,7 +299,6 @@ textarea{resize:none;display:block}
   <!-- 판정 띠 -->
   <div class="strip">
     <div class="sr">
-      <span class="tl">굴림</span>
       <button class="rt" type="button" id="fear" title="처음 보는 오바케를 만나면 《용기》 판정"><i class="tdi"></i>공포 판정</button>
       <button class="rt" type="button" id="rsk" title="1D6 분야 · 2D6 특기"><i class="tdi"></i>랜덤 특기</button>
       <span class="rtg"><button class="rt" type="button" data-nd="1">1D6</button><button class="rt" type="button" data-nd="2">2D6</button><button class="rt" type="button" data-nd="3">3D6</button></span>
@@ -305,10 +307,7 @@ textarea{resize:none;display:block}
       <span class="sp"></span>
       <span class="fum" data-k="f">펌블치 <b id="fumble">2</b><span class="adj"><button type="button" class="up" title="펌블치 +1"></button><button type="button" class="dn" title="펌블치 -1"></button></span><button type="button" class="rs" title="2 로 되돌림"></button></span>
       <span class="fum spc" data-k="s">스페셜치 <b id="special">12</b><span class="adj"><button type="button" class="up" title="스페셜치 +1"></button><button type="button" class="dn" title="스페셜치 -1"></button></span><button type="button" class="rs" title="12 로 되돌림"></button></span>
-    </div>
-    <div class="sr">
-      <span class="tl">공개</span><span class="seg"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
-      <span class="sp"></span>
+      <span class="seg" title="공개 범위"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>GM에게</span></label></span>
       <button class="gmb" type="button" id="gmb" title="GM 에게 귓속말 (물음 창)"><i></i>GM 귓속말</button>
     </div>
   </div>
@@ -316,7 +315,7 @@ textarea{resize:none;display:block}
   <!-- 3단 -->
   <div class="r3 in-only">
     <div class="rbox">
-      <div class="hb">졸음 슬롯<span class="sp"></span><small>누르면 그 칸까지</small></div>
+      <div class="hb">졸음 슬롯</div>
       <div class="sleep" id="sleep"></div>
     </div>
     <div class="rbox adv">
@@ -333,7 +332,7 @@ textarea{resize:none;display:block}
     </div>
   </div>
   <div class="rbox bodybox sp-only">
-    <div class="hb">몸 · 의상 · 마법<span class="sp"></span><small>마법 말풍선 = 사용 (마력에서 코스트를 뺌)</small></div>
+    <div class="hb">몸 · 의상 · 마법</div>
     <div id="body"></div>
   </div>
 </div></div>
@@ -473,7 +472,7 @@ function card({ title, sub, roll, add = 0, eff, table, dice, notes = [], to }) {
   if (dice) b += `<div class="roll">${dice.map(die).join('')}<span class="eq">=</span><span class="tot">${dice.reduce((a, c) => a + c, 0)}</span></div>`;
   b += notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
   if (eff) b += `<div class="eff">${esc(eff)}</div>`;
-  w.append(el('div', 'cd', `${title ? `<div class="ch">${esc(title)}</div>` : ''}<div class="cb">${b}</div>`)); log.append(w); log.scrollTop = log.scrollHeight;
+  w.append(el('div', 'cd' + (sheetEl.dataset.t === 'in' ? ' in' : ''), `${title ? `<div class="ch">${esc(title)}</div>` : ''}<div class="cb">${b}</div>`)); log.append(w); log.scrollTop = log.scrollHeight;
 }
 const tgs = t => (t == null ? '' : ` · 목표치 ${t}`);
 const mods = () => (+modIn.value || 0) + (isIn() ? sleepMod() : 0);
