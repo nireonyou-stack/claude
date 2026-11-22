@@ -39,7 +39,7 @@ function targets(v) {
   const gap = GAPS.map(g => (on1(v[g]) ? 1 : 2));
   const src = SKILL_IDS.filter(id => on1(v[id])).map(pos);
   const out = {};
-  SKILL_IDS.forEach(id => { const p = pos(id); out[id] = src.length ? Math.min(12, 5 + Math.min(...src.map(s => dist(s, p, gap)))) : null; });
+  SKILL_IDS.forEach(id => { const p = pos(id); out[id] = src.length ? 5 + Math.min(...src.map(s => dist(s, p, gap))) : null; });   // 룰북 2·02: 목표치 상한 없음
   return out;
 }
 const calcTargets = () => getAttrs(TKEYS, v => {
@@ -49,7 +49,8 @@ const calcTargets = () => getAttrs(TKEYS, v => {
 on([...SKILL_IDS, ...GAPS].map(k => `change:${k.toLowerCase()}`).concat('sheet:opened').join(' '), calcTargets);
 
 // ── 펌블치 · 스페셜치: 기본 2 · 12 + 손 수정
-const calcFumble = () => getAttrs(['fumble_adj', 'special_adj'], v => setAttrs({ fumble: 2 + (num(v.fumble_adj) || 0), special: 12 + (num(v.special_adj) || 0) }, { silent: true }));
+// 룰북 2·04: 스페셜치는 13 이상이 되지 않고, 펌블치는 12 이상이 되지 않는다 (1 이하면 펌블 없음)
+const calcFumble = () => getAttrs(['fumble_adj', 'special_adj'], v => setAttrs({ fumble: Math.min(11, 2 + (num(v.fumble_adj) || 0)), special: Math.min(12, 12 + (num(v.special_adj) || 0)) }, { silent: true }));
 on('change:fumble_adj change:special_adj sheet:opened', calcFumble);
 [['fup', 'fumble_adj', 1], ['fdn', 'fumble_adj', -1], ['sup', 'special_adj', 1], ['sdn', 'special_adj', -1]].forEach(([b, k, d]) => {
   on(`clicked:${b}`, () => getAttrs([k], v => setAttrs({ [k]: Math.max(-12, Math.min(12, (num(v[k]) || 0) + d)) })));
@@ -90,12 +91,20 @@ const CTX = [...TKEYS, 'roll_display_to', 'route', 'fumble', 'special', 'mod'];
 const withCtx = (extra, cb) => getAttrs([...CTX, ...extra], v => cb(v, targets(v)));
 
 // 판정: 2D6 합(눈) ≥ 스페셜치 → 스페셜, ≤ 펌블치 → 펌블, 아니면 합 + 수정치가 목표치 이상이면 성공
+// 펌블 표 (1D6): 유닛이 받는 변조 (룰북 2·04·02 · 5·01·06)
+const FUMBLE = ['대실패로 세상에 유닛 전체에 대한 불신감이 감돌고 말았다. 유닛은 변조 「불온한 공기」를 받는다.',
+  '대실패가 유닛 멤버 사이의 소통에 응어리로 남았다. 유닛은 변조 「미묘한 거리감」을 받는다.',
+  '유닛 전체에 대실패를 두려워하는 분위기가 생기고 말았다. 유닛은 변조 「실패에 대한 불안」을 받는다.',
+  '눈치채지 못한 사이에 부상을 입고 있었다. 대실패의 원인은 이것이다. 유닛은 변조 「멤버의 부상」을 받는다.',
+  '대실패가 세상에 알려져 나쁜 쪽으로 해석되어 퍼졌다. 유닛은 변조 「논란」을 받는다.',
+  '대실패가 유닛 전체의 분위기를 나쁘게 만들고 말았다. 유닛은 변조 「엇갈림」을 받는다.'];
 function check(v, { title, sub, target, eff }) {
   const add = modOf(v);
-  const s = `${head(v)} {{ok=[[0]]}} {{total=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}${add ? field('add', sgn(add)) : ''}${route(v)}${field('title', title)}${field('sub', sub)}${field('eff', eff)}`;
+  const s = `${head(v)} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{ft=[[1d6]]}}${add ? field('add', sgn(add)) : ''}${route(v)}${field('title', title)}${field('sub', sub)}${field('eff', eff)}`;
   post(s, R => {
     const n = R.d1.result + R.d2.result, t = n + add;
-    return { ok: n >= spcOf(v) ? 1 : n <= fumOf(v) ? 2 : target == null ? 0 : t >= target ? 3 : 4, total: t };
+    const ok = n >= spcOf(v) ? 1 : n <= fumOf(v) ? 2 : target == null ? 0 : t >= target ? 3 : 4;
+    return ok === 2 ? { ok, total: t, fres: FUMBLE[R.ft.result - 1] } : { ok, total: t };
   });
 }
 
@@ -106,6 +115,12 @@ on(SKILL_IDS.map(id => `clicked:r${id.toLowerCase()}`).join(' '), e => {
   const id = m[1].toUpperCase() + m[2], p = pos(id);
   withCtx([], (v, T) => check(v, { title: `《${skName(v, id) || '빈칸'}》 판정`, sub: FIELD_NAMES[p.f] + tgs(T[id]) + tail(v), target: T[id] }));
 });
+
+// 【일예돌파】: 지정특기를 개성 특기로 바꾸고 개성 목표치로 판정 (룰북 2·02)
+on('clicked:kosei', () => withCtx(['kosei_skill', 'kosei_target'], v => {
+  const sk = (v.kosei_skill || '').replace(/[《》]/g, '').trim(), t = num(v.kosei_target);
+  check(v, { title: `【일예돌파】${sk ? ` 《${sk}》` : ''}`, sub: (t == null ? '개성 목표치 없음' : `개성 목표치 ${t}`) + tail(v), target: t });
+}));
 
 // 아이돌 스킬: 지정특기가 특기 리스트에 있으면 판정, 없으면 효과만
 for (let i = 1; i <= 6; i++) {
@@ -146,7 +161,7 @@ Object.entries(STATS).forEach(([key, nm]) => on(`clicked:p${key}`, () => getAttr
     + `${field('title', `${nm} 퍼포먼스`)}${field('sub', `${nm} ${val} · 주사위 ${n}개`)}${ext ? field('note', `익스텐션 +${ext}`) : ''}`;
   post(s, R => {
     const all = Array.from({ length: n }, (_, i) => R[`p${i + 1}`].result), { gone, left } = settle(all), sc = scoreOf(left, n, 10);
-    setAttrs({ last_left: left.join('') }, { silent: true });
+    setAttrs({ last_left: left.join('') + (ext ? `.${ext}` : '') }, { silent: true });   // 심포니 기본값 (익스텐션은 . 뒤)
     return { pv: sc.pv + ext, pst: sc.pst, ...Object.fromEntries(gone.map((g, i) => [`g${i + 1}`, g])) };
   });
 })));
@@ -154,15 +169,16 @@ Object.entries(STATS).forEach(([key, nm]) => on(`clicked:p${key}`, () => getAttr
 // ── 심포니: 남은 주사위(이 시트의 마지막 퍼포먼스가 기본값, 눈을 이어 적음) + 새로 굴린 주사위 1~6개 → 같은 눈 제거
 //    다 지워지면 미라클 싱크로 20, 1~6 이 다 남으면 퍼펙트 미라클 30
 on('clicked:sym', () => getAttrs(['roll_display_to', 'route', 'last_left'], v => {
-  const def = String(v.last_left || '').replace(/[^1-6]/g, '') || '0';
+  const def = String(v.last_left || '').replace(/[^0-9.]/g, '') || '0';
   const qs = [1, 2, 3, 4, 5, 6].map(i => `{{q${i}=[[1d6]]}}`).join(' ');
   const s = `${head(v)} {{pv=[[0]]}} {{pst=[[0]]}} {{sym=[[0]]}} {{u1=[[0]]}} {{u2=[[0]]}} {{u3=[[0]]}} {{u4=[[0]]}} {{u5=[[0]]}} {{u6=[[0]]}}`
-    + ` {{lft=[[?{남은 주사위 눈 (이어서 적기)|${def}}]]}} {{k=[[?{굴릴 주사위 수|1|2|3|4|5|6}]]}} {{sy=1}} ${qs}${route(v)}${field('title', '심포니')}`;
+    + ` {{lft=[[?{남은 주사위 눈 (이어서 적기 · 익스텐션은 .숫자)|${def}}]]}} {{k=[[?{굴릴 주사위 수|1|2|3|4|5|6}]]}} {{sy=1}} ${qs}${route(v)}${field('title', '심포니')}`;
   post(s, R => {
-    const left0 = String(R.lft.result).replace(/[^1-6]/g, '').split('').map(Number).slice(0, 6);
+    const [dg, ex] = String(R.lft.result).split('.'), ext = Math.max(0, parseInt(ex || '0', 10) || 0);
+    const left0 = String(dg || '').replace(/[^1-6]/g, '').split('').map(Number).slice(0, 6);
     const k = Math.max(1, Math.min(6, R.k.result || 1)), fresh = [1, 2, 3, 4, 5, 6].slice(0, k).map(i => R[`q${i}`].result);
     const { left } = settle([...left0, ...fresh]), sc = scoreOf(left, left0.length + k, 20);
-    return { pv: sc.pv, pst: sc.pst, sym: `남은 ${left0.join(' ') || '없음'} + 새 ${fresh.join(' ')} → ${left.join(' ') || '없음'}`,
+    return { pv: sc.pv + ext, pst: sc.pst, sym: `남은 ${left0.join(' ') || '없음'} + 새 ${fresh.join(' ')} → ${left.join(' ') || '없음'}${ext ? ` · 익스텐션 +${ext}` : ''}`,
       ...Object.fromEntries([1, 2, 3, 4, 5, 6].map(i => [`u${i}`, i <= k ? 1 : 0])) };
   });
 }));

@@ -28,16 +28,16 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   eq('gap C painted (재능|캐릭터)', g(s, 'D7_value', 'E7_value'), ['6', '8']);
 
   // ── 판정 · 직접 적는 칸
-  s = makeSim(HTML, { dice: [4, 3, 6, 6, 1, 1, 2, 2] }); s.open(); await s.settle();
+  s = makeSim(HTML, { dice: [4, 3, 1, 6, 6, 1, 1, 1, 5, 2, 2, 1] }); s.open(); await s.settle();   // 판정마다 d1 d2 + 펌블 표 ft
   s.set('C7', '1'); await s.settle();
   s.click('rc7'); await s.settle();
   has('skill title', last(s).macro, '{{title=《미소》 판정}}');
-  has('computed first', last(s).macro, '&{template:beginningidol} {{ok=[[0]]}} {{total=[[0]]}} {{d1=[[1d6]]}}');
+  has('computed first', last(s).macro, '&{template:beginningidol} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{ft=[[1d6]]}}');
   eq('7 ≥ 5 success', last(s).computed, { ok: 3, total: 7 });
   s.click('rc7'); await s.settle();
   eq('12 special', last(s).computed, { ok: 1, total: 12 });
   s.click('rc7'); await s.settle();
-  eq('2 fumble', last(s).computed, { ok: 2, total: 2 });
+  eq('2 fumble + fumble table 5', last(s).computed, { ok: 2, total: 2, fres: '대실패가 세상에 알려져 나쁜 쪽으로 해석되어 퍼졌다. 유닛은 변조 「논란」을 받는다.' });
   s.set('D7_name', '츤데레'); s.set('mod', '-1'); await s.settle();
   s.click('rd7'); await s.settle();
   has('free cell name', last(s).macro, '{{title=《츤데레》 판정}}');
@@ -70,12 +70,12 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   s = makeSim(HTML, { dice: [2, 1, 5, 2, 3, 3], queries: { '남은 주사위 눈': '216', '굴릴 주사위 수': '2' } }); s.open(); await s.settle();
   s.set('last_left', '216'); await s.settle();
   s.click('sym'); await s.settle();
-  has('symphony query default', last(s).macro, '?{남은 주사위 눈 (이어서 적기)|216}');
+  has('symphony query default', last(s).macro, '?{남은 주사위 눈 (이어서 적기 · 익스텐션은 .숫자)|216}');
   has('symphony computed first', last(s).macro, '{{pv=[[0]]}} {{pst=[[0]]}} {{sym=[[0]]}} {{u1=[[0]]}}');
   eq('symphony 216 + 2 1 → 6', pick(last(s).computed, 'pv', 'pst', 'sym', 'u2', 'u3'), { pv: 6, pst: 0, sym: '남은 2 1 6 + 새 2 1 → 6', u2: 1, u3: 0 });
 
   // ── 아이돌 스킬: 지정특기 있으면 판정, 없으면 효과만
-  s = makeSim(HTML, { dice: [3, 3] }); s.open(); await s.settle();
+  s = makeSim(HTML, { dice: [3, 3, 1] }); s.open(); await s.settle();
   s.set('C7', '1'); s.set('sk1_name', '스마일 어택'); s.set('sk1_type', '보조'); s.set('sk1_skill', '《미소》'); s.set('sk1_effect', '판정에 +2'); await s.settle();
   s.click('sk1'); await s.settle();
   has('idol skill check', last(s).macro, '{{title=【스마일 어택】}} {{sub=보조 · 《미소》 · 목표치 5}} {{eff=판정에 +2}}');
@@ -94,6 +94,26 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   s.click('react'); await s.settle();
   eq('empty reaction', last(s).computed, { tres: '(빈칸)' });
   eq('gm whisper roll button', /name="roll_gmw"[^>]*value="\/w gm &\{template:beginningidol\} \{\{plain=\?\{GM 에게 귓속말\}\}\}"/.test(HTML), true);
+
+  // ── 룰북 반영: 목표치 상한 없음 · 스페셜치 최대 12 · 펌블치 최대 11 · 일예돌파 · 심포니의 익스텐션
+  s = makeSim(HTML, { dice: [5, 6, 2, 3, 4, 4, 2, 1, 3] }); s.open(); await s.settle();
+  s.set('A2', '1'); await s.settle();
+  eq('no cap: F12 = 5 + 10 rows + 10 (5 gaps x 2)', g(s, 'F12_value'), ['25']);
+  for (let i = 0; i < 3; i++) { s.click('sup'); await s.settle(); }
+  for (let i = 0; i < 12; i++) { s.click('fup'); await s.settle(); }
+  eq('special max 12, fumble max 11', g(s, 'special', 'fumble'), ['12', '11']);
+  s.click('frs'); s.click('srs'); await s.settle();
+  s.set('kosei_skill', '《미소》'); s.set('kosei_target', '10'); await s.settle();
+  s.click('kosei'); await s.settle();
+  has('one-art breakthrough', last(s).macro, '{{title=【일예돌파】 《미소》}} {{sub=개성 목표치 10}}');
+  eq('5+6 = 11 ≥ 10', last(s).computed, { ok: 3, total: 11 });
+  s.set('physical', '7'); await s.settle();
+  s = makeSim(HTML, { dice: [1, 2, 3, 3, 4, 4, 2, 5, 6], queries: { '남은 주사위 눈': '12.1', '굴릴 주사위 수': '1' } }); s.open(); await s.settle();
+  s.set('physical', '7'); await s.settle();
+  s.click('pphysical'); await s.settle();
+  eq('last left keeps extension', g(s, 'last_left'), ['12.1']);
+  s.click('sym'); await s.settle();
+  eq('symphony 1 2 + 2 → 1, extension +1 → 2', [last(s).computed.pv, last(s).computed.sym], [2, '남은 1 2 + 새 2 → 1 · 익스텐션 +1']);
 
   const errs = s.log.filter(l => l[0] === 'ERROR');
   eq('no worker errors', errs.map(e => e[1].split('\n')[0]), []);
