@@ -1,9 +1,11 @@
 <!-- 비기닝 아이돌 (한국어) — 세로 830px. 배치: 공식 기본 룰북 캐릭터 시트(티아라 노선 · 크라운 노선)를 세로로, 유닛 시트는 룰북 5·01 도해대로. 목업: beginningidol/roll20/mockup.html
      @ 표시 자리는 build.py 가 채운다. .bi 앞의 숨은 칸은 형제 선택자용 거울:
-     t-route 노선(강조색 · 별 모양 · unit = 유닛 시트) · t-role 사이드 PC / 센터 PC / 서포터 · t-m80 멘탈 상한 80 -->
+     t-route 노선(강조색 · 별 모양 · unit = 유닛 시트) · t-role 사이드 PC / 센터 PC / 서포터 · t-m80 멘탈 상한 80
+     t-act 아이돌 스킬에 【연기파 아이돌】이 있음 (워커가 이름을 보고 켬 → 공백을 모두 칠한 것으로 보임) -->
 <input type="hidden" class="t-route" name="attr_route" value="tiara">
 <input type="hidden" class="t-role" name="attr_pc_role" value="side">
 <input type="hidden" class="t-m80" name="attr_mental80" value="0">
+<input type="hidden" class="t-act" name="attr_acting" value="0">
 <input type="hidden" name="attr_last_dice" value="">
 <input type="hidden" name="attr_last_roll" value="">
 <input type="hidden" name="attr_unit_init" value="0">
@@ -67,9 +69,9 @@
     </div>
   </div>
 
-  <!-- 2단: 특기 리스트 (번호 왼쪽) · 아이돌 링크 (3 칸 × 2 줄). 【연기파 아이돌】 = 왼쪽 끝과 오른쪽 끝이 이어짐 -->
+  <!-- 2단: 특기 리스트 (번호 왼쪽) · 아이돌 링크 (3 칸 × 2 줄). 【연기파 아이돌】 = 공백을 모두 메우고, 신장과 출신이 이어짐 -->
   <div class="pnl pc-only">
-    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>특기 리스트<span class="sp"></span><label class="hck"><input type="checkbox" name="attr_acting" value="1"><span></span>【연기파 아이돌】</label></div>
+    <div class="hb"><span class="star">&#x2605;</span><span class="star2">&#x2606;</span>특기 리스트<span class="sp"></span><span class="hon act-on">【연기파 아이돌】</span></div>
     <div class="grid">
 <!--@SKILLS-->
     </div>

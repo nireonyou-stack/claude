@@ -29,8 +29,9 @@ const findSkill = (v, s) => {
 };
 
 // ── 목표치 = 5 + 거리 (세로 한 칸 1, 옆 분야 2 · 칠한 공백을 건너면 1)
-//   【연기파 아이돌】(acting): 왼쪽 끝(신장)과 오른쪽 끝(출신)이 이어짐 — 이음매는 칠하지 않은 공백처럼 2 (OPEN_QUESTIONS)
-const WRAP = 2;
+//   【연기파 아이돌】(acting, 아이돌 스킬 이름으로 켬 · 룰북 143): ① 공백을 모두 메움 ② 신장과 출신이 이어짐
+//   예: 《190~》(신장 12)을 《해외》(출신 12)로 대용하면 목표치 6 → 이음매 1
+const WRAP = 1;
 function dist(a, b, gap, wrap) {
   const lo = Math.min(a.f, b.f), hi = Math.max(a.f, b.f);
   let direct = 0, around = WRAP;
@@ -39,7 +40,7 @@ function dist(a, b, gap, wrap) {
 }
 const TKEYS = [...SKILL_IDS, ...GAPS, ...FREE.map(id => `${id}_name`), 'acting'];
 function targets(v) {
-  const gap = GAPS.map(g => (on1(v[g]) ? 1 : 2)), wrap = on1(v.acting);
+  const wrap = on1(v.acting), gap = GAPS.map(g => (wrap || on1(v[g]) ? 1 : 2));
   const src = SKILL_IDS.filter(id => on1(v[id])).map(pos);
   const out = {};
   SKILL_IDS.forEach(id => { const p = pos(id); out[id] = src.length ? 5 + Math.min(...src.map(s => dist(s, p, gap, wrap))) : null; });   // 룰북 2·02: 목표치 상한 없음
@@ -50,6 +51,12 @@ const calcTargets = () => getAttrs(TKEYS, v => {
   setAttrs(Object.fromEntries(SKILL_IDS.map(id => [`${id}_value`, T[id] == null ? '' : String(T[id])])), { silent: true });
 });
 on([...SKILL_IDS, ...GAPS, 'acting'].map(k => `change:${k.toLowerCase()}`).concat('sheet:opened').join(' '), calcTargets);
+// 아이돌 스킬 이름에 【연기파 아이돌】이 있으면 acting 을 켬 (시노비가미 시트의 인법 이름 방식)
+const SKN = [1, 2, 3, 4, 5, 6].map(i => `sk${i}_name`);
+on(SKN.map(k => `change:${k}`).concat('sheet:opened').join(' '), () => getAttrs([...SKN, 'acting'], v => {
+  const act = SKN.some(k => /연기파\s*아이돌|演技派アイドル/.test(v[k] || '')) ? 1 : 0;
+  if (act !== (on1(v.acting) ? 1 : 0)) setAttrs({ acting: act }, { silent: true }, calcTargets);
+}));
 
 // ── 펌블치 · 스페셜치: 기본 2 · 12 + 손 수정
 // 룰북 2·04: 스페셜치는 13 이상이 되지 않고, 펌블치는 12 이상이 되지 않는다 (1 이하면 펌블 없음)

@@ -119,12 +119,16 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   const keep = x => { errAll.push(...x.log.filter(l => l[0] === 'ERROR')); return x; };
   keep(s);
 
-  // ── 【연기파 아이돌】: 왼쪽 끝 · 오른쪽 끝이 이어짐 (이음매 2)
+  // ── 【연기파 아이돌】: 아이돌 스킬 이름으로 켬 → 공백을 모두 메우고 신장 · 출신이 이어짐 (룰북 예: 신장 12 → 출신 12 = 6)
   s = keep(makeSim(HTML)); s.open(); await s.settle();
-  s.set('A2', '1'); await s.settle();
-  eq('no wrap: F2 = 5 + 10', g(s, 'F2_value', 'E2_value'), ['15', '13']);
-  s.set('acting', '1'); await s.settle();
-  eq('wrap: F2 = 5 + 2, E2 = 5 + 4', g(s, 'F2_value', 'E2_value', 'C2_value'), ['7', '9', '9']);
+  s.set('A12', '1'); await s.settle();
+  eq('no acting: F12 = 5 + 10', g(s, 'acting', 'F12_value', 'C12_value'), ['0', '15', '9']);
+  s.set('sk3_name', '【연기파 아이돌】'); await s.settle();
+  eq('acting on from skill name', g(s, 'acting'), ['1']);
+  eq('acting: F12 = 6, E12 = 7, C12 = 7 (gaps filled)', g(s, 'F12_value', 'E12_value', 'C12_value', 'F10_value'), ['6', '7', '7', '8']);
+  s.set('sk3_name', '이국의 매력'); await s.settle();
+  eq('acting off when the skill is gone', g(s, 'acting', 'F12_value'), ['0', '15']);
+  eq('no acting checkbox, status tag only', [/type="checkbox" name="attr_acting"/.test(HTML), /class="hon act-on"/.test(HTML)], [false, true]);
 
   // ── 주사위 고치기: 퍼포먼스 (0 = 다시 굴림) · 판정 (앞자리 0) · 굴림 없음
   s = keep(makeSim(HTML, { dice: [2, 5, 1, 5, 6, /* x1~x5 */ 3, 3, 3, 4, 3], queries: { '주사위 눈': '25106' } })); s.open(); await s.settle();
