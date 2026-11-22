@@ -12,6 +12,14 @@ import sys
 
 BOOTSTRAP = {'mark', 'btn', 'label', 'badge', 'well', 'row', 'table', 'hide', 'show', 'muted', 'lead', 'nav', 'hero-unit',
              'container', 'alert', 'close', 'caret', 'fade', 'in', 'active', 'disabled'} | {f'span{i}' for i in range(1, 13)}
+# Bootstrap 3 에서 혼자 붙어도 모양이 바뀌는 클래스 (.mark 의 노란 바탕이 Bootstrap 3 값이었다 — 블러드문 9134f42)
+BOOTSTRAP |= {'panel', 'small', 'thumbnail', 'jumbotron', 'glyphicon', 'page-header', 'list-unstyled', 'list-inline', 'initialism',
+              'hidden', 'invisible', 'sr-only', 'clearfix', 'center-block', 'pull-left', 'pull-right', 'form-control', 'form-group',
+              'help-block', 'checkbox', 'radio', 'input-group', 'collapse', 'collapsing', 'dropdown-menu', 'navbar', 'tab-content',
+              'progress', 'media', 'list-group', 'modal', 'tooltip', 'popover', 'carousel', 'breadcrumb', 'pagination', 'pager',
+              'container-fluid', 'embed-responsive', 'bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger'} | \
+             {f'h{i}' for i in range(1, 7)} | {f'text-{k}' for k in ('left', 'right', 'center', 'justify', 'nowrap', 'lowercase', 'uppercase',
+                                                                     'capitalize', 'muted', 'primary', 'success', 'info', 'warning', 'danger')}
 
 
 def strip_comments(css):

@@ -23,6 +23,7 @@
 
 ## 2. 채팅 카드 안쪽
 
+- 카드 안 인라인 굴림은 블러드문처럼 `.sheet-rolltemplate-X .inlinerollresult(.fullcrit · .fullfail · .importantroll)` 를 먼저 한 번에 지우고, 주사위 상자 등은 그 아래 더 구체적인 규칙으로 그린다.
 - 카드 안 인라인 굴림 결과(`.inlinerollresult`)는 Roll20 이 노란 상자 · 회색 글자로 칠한다. 카드에서 **인라인 굴림까지 칠하는 넓은 선택자**를 쓰지 않는다
   (예: `.sheet-r > span` 이 굴림 값까지 회색으로 — b3b8831). 값은 `computed::` 로 넣고 `.inlinerollresult` 를 카드 안에서 따로 정리한다.
 - `computed::키` 는 매크로의 **앞쪽 칸**에 둔다 (블러드문 rolltemplate 주석).
@@ -38,6 +39,7 @@
   label 규칙은 **요소 + 클래스 둘 이상** (`.futari label.st`) 으로 쓰고 폭 · 여백 · 굵기를 다시 준다 (8803593 · f310ced)
 - ✔ Bootstrap 클래스 이름(`mark` · `btn` · `label` · `badge` · `well` · `row` · `table` · `hide` · `show` …)을 시트에 쓰지 않는다
   — `.mark` 에 노란 바탕이 붙었다 (9134f42)
+  — `.mark` 의 노란 바탕은 Bootstrap 3 값이라 `panel` · `small` · `hidden` · `checkbox` · `radio` 등 Bootstrap 3 이름도 lint 가 막는다 (비기닝 아이돌 `.panel` → `.pnl`)
 - 입력칸 · select · textarea · button 은 Bootstrap 모양(높이 · 테두리 · 그림자 · 그라데이션)이 먼저 깔린다 → 시트 루트 아래에서 height:auto · box-shadow:none 등으로 다시 준다.
 - 아이콘 단추(주사위 · 말풍선 등)는 `.루트 button[type=action].dic` 처럼 쓴다 — 리셋 `.루트 button[type=action]`(0,2,1) 이 `.루트 .dic`(0,2,0) 을 이겨 테두리 · 무늬가 사라진다 (시노비가미)
 - 반복 섹션 아래 Roll20 이 `Modify` · `+Add` 단추(`.repcontrol`)를 붙인다 — 시트 모양에 맞게 다시 그린다 (9416a6d)

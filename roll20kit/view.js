@@ -47,6 +47,11 @@ body.sheet-darkmode{background:#1d1d1d;color:#ddd}
 .charsheet input[type=checkbox],.charsheet input[type=radio]{margin:4px 0 0;width:auto;height:auto}
 .charsheet button{display:inline-block;padding:4px 12px;margin:0;font-size:14px;line-height:20px;color:#333;text-align:center;text-shadow:0 1px 1px rgba(255,255,255,.75);background:linear-gradient(#fff,#e6e6e6);border:1px solid #ccc;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 1px 2px rgba(0,0,0,.05)}
 .charsheet .mark{background:#fcf8e3;padding:.2em}
+/* Bootstrap 3 (.mark 와 같은 출처) — 혼자 붙어도 모양이 바뀌는 클래스 몇 개. lint.py 의 BOOTSTRAP 목록과 짝 */
+.panel{margin-bottom:20px;background-color:#fff;border:1px solid transparent;border-radius:4px;box-shadow:0 1px 1px rgba(0,0,0,.05)}
+.small{font-size:85%}
+.hidden{display:none!important}
+.checkbox,.radio{position:relative;display:block;margin-top:10px;margin-bottom:10px}
 .charsheet fieldset{border:0;margin:0;padding:0}
 .charsheet .repcontrol{overflow:hidden;margin-top:4px}
 /* Roll20 의 Modify · +Add — 블러드문 '.bm .repcontrol button'(0,2,1) 이 실제로 덮였으니 이보다 약하게 둔다 */
