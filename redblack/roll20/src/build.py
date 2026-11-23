@@ -6,7 +6,6 @@ CSS 는 src/redblack.src.css 를 그대로 sheet/redblack.css 로 옮긴다.
 
     python3 build.py
 """
-import html as H
 import pathlib
 import sys
 
@@ -17,29 +16,10 @@ import autogrow  # noqa: E402  글이 늘어나면 칸도 늘어나는 textarea
 
 RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 SLOTS = 10   # 낸 카드 칸 수
-# 문장 (인쇄): 이름 · 효과
-CRESTS = [('인피니티', '대상이 차례에 하는 고발은 1회가 아니라 2회까지 가능해진다.'),
-          ('오버로드', '대상은 고발 국면의 차례 중, 원할 때 1회, 덱에서 2장을 뽑아 손패를 보충할 수 있다.'),
-          ('언리미티드', '고발 국면 중, 대상은 플레이 때 손패를 1장 지정한다. 그 손패는 적과 흑 양쪽으로 취급한다.')]
-# 기본 선언 (이름 · 본문 인쇄, 〔기동〕 · LV 는 계보마다 기입). LV2 · LV3 효과는 룰북 64~66쪽 (모든 계보 공통)
-BASIC = [('현장 재구축', '오브젝트 1개를 대상으로, 대상을 소환해 질문 1개에 답하게 한다. 대상은 자신의 인식으로 증언하고, 진실로 등록한다.\n증언에서는 거짓말을 하지 않지만, 대상의 지성으로는 이해할 수 없는 정보는 증언할 수 없다.'),
-         ('인물 재구축', '캐스트 1명을 대상으로, 대상을 소환해 질문 1개에 답하게 한다. 대상은 자신의 인식으로 증언하고, 진실로 등록한다.\n증언에서는 거짓말을 하지 않지만, 모르는 정보는 증언할 수 없고, 오인한 정보도 그대로 말한다.'),
-         ('심문 선고', '당신을 대상으로, YES / NO 로 답할 수 있는 질문을 하고, GM 은 답이 YES 면 YES 라고 답하고, 진실로 등록한다.\n답이 NO 인 경우나, 애초에 시나리오 안에 답이 없으면 "불명" 이라고 GM 은 고한다.'),
-         ('물질 재변성', '오브젝트 1개를 대상으로, 대상 크기가 손바닥 크기라면, 다른 것으로 바꾼다, 라는 환상으로 등록한다.\n어떤 형상과 기능을 가질지는 자유롭게 정한다.'),
-         ('서약 재설정', '캐스트 1명을 대상으로, 대상의 마음을 세뇌해, 지정한 하루, 대상이 "절대 하지 않는 금칙" 을 정해서, 환상으로 등록한다.\n대상이 금칙의 행동을 하지 않는 것이 보장된다.\n대상이 직접 사망하는 룰은 설정할 수 없다.'),
-         ('각본 검색', '단어 최대 2개를 대상으로, GM 은 대상 전부를 포함한 미발견 각본을 검색해, 해당한 수가 1건이면 환상으로 등록한다.\n해당이 1건이 아닌 경우, 해당 건수만 알 수 있다.')]
-LV = [('인간 수준의 지성과 기억력을 준다', '증언뿐 아니라 대상이 본 광경을 감시 카메라처럼 재생해 볼 수 있다'),
-      ('증언 중 캐스트 자신이 잘못 인식한 부분을 GM 이 알려 준다', '증언뿐 아니라 캐스트가 본 광경을 감시 카메라처럼 재생해 볼 수 있다'),
-      ('GM 에게서 NO 라는 답도 얻을 수 있다 (불명 = 시나리오에 없음)', '선택지 2개를 정해 GM 이 답을 고르게 한다 (알맞은 답이 없으면 불명)'),
-      ('사람 크기까지 바꿀 수 있다', '집 1채 크기까지 바꿀 수 있다'),
-      ('금칙을 영속적으로 (태어나서 죽을 때까지) 정할 수 있다', '캐스트에게 「해야 하는 의무」를 선언할 수 있다'),
-      ('OR 검색 (단어 2개 중 하나만 있어도 됨)', 'NOT 검색 (단어 1개를 「포함하지 않음」으로)')]
+CREST_N = 3
+BASIC_N = 6
 NOBLE_N = 6
 AUTH_N = 9
-
-
-def esc(s):
-    return H.escape(s, quote=True)
 
 
 def pad(color):
@@ -58,29 +38,19 @@ def hand():
 
 
 def crests():
-    return '\n'.join(f'<div class="em orn"><input type="hidden" class="cm" name="attr_crest{i}_on" value="0"><div class="eh"><b>문장</b><span>{n}</span>'
-                     f'<label class="ul"><input type="checkbox" class="ck" name="attr_crest{i}_on" value="1" title="{n} 해금">해금</label></div>'
-                     f'<div class="ds"><i>묘사</i><textarea name="attr_crest{i}_desc" title="{n} 묘사"></textarea></div>'
-                     f'<div class="tx"><b>【지속】 당신을 대상.</b><br>{esc(t)}</div></div>' for i, (n, t) in enumerate(CRESTS, 1))
+    """문장: 이름 · 해금 · 묘사 · 효과 — 모두 직접 기입"""
+    return '\n'.join(f'<div class="em orn"><input type="hidden" class="cm" name="attr_crest{i}_on" value="0"><div class="eh"><b>문장</b><input type="text" name="attr_crest{i}_name" title="문장 이름">'
+                     f'<label class="ul"><input type="checkbox" class="ck" name="attr_crest{i}_on" value="1" title="해금">해금</label></div>'
+                     f'<div class="ds"><i>묘사</i><textarea name="attr_crest{i}_desc" title="묘사"></textarea></div>'
+                     f'<textarea class="tx" name="attr_crest{i}_text" title="효과"></textarea></div>' for i in range(1, CREST_N + 1))
 
 
-def basic():
-    out = []
-    for i, (n, t) in enumerate(BASIC, 1):
-        body = ''.join(f'<p>{esc(p)}</p>' for p in t.split('\n'))
-        out.append(f'<div class="mg orn"><div class="mh"><b>선언</b><span class="nm">{n}</span><span class="lv">LV<input type="number" name="attr_bc{i}_lv" value="1" title="{n} LV"></span></div>'
-                   f'<div class="boot"><span class="bt"><span>〔기동〕</span><input type="text" name="attr_bc{i}_boot" title="{n} 기동"></span></div>'
-                   f'<div class="tx">{body}</div><div class="ft"><input type="hidden" class="lvm" name="attr_bc{i}_lv" value="1">'
-                   f'<span class="lvs"><span class="l2"><b>LV2</b> {esc(LV[i - 1][0])}</span><span class="l3"><b>LV3</b> {esc(LV[i - 1][1])}</span></span>'
-                   f'<button type="action" class="bub" name="act_bc{i}" title="기동해 채팅에 올림"></button></div></div>')
-    return '\n'.join(out)
-
-
-def noble():
-    return '\n'.join(f'<div class="mg orn"><div class="mh"><b>선언</b><input type="text" class="nm" name="attr_nc{i}_name" title="상급 선언 이름"><span class="lv">LV<input type="number" name="attr_nc{i}_lv" title="LV"></span></div>'
-                     f'<div class="boot"><span class="bt"><span>〔기동〕</span><input type="text" name="attr_nc{i}_boot" title="기동"></span></div>'
-                     f'<textarea class="tx" name="attr_nc{i}_text" title="효과"></textarea><div class="ft"><button type="action" class="bub" name="act_nc{i}" title="기동해 채팅에 올림"></button></div></div>'
-                     for i in range(1, NOBLE_N + 1))
+def calling(key, n, what):
+    """선언 마법 칸 (기본 bc · 상급 nc): 이름 · LV · 〔기동〕 · 효과 — 모두 직접 기입"""
+    return '\n'.join(f'<div class="mg orn"><div class="mh"><b>선언</b><input type="text" class="nm" name="attr_{key}{i}_name" title="{what} 이름"><span class="lv">LV<input type="number" name="attr_{key}{i}_lv" title="LV"></span></div>'
+                     f'<div class="boot"><span class="bt"><span>〔기동〕</span><input type="text" name="attr_{key}{i}_boot" title="기동"></span></div>'
+                     f'<textarea class="tx" name="attr_{key}{i}_text" title="효과"></textarea><div class="ft"><button type="action" class="bub" name="act_{key}{i}" title="기동해 채팅에 올림"></button></div></div>'
+                     for i in range(1, n + 1))
 
 
 def auth():
@@ -111,7 +81,7 @@ def build():
     hints = ''.join(f'{{{{#eh{i}}}}}<div>{{{{computed::eh{i}}}}}</div>{{{{/eh{i}}}}}' for i in range(1, SLOTS + 1))
     tpl = optional('rolltemplate.html').replace('<!--@CHIPS-->', card_chips()).replace('<!--@HINTS-->', hints)
     for key, val in {
-        'PAD_B': pad('b'), 'PAD_R': pad('r'), 'HAND': hand(), 'CRESTS': crests(), 'BASIC': basic(), 'NOBLE': noble(), 'AUTH': auth(),
+        'PAD_B': pad('b'), 'PAD_R': pad('r'), 'HAND': hand(), 'CRESTS': crests(), 'BASIC': calling('bc', BASIC_N, '기본 선언'), 'NOBLE': calling('nc', NOBLE_N, '상급 선언'), 'AUTH': auth(),
         'ROLLTEMPLATE': tpl,
         'WORKER': f'<script type="text/worker">\n{optional("worker.js")}\n</script>',
     }.items():

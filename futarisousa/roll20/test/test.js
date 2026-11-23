@@ -84,14 +84,7 @@ const last = s => s.rolls[s.rolls.length - 1];
   s.click('reveal', prow); await s.settle();
   has('괴도 카드: 꼬리', last(s).macro, "{{sub=Phantom thief's act.}}");
 
-  // ── 기본 액션(인쇄된 첫 줄) · 감정 한 줄 채팅
-  s.set('sheet_type', 'det'); await s.settle();
-  s.click('baseact'); await s.settle();
-  has('기본 액션 탐정', last(s).macro, '{{title=둘이서 수사}}');
-  has('기본 액션 탐정 sub', last(s).macro, '{{sub=보조 · 코스트 없음}}');
-  s.set('sheet_type', 'asi'); await s.settle();
-  s.click('baseact'); await s.settle();
-  has('기본 액션 조수', last(s).macro, '{{title=따라잡다}}');
+  // ── 감정 한 줄 채팅
   s.set('partner', '쿠로사와 렌'); await s.settle();
   const erow = s.addRow('plike', { text: '얼굴' }); await s.settle();
   s.click('send', erow); await s.settle();

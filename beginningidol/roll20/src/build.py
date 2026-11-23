@@ -27,13 +27,7 @@ FIELDS = [
 GAPS = ['a', 'b', 'c', 'd', 'e']
 PIPS = {1: [(50, 50)], 2: [(28, 28), (72, 72)], 3: [(25, 25), (50, 50), (75, 75)], 4: [(28, 28), (72, 28), (28, 72), (72, 72)],
         5: [(25, 25), (75, 25), (50, 50), (25, 75), (75, 75)], 6: [(28, 22), (72, 22), (28, 50), (72, 50), (28, 78), (72, 78)]}
-# 아이돌 링크 (공식 시트에 인쇄된 6 개)
-LINKS = [('멘탈 케어', '언제든지 사용할 수 있다. 캐릭터 한 명의 【멘탈】을 1D6점 상승시킨다.'),
-         ('트레이닝+', '드라마 페이즈의 장면이 종료하기 직전에 사용할 수 있다. 그 장면의 장면 플레이어는 「특훈」을 한다.'),
-         ('커버 포지션', '캐릭터 한 명이 판정의 주사위를 굴린 직후에 사용할 수 있다. 그 판정에 사용한 주사위를 모두 다시 굴린다.'),
-         ('싱크로', '캐릭터 한 명이 퍼포먼스 판정을 한 직후(주사위를 제거하기 전)에 사용할 수 있다. 그 퍼포먼스에 사용한 주사위를 1개 골라 다시 굴린다.'),
-         ('심퍼시', '캐릭터 한 명이 판정 혹은 퍼포먼스 판정을 한 직후에 사용할 수 있다. 그 PC에 대해 「이해」를 얻는다.'),
-         ('디스커션', '언제든지 사용할 수 있다. 「변조」를 모두 회복한다.')]
+LINK_ROWS = 6                    # 아이돌 링크
 SKILL_ROWS = 6
 MENTAL_MAX, MENTAL_HI = 50, 80   # 의상 「80s」 를 입으면 상한 80 (51~80 칸은 상한 80 체크 때만 보임)
 COS_ROWS = 3                     # 의상 코디 최대 3 브랜드
@@ -77,9 +71,9 @@ def skills():
 
 def links():
     return '\n'.join(
-        f'<div class="li"><div class="lh">{i}. {n}<span class="sp"></span><button type="action" class="bub" name="act_link{i}" title="채팅에 출력"></button>'
-        f'<input type="checkbox" class="x" name="attr_link{i}_used" value="1" title="사용함"></div><p>{e}</p></div>'
-        for i, (n, e) in enumerate(LINKS, 1))
+        f'<div class="li"><div class="lh">{i}.<input type="text" name="attr_link{i}_name" title="아이돌 링크 이름"><button type="action" class="bub" name="act_link{i}" title="채팅에 출력"></button>'
+        f'<input type="checkbox" class="x" name="attr_link{i}_used" value="1" title="사용함"></div><textarea name="attr_link{i}_text" title="효과"></textarea></div>'
+        for i in range(1, LINK_ROWS + 1))
 
 
 def idol_skills():

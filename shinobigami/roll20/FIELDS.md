@@ -45,7 +45,6 @@
 | 인법 | Ninpo_01_ ~ Ninpo_08_ + Name · Types · Range · Cost · Assigned_Skill · Effect | Types: `@{Tool}` 공격 · `@{support}` 서포트 · `@{equip}` 장비 (중국어 시트와 같은 값) |
 | 인법 그림 · 개요 | **Ninpo_NN_Img · Ninpo_NN_Flavor** | 주소 · 글 |
 | 추가 인법 | repeating_acitems: Ninpo_Name · Ninpo_Types · … · **Ninpo_Img · Ninpo_Flavor** | |
-| 접근전 공격 지정 특기 | **melee_skill** | 글 |
 
 ## 판정 띠
 

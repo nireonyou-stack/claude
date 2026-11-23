@@ -1,5 +1,5 @@
 // 아마데우스 시트 워커 — 생명력 기본 · 최대치 · 굴림 · 채팅 출력(Custom Roll Parsing)
-// DATA(능력치 · 생명력 계수 · 부모신의 축복 · 식료 문구)는 build.py 가 아래 줄에 넣는다
+// DATA(능력치 · 생명력 계수)는 build.py 가 아래 줄에 넣는다
 // @DATA
 const num = v => { const n = parseInt(v, 10); return isNaN(n) ? null : n; };
 const KEYS = DATA.abil.map(([k]) => k);
@@ -85,12 +85,7 @@ on('clicked:vigor', () => getAttrs(['level', 'hp_base', 'character_name'], v => 
   });
 }));
 
-// 부모신의 축복(인쇄된 첫 줄) · 기프트 · 아이템: 채팅에 출력
-on('clicked:blessing', () => getAttrs(['blessing_seal', 'character_name'], v => {
-  const [name, cat, cond, chk, eff] = DATA.blessing;
-  post(T + field('title', name) + field('sub', `${cat} · 조건 ${cond}`) + rows([['판정', chk]]) + field('effect', eff)
-    + field('who', v.character_name) + (v.blessing_seal === '1' ? field('flag', '봉인') : ''));
-}));
+// 기프트 · 아이템: 채팅에 출력
 on('clicked:repeating_gifts:use', e => {
   const row = rowOf(e, 'gifts'); if (!row) return;
   getAttrs(['seal', 'name', 'cat', 'cond', 'check', 'tag', 'eff'].map(f => row + f).concat('character_name'), v => {
@@ -112,5 +107,5 @@ on('clicked:eat', () => getAttrs(['food', 'hp', 'hp_max', 'character_name'], v =
   const f = num(v.food) || 0; if (f <= 0) return;
   const hp = num(v.hp) || 0, mx = num(v.hp_max), nh = mx == null ? hp + 1 : Math.min(mx, hp + 1);
   setAttrs({ food: f - 1, hp: nh });
-  post(T + field('title', '식료') + field('sub', `식료 ${f} → ${f - 1}`) + field('effect', `${DATA.food} 【생명력】 ${hp} → ${nh}`) + field('who', v.character_name));
+  post(T + field('title', '식료') + field('sub', `식료 ${f} → ${f - 1}`) + field('effect', `【생명력】 ${hp} → ${nh}`) + field('who', v.character_name));
 }));

@@ -71,13 +71,6 @@ on('clicked:srs', () => setAttrs({ special_adj: 0 }));
 // ── 새 시트
 on('sheet:opened', () => getAttrs(['sheet_version'], v => { if ((num(v.sheet_version) || 0) < 1) setAttrs({ sheet_version: 1 }, { silent: true }); }));
 
-// ── 유닛 시트: 처음 유닛 시트로 바꾸면 유닛 파워 1 에 【운명공동체】 (룰북 5·01·05 — 만든 지 얼마 안 된 유닛이 습득)
-const FATE = { up1_name: '운명공동체', up1_type: '상주', up1_effect: '유닛의 멤버가 두 명 이상 등장한 장면에서는, 유닛 멤버가 하는 판정의 달성치가 1점 상승한다.' };
-on('change:route sheet:opened', () => getAttrs(['route', 'unit_init', 'up1_name', 'up1_effect'], v => {
-  if (v.route !== 'unit' || on1(v.unit_init)) return;
-  setAttrs({ unit_init: 1, ...(String(v.up1_name || '').trim() || String(v.up1_effect || '').trim() ? {} : FATE) });
-}));
-
 // ── 마이 플랜: 【아이돌 볼티지】가 목표 볼티지 이상이 되면 달성 체크 (룰북 5·03·03, 체크는 지우지 않음)
 on('change:idol_voltage change:plan_goalv', () => getAttrs(['idol_voltage', 'plan_goalv', 'plan_vol_done'], v => {
   const iv = num(v.idol_voltage), gv = num(v.plan_goalv);
@@ -165,14 +158,9 @@ for (let i = 1; i <= 6; i++) {
   }));
 }
 
-// 아이돌 링크 (인쇄된 6 개): 채팅에 출력
-const LINKS = [['멘탈 케어', '언제든지 사용할 수 있다. 캐릭터 한 명의 【멘탈】을 1D6점 상승시킨다.'],
-  ['트레이닝+', '드라마 페이즈의 장면이 종료하기 직전에 사용할 수 있다. 그 장면의 장면 플레이어는 「특훈」을 한다.'],
-  ['커버 포지션', '캐릭터 한 명이 판정의 주사위를 굴린 직후에 사용할 수 있다. 그 판정에 사용한 주사위를 모두 다시 굴린다.'],
-  ['싱크로', '캐릭터 한 명이 퍼포먼스 판정을 한 직후(주사위를 제거하기 전)에 사용할 수 있다. 그 퍼포먼스에 사용한 주사위를 1개 골라 다시 굴린다.'],
-  ['심퍼시', '캐릭터 한 명이 판정 혹은 퍼포먼스 판정을 한 직후에 사용할 수 있다. 그 PC에 대해 「이해」를 얻는다.'],
-  ['디스커션', '언제든지 사용할 수 있다. 「변조」를 모두 회복한다.']];
-LINKS.forEach(([n, e], i) => on(`clicked:link${i + 1}`, () => getAttrs(['roll_display_to', 'route'], v => info(v, { title: `【아이돌 링크】 ${n}`, eff: e }))));
+// 아이돌 링크: 채팅에 출력 (이름 · 효과는 직접 기입)
+for (let i = 1; i <= 6; i++) on(`clicked:link${i}`, () => getAttrs(['roll_display_to', 'route', `link${i}_name`, `link${i}_text`], v =>
+  info(v, { title: `【아이돌 링크】 ${String(v[`link${i}_name`] || '').trim()}`.trim(), eff: v[`link${i}_text`] })));
 
 // ── 퍼포먼스: 같은 눈은 모두 지우고 남은 눈의 합. 다 지워지면 미라클 10, 1~6 이 다 남으면 퍼펙트 미라클 30
 //    능력치 7 이상은 익스텐션 (퍼포먼스 값 + 능력치−6). 주사위는 최대 6개 (OPEN_QUESTIONS)
@@ -219,7 +207,7 @@ on('clicked:sym', () => getAttrs(['roll_display_to', 'route', 'last_left'], v =>
 }));
 
 // ── 주사위 고치기: 마지막 판정 · 퍼포먼스 · 심포니의 눈을 물음 창에 보여 주고, 고친 눈으로 다시 계산
-//    바꿀 눈은 숫자를 고쳐 적고(【추억】), 다시 굴릴 눈은 0 (익스텐션 · 싱크로 · 커버 포지션). 앞자리 0 은 숫자에서 빠지므로 왼쪽을 0 으로 채움
+//    바꿀 눈은 숫자를 고쳐 적고(【추억】), 다시 굴릴 눈은 0. 앞자리 0 은 숫자에서 빠지므로 왼쪽을 0 으로 채움
 const FIXQ = '주사위 눈 (바꿀 눈은 고쳐 적고 다시 굴릴 눈은 0)';
 on('clicked:fix', () => getAttrs(['roll_display_to', 'route', 'fumble', 'special', 'last_dice', 'last_roll'], v => {
   let L = null;

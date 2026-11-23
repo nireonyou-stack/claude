@@ -36,7 +36,6 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.set('level', '7'); await s.settle();
   eq('level → life base (p.113)', g(s, 'hp_base', 'hp_max'), ['7', '9']);
   eq('equipment effect fields', (HTML.match(/name="attr_eq\d_effect"/g) || []).length, 5);
-  eq('poison wording (BS table p.167)', /행동을 할 때마다 1점의 대미지를 받는다/.test(HTML), true);
 
   // ── 판정: 난이도 · 부스트 · 각성 · 주박 · 고양
   s = makeSim(HTML, { dice: [5, 4, 3, 1, /* ft */ 1, 1, 4, 6, 6, 2, 2, 3, 3, 1] }); s.open(); await s.settle();
@@ -71,11 +70,6 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.click('ab3'); await s.settle();
   not('no skill → no dice', last(s).macro, '{{d1=');
   has('info card', last(s).macro, '{{title=【결계】}} {{sub=타이밍 선언}} {{eff=방어}}');
-  s.set('mr_skill', '도검'); s.set('mr_dmg', '3'); await s.settle();
-  s.click('mr'); await s.settle();
-  has('blade card', last(s).macro, '{{eff=이동공격 3점 / 전력공격에는 +1점}}');
-  s.click('pab1'); await s.settle();
-  has('printed ability', last(s).macro, '{{title=【무령각성】}} {{sub=조건 혼백사 · 타이밍 선언 · 대상 자신 · 회수 세션}}');
 
   // ── 아이템: 개수 칸 · 사용
   s.click('it4c2'); await s.settle();
@@ -98,21 +92,14 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   eq('2D6', last(s).computed, { total: 6 });
   eq('gm whisper roll button', /name="roll_gmw"[^>]*value="\/w gm &\{template:samuraiblade\} \{\{plain=\?\{GM 에게 귓속말\}\}\}"/.test(HTML), true);
 
-  // ── 무령도 (142쪽): 기능이 비면 무기 종별 · 이동/전력 · 신격/공포
-  s = makeSim(HTML, { dice: [4, 4, 3, 6, 6, 6, 1], queries: { '공격': '1' } }); s.open(); await s.settle();
-  s.set('D6', '1'); s.set('eq1_type', '도검'); s.set('mr_dmg', '2'); s.set('gs5', '1'); await s.settle();
-  s.click('mr'); await s.settle();
-  has('blade falls back to weapon type', last(s).macro, '《도검》');
-  has('blade computed first', last(s).macro, '{{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}} {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}} {{full=[[?{공격|이동공격,0|전력공격 (대미지 +1),1}]]}}');
-  eq('full attack 2 +1 +1', [last(s).computed.dmg, last(s).computed.dkind, last(s).computed.dhow], [4, '전력공격', '(무기 2 전력 +1 GS 신격 +1)']);
-  s.set('boost', '1'); await s.settle();
-  s.click('mr'); await s.settle();
-  eq('critical hit: 6 6 6 → damage 4 × 3 = 12 (p.165)', [last(s).computed.ok, last(s).computed.dmg, last(s).computed.crit], [1, 12, '크리티컬 히트 — 대미지 × 3 (6 의 개수)']);
+  // ── 1번 어빌리티 줄도 빈칸 · 공격의 스페셜 = 크리티컬 히트 (p.165)
+  s = makeSim(HTML, { dice: [6, 6, 4, 1] }); s.open(); await s.settle();
+  s.set('D6', '1'); s.set('ab1_name', '무령도'); s.set('ab1_timing', '이동공격'); s.set('ab1_skill', '도검'); await s.settle();
+  s.click('ab1'); await s.settle();
+  not('no blade damage', last(s).macro, '{{dmg=');
+  eq('critical hit 6 6', [last(s).computed.ok, last(s).computed.crit], [1, '크리티컬 히트 — 대미지 × 2 (6 의 개수)']);
   has('crit row in template', HTML, '{{#atk}}{{#rollTotal() computed::ok 1}}<div class="sheet-note">{{computed::crit}}</div>');
-  s = makeSim(HTML, { dice: [4, 4, 1], queries: { '공격': '0' } }); s.open(); await s.settle();
-  s.set('D6', '1'); s.set('mr_skill', '도검'); s.set('mr_dmg', '1'); s.set('bs4', '1'); await s.settle();
-  s.click('mr'); await s.settle();
-  eq('move attack 1 −1 = 0', [last(s).computed.dmg, last(s).computed.dkind], [0, '이동공격']);
+  eq('no printed text', /봉마와 싸운다|무령각성|장식품은 전투시|모든 판정에 부스트/.test(HTML), false);
 
   const errAll = s.log.filter(l => l[0] === 'ERROR');
 

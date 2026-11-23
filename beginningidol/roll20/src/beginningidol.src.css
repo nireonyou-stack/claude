@@ -149,7 +149,8 @@ body.sheet-darkmode .bi .logo select{color:#ffffff}
 .bi .link .li:nth-child(3n){border-right:0}
 .bi .link .li:nth-child(n+4){border-bottom:0}
 .bi .link .lh{display:flex;align-items:center;gap:4px;font:400 13.5px/1.2 var(--head)}
-.bi .link p{margin:1px 0 0;font-size:10px;line-height:1.4;color:var(--sub)}
+.bi .link .lh input[type=text]{flex:1;min-width:0;height:22px;font:400 13.5px/1.2 var(--head)}
+.bi .link textarea{min-height:34px;margin:1px 0 0;font-size:10.5px;line-height:1.4;resize:none}
 .bi input[type=checkbox].x{-webkit-appearance:none;appearance:none;width:15px;height:15px;border:0;background:none;position:relative}
 .bi input[type=checkbox].x::before,.bi input[type=checkbox].x::after{content:"";position:absolute;left:1px;top:7px;width:13px;height:1.5px;background:#bbbbbb;transform:rotate(45deg)}
 .bi input[type=checkbox].x::after{transform:rotate(-45deg)}

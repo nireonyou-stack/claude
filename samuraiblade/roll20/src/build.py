@@ -20,20 +20,10 @@ FIELDS = [
     ('E', '伍', '감성', ['상야', '빙의', '지각', '운명', '편쇄', '바람', '닌구', '환상', '전뇌', '염력', '안락']),
     ('F', '陸', '심연', ['혼돈', '죽음', '은밀', '신비', '조아', '영혼', '주물', '윤회', '범죄', '마법', '미움']),
 ]
-# 인쇄된 어빌리티 (혼백사 공통): 이름 · 조건 · 타이밍 · 기능 · 간격 · 대상 · 회수 · 효과
-PRINTED = [('무령각성', '혼백사', '선언', '없음', '없음', '자신', '세션', '생명력 전부 회복, BS 전체 해제 후 【각성】'),
-           ('참찰전개', '혼백사', '선언', '없음', '없음', '자신', '세션', '손패에서 완성된 역을 【참패】로 전개'),
-           ('화투동조', '혼백사', '선언', '없음', '없음', '자신', '세션', '손패가 최대가 될 때까지 화투 습득'),
-           ('혼백산화', '혼백사', '선언', '없음', '없음', '자신', '세션', '【화투동조】와 같은 효과. 세션 종료 시 【은퇴】')]
-GS = [('고양', '공격판정에 부스트+1한다'), ('축복', '방어판정에 부스트+1한다'), ('가속', '통상 이동공격은 +1칸, 전력이동은 +2칸한다.'),
-      ('철벽', '자신이 받는 대미지가 1점 감소한다.'), ('신격', '자신이 부여하는 대미지를 1점 추가한다.'), ('무쌍', '【대상:단일】을 【대상:라인】으로 변경.')]
-BS = [('맹독', '행동을 할 때마다 1점의 대미지를 받는다.'), ('주박', '모든 판정 난이도가 1단계 상승한다. (행위판정에 +5)'),
-      ('발묶임', '이동공격을 할 수 없고, 전력이동은 1칸 이동이 된다.'), ('공포', '자신이 부여하는 대미지가 1점 감소한다 (0점이라면 대미지가 부여X)'),
-      ('부상', '자신이 받는 대미지가 1점 추가된다.'), ('혼란', '【횟수: 사이클】과 【횟수:배틀】어빌리티 사용불가.')]
+GS = ['고양', '축복', '가속', '철벽', '신격', '무쌍']
+BS = ['맹독', '주박', '발묶임', '공포', '부상', '혼란']
 EQUIP = ['무기', '보조무기', '방어구', '보조방어구', '장식품']
-ITEMS = [('방진', '배치 롤을 2회 실행해, 원하는 쪽을 선택할 수 있다.'), ('병기', '하급 봉마 1체를 전투 시트 상에서 배제할 수 있다.'),
-         ('영측', '상급·특급 봉마 1체의 데이터를 알 수 있다. 봉마 어빌리티는 알 수 없다.'), ('약품', '생명력 완쾌나 BS 전체 해제. 전투 중엔 생명력 1D6 회복 or BS 1개 해제'),
-         ('탈것', '즉시 전력 이동 한다. BS 【발묶임】이라도 사용 가능.'), ('호부', '【횟수: 사이클】인 사용완료 어빌리티를 재사용할 수 있다.')]
+ITEMS = ['방진', '병기', '영측', '약품', '탈것', '호부']
 EN_ROWS = 6
 GAPS = ['a', 'b', 'c', 'd', 'e']   # 분야 사이 공백 (a = 재능|숙달 … e = 감성|심연). 1칸으로 세고, 칠하면 없는 것으로 (룰북 150쪽)
 AN = ' class="an"'
@@ -60,15 +50,7 @@ def skills():
 
 def abilities():
     out = []
-    for i, (n, cond, tim, sk, rng, tgt, cnt, ef) in enumerate(PRINTED, 1):
-        out.append(f'<div class="ar pr"><span><button type="action" class="bub" name="act_pab{i}" title="채팅에 올림"></button></span><span class="lv">—</span>'
-                   f'<span class="an">{n}</span><span>{cond}</span><span>{tim}</span><span>{sk}</span><span>{rng}</span><span>{tgt}</span><span>{cnt}</span>'
-                   f'<span class="ef">{ef}</span><span class="cks"><input type="checkbox" class="ck" name="attr_pab{i}_used" value="1" title="사용함"></span></div>')
-    out.append('<div class="ar pr"><span><button type="action" class="dic" name="act_mr" title="판정"></button></span><span class="lv">1</span>'
-               '<span class="an">† 무령도</span><span>혼백사</span><span>이동공격 · 전력공격</span><span><input type="text" name="attr_mr_skill" title="무령도 기능"></span>'
-               '<span>무기</span><span>단일</span><span>무제한</span>'
-               '<span class="ef">이동공격 <input type="text" class="dmg" name="attr_mr_dmg" title="이동공격 대미지">점 / 전력공격에는 +1점</span><span class="cks"></span></div>')
-    for lv in range(2, 8):
+    for lv in range(1, 8):
         cells = ''.join(f'<span{AN if k == "name" else ""}><input type="text" name="attr_ab{lv}_{k}" title="{t}"></span>'
                         for k, t in [('name', '어빌리티'), ('cond', '조건'), ('timing', '타이밍'), ('skill', '기능'), ('range', '간격'), ('target', '대상'), ('count', '회수')])
         out.append(f'<div class="ar"><span><button type="action" class="dic" name="act_ab{lv}" title="판정"></button></span><span class="lv">{lv}</span>{cells}'
@@ -83,21 +65,21 @@ def bonds():
 
 
 def status(key, rows):
-    return '\n'.join(f'<div class="sr2"><i>{i}</i><b>{n}</b><span>{e}</span><input type="checkbox" class="ck" name="attr_{key}{i}" value="1" title="{n}"></div>'
-                     for i, (n, e) in enumerate(rows, 1))
+    return '\n'.join(f'<div class="sr2"><i>{i}</i><b>{n}</b><input type="checkbox" class="ck" name="attr_{key}{i}" value="1" title="{n}"></div>'
+                     for i, n in enumerate(rows, 1))
 
 
 def equip():
     # 공식 시트: 장비품 · 종별 · 간격 · 효과 (효과는 둘째 줄)
     return '\n'.join(f'<div class="qr"><b>{k}</b><input type="text" name="attr_eq{i}_name" title="{k}"><input type="text" class="s" name="attr_eq{i}_type" title="종별">'
                      f'<input type="text" class="s" name="attr_eq{i}_range" title="간격"><input type="text" class="ef" name="attr_eq{i}_effect" title="{k} 효과"></div>'
-                     for i, k in enumerate(EQUIP, 1)) + '\n<div class="qr qn">장식품은 전투시 사용불가</div>'
+                     for i, k in enumerate(EQUIP, 1))
 
 
 def items():
-    return '\n'.join(f'<div class="it"><i>{i}</i><b>{n}</b><span>{e}</span><span class="tok"><input type="hidden" class="hv" name="attr_it{i}_n" value="0">'
+    return '\n'.join(f'<div class="it"><i>{i}</i><b>{n}</b><span class="tok"><input type="hidden" class="hv" name="attr_it{i}_n" value="0">'
                      + ''.join(f'<button type="action" class="cnt" name="act_it{i}c{k}" title="{k}"></button>' for k in (1, 2, 3))
-                     + f'</span><button type="action" class="bub" name="act_it{i}" title="사용"></button></div>' for i, (n, e) in enumerate(ITEMS, 1))
+                     + f'</span><button type="action" class="bub" name="act_it{i}" title="사용"></button></div>' for i, n in enumerate(ITEMS, 1))
 
 
 def gen_css():

@@ -72,11 +72,6 @@ on('clicked:cond', () => tableRoll('상태이상', '1D6', '{{roll=[[1d6]]}}', r 
   return { dice: k, res: s[0], eff: s[1] };
 }, true));
 
-// 기본 액션(원본처럼 인쇄된 첫 줄): 지금 종류의 것을 채팅에
-on('clicked:baseact', () => getAttrs(['sheet_type', 'character_name'], v => {
-  const [name, type, cost, eff] = DATA.acts[v.sheet_type === 'asi' ? 'asi' : 'det'];
-  post(T + field('title', name) + field('sub', `${type} · 코스트 ${cost}`) + field('who', v.character_name) + field('effect', eff));
-}));
 // 액션 · 규격 외 액션: 채팅에 출력 (이름 · 타입 · 코스트 · 효과)
 const rowOf = (e, sec) => { const m = `${e.sourceAttribute || ''} ${e.triggerName || ''}`.match(new RegExp(`repeating_${sec}_([^_\\s]+)_`, 'i')); return m ? `repeating_${sec}_${m[1]}_` : null; };
 [['acts', ''], ['exdet', '탐정 규격 외 · '], ['exasi', '조수 규격 외 · ']].forEach(([sec, pre]) => on(`clicked:repeating_${sec}:use`, e => {

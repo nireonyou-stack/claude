@@ -32,7 +32,12 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   s.click('clr'); await s.settle();
   eq('clear', g(s, 'pc1', 'sum_n'), ['', '0']);
 
-  // ── 기본 선언: 〔기동〕 흑：12 — 부족이면 카드 남김, 기동하면 비움
+  // ── 기본 선언: 이름 · 본문 · 문장 모두 빈칸 (직접 기입)
+  eq('no printed calling or crest text', /심문 선고|인피니티|언리미티드|오버로드|LV2/.test(HTML), false);
+  eq('crest and calling inputs', [/name="attr_crest3_name"/, /name="attr_crest3_text"/, /name="attr_bc6_name"/, /name="attr_bc6_text"/].map(r => r.test(HTML)), [true, true, true, true]);
+  ['현장', '인물', '심문 선고', '물질', '서약', '각본'].forEach((n, i) => s.set(`bc${i + 1}_name`, n));
+  s.set('bc3_text', '질문 하나'); await s.settle();
+  // 〔기동〕 흑：12 — 부족이면 카드 남김, 기동하면 비움
   s.set('bc3_boot', '흑：12'); s.set('bc3_lv', '2'); await s.settle();
   s.click('b5'); await s.settle(); s.click('r9'); await s.settle();
   s.click('bc3'); await s.settle();
@@ -40,10 +45,7 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   has('req black', last(s).macro, '{{req=흑：12}} {{reqb=1}} {{ng=1}}');
   has('chips in order', last(s).macro, '{{bk1=5}} {{bs1=♠}} {{rk2=9}} {{rs2=♥}} {{sb=5}} {{sr=9}} {{sn=2}}');
   has('short note', last(s).macro, '{{note=흑 합계 5 / 필요 12}}');
-  has('printed LV2 effect', last(s).macro, '{{lvx=LV2: GM 에게서 NO 라는 답도 얻을 수 있다 (불명 = 시나리오에 없음)}}');
-  not('no LV3 at LV2', last(s).macro, 'LV3:');
-  eq('LV lines printed, no LV textarea', [/attr_bc3_lvx/.test(HTML), /class="lvm" name="attr_bc4_lv"/.test(HTML)], [false, true]);
-  has('printed text', last(s).macro, '{{eff=당신을 대상으로, YES / NO');
+  has('typed text', last(s).macro, '{{eff=질문 하나}}');
   eq('short → cards kept', g(s, 'sum_n'), ['2']);
   s.click('bq'); await s.settle();
   s.click('bc3'); await s.settle();
@@ -85,18 +87,11 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   has('auth tags', last(s).macro, '{{en=BATTLE MAGIC}} {{head=권한 마법}} {{acc=1}} {{sup=1}}');
   has('auth ok', last(s).macro, '{{req=？：1}} {{ok=1}} {{rk1=3}} {{rs1=♥}}');
 
-  // ── 언리미티드 (문장 3): 권한 마법에서만 낸 카드 1장을 양쪽 색으로
-  s.set('au2_name', '흑검'); s.set('au2_boot', '흑：12'); await s.settle();
+  // ── 문장 해금은 기동 계산에 안 씀 (문장 효과는 직접 기입)
+  s.set('au2_name', '흑검'); s.set('au2_boot', '흑：12'); s.set('crest3_on', '1'); await s.settle();
   s.click('b4'); await s.settle(); s.click('rk'); await s.settle(); s.click('r3'); await s.settle();
   s.click('au2'); await s.settle();
-  has('without unlimited: short', last(s).macro, '{{note=흑 합계 4 / 필요 12}}');
-  s.set('crest3_on', '1'); await s.settle();
-  s.click('au2'); await s.settle();
-  has('unlimited: red K counts as black', last(s).macro, '{{ok=1}}');
-  has('unlimited note', last(s).macro, '{{note=언리미티드: 적 K 를 흑으로도 취급}}');
-  s.set('bc1_boot', '흑：12'); await s.settle();
-  s.click('b4'); await s.settle(); s.click('rk'); await s.settle(); s.click('bc1'); await s.settle();
-  has('unlimited not for basic calling', last(s).macro, '{{ng=1}}');
+  has('crest does not change sums', last(s).macro, '{{note=흑 합계 4 / 필요 12}}');
   s.click('clr'); await s.settle();
 
   // ── 고발 공격 · GM 귓속말

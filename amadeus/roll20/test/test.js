@@ -87,11 +87,7 @@ const last = s => s.rolls[s.rolls.length - 1];
   has('분노 안내', r.macro, '{{st1=분노: 가장 낮은 눈을 무드 다이스로}}');
   has('타락 안내', r.macro, '{{st2=타락: 무드 다이스를 고르려면 【생명력】 1점 감소}}');
 
-  // ── 부모신의 축복 · 기프트 · 아이템 · 식료
-  s.click('blessing'); await s.settle();
-  has('축복: 제목', last(s).macro, '{{title=부모신의 축복}}');
-  has('축복: 부제', last(s).macro, '{{sub=보조 · 조건 ※}}');
-  has('축복: 인쇄 글', last(s).macro, '[자신의 속성과 같은 영역의 각성단계×2]');
+  // ── 기프트 · 아이템 · 식료
   const g = s.addRow('gifts', { name: '번개', cat: '보조', cond: '적적', check: '무용', tag: '공격', eff: '데미지 +2', seal: '1' }); await s.settle();
   s.click('use', g); await s.settle();
   has('기프트: 부제', last(s).macro, '{{sub=보조 · 조건 적적}}');

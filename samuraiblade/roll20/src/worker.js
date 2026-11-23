@@ -12,11 +12,7 @@ const SK = [
   ['상야', '빙의', '지각', '운명', '편쇄', '바람', '닌구', '환상', '전뇌', '염력', '안락'],
   ['혼돈', '죽음', '은밀', '신비', '조아', '영혼', '주물', '윤회', '범죄', '마법', '미움']];
 const SKILL_IDS = COLS.flatMap(c => SK[0].map((_, r) => `${c}${r + 2}`));
-const ITEMS = [['방진', '배치 롤을 2회 실행해, 원하는 쪽을 선택할 수 있다.'], ['병기', '하급 봉마 1체를 전투 시트 상에서 배제할 수 있다.'],
-  ['영측', '상급·특급 봉마 1체의 데이터를 알 수 있다. 봉마 어빌리티는 알 수 없다.'], ['약품', '생명력 완쾌나 BS 전체 해제. 전투 중엔 생명력 1D6 회복 or BS 1개 해제'],
-  ['탈것', '즉시 전력 이동 한다. BS 【발묶임】이라도 사용 가능.'], ['호부', '【횟수: 사이클】인 사용완료 어빌리티를 재사용할 수 있다.']];
-const PRINTED = [['무령각성', '혼백사', '선언', '자신', '세션', '생명력 전부 회복, BS 전체 해제 후 【각성】'], ['참찰전개', '혼백사', '선언', '자신', '세션', '손패에서 완성된 역을 【참패】로 전개'],
-  ['화투동조', '혼백사', '선언', '자신', '세션', '손패가 최대가 될 때까지 화투 습득'], ['혼백산화', '혼백사', '선언', '자신', '세션', '【화투동조】와 같은 효과. 세션 종료 시 【은퇴】']];
+const ITEMS = ['방진', '병기', '영측', '약품', '탈것', '호부'];
 
 const on1 = v => v === '1' || v === 1 || v === 'on';
 const num = v => { const n = parseInt(String(v == null ? '' : v).replace(/[−－]/g, '-').trim(), 10); return Number.isNaN(n) ? null : n; };
@@ -82,7 +78,6 @@ const withCtx = (extra, cb) => getAttrs([...CTX, ...extra], v => cb(v, targets(v
 //   6 이 2개 이상 = 스페셜 (달성치와 관계없이 성공), 1 이 2개 이상 = 펌블 (실패 · 펌블 표). 둘 다면 스페셜.
 //   공격 판정의 스페셜 = 크리티컬 히트: 대미지 × 6 의 개수 (165쪽).
 // 목표치 = 기본 목표치 + 난이도 (BS 주박이면 한 단계 위). 【각성】 부스트 +1, 공격(타이밍에 '공격') 때 GS 고양 +1, 방어 판정 때 GS 축복 +1
-//   blade: 무령도 공격 — 이동 / 전력을 묻고 대미지를 계산 (dmg · dkind · dhow)
 const MAXD = 12;
 const FUMBLE = ['부조 — 뭔가 상태가 이상하다. 이 사이클 동안 화투와 어빌리티를 사용할 수 없게 된다.', '불운 — 정신 차려 보니 없어졌다! 임의의 아이템 1개를 잃어버린다.',
   '습격 — 방심했다! 자신의 【생명력】을 1D6점 잃는다.', '계산 밖 — 통한의 실수! 자신 이외의 PC의 【생명력】을 1D6점 잃게 한다.',
@@ -92,21 +87,10 @@ function judge(dice, add, t, ft) {
   const ok = six >= 2 ? 1 : one >= 2 ? 2 : t == null ? 0 : total >= t ? 3 : 4;
   return ok === 2 ? { ok, total, six, fres: FUMBLE[(ft || 1) - 1] } : { ok, total, six };
 }
-// 무령도 대미지: 무기 + 전력 1 + GS 신격 1 − BS 공포 1 (0 미만 없음), 크리티컬이면 × 6 의 개수
-function bladeDmg(b, full, crit, six) {
-  const parts = [`무기 ${b.base}`];
-  let d = b.base + (full ? 1 : 0) + (b.gs5 ? 1 : 0) - (b.bs4 ? 1 : 0);
-  if (full) parts.push('전력 +1');
-  if (b.gs5) parts.push('GS 신격 +1');
-  if (b.bs4) parts.push('BS 공포 −1');
-  d = Math.max(0, d);
-  if (crit && d) { parts.push(`× 크리티컬 ${six}`); d *= six; }
-  return { dmg: d, dkind: full ? '전력공격' : '이동공격', dhow: parts.length > 1 ? `(${parts.join(' ')})` : '' };
-}
 const critOf = (r, attack) => (attack && r.ok === 1 ? `크리티컬 히트 — 대미지 × ${r.six} (6 의 개수)` : '');
 // 마지막 판정 (주사위 고치기 단추가 씀): last_dice = 눈을 이어 적은 글 (최대 12개), last_roll = 다시 계산에 필요한 것 (JSON)
 const remember = (dice, roll) => setAttrs({ last_dice: dice.join(''), last_roll: JSON.stringify(roll) }, { silent: true });
-function check(v, T, { title, id, attack = false, eff, head, blade }) {
+function check(v, T, { title, id, attack = false, eff, head }) {
   const p = pos(id), base = T[id], defense = !attack && on1(v.defense);
   const sel = [0, 5, 10, 15].includes(num(v.dif)) ? num(v.dif) : 0, curse = on1(v.bs2) ? 5 : 0, dif = Math.min(15, sel + curse);
   const boost = Math.max(0, num(v.boost) || 0) + (on1(v.awakened) ? 1 : 0) + (attack && on1(v.gs1) ? 1 : 0) + (defense && on1(v.gs2) ? 1 : 0);
@@ -114,15 +98,13 @@ function check(v, T, { title, id, attack = false, eff, head, blade }) {
   const sub = [head, defense && '방어 판정', FIELD_NAMES[p.f], `${DIF[dif]}${dif ? ` +${dif}` : ''}`, t != null && `목표치 ${t}`, boost && `부스트 +${boost}`, m && `수정치 ${sgn(m)}`].filter(Boolean).join(' · ');
   const notes = [curse && 'BS 주박 · 난이도 한 단계 위', on1(v.awakened) && '각성 · 부스트 +1', attack && on1(v.gs1) && 'GS 고양 · 부스트 +1', defense && on1(v.gs2) && 'GS 축복 · 부스트 +1'].filter(Boolean).join(' / ');
   const ks = Array.from({ length: nd }, (_, i) => `d${i + 1}`);
-  const bq = blade ? ' {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}} {{full=[[?{공격|이동공격,0|전력공격 (대미지 +1),1}]]}}' : '';
-  const s = `${prefix(v)}${TPL} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}}${bq} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')} {{ft=[[1d6]]}}`
+  const s = `${prefix(v)}${TPL} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}} ${ks.map(k => `{{${k}=[[1d6]]}}`).join(' ')} {{ft=[[1d6]]}}`
     + `${attack ? ' {{atk=1}}' : ''}${m ? field('add', sgn(m)) : ''}${field('title', title)}${field('sub', sub)}${field('note', notes)}${field('eff', eff)}`;
   post(s, R => {
-    const dice = ks.map(k => R[k].result), r = judge(dice, m, t, R.ft.result), full = blade ? R.full.result === 1 : false;
-    remember(dice, { title, t, m, attack, blade: blade || null, full, eff: eff || '' });
+    const dice = ks.map(k => R[k].result), r = judge(dice, m, t, R.ft.result);
+    remember(dice, { title, t, m, attack, eff: eff || '' });
     const out = { ok: r.ok, total: r.total, crit: critOf(r, attack) };
     if (r.fres) out.fres = r.fres;
-    if (blade) Object.assign(out, bladeDmg(blade, full, r.ok === 1, r.six));
     return out;
   });
 }
@@ -136,7 +118,7 @@ on('clicked:fix', () => getAttrs(['roll_display_to', 'last_dice', 'last_roll'], 
   const old = String(v.last_dice || '').replace(/[^1-6]/g, '').split('').map(Number);
   if (!L || !old.length) return info(v, { title: '주사위 고치기', eff: '고칠 판정이 없습니다. 판정을 먼저 굴려 주세요.' });
   const n = old.length, idx = Array.from({ length: n }, (_, i) => i + 1);
-  const s = `${prefix(v)}${TPL} {{fsub=[[0]]}} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}}${L.blade ? ' {{dmg=[[0]]}} {{dkind=[[0]]}} {{dhow=[[0]]}}' : ''}`
+  const s = `${prefix(v)}${TPL} {{fsub=[[0]]}} {{ok=[[0]]}} {{total=[[0]]}} {{fres=[[0]]}} {{crit=[[0]]}}`
     + ` ${idx.map(i => `{{f${i}=[[0]]}}`).join(' ')} {{fq=[[?{${FIXQ}|${old.join('')}}]]}} ${idx.map(i => `{{x${i}=[[1d6]]}}`).join(' ')} {{ft=[[1d6]]}} {{fx=1}}`
     + `${L.attack ? ' {{atk=1}}' : ''}${L.m ? field('add', sgn(L.m)) : ''}${field('title', `${L.title || '판정'} · 주사위 고침`)}${field('eff', L.eff)}`;
   post(s, R => {
@@ -148,7 +130,6 @@ on('clicked:fix', () => getAttrs(['roll_display_to', 'last_dice', 'last_roll'], 
     const out = { fsub: `${old.join(' ')} → ${dice.join(' ')}${re ? ` (다시 굴림 ${re}개)` : ''}`, ok: r.ok, total: r.total, crit: critOf(r, L.attack),
       ...Object.fromEntries(dice.map((d, i) => [`f${i + 1}`, d])) };
     if (r.fres) out.fres = r.fres;
-    if (L.blade) Object.assign(out, bladeDmg(L.blade, L.full, r.ok === 1, r.six));
     return out;
   });
 }));
@@ -161,8 +142,8 @@ on(SKILL_IDS.map(id => `clicked:r${id.toLowerCase()}`).join(' '), e => {
   withCtx([], (v, T) => check(v, T, { title: `《${SK[p.f][p.r]}》 판정`, id }));
 });
 
-// 어빌리티: 기능 칸의 특기로 판정 (특기가 아니면 효과만 채팅에). 인쇄된 4 줄은 말풍선 = 채팅
-for (let lv = 2; lv <= 7; lv++) {
+// 어빌리티: 기능 칸의 특기로 판정 (특기가 아니면 효과만 채팅에)
+for (let lv = 1; lv <= 7; lv++) {
   const keys = ['name', 'cond', 'timing', 'skill', 'range', 'target', 'count', 'effect'].map(k => `ab${lv}_${k}`);
   on(`clicked:ab${lv}`, () => withCtx(keys, (v, T) => {
     const g = k => (v[`ab${lv}_${k}`] || '').trim(), nm = g('name') || '어빌리티', tim = g('timing'), sk = g('skill').replace(/[《》]/g, ''), s = findSkill(sk);
@@ -170,21 +151,13 @@ for (let lv = 2; lv <= 7; lv++) {
     check(v, T, { title: `【${nm}】`, id: s.id, attack: /공격/.test(tim), eff: v[`ab${lv}_effect`], head: [tim, `《${sk}》`].filter(Boolean).join(' · ') });
   }));
 }
-// 【† 무령도】 (룰북 142쪽): 장비한 무령도의 【종별】 특기로 공격 — 기능 칸이 비면 장비품 「무기」의 종별을 쓴다.
-//   이동공격은 무령도 대미지, 전력공격은 +1점
-on('clicked:mr', () => withCtx(['mr_skill', 'mr_dmg', 'eq1_type', 'gs5', 'bs4'], (v, T) => {
-  const sk = ((v.mr_skill || '').trim() || (v.eq1_type || '').trim()).replace(/[《》]/g, ''), s = findSkill(sk), d = (v.mr_dmg || '').trim(), eff = `이동공격 ${d || '　'}점 / 전력공격에는 +1점`;
-  if (!s) return info(v, { title: '【† 무령도】', sub: '이동공격 · 전력공격', eff });
-  check(v, T, { title: '【† 무령도】', id: s.id, attack: true, eff, head: `이동공격 · 전력공격 · 《${sk}》`, blade: { base: Math.max(0, num(d) || 0), gs5: on1(v.gs5), bs4: on1(v.bs4) } });
-}));
-PRINTED.forEach(([n, cond, tim, tgt, cnt, ef], i) => on(`clicked:pab${i + 1}`, () => getAttrs(['roll_display_to'], v => info(v, { title: `【${n}】`, sub: `조건 ${cond} · 타이밍 ${tim} · 대상 ${tgt} · 회수 ${cnt}`, eff: ef }))));
 
-// 아이템 사용: 개수 하나 줄이고 효과를 채팅에
-ITEMS.forEach(([n, e], i) => on(`clicked:it${i + 1}`, () => getAttrs([`it${i + 1}_n`, 'roll_display_to'], v => {
+// 아이템 사용: 개수 하나 줄이고 채팅에
+ITEMS.forEach((n, i) => on(`clicked:it${i + 1}`, () => getAttrs([`it${i + 1}_n`, 'roll_display_to'], v => {
   const left = Math.max(0, Math.min(3, num(v[`it${i + 1}_n`]) || 0));
   if (!left) return info(v, { title: `【아이템】 ${n}`, note: '남은 개수 0' });
   setAttrs({ [`it${i + 1}_n`]: left - 1 });
-  info(v, { title: `【아이템】 ${n} 사용`, sub: `남은 개수 ${left} → ${left - 1}`, eff: e });
+  info(v, { title: `【아이템】 ${n} 사용`, sub: `남은 개수 ${left} → ${left - 1}` });
 })));
 
 // 굴림표 (범용 장면 · 카르마 장면 = 2D6, 펌블 · 감정 = 1D6)

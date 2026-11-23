@@ -1,8 +1,7 @@
 <!-- 채팅 카드: 화투패 모양. 흰 바탕 · 먹보라 테 · 안쪽 진홍 테 · 머리띠 오른쪽 붉은 해 · 명조 제목 · 겹테 주사위 · 낙관 도장.
      굴림은 sheet worker 가 startRoll 로 보내고 computed:: 칸은 finishRoll 로 채운다. computed 칸(ok · total · tres)은 매크로 앞쪽.
      판정: d1 · d2 (+ 부스트 d3~d12) + add = total | 도장 ok 1 스페셜 (6 이 2개 이상) · 2 펌블 (1 이 2개 이상, ft 펌블 표 fres) · 3 성공 · 4 실패 (0 이면 도장 없음)
-     공격(atk)의 스페셜 = 크리티컬 히트 crit. 주사위 고치기(fx): 고친 눈 f1~f12 · fsub = 처음 눈 → 고친 눈. 무령도는 dmg · dkind · dhow.
-     무령도: dmg (dkind 이동공격 / 전력공격, dhow 계산) — 전력공격 +1, GS 신격 +1, BS 공포 −1 (0 이면 대미지 없음).
+     공격(atk)의 스페셜 = 크리티컬 히트 crit. 주사위 고치기(fx): 고친 눈 f1~f12 · fsub = 처음 눈 → 고친 눈.
      표: te1(~te2) 와 결과(tres). nD6: n1~n2 = total. -->
 <rolltemplate class="sheet-rolltemplate-samuraiblade">
   <div class="sheet-card">
@@ -13,7 +12,6 @@
       {{#fx}}<div class="sheet-roll sheet-big">{{#f1}}<span class="sheet-die">{{computed::f1}}</span>{{/f1}}{{#f2}}<span class="sheet-die">{{computed::f2}}</span>{{/f2}}{{#f3}}<span class="sheet-die">{{computed::f3}}</span>{{/f3}}{{#f4}}<span class="sheet-die">{{computed::f4}}</span>{{/f4}}{{#f5}}<span class="sheet-die">{{computed::f5}}</span>{{/f5}}{{#f6}}<span class="sheet-die">{{computed::f6}}</span>{{/f6}}{{#f7}}<span class="sheet-die">{{computed::f7}}</span>{{/f7}}{{#f8}}<span class="sheet-die">{{computed::f8}}</span>{{/f8}}{{#f9}}<span class="sheet-die">{{computed::f9}}</span>{{/f9}}{{#f10}}<span class="sheet-die">{{computed::f10}}</span>{{/f10}}{{#f11}}<span class="sheet-die">{{computed::f11}}</span>{{/f11}}{{#f12}}<span class="sheet-die">{{computed::f12}}</span>{{/f12}}{{#add}}<span class="sheet-eq">{{add}}</span>{{/add}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span>{{#rollTotal() computed::ok 1}}<span class="sheet-stp sheet-spc">스페셜</span>{{/rollTotal() computed::ok 1}}{{#rollTotal() computed::ok 2}}<span class="sheet-stp sheet-fb">펌블</span>{{/rollTotal() computed::ok 2}}{{#rollTotal() computed::ok 3}}<span class="sheet-stp">성공</span>{{/rollTotal() computed::ok 3}}{{#rollTotal() computed::ok 4}}<span class="sheet-stp sheet-ng">실패</span>{{/rollTotal() computed::ok 4}}</div><div class="sheet-sub">{{computed::fsub}}</div>{{#rollTotal() computed::ok 2}}<div class="sheet-rt"><span class="sheet-die">{{ft}}</span><span class="sheet-rtx sheet-fbx">펌블 표 · {{computed::fres}}</span></div>{{/rollTotal() computed::ok 2}}{{#atk}}{{#rollTotal() computed::ok 1}}<div class="sheet-note">{{computed::crit}}</div>{{/rollTotal() computed::ok 1}}{{/atk}}{{/fx}}
       {{#te1}}<div class="sheet-rt"><span class="sheet-die">{{te1}}</span>{{#te2}}<span class="sheet-die">{{te2}}</span>{{/te2}}<span class="sheet-rtx">{{computed::tres}}</span></div>{{/te1}}
       {{#n1}}<div class="sheet-roll"><span class="sheet-die">{{n1}}</span>{{#n2}}<span class="sheet-die">{{n2}}</span>{{/n2}}<span class="sheet-eq">=</span><span class="sheet-tot">{{computed::total}}</span></div>{{/n1}}
-      {{#dmg}}<div class="sheet-dmg">{{computed::dkind}} 대미지<b>{{computed::dmg}}</b>점{{#dhow}} <span class="sheet-sub">{{computed::dhow}}</span>{{/dhow}}</div>{{/dmg}}
       {{#note}}<div class="sheet-note">{{note}}</div>{{/note}}
       {{#eff}}<div class="sheet-eff">{{eff}}</div>{{/eff}}
       {{#plain}}<div class="sheet-plain">{{plain}}</div>{{/plain}}

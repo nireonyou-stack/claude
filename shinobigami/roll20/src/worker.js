@@ -235,15 +235,6 @@ on('clicked:repeating_acitems:use', e => {
   const row = rowOf(e, 'acitems');
   if (row) withCtx(NP_FIELDS.map(f => `${row}Ninpo_${f}`), (v, T) => rollNinpo(v, T, Object.fromEntries(NP_FIELDS.map(f => [f, v[`${row}Ninpo_${f}`] || '']))));
 });
-// 접근전 공격 (인쇄된 줄)
-on('clicked:melee', () => withCtx(['melee_skill'], (v, T) => {
-  const s = findSkill(v.melee_skill), sk = (v.melee_skill || '').replace(/[《》]/g, '').trim();
-  const sub = `공격 · 간격 ${battleOn(v, 'storm') ? '1+1' : '1'} · 코스트 없음` + (sk ? ` · 《${sk}》` : '') + (s ? tgs(T[s.id]) + tail(v) : '');
-  const eff = '접근전. 공격이 성공하면 목표에게 접근전 대미지 1점을 입힐 수 있다.';
-  if (!s) return info(v, { title: '【접근전 공격】', sub, eff });
-  check(v, { title: '【접근전 공격】', sub, target: T[s.id], eff });
-}));
-
 // 파훼 판정 (인물 칸의 오의 지정특기): 오의마다 수정치가 달라 성공 · 실패는 찍지 않고 스페셜 · 펌블만
 PEOPLE.forEach(k => on(`clicked:brk${k}`, () => withCtx([`relation_name_${k}`, `relation_ougi_${k}`], (v, T) => {
   const who = (v[`relation_name_${k}`] || '').trim(), sk = (v[`relation_ougi_${k}`] || '').replace(/[《》]/g, '').trim(), s = findSkill(sk), t = s ? T[s.id] : null;

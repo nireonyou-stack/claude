@@ -21,12 +21,6 @@ ABIL = [('war', '무용', 'WARFARE'), ('spi', '영력', 'SPIRIT'), ('tec', '기�
 # 생명력 기본 = 무용 · 영력의 랭크 계수 + 모드 계수 (룰 1·03·01·01 생명력 산출표). 평가 글자(예: A+)를 읽어 계산
 HP_RANK = {'S': 10, 'A': 7, 'B': 5, 'C': 3, 'D': 1}
 HP_MODE = {'3': 6, '2': 3, '1': 1, '0': 0, '-1': -1, '-2': -2}
-# 공식 캐릭터 시트에 인쇄된 문구 (번역)
-BLESSING = ('부모신의 축복', '보조', '※', '없음',
-            '자신이 판정을 할 때, 그 판정이 자신의 부모신의 권능에 관한 것이라면 판정의 주사위를 굴리기 전에 사용할 수 있다. '
-            '자신의 【생명력】을 2점 소비할 때마다 그 판정의 달성치가 1점 상승한다. '
-            '단, 【생명력】은 [자신의 속성과 같은 영역의 각성단계×2]점까지만 소비할 수 있다.')
-FOOD = '휴식 시에 식사를 하는 것으로 【생명력】을 1점 회복할 수 있다.'
 # 운명의 수레바퀴: 무드 다이스 눈 → 영역 (1 흑 · 2 적 · 3 청 · 4 녹 · 5 백 · 6 아무 곳)
 WHEEL = ['흑', '적', '청', '녹', '백', '아무 곳']
 
@@ -61,7 +55,7 @@ def rolltemplate():
 
 def data():
     return 'const DATA = ' + json.dumps({
-        'abil': ABIL, 'hpRank': HP_RANK, 'hpMode': HP_MODE, 'blessing': BLESSING, 'food': FOOD,
+        'abil': ABIL, 'hpRank': HP_RANK, 'hpMode': HP_MODE,
     }, ensure_ascii=False) + ';'
 
 
@@ -70,10 +64,8 @@ def build():
     worker = (SRC / 'worker.js').read_text(encoding='utf-8')
     assert '// @DATA' in worker
     worker = worker.replace('// @DATA', data())
-    n, cat, cond, chk, eff = BLESSING
     for key, val in {
-        'ABIL': abilities(), 'BLESSING': f'<span class="gn">{n}</span><span class="c">{cat}</span><span class="c">{cond}</span><span class="c">{chk}</span><span></span><span class="ef">{eff}</span>',
-        'FOOD': FOOD, 'ROLLTEMPLATE': rolltemplate(), 'WORKER': f'<script type="text/worker">\n{worker}\n</script>',
+        'ABIL': abilities(), 'ROLLTEMPLATE': rolltemplate(), 'WORKER': f'<script type="text/worker">\n{worker}\n</script>',
     }.items():
         mark = f'<!--@{key}-->'
         assert mark in html, mark

@@ -46,9 +46,11 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
 
   // ── 크라운 노선: 카드에 cr
   s.set('route', 'crown'); await s.settle();
+  s.set('link1_name', '멘탈 케어'); s.set('link1_text', '멘탈 상승'); await s.settle();
   s.click('link1'); await s.settle();
   has('crown flag', last(s).macro, '{{cr=1}}');
   has('link card', last(s).macro, '{{title=【아이돌 링크】 멘탈 케어}}');
+  eq('no printed link text', /커버 포지션|디스커션|운명공동체/.test(HTML), false);
 
   // ── 퍼포먼스: 같은 눈 제거 → 남은 눈의 합
   s = makeSim(HTML, { dice: [2, 5, 1, 5, 6, /* 미라클 */ 3, 3, 4, 4, 6, 6, /* 퍼펙트 */ 1, 2, 3, 4, 5, 6, /* 7 = 익스텐션 */ 2, 2, 3, 3, 5, 1] }); s.open(); await s.settle();
@@ -202,12 +204,10 @@ const pick = (o, ...ks) => Object.fromEntries(ks.map(k => [k, o[k]]));
   s.set('idol_voltage', '21'); await s.settle();
   eq('voltage reached → checked', g(s, 'plan_vol_done'), ['1']);
 
-  // ── 유닛 시트: 【운명공동체】 · 변조표 · 유닛 파워 · 의상
+  // ── 유닛 시트: 변조표 · 유닛 파워 · 의상 (유닛 파워는 처음에 빈칸)
   s = keep(makeSim(HTML, { dice: [3, 3] })); s.open(); await s.settle();
   s.set('route', 'unit'); await s.settle();
-  eq('fate community on first unit', g(s, 'unit_init', 'up1_name', 'up1_type'), ['1', '운명공동체', '상주']);
-  s.set('up1_name', ''); s.set('route', 'tiara'); await s.settle(); s.set('route', 'unit'); await s.settle();
-  eq('only once', g(s, 'up1_name'), ['']);
+  eq('unit power starts blank', g(s, 'up1_name'), ['']);
   s.click('cond'); await s.settle();
   eq('condition 3 checked', [last(s).computed.tres, ...g(s, 'cond3')], ['「실패에 대한 불안」 유닛 멤버의 펌블치가 1점 상승한다.', '1']);
   s.click('cond'); await s.settle();

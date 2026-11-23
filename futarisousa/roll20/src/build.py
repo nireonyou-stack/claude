@@ -41,13 +41,6 @@ COND = [
 ]
 CONFESS = ('· 탐정 PC는 위에 적힌 내용을 강렬한 감정으로 획득한다.\n· 모든 PC가 파트너에 대한 감정을 1개씩 획득한다.\n· 【여유】가 1D10점 상승한다.\n'
            '· 상태이상을 모두 회복한다.\n· 이번 세션 동안 한 번에 한해 판정 결과를 스페셜로 변경할 수 있다. 이때, 주사위를 굴려 6이 나온 것으로 간주한다.')
-# 탐정 · 조수 시트 액션 표의 첫 줄 — 원본처럼 인쇄된 기본 액션 (이름 · 타입 · 코스트 · 효과). 말풍선 단추는 act_baseact
-ACTS = {
-    'det': ('둘이서 수사', '보조', '없음', '수사 페이즈에서 장면을 종료할 때 사용할 수 있다. 당신과 파트너는 서로에 대한 감정을 1개 심화함으로써 '
-            '다음에 여는 장면을 「둘이서 수사 장면」으로 변경할 수 있다.'),
-    'asi': ('따라잡다', '보조', '1', '판정의 주사위를 굴린 뒤에 사용할 수 있다. ①②의 효과를 얻는다. ①파트너에 대한 감정을 1개 심화함으로써 '
-            '판정에 사용한 당신의 주사위를 다시 굴릴 수 있다. ②①의 효과로 주사위를 다시 굴릴 때, 굴리는 주사위를 10면체로 변경할 수 있다.'),
-}
 # 사전 조사 시트: (칸 번호, 묶음 1 가장 먼저 · 2 두 번째, 탐정 질문, 조수 질문) — 빈 질문은 그 사람 시트에 없음
 PRE = [
     (1, 1, '어떤 탐정인가요?', '어떤 조수인가요?'),
@@ -104,14 +97,10 @@ def pre(group):
     return '\n'.join(out)
 
 
-def baseact():
-    return '\n'.join(f'      <div class="arow base k-{k}"><span>{n}</span><span>{t}</span><span>{c}</span><div class="be">{e}</div>'
-                     f'<button type="action" name="act_baseact" class="use bub" title="채팅에 출력"></button></div>' for k, (n, t, c, e) in ACTS.items())
-
 
 def data():
     return 'const DATA = ' + json.dumps({
-        'skills': SKILLS, 'faces': FACES, 'emoA': EMO_A, 'emoB': EMO_B, 'cond': COND, 'acts': ACTS,
+        'skills': SKILLS, 'faces': FACES, 'emoA': EMO_A, 'emoB': EMO_B, 'cond': COND,
         'pre': PRE,
     }, ensure_ascii=False) + ';'
 
@@ -128,7 +117,7 @@ def build():
     worker = worker.replace('// @DATA', data())
     for key, val in {
         'SKILLS': skills(), 'QUIRKS': quirks(), 'EMO_A': table(EMO_A, 3), 'EMO_B': table(EMO_B, 2), 'COND': cond(),
-        'PRE1': pre(1), 'PRE2': pre(2), 'BASEACT': baseact(),
+        'PRE1': pre(1), 'PRE2': pre(2),
         'CONFESS': ''.join(f'<li>{l.lstrip("· ")}</li>' for l in CONFESS.split('\n')),
         'ROLLTEMPLATE': optional('rolltemplate.html'),
         'WORKER': f'<script type="text/worker">\n{worker}\n</script>',

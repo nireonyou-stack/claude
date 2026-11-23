@@ -1,6 +1,6 @@
 <!-- 신화창세 RPG 아마데우스 시트 (Roll20, legacy:false)
      이 파일은 amadeus/roll20/src/amadeus.src.html 을 build.py 로 변환해 만든다. 직접 고치지 말 것.
-     "@이름" 주석 자리는 build.py 가 능력치 · 부모신의 축복 · 식료 · 롤 템플릿 · sheet worker 로 채운다.
+     "@이름" 주석 자리는 build.py 가 능력치 · 롤 템플릿 · sheet worker 로 채운다.
      공식 캐릭터 시트(A4 가로)를 세로로 재배치. 시트의 글은 공식 시트에 인쇄된 것만. -->
 
 <input type="hidden" name="attr_sheet_version" value="">
@@ -58,11 +58,10 @@
       </div>
     </div>
 
-    <!-- 기프트: 첫 줄은 공식 시트에 인쇄된 부모신의 축복 -->
+    <!-- 기프트 -->
     <div class="hb">기프트</div>
     <div class="gifts">
       <div class="rh gift"><span></span><span>기프트명</span><span>분류</span><span>조건</span><span>판정</span><span>태그</span><span>효과</span><span></span></div>
-      <div class="rr gift printed"><input type="checkbox" class="pt" name="attr_blessing_seal" value="1" title="봉인"><!--@BLESSING--><button type="action" name="act_blessing" class="dic" title="채팅에 출력"></button></div>
       <fieldset class="repeating_gifts">
         <div class="rr gift"><input type="checkbox" class="pt" name="attr_seal" value="1" title="봉인"><input type="text" name="attr_name" title="기프트명"><input type="text" name="attr_cat" title="분류"><input type="text" name="attr_cond" title="조건"><input type="text" name="attr_check" title="판정"><input type="text" name="attr_tag" title="태그">
           <div class="ae"><span name="attr_eff"></span><textarea name="attr_eff" title="효과"></textarea></div>
@@ -83,7 +82,7 @@
             <button type="action" name="act_use" class="dic" title="채팅에 출력"></button></div>
         </fieldset>
         <div class="rr item food"><span class="fd"><b>식료</b><input type="number" name="attr_food" min="0" max="5" title="식료 개수"><span>개</span></span>
-          <span class="kind"><span class="kx">상</span><span class="kx on">소</span></span><span></span><span class="ef"><!--@FOOD--></span>
+          <span class="kind"><span class="kx">상</span><span class="kx on">소</span></span><span></span><span></span>
           <button type="action" name="act_eat" class="dic" title="식료 1개로 생명력 1점 회복"></button></div>
       </div>
     </div>

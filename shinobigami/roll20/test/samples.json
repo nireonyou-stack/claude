@@ -6,7 +6,7 @@
     "background_name_01": "정체불명", "background_name_02": "마인",
     "Ninpo_01_Name": "그림자 베기", "Ninpo_01_Types": "@{Tool}", "Ninpo_01_Range": "1", "Ninpo_01_Cost": "1", "Ninpo_01_Assigned_Skill": "은형술", "Ninpo_01_Effect": "접근전. 공격이 성공하면 목표에게 접근전 대미지 1점.",
     "Ninpo_02_Name": "연막", "Ninpo_02_Types": "@{support}", "Ninpo_02_Range": "2", "Ninpo_02_Cost": "1", "Ninpo_02_Assigned_Skill": "잠복술",
-    "Ninpo_03_Name": "마계공학", "Ninpo_03_Types": "@{equip}", "Ninpo_04_Name": "목련", "Ninpo_04_Types": "@{equip}", "melee_skill": "도검술",
+    "Ninpo_03_Name": "마계공학", "Ninpo_03_Types": "@{equip}", "Ninpo_04_Name": "목련", "Ninpo_04_Types": "@{equip}",
     "cond_mahi": "1", "cond_noroi": "1", "cond_boukyaku": "1", "cond_hidaruma": "1",
     "Ougi1_name": "월영", "Ougi1_skill": "은형술", "Ougi1": "판정 방해", "gear_01": "2", "gear_02": "1", "fold_open": "1"},
    "rows": {"ougia": [{"sname": "강점 예", "seff": "강점 효과 예", "wname": "결점 예", "weff": ""}], "gear": [{"name": "구사일생의 부적", "count": "1", "effect": "자신이 탈락할 때 사용할 수 있다."}]}},
