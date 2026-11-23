@@ -332,7 +332,7 @@ textarea{resize:none;display:block}
     <div class="sr">
       <span class="tl">낸 카드</span><div class="hand" id="hand"></div>
       <span class="sum" id="sum"></span>
-      <button class="btn dk" type="button" id="inv">조사</button><button class="btn" type="button" id="sbt">심플 혈전</button><button class="btn" type="button" id="clr">비우기</button>
+      <button class="btn dk" type="button" id="inv">조사</button><button class="btn" type="button" id="clr">비우기</button>
       <button class="btn" type="button" id="gmb">GM 귓속말</button>
     </div>
   </div>
@@ -430,7 +430,6 @@ textarea{resize:none;display:block}
     <li>블러드패스 강도: 1 = 시나리오 테마 설정 (손패 3장) · 2 = 턴 테마 1 달성 (손패 4장, 혈위 1) · 3 = 턴 테마 2 달성 (손패 5장, 혈위 2 · 3). 체크한 칸만큼 강도가 올라가고 혈위 줄이 풀려요.</li>
     <li>룰북 230쪽 확인: 모양이 맞지 않는 카드도 낼 수 있지만 능력치는 더하지 않아요. 룰북은 「15 이상 성공 · 14 미만 실패」라 14 가 비어 있어서, 14 는 실패(+1)로 했어요. 조커는 레코드 시트의 「임의의 카드」대로 A + 높은 쪽 능력치.</li>
     <li>팩터 · 능력치 · 내구치 · 선제치 · 혈위는 직접 적어요 (자동 계산 없음). 손패도 시트 밖에서 관리하고, 카드 패드는 낼 카드만 골라요.</li>
-    <li>심플 혈전(245 · 246쪽): 낸 카드 1장으로 【전력치】를 얼마나 줄이는지 보여 줘요. 인간은 흑, 흡혈귀는 적 — 그림 카드 · A −2, 숫자 −1, 다른 색 0.</li>
     <li>표(일상표 · 턴 테마표 · 교류표 · 조사표)는 DOC 라 룰북을 보고 고르거나 덱에서 뽑아요. 시트에는 넣지 않았어요.</li>
   </ul>
 </div>
@@ -561,14 +560,6 @@ function investigate() {
   hand = []; renderHand();
 }
 $('inv').onclick = investigate;
-// 심플 혈전의 어택 (245 · 246쪽): 인간은 흑, 흡혈귀는 적 — 그림 카드 · A 면 【전력치】 −2, 숫자 카드면 −1, 다른 색은 0 (조커 = 임의의 카드 → −2)
-$('sbt').onclick = () => {
-  const c = hand[0];
-  if (!c) { card({ title: '심플 혈전 · 어택', notes: ['카드 패드에서 낼 카드를 고르세요'] }); return; }
-  const mine = isV() ? 'hd' : 'sc', big = c.k === 'JK' || /[JQKA]/.test(c.k), d = c.k === 'JK' ? 2 : mine.includes(c.s) ? (big ? 2 : 1) : 0;
-  card({ title: '심플 혈전 · 어택', head: isV() ? '흡혈귀 · 적의 카드' : '인간 · 흑의 카드', cards: [c], calc: `【전력치】 <span class="tot">−${d}</span>`, notes: [d ? '' : '다른 색의 카드 — 【전력치】는 줄지 않아요'] });
-  hand = []; renderHand();
-};
 function useRow(tr, kind, isBl) {
   const v = tr.classList.contains('pr') ? [...tr.children].map(c => c.textContent.trim()) : [...tr.querySelectorAll('input[type=text],textarea')].map(i => i.value);
   const off = isBl ? (tr.classList.contains('pr') ? 1 : 0) : 0, nm = isBl ? v[off] : v[0];
