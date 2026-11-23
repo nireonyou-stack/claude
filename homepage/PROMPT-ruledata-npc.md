@@ -32,7 +32,7 @@
 
 ### 데이터 모양 (바꾸지 말 것 — Roll20 스크립트가 이 모양을 읽는다)
 
-목록 6개, 목록마다 레코드 배열. 레코드 키는 아래만 쓴다 (없는 키는 빼도 됨, `name` 은 필수).
+목록이 여럿(아래 표 — 앞으로도 늘어난다), 목록마다 레코드 배열. 레코드 키는 아래만 쓴다 (없는 키는 빼도 됨, `name` 은 필수).
 
 | 목록 키 | 무엇 | 레코드 키 |
 |---|---|---|
@@ -42,6 +42,13 @@
 | `bloodmoon` | 블러드문 어빌리티 | name, group, type, lv, skill, cost, effect, flavor, enemy |
 | `bloodmoon_item` | 블러드문 아이템 | name, kind, effect |
 | `bloodmoon_follower` | 블러드문 팔로워 종별 | name, desc(개요), special(특수능력), upper(상위특수능력) |
+| `futari_action` | 둘이서 수사 액션 | name, group(탐정 · 조수 · 둘이서 · 게스트 · 클래스), class, book, type, cost, effect |
+| `futari_class` | 둘이서 수사 클래스 | name, group(탐정 · 조수 · 형사), book, skills, actions(자동 습득 액션 이름 ' / ' 로), pick(둘 중 하나면 1) |
+| `futari_background` | 둘이서 수사 클래스 배경표 | name(클래스 · 배경명 — 겹치지 않게), class, n, title(배경명), desc |
+| `stratoshout_specialty` · `_skill` · `_tactic` · `_part` · `_history` | 스트라토 샤우트 특기 · 스킬 · 작전 · 악기 · 경위 | name, group, type, skill, desc, effect, burst, burst_en, flavor, trouble |
+| `redblack_magic` | 적과 흑 권한 마법 · 현현 마법(GM 전용은 enemy:1) | name, title(시트에 넣을 이름이 다를 때), group(체계 · 계보), boot, black, red, acc(고발 1), sup(원호 1), flavor, effect, enemy |
+| `redblack_basic` · `redblack_noble` | 적과 흑 기본 선언 · 상급 선언 | name, group(계보), boot, quote, effect, lv2, lv3, easy |
+| `redblack_crest` · `redblack_lineage` · `redblack_law` | 적과 흑 문장 · 계보 · 반면 법칙 | name, group, effect / hp, restore, mana_b, mana_r, basic, noble, magic, systems |
 
 - `type` · `skill` 은 시트 드롭다운에 보이는 글자 그대로 (예: "공격", "폭력").
 - `enemy` 는 **에너미 전용**(룰북에서 에너미만 쓰는 어빌리티 · 장서 · 인법)이면 `1`, 아니면 키를 뺀다. 따로 목록을 만들지 않고 **같은 목록 안에** 둔다 (Roll20 쪽이 읽는 주소 · 목록이 그대로이게).
@@ -62,7 +69,7 @@
 
 ### 관리 화면 `ruledata.admin.php`
 
-- 위쪽 탭: 목록 6개. 탭마다 그 목록의 레코드 표 + 찾기(이름 · 효과 글자 일부)
+- 위쪽 탭: 목록마다 하나 (목록은 코드 한 곳의 표에서 — 새 목록은 그 표에 한 줄만 더하면 되게). 탭마다 그 목록의 레코드 표 + 찾기(이름 · 효과 글자 일부)
 - 줄을 누르면 고치기 칸(목록마다 위 표의 키만 · effect · desc · special · upper 는 여러 줄 글칸 · enemy 는 [에너미 전용] 체크) · 저장 · 지우기(확인) · 복제
 - 표 위에 걸러 보기 [전체 / 일반 / 에너미 전용] · 표에서 에너미 전용 줄은 꼬리표로 표시
 - **붙여 넣기로 한꺼번에 넣기**: 엑셀 · 구글 시트에서 복사한 표(탭 구분)를 붙여 넣으면 첫 줄을 머리(키 이름 또는 한국어 머리: 이름 · 유파 · 그룹 · 타입 · 지정특기 · 간격 · 목표 · 코스트 · 충전 · 효과 · 주문 · 분류 · 개요 · 특수능력 · 상위특수능력 · 레벨 · 에너미 · 에너미전용)로 읽어 미리보기 → [넣기]. 이름이 같은 것은 [덮어쓰기 / 건너뛰기] 고르기
@@ -75,8 +82,9 @@
 
 - 응답: `window.NIRE_RULEDATA = {…};` (Content-Type `application/javascript; charset=utf-8`)
   - `?format=json` 이면 `{…}` 만 (`application/json`)
-- 목록 6개를 모두 담는다 (비어 있으면 빈 배열). 레코드는 data 의 키만 (id · sort 같은 저장용 값은 빼기)
-- 열쇠 없이 읽을 수 있어도 된다 (룰북 데이터라 공개 · 쓰기는 관리 화면에서만)
+- 목록을 모두 담는다 (비어 있으면 빈 배열). 레코드는 data 의 키만 (id · sort 같은 저장용 값은 빼기)
+- **열쇠가 있어야 읽힌다** (룰북 번역이 들어 있어 공개하지 않는다): POST 본문 `{ op:'ruledata', key }` (Content-Type `text/plain` 이어도 받기) → 위 응답.
+  열쇠가 없거나 틀리면 403 과 글 `열쇠가 맞지 않습니다` (스크립트가 '열쇠' 글자로 알아본다). GET 도 열쇠 없이는 같은 403. 열쇠는 주소(`?key=`)로 받지 않는다 (서버 기록에 남음)
 - `Last-Modified` · `ETag` 를 내고 맞으면 304 · 고칠 때마다 바뀌게
 
 Roll20 쪽 설정: 올인원 ⚙ 설정 → 기본시트 데이터 자동완성 → **데이터 주소** = `https://(홈페이지)/skin/board/character/sheet/ruledata.php`
@@ -131,3 +139,14 @@ Roll20 쪽 설정: 올인원 ⚙ 설정 → 기본시트 데이터 자동완성 
 
 - 자동완성: 데이터 주소에 `ruledata.php` 를 넣으면 지금 기능 그대로 읽는다. 팔로워 종별(`bloodmoon_follower`)은 시트의 팔로워 종별 칸(`kind`)에서 고르면 특수능력 칸(`special`)을 채우고, **LV 6 이상일 때만** 상위특수능력을 아랫줄에 붙인다 (v1.115.0 에서 넣음). 에너미 전용(`enemy:1`)은 같은 칸에서 고를 수 있고 고르는 목록에 '에너미 전용'으로 표시된다 (v1.115.2).
 - NPC 보관소: 홈페이지가 준비되면 ① 시트 창에서 [NPC 보관소로 보내기] ② 새 시트의 이름 칸에 NPC 이름을 치면 보관소에서 찾아 시트 전체(속성 · 반복 줄 · 바이오)를 채우기 — 위 `npc.roll20.php` 모양대로 붙인다.
+
+## 이미 만들었다면 — 새 목록 · 열쇠 읽기만 붙여 넣기 (2026-11-23)
+
+> 룰 데이터 입력기에 목록을 더하고, `ruledata.php` 를 열쇠가 있어야 읽히게 바꿔 줘.
+> - 목록을 코드 한 곳의 표(목록 키 · 한국어 이름 · 레코드 키 · 여러 줄 글 키)로 모으고, 탭 · 고치기 칸 · 붙여 넣기 머리 · 내보내기 · 들여오기가 그 표를 따르게.
+>   새 목록: `futari_action` · `futari_class` · `futari_background` · `stratoshout_specialty` · `stratoshout_skill` · `stratoshout_tactic` · `stratoshout_part` · `stratoshout_history` · `redblack_magic` · `redblack_basic` · `redblack_noble` · `redblack_crest` · `redblack_lineage` · `redblack_law` (레코드 키는 위 표)
+>   여러 줄 글: effect · desc · quote · trouble · skills · basic. 숫자: hp · restore · mana_b · mana_r. 체크(1 또는 없음): acc · sup · pick · easy · enemy.
+> - 붙여 넣기 한국어 머리 더하기: 클래스 · 출전 · 기동 · 흑 · 적 · 고발 · 원호 · 선언 예 · LV2 · LV3 · 배경명 · 번호 · 기능 습득 · 자동 습득 액션 · 상한 HP · 복원 · 초기 마력 흑 · 초기 마력 적 · 마법 체계
+> - JSON 들여오기: 파일 하나에 여러 목록이 들어 있으면(`{ "futari_action": [...], "redblack_magic": [...] }`) 한꺼번에 넣기 (이름이 같으면 [덮어쓰기 / 건너뛰기])
+> - `ruledata.php`: POST 본문 `{ op:'ruledata', key }` 일 때만 데이터. 열쇠가 없거나 틀리면 403 · `열쇠가 맞지 않습니다` (틀리면 1초 쉬고). GET 도 열쇠 없으면 403. `?key=` 는 받지 않는다. ETag · 304 는 그대로
+> - 끝나면 curl 로: 열쇠 없이 GET → 403, 틀린 열쇠 POST → 403, 맞는 열쇠 POST → `window.NIRE_RULEDATA = {…}` 에 새 목록이 들어 있는지 보여 줘

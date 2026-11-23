@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.117.0
+// @version      1.118.0
 // @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.117.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.118.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -16551,7 +16551,8 @@ addFeature("attrWatch", attrWatch);
 // ══════════ 묶음 6 · 기본시트 데이터 자동완성 ══════════
 
 // ───────── 자동완성: 시트 인법/마법 · 어빌리티 · 아이템 목록 이름칸에 데이터명을 입력하면 그 행을 채운다 ─────────
-// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…], bloodmoon_follower:[…] }
+// 데이터: window.NIRE_RULEDATA = { insane:[…], shinobigami:[…], magicalogia:[…], bloodmoon:[…], bloodmoon_item:[…], bloodmoon_follower:[…],
+//   futari_action · futari_class · futari_background (둘이서 수사) · redblack_magic · _basic · _noble · _crest · _lineage (적과 흑) … }
 //   레코드에 enemy:1 이 있으면 에너미 전용 (같은 목록 · 같은 주소 — 고르는 목록에 표시만)
 //   (홈페이지 쪽 입력기 · 내보내는 주소는 homepage/PROMPT-ruledata-npc.md)
 //   — @require 로 들어오거나 설정의 '데이터 주소'에서 받아 오거나, 홈페이지가 없으면 '파일'로 고른 데이터 파일(같은 모양)을 브라우저에 넣어 둔다
@@ -16569,8 +16570,21 @@ const autofill = (() => {
         bloodmoon:      { name: "name", group: "group", type: "type", lv: "lv", level: "lv", skill: "skill", cost: "cost", effect: "effect", flavor: "flavor" },
         bloodmoon_item: { name: "name", kind: "kind", effect: "effect" },
         // 팔로워 종별: 팔로워 줄의 종별 칸(kind)에 치면 특수능력 칸을 채운다 · 상위특수능력(upper)은 LV 6 이상일 때만 아랫줄에 (apply)
-        bloodmoon_follower: { name: "kind", special: "special" }
+        bloodmoon_follower: { name: "kind", special: "special" },
+        // 둘이서 수사 (.futari): 액션 · 규격 외 액션 줄 · 클래스 칸(자동 습득 액션 줄을 더함) · 배경 칸(지금 클래스의 배경표)
+        futari_action: { name: "name", type: "type", cost: "cost", effect: "eff" },
+        futari_class: { name: "cls" },
+        futari_background: { title: "background" },
+        // 적과 흑 (.rb): 칸 앞머리 au1_ · bc1_ · nc1_ · crest1_ (rbPrep 이 이름 · 효과 글을 다듬는다) · 계보 칸은 rbLineage
+        redblack_magic: { name: "name", boot: "boot", black: "black", red: "red", acc: "acc", sup: "sup", effect: "text" },
+        redblack_basic: { name: "name", boot: "boot", effect: "text" },
+        redblack_noble: { name: "name", boot: "boot", effect: "text" },
+        redblack_crest: { name: "name", effect: "text" },
+        redblack_lineage: { name: "lineage" }
     };
+    const RB_SYS = { au: "redblack_magic", bc: "redblack_basic", nc: "redblack_noble", crest: "redblack_crest" };
+    const RB_RE = /^attr_((au|bc|nc|crest)\d+_)name$/;
+    const FT_ROWS = ["repeating_acts", "repeating_exdet", "repeating_exasi"].map(g => `.repcontainer[data-groupname="${g}"] > .repitem`).join(", ");
     // inSANe 고정 행(Ninpo_03_Name)과 반복 행(Ninpo_Name) 모두 대상
     const NAME_RE = /^attr_((?:Ninpo|Magic)_(?:\d+_)?)Name$/;
     const BM_RE = /^attr_(ab[1-3]_)?name$/;
@@ -16613,8 +16627,11 @@ const autofill = (() => {
         }
         setStatus("loading");
         try {
-            const res = await fetch(url, { cache: "no-cache" });
-            const text = await res.text();
+            // 열쇠는 주소가 아니라 본문에 (서버 기록에 남지 않게) · text/plain 이라 사전 요청 없음. 열쇠가 없거나 옛 홈페이지면 GET
+            const key = aioPref.get("r20_home_key") || "";
+            let res = key ? await fetch(url, { method: "POST", cache: "no-cache", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ op: "ruledata", key }) }).catch(() => null) : null;
+            let text = res ? await res.text() : "";
+            if (!res?.ok || text.indexOf("window.NIRE_RULEDATA") < 0) { res = await fetch(url, { cache: "no-cache" }); text = await res.text(); }
             const at = text.indexOf("window.NIRE_RULEDATA");
             if (!res.ok || at < 0) {
                 console.warn("[자동완성] 데이터가 아닌 응답:", res.status, text.slice(0, 200));
@@ -16650,7 +16667,7 @@ const autofill = (() => {
     const clearData = () => { localStorage.removeItem(URL_KEY); localStorage.removeItem(FILE_KEY); delete window.NIRE_RULEDATA; normCache.clear(); setStatus("none"); };
     if (!window.NIRE_RULEDATA) load();
 
-    let box = null, input = null, items = [], sel = 0, filling = false;
+    let box = null, input = null, items = [], sel = 0, filling = false, curSys = "";
 
     const ensureBox = () => {
         if (box) return box;
@@ -16684,6 +16701,19 @@ const autofill = (() => {
     const ctx = el => {
         // 시트 이름 칸: NPC 보관소에서 골라 시트 통째로 불러오기 (홈페이지 주소 · 열쇠가 있는 GM 만 · homeExport)
         if (el.name === "attr_character_name") return !el.disabled && !el.closest(".repitem") && FEAT.homeExport?.npcReady?.() ? { sys: "npc" } : null;
+        const ft = !el.disabled && el.closest?.(".futari");
+        if (ft) {
+            if (el.name === "attr_name") { const row = el.closest(FT_ROWS); return row ? { base: "", row, sys: "futari_action" } : null; }
+            if (el.name === "attr_cls") return { base: "", row: ft, sys: "futari_class" };
+            if (el.name === "attr_background") return { base: "", row: ft, sys: "futari_background" };
+            return null;
+        }
+        const rb = !el.disabled && el.closest?.(".rb");
+        if (rb) {
+            const m = el.name?.match(RB_RE);
+            if (m) return { base: m[1], row: rb, sys: RB_SYS[m[2]] };
+            return el.name === "attr_lineage" ? { base: "", row: rb, sys: "redblack_lineage" } : null;
+        }
         if (BM_RE.test(el.name || "")) return el.disabled ? null : bmCtx(el);
         if (el.name === "attr_kind") { const row = !el.disabled && el.closest(".bm") && el.closest('.repcontainer[data-groupname="repeating_followers"] .repitem'); return row ? { base: "", row, sys: "bloodmoon_follower" } : null; }
         const m = el.name?.match(NAME_RE);
@@ -16701,13 +16731,14 @@ const autofill = (() => {
         return { base, row, sys };
     };
 
-    const search = (sys, q) => {
+    const search = (sys, q, only) => {
         const list = getList(sys);
         if (!list || !q) return [];
         const names = normCache.get(list);
         const head = [], mid = [];
         for (let i = 0; i < list.length && head.length < MAX; i++) {
-            const n = names[i];
+            if (only && !only(list[i])) continue;
+            const n = sys === "futari_background" ? norm(list[i].title || list[i].name) : names[i];
             if (n.startsWith(q)) head.push(list[i]);
             else if (mid.length < MAX && n.includes(q)) mid.push(list[i]);
         }
@@ -16729,7 +16760,7 @@ const autofill = (() => {
             const b = document.createElement("b");
             b.textContent = r.name;
             const s = document.createElement("small");
-            s.textContent = r._npc ? ["📇 NPC 보관소", r.rule_name || r.rule, r.tags].filter(Boolean).join(" · ") : [r.enemy && "에너미 전용", r.group, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
+            s.textContent = r._npc ? ["📇 NPC 보관소", r.rule_name || r.rule, r.tags].filter(Boolean).join(" · ") : [r.enemy && (curSys.startsWith("redblack") ? "GM 전용" : "에너미 전용"), r._add && "자동 습득 액션 — 고르면 액션 표에 1줄", r.class, r.group, r.boot, r.type, r.skill, r.kind, r.desc && (r.desc.length > 40 ? r.desc.slice(0, 40) + "…" : r.desc)].filter(Boolean).join(" · ");
             it.append(b, s);
             box.appendChild(it);
         });
@@ -16766,6 +16797,8 @@ const autofill = (() => {
             const opt = pickOption(el, value);
             if (!opt) { console.warn("[자동완성] 드롭다운에 없는 값:", value, el.name); return; }
             el.value = opt.value;
+        } else if (el.type === "checkbox") {
+            el.checked = String(value) === "1";
         } else {
             el.value = value;
         }
@@ -16774,21 +16807,83 @@ const autofill = (() => {
         el.dispatchEvent(new Ev("change", { bubbles: true }));
         // Roll20 시트는 글칸 값을 '포커스가 빠질 때' 저장한다 → 칸에 들어왔다 나간 신호를 보내 저장되게 (실제 포커스는 그대로 이름칸)
         // 안 보내면 시트 밖을 누를 때 저장 안 된 칸이 비워진다 (칸을 직접 눌렀다 떼야 남던 것)
-        if (el.tagName !== "SELECT") ["focus", "focusin", "blur", "focusout"].forEach(t => el.dispatchEvent(new Fe(t, { bubbles: t.endsWith("in") || t.endsWith("out") })));
+        if (el.tagName !== "SELECT" && el.type !== "checkbox") ["focus", "focusin", "blur", "focusout"].forEach(t => el.dispatchEvent(new Fe(t, { bubbles: t.endsWith("in") || t.endsWith("out") })));
+    };
+
+    // ── 적과 흑: LV 줄 · 계보의 기본 선언 〔기동〕 ("현장 재구축 흑：6 / 인물 재구축 흑：7 …")
+    const lvLines = d => [d.lv2 && `LV2: ${d.lv2}`, d.lv3 && `LV3: ${d.lv3}`].filter(Boolean).join("\n");
+    const rbBasics = lin => String(lin?.basic || "").split(" / ").filter(Boolean).map(x => { const i = x.lastIndexOf(" "); return [x.slice(0, i), x.slice(i + 1)]; });
+    const rbLin = root => { const v = norm(root.querySelector('[name="attr_lineage"]')?.value); return v ? getList("redblack_lineage")?.find(r => norm(r.name) === v) || null : null; };
+    const rbPrep = (c, d) => {
+        // 권한 마법 이름은 시트처럼 【】 · 고발 · 원호는 끄는 것도 채운다 (전에 있던 마법의 체크가 남지 않게)
+        if (c.sys === "redblack_magic") { d.name = `【${d.title || d.name}】`; d.acc = d.acc ? 1 : 0; d.sup = d.sup ? 1 : 0; }
+        if (c.sys === "redblack_basic" || c.sys === "redblack_noble") d.effect = [d.effect, lvLines(d)].filter(Boolean).join("\n");
+        // 기본 선언 〔기동〕은 계보마다 다르다 → 계보 칸의 계보에서 (그 계보에 없는 선언은 '—' = 기동 불가 · 계보를 모르면 비워 둔다)
+        if (c.sys === "redblack_basic") { const lin = rbLin(c.row); if (lin) d.boot = rbBasics(lin).find(([n]) => norm(n) === norm(d.name))?.[1] || "—"; }
+    };
+    const fieldIn = (root, n) => root.querySelector(`:is(input,textarea,select)[name="attr_${n}"]:not([type=hidden])`);
+    // 계보: HP 초기치 · 복원치 · 초기 마력 · 마법 체계 + 기본 선언 4개 (같은 이름 칸이 있으면 〔기동〕만, 없으면 빈 칸에)
+    const rbLineage = (c, d) => {
+        const set = (n, v) => { const f = fieldIn(c.row, n); if (f && v != null && v !== "") setField(f, String(v)); };
+        const val = n => fieldIn(c.row, n)?.value || "";
+        set("hp_init", d.hp); set("hp_restore", d.restore); set("mb_init", d.mana_b); set("mr_init", d.mana_r);
+        String(d.systems || "").split(" / ").forEach((x, i) => set(`ms${i + 1}`, x));
+        const basics = getList("redblack_basic") || [], slots = [1, 2, 3, 4, 5, 6];
+        rbBasics(d).forEach(([n, boot]) => {
+            const i = slots.find(k => norm(val(`bc${k}_name`)) === norm(n)) || slots.find(k => !val(`bc${k}_name`).trim());
+            if (!i) return;
+            set(`bc${i}_name`, n); set(`bc${i}_boot`, boot);
+            const b = basics.find(r => norm(r.name) === norm(n));
+            if (b && !val(`bc${i}_text`).trim()) set(`bc${i}_text`, [b.effect, lvLines(b)].filter(Boolean).join("\n"));
+        });
+    };
+    // ── 둘이서 수사: 반복 줄 더하기 = 시트의 +Add 를 대신 누르고 새 줄이 생길 때까지 기다린다
+    const addRep = async (root, grp) => {
+        const cont = root.querySelector(`.repcontainer[data-groupname="${grp}"]`), btn = root.querySelector(`.repcontrol[data-groupname="${grp}"] .repcontrol_add`);
+        if (!cont || !btn) return null;
+        const before = new Set(cont.querySelectorAll(":scope > .repitem"));
+        btn.click();
+        for (let i = 0; i < 40; i++) {
+            const row = [...cont.querySelectorAll(":scope > .repitem")].find(r => !before.has(r));
+            if (row) return row;
+            await new Promise(r => setTimeout(r, 50));
+        }
+        return null;
+    };
+    const ftAddActs = async (root, recs) => {
+        for (const a of recs) {
+            const row = await addRep(root, "repeating_acts");
+            if (!row) { aioToast(`액션 표에 줄을 더하지 못했어요 — 【${a.name}】은 직접 적어 주세요`, { kind: "err", id: "af-ft" }); return; }
+            filling = true;
+            for (const [k, f] of Object.entries(FIELDS.futari_action)) { const el = fieldIn(row, f); if (el && a[k]) setField(el, String(a[k])); }
+            filling = false;
+        }
+        if (recs.length) aioToast(`자동 습득 액션 ${recs.map(a => `【${a.name}】`).join(" ")}을 액션 표에 더했어요`, { kind: "ok", id: "af-ft" });
+    };
+    // 클래스: 자동 습득 액션 (이미 있으면 그대로) · 둘 중 하나를 고르는 클래스는 같은 목록에 두 액션을 띄운다
+    const ftClass = (c, d, inp) => {
+        const acts = getList("futari_action") || [];
+        const all = String(d.actions || "").split(" / ").map(n => acts.find(a => a.name === n)).filter(Boolean);
+        const have = new Set([...c.row.querySelectorAll('.repcontainer[data-groupname="repeating_acts"] [name="attr_name"]')].map(f => norm(f.value)));
+        if (all.some(a => have.has(norm(a.name))) && (d.pick || all.every(a => have.has(norm(a.name))))) return;
+        if (d.pick && all.length > 1) { input = inp; curSys = "futari_action"; items = all.map(a => ({ ...a, _add: c.row })); sel = 0; render(); return; }
+        ftAddActs(c.row, all.filter(a => !have.has(norm(a.name))));
     };
 
     const apply = rec => {
+        if (rec?._add) { const root = rec._add; close(); ftAddActs(root, [rec]); return; }
         if (rec?._npc) {            // 이름 칸에 이름을 넣고 시트 전체는 보관소에서 (homeExport.npcFill)
             const inp = input;
             close();
             if (inp) { setField(inp, rec.name); FEAT.homeExport?.npcFill?.(inp, rec); }
             return;
         }
-        const c = rec && input && ctx(input);
+        const c = rec && input && ctx(input), inp = input;      // inp: 채우는 동안 focusout 신호로 input 이 비워진다
         if (!c) return close();
         const map = FIELDS[c.sys];
         const data = { ...rec };
-        const el = field => c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
+        const el = field => fieldIn(c.row, c.base + field) || c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
+        if (c.sys.startsWith("redblack")) rbPrep(c, data);
         // 플레이버 칸이 없는 시트 · 줄(팔로워 어빌리티 · 아이템)은 효과 뒤에 붙인다
         if (data.flavor && !(map.flavor && el(map.flavor))) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
         if (c.sys === "bloodmoon_follower" && data.upper && (parseInt(el("lv")?.value, 10) || 0) >= 6) data.special = [data.special, "상위특수능력: " + data.upper].filter(Boolean).join("\n");
@@ -16803,8 +16898,10 @@ const autofill = (() => {
                 ? (/레어/.test(data.kind) ? "레어아이템" : "아이템") : String(data[key]);
             setField(f, v);
         }
+        if (c.sys === "redblack_lineage") rbLineage(c, data);
         filling = false;
         close();
+        if (c.sys === "futari_class") ftClass(c, data, inp);
     };
 
     const onInput = e => {
@@ -16819,14 +16916,16 @@ const autofill = (() => {
                 if (norm(t.value) !== q || t.ownerDocument.activeElement !== t) return;
                 const found = npcFind(list, q);
                 if (!found.length) return close();
-                input = t; items = found; sel = 0;
+                input = t; items = found; sel = 0; curSys = "npc";
                 render();
             }).catch(() => { /* 알림은 npcList 가 */ });
             return;
         }
-        const found = search(c.sys, norm(e.target.value));
+        const cls = c.sys === "futari_background" && norm(fieldIn(c.row, "cls")?.value);
+        const known = cls && (getList("futari_class") || []).some(r => norm(r.name) === cls);
+        const found = search(c.sys, norm(e.target.value), known ? r => norm(r.class) === cls : null);
         if (!found.length) return close();
-        input = e.target;
+        input = e.target; curSys = c.sys;
         // 브라우저 자동완성 끄기는 칸에 들어갈 때(onFocusIn) 붙인다 — 한글을 조합하는 중에 속성을 바꾸면 크롬이 조합을 끊는다 ('완' → '와ㄴ')
         if (!e.isComposing && input.getAttribute("autocomplete") !== "off") input.setAttribute("autocomplete", "off");
         items = found; sel = 0;
@@ -16974,7 +17073,7 @@ const abTok = (() => {
     const hide = () => { chip?.remove(); chip = null; };
     const over = e => {
         if (!btnVisible.abtok || !isGM() || pop) return;
-        const inp = e.target, x0 = inp?.name && autofill.ctx(inp), x = x0?.sys === "bloodmoon_follower" || x0?.sys === "npc" ? null : x0;      // 팔로워 종별 · 시트 이름 칸은 어빌리티가 아님
+        const inp = e.target, x0 = inp?.name && autofill.ctx(inp), x = ["bloodmoon_follower", "npc", "futari_class", "futari_background", "redblack_lineage"].includes(x0?.sys) ? null : x0;      // 팔로워 종별 · 시트 이름 칸은 어빌리티가 아님
         if (!x) { if (chip && !hideT) hideT = setTimeout(() => { hideT = 0; hide(); }, 350); return; }
         clearTimeout(hideT); hideT = 0;
         const c = charOf(inp), nm = String(inp.value || "").trim();
