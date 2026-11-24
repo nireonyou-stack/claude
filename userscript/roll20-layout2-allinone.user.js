@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.118.0
-// @updateURL    https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
-// @downloadURL  https://raw.githubusercontent.com/nireonyou-stack/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
+// @version      1.118.1
+// @updateURL    https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
+// @downloadURL  https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
 // @match        https://app.roll20.net/campaigns/chatarchive/*
 // @grant        none
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.118.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.118.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {

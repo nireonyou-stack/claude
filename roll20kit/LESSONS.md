@@ -59,7 +59,7 @@
 
 - 폴더: `<시트 이름>/` 에 html · css · sheet.json · 미리보기 png (+ images/)
 - ✔ sheet.json: html · css · authors · roll20userid · preview · instructions · legacy
-- 포크 `nireonyou-stack/Blood-Moon-Korean-` 에 upstream master 에서 새 브랜치 → 사용자가 compare 링크로 PR
+- 포크 `sai-korokoro/Blood-Moon-Korean-` 에 upstream master 에서 새 브랜치 → 사용자가 compare 링크로 PR
 - 커밋 제목 꼴: `[시트 이름] New Sheet: …` · `[시트 이름] Bugfix: …`
 - 새 시트 PR 은 `?expand=1&template=new_sheet.md` 를 붙인 compare 링크로 연다 (게임 정보 · 체크리스트 양식). 룰 텍스트 칸은 블러드문 · 둘이서 수사 모두 체크 + 설명(게임 용어만 / 공식 시트 인쇄 문구만)
 - PR 봇의 알림 중 `translation.json 없음` · `새 시트라 DB 등록 필요` 는 정보일 뿐 — 고칠 것 없음
