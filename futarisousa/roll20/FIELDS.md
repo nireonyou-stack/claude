@@ -1,8 +1,8 @@
 # 둘이서 수사 Roll20 시트 — 홈페이지 짝표용 필드 목록
 
-Roll20 시트 `Futari Sousa (Korean)` 의 속성(attribute) 이름 · 값 형식. 홈페이지 `tpl/futari.json` 열쇠와 맞춘 것.
+Roll20 시트 `Futari Sousa` 의 속성(attribute) 이름 · 값 형식. 홈페이지 `tpl/futari.json` 열쇠와 맞춘 것.
 
-- 시트 HTML: `futarisousa/roll20/sheet/futarisousa.html` (Roll20 PR: `Futari Sousa (Korean)/futarisousa.html`)
+- 시트 HTML: `futarisousa/roll20/sheet/futarisousa.html` (Roll20 PR: `Futari Sousa/futarisousa.html`)
 - 체크칸 값: 체크 `"1"`, 해제 `"0"` (빈 값일 수도 있음)
 - 반복 줄: `repeating_<섹션>_<줄 id>_<칸>`. 줄 순서는 `_reporder_repeating_<섹션>` (쉼표로 이은 줄 id. 없으면 만든 순서)
 
