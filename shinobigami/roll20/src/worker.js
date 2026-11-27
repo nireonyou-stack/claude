@@ -208,7 +208,8 @@ function check(v, { title, sub, target, only, img, eff, fl }) {
   post(s, R => {
     const t = R.d1.result + R.d2.result, f = fumOf(v), sp = spcOf(v);
     const ok = t >= sp ? 1 : t <= f ? 2 : only || target == null ? 0 : t >= target ? 3 : 4;
-    return { ok, total: t, hi: ok === 2 && high ? 1 : 0 };
+    // 펌블 때 접근전 대미지: 고지대(전투 중) 1 + 불덩어리 누적 수 → 도장 밑 '대미지 n'
+    return { ok, total: t, hi: ok === 2 ? (high ? 1 : 0) + Math.max(0, num(v.cond_hidaruma) || 0) : 0 };
   });
 }
 

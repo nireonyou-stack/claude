@@ -33,11 +33,14 @@ const last = s => s.rolls[s.rolls.length - 1];
   eq('skill: learned → no flag', r.macro.includes('{{flag='), false);
   eq('skill: computed fields first', r.macro.indexOf('{{ok=') < r.macro.indexOf('{{title='), true);
   r = await roll('sk11', 3, [2, 6, 1]);
-  eq('유리함 3 → 6 → 스페셜', [r.computed.ok, r.computed.res, r.computed.mode, r.computed.note, r.computed.hn], [3, '스페셜', '유리함 3D10', '【여유】+1', 1]);
+  eq('유리함 3 → 6 → 스페셜', [r.computed.ok, r.computed.res, r.computed.mode, r.computed.note, r.computed.hn], [3, '스페셜', '유리함 3D10', '', 0]);
+  // 스페셜 · 펌블 효과는 도장 밑 작은 글씨
+  has('special / fumble captions', HTML, '<span class="sheet-cap">여유+1</span>');
+  has('fumble captions', HTML, '<span class="sheet-cap">마음고생+1</span><span class="sheet-cap">상태이상</span>');
   r = await roll('sk11', 1, [3, 9, 9]);
   eq('불리함 1 → 3 실패 (뒤 눈은 안 셈)', [r.computed.ok, r.computed.res, r.computed.hn], [2, '실패', 0]);
   r = await roll('sk11', 2, [1, 1, 8]);
-  eq('모두 1 → 펌블', [r.computed.ok, r.computed.res, r.computed.note], [4, '펌블', '상태이상 · 【마음고생】+1']);
+  eq('모두 1 → 펌블', [r.computed.ok, r.computed.res, r.computed.note], [4, '펌블', '']);
   r = await roll('sk16', 2, [5, 2, 2]);
   has('미습득 표시', r.macro, '{{flag=미습득}}');
   s.set('sheet_type', 'asi'); await s.settle();

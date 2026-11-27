@@ -97,8 +97,8 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.set('D6', '1'); s.set('ab1_name', '무령도'); s.set('ab1_timing', '이동공격'); s.set('ab1_skill', '도검'); await s.settle();
   s.click('ab1'); await s.settle();
   not('no blade damage', last(s).macro, '{{dmg=');
-  eq('critical hit 6 6', [last(s).computed.ok, last(s).computed.crit], [1, '크리티컬 히트 — 대미지 × 2 (6 의 개수)']);
-  has('crit row in template', HTML, '{{#atk}}{{#rollTotal() computed::ok 1}}<div class="sheet-note">{{computed::crit}}</div>');
+  eq('critical hit 6 6', [last(s).computed.ok, last(s).computed.crit], [1, '대미지×2']);
+  has('crit caption under the stamp', HTML, '<span class="sheet-stp sheet-spc">스페셜</span>{{#atk}}<span class="sheet-cap">{{computed::crit}}</span>{{/atk}}</span>');
   eq('no printed text', /봉마와 싸운다|무령각성|장식품은 전투시|모든 판정에 부스트/.test(HTML), false);
 
   const errAll = s.log.filter(l => l[0] === 'ERROR');

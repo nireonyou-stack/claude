@@ -90,7 +90,8 @@ function judge(dice, add, t, ft) {
   const ok = six >= 2 ? 1 : one >= 2 ? 2 : t == null ? 0 : total >= t ? 3 : 4;
   return ok === 2 ? { ok, total, six, fres: FUMBLE[(ft || 1) - 1] } : { ok, total, six };
 }
-const critOf = (r, attack) => (attack && r.ok === 1 ? `크리티컬 히트 — 대미지 × ${r.six} (6 의 개수)` : '');
+// 크리티컬 히트(공격의 스페셜): 대미지 × 6 의 개수 — 도장 밑에 짧게
+const critOf = (r, attack) => (attack && r.ok === 1 ? `대미지×${r.six}` : '');
 // 마지막 판정 (주사위 고치기 단추가 씀): last_dice = 눈을 이어 적은 글 (최대 12개), last_roll = 다시 계산에 필요한 것 (JSON)
 const remember = (dice, roll) => setAttrs({ last_dice: dice.join(''), last_roll: JSON.stringify(roll) }, { silent: true });
 function check(v, T, { title, id, attack = false, eff, head }) {

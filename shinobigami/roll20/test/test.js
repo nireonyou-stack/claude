@@ -107,6 +107,11 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.dice.push(1, 3); s.click('rc7'); await s.settle();
   r = last(s);
   eq('battle fumble 4 + highland note', [r.computed.ok, r.computed.hi], [2, 1]);
+  // 펌블 대미지 = 고지대 1 + 불덩어리 누적 수 (도장 밑 '대미지 n')
+  s.set('cond_hidaruma', '1'); await s.settle(); s.dice.push(1, 3); s.click('rc7'); await s.settle();
+  eq('fumble damage highland + fireball', [last(s).computed.ok, last(s).computed.hi], [2, 2]);
+  s.set('cond_hidaruma', ''); await s.settle();
+  has('fumble captions in template', HTML, '<span class="sheet-cap">펌블 표</span>{{#rollGreater() computed::hi 0}}<span class="sheet-cap">대미지 {{computed::hi}}</span>');
   // 판정에 영향 없는 상태이상(마비 등)은 카드에 쓰지 않음
   has('tail', r.macro, '목표치 5 · 펌블치 4 · 수중 · 고지대 · 야망}}');
   has('water note', r.macro, '{{note=수중 · 회피 판정 -2}}');

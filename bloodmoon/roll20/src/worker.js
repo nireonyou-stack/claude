@@ -24,6 +24,8 @@ const SKILL_IDS = FIELDS.flatMap(f => SKILLS[f].map((_, r) => `${f}${r + 2}`));
 const pos = id => [FIELDS.indexOf(id.match(/^[a-z]+/)[0]), +id.match(/\d+$/)[0]];   // [열, 눈]
 const idAt = (c, row) => (c >= 0 && c < 6 && row >= 2 && row <= 12 ? `${FIELDS[c]}${row}` : null);
 const skillName = id => { const [c, row] = pos(id); return SKILLS[FIELDS[c]][row - 2]; };
+// 채팅 카드 특기 표기 《분야n/특기》 (예: 《머리7/뇌》)
+const skTag = id => { const [c, row] = pos(id); return `《${FIELD_NAMES[FIELDS[c]]}${row}/${SKILLS[FIELDS[c]][row - 2]}》`; };
 const on1 = v => v === '1' || v === 1 || v === 'on';
 const num = v => { const n = parseInt(v, 10); return Number.isNaN(n) ? null : n; };
 
@@ -181,7 +183,7 @@ function actionCheck({ title, sub, skill, pick, follower, atk, effect, flavor })
       const id = opts ? (opts[R.pick.result] || opts[0]) : skill;
       const t = isF ? follower : tnOf(id), tot = R.d1.result + R.d2.result + (atk || 0) + R.mod.result;
       const ok = tot >= t, sab = on1(v.sabbat) && on1(v.witch);
-      return Object.assign({ res: sab ? '사바트' : ok ? '성공' : '실패', ok: sab ? 3 : ok ? 1 : 2, total: tot, target: t }, isF ? {} : { skill: `《${skillName(id)}》` });
+      return Object.assign({ res: sab ? '사바트' : ok ? '성공' : '실패', ok: sab ? 3 : ok ? 1 : 2, total: tot, target: t }, isF ? {} : { skill: skTag(id) });
     });
   });
 }
@@ -261,7 +263,7 @@ on('clicked:rskill', () => getAttrs(['rand_field'], v => {
   const f = FIELDS.indexOf(v.rand_field);
   post(`&{template:bloodmoon} {{res=[[0]]}} {{field=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}}${f < 0 ? ' {{f=[[1d6]]}}' : ''} {{title=랜덤 특기}}`, R => {
     const c = f < 0 ? R.f.result - 1 : f, row = R.d1.result + R.d2.result;
-    return { res: `《${SKILLS[FIELDS[c]][row - 2]}》`, field: FIELD_NAMES[FIELDS[c]] };
+    return { res: skTag(`${FIELDS[c]}${row}`), field: FIELD_NAMES[FIELDS[c]] };
   });
 }));
 on('clicked:rpart', () => post('&{template:bloodmoon} {{res=[[0]]}} {{d1=[[1d6]]}} {{d2=[[1d6]]}} {{title=신체부위 결정표}}', R => ({ res: PART_TABLE[R.d1.result + R.d2.result] })));

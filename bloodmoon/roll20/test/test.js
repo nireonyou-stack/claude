@@ -85,7 +85,7 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   // ── 굴림: 특기 행동판정
   const last = () => s.rolls[s.rolls.length - 1];
   s.dice.push(3, 4); s.click('rarm4'); await s.settle();
-  eq('skill roll computed', last().computed, { res: '성공', ok: 1, total: 7, target: 5, skill: '《베기》' });
+  eq('skill roll computed', last().computed, { res: '성공', ok: 1, total: 7, target: 5, skill: '《팔4/베기》' });
   has('plain skill roll title', last().macro, '{{title=주사위 굴림}}');
   has('skill roll prompt', last().macro, '《베기》 목표치 5');
   s.dice.push(1, 1); s.click('rarm4'); await s.settle();
@@ -117,10 +117,10 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
   has('passive card', last().macro, '{{k1=지정특기}} {{v1=없음}}');
   const ab3 = s.addRow('abilities', { name: '자유기', type: '보조', skill: '자유' }); await s.settle();
   s.queries['판정 특기'] = 0; s.dice.push(4, 4); s.click('use', ab3); await s.settle(); delete s.queries['판정 특기'];
-  eq('free skill → first option = lowest tn', [last().computed.skill, last().computed.target], ['《듣기》', 5]);
+  eq('free skill → first option = lowest tn', [last().computed.skill, last().computed.target], ['《머리2/듣기》', 5]);
   has('free skill query lists sorted', last().macro, '?{판정 특기|듣기 (5),0|베기 (5),1|감각기 (6),2|');
   s.queries['판정 특기'] = 1; s.dice.push(4, 4); s.click('use', ab3); await s.settle(); delete s.queries['판정 특기'];
-  eq('free skill picks chosen option', last().computed.skill, '《베기》');
+  eq('free skill picks chosen option', last().computed.skill, '《팔4/베기》');
   const ab4 = s.addRow('abilities', { name: '은탄', type: '공격', lv: '3', group: '실버불렛', cost: '2', skill: '《쏘기》' }); await s.settle();
   s.dice.push(1, 1); s.click('use', ab4); await s.settle();
   has('ability meta: type / Lv / group / cost', last().macro, '{{sub=공격 / Lv 3 / 실버불렛 / 코스트 2}}');
@@ -197,10 +197,10 @@ const has = (name, s, sub) => { const ok = String(s).includes(sub); ok ? pass++ 
 
   // ── 표 굴림
   s.dice.push(3, 4, 2); s.click('rskill'); await s.settle();
-  eq('random skill all', last().computed, { res: '《뇌》', field: '머리' });
+  eq('random skill all', last().computed, { res: '《머리7/뇌》', field: '머리' });
   has('random skill all rolls field die', last().macro, '{{f=[[1d6]]}}');
   s.set('rand_field', 'env'); s.dice.push(1, 1); s.click('rskill'); await s.settle();
-  eq('random skill field', last().computed, { res: '《쉬기》', field: '환경' });
+  eq('random skill field', last().computed, { res: '《환경2/쉬기》', field: '환경' });
   s.dice.push(6, 6); s.click('rpart'); await s.settle();
   eq('part table', last().computed.res, '심장');
   s.dice.push(6); s.click('rinit'); await s.settle();

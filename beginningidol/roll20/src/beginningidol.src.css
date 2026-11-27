@@ -43,6 +43,12 @@
 .sheet-rolltemplate-beginningidol .sheet-stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 6px;font:400 15px/1.2 'Jua','Noto Sans KR',sans-serif;transform:rotate(-4deg);white-space:nowrap}
 .sheet-rolltemplate-beginningidol .sheet-spc,.sheet-rolltemplate-beginningidol .sheet-mir{border-color:var(--accent);color:var(--accent)}
 .sheet-rolltemplate-beginningidol .sheet-fb{border-style:dashed;border-color:var(--sub);color:var(--sub)}
+/* effect of special / fumble in small type under the stamp */
+.sheet-rolltemplate-beginningidol .sheet-stw{margin-left:auto;display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex:none}
+.sheet-rolltemplate-beginningidol .sheet-stw .sheet-stp{margin-left:0}
+.sheet-rolltemplate-beginningidol .sheet-cap{font:700 9.5px/1.15 'Noto Sans KR',sans-serif;letter-spacing:-.02em;white-space:nowrap;color:var(--sub)}
+.sheet-rolltemplate-beginningidol .sheet-spc ~ .sheet-cap{color:var(--accent)}
+.sheet-rolltemplate-beginningidol .sheet-cap .inlinerollresult{padding:0;margin:0;border:0;background:none;color:inherit;font:inherit}
 .sheet-rolltemplate-beginningidol .sheet-ng{border-color:var(--sub);color:var(--sub)}
 .sheet-rolltemplate-beginningidol .sheet-note{font:500 11px/1.45 'Noto Sans KR',sans-serif;color:var(--accent)}
 .sheet-rolltemplate-beginningidol .sheet-rt{display:flex;gap:6px;align-items:center;font-size:12px;line-height:1.5}

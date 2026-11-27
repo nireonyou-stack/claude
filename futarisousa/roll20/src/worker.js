@@ -44,7 +44,8 @@ DATA.skills.forEach(([group, names], g) => names.forEach((name, i) => {
       + field('who', v.character_name) + (v[id] === '1' ? '' : field('flag', '미습득')),
     r => {
       const n = Math.max(1, Math.min(3, r.n.result)), ds = [r.d1.result, r.d2.result, r.d3.result].slice(0, n), [ok, res] = judge(ds);
-      const notes = [ok === 3 && '【여유】+1', ok === 4 && '상태이상 · 【마음고생】+1', asi && ds.some(d => d >= 4) && '탐정이 조수에 대한 감정 1 · 【여유】+1'].filter(Boolean);
+      // 스페셜 【여유】+1 · 펌블 【마음고생】+1 · 상태이상은 도장 밑 작은 글씨(템플릿). 여기는 조수 안내만
+      const notes = [asi && ds.some(d => d >= 4) && '탐정이 조수에 대한 감정 1 · 【여유】+1'].filter(Boolean);
       return { ok, res, mode: `${MODE[n]} ${n}D${die}`, note: notes.join(' / '), hn: notes.length ? 1 : 0, d1: r.d1.result, d2: r.d2.result, d3: r.d3.result };
     });
   }));

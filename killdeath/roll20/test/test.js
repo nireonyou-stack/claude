@@ -139,7 +139,8 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.click('ab6'); await s.settle();
   has('target sheet: life note, no rating', last(s).macro, '{{afa=공격한 쪽이 대미지 (라이프 −1 · 표적전이면 한 번 다시 굴림)}}');
   not('target sheet: no vr', last(s).macro, '{{vr=1}}');
-  eq('rating notes in template', [/시청률 \+10%<\/div>/.test(HTML), /시청률 −20%<\/div>/.test(HTML)], [true, true]);
+  // 회수인 시청률은 도장 밑 작은 글씨
+  eq('rating captions in template', [HTML.includes('{{#vr}}<span class="sheet-cap">시청률+10%</span>{{/vr}}'), HTML.includes('{{#vr}}<span class="sheet-cap">시청률−20%</span>{{/vr}}')], [true, true]);
   errAll.push(...s.log.filter(l => l[0] === 'ERROR'));
 
   // ── 사망 처리 (4·08·07 · 4·09): 소울 방출 · 소생 비용 · 헬 슬러그 · 7번째
