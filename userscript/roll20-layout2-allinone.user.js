@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.118.3
+// @version      1.118.4
 // @updateURL    https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.118.3";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.118.4";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -16897,6 +16897,12 @@ const autofill = (() => {
         const data = { ...rec };
         const el = field => fieldIn(c.row, c.base + field) || c.row.querySelector(`:is(input,textarea,select)[name="attr_${c.base}${field}"]`);
         if (c.sys.startsWith("redblack")) rbPrep(c, data);
+        // 시노비가미 데이터는 개요를 효과 끝의 '유파 : 〇〇 ——— 개요' 줄로 갖고 있다 → 개요 칸이 있는 시트(한국어 시트)면 떼어서 개요 칸에.
+        // 개요 칸이 없는 시트는 지금처럼 효과에 그대로 둔다
+        if (c.sys === "shinobigami" && !data.flavor && map.flavor && el(map.flavor)) {
+            const m = String(data.effect || "").match(/(?:^|\n)[ \t]*(유파[ \t]*[:：][^\n]*?[—―─－-]{2,}[\s\S]*)$/);
+            if (m) { data.flavor = m[1].trim(); data.effect = data.effect.slice(0, m.index).trim(); }
+        }
         // 플레이버 칸이 없는 시트 · 줄(팔로워 어빌리티 · 아이템)은 효과 뒤에 붙인다
         if (data.flavor && !(map.flavor && el(map.flavor))) data.effect = [data.effect, data.flavor].filter(Boolean).join("\n\n");
         if (c.sys === "bloodmoon_follower" && data.upper && (parseInt(el("lv")?.value, 10) || 0) >= 6) data.special = [data.special, "상위특수능력: " + data.upper].filter(Boolean).join("\n");
