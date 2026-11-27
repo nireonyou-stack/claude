@@ -201,6 +201,8 @@ const SK = [
 const GAPS = ['gap_a', 'gap_b', 'gap_c', 'gap_d', 'gap_e'];   // k 번째 공백 = k 번째 분야 오른쪽
 const SLOTS = ['slot_a', 'slot_b', 'slot_c', 'slot_d', 'slot_e', 'slot_f'];   // 원기 슬롯 (분야 이름 옆 □)
 const SKILL_IDS = COLS.flatMap(c => SK[0].map((_, r) => `${c}${r + 2}`));
+// 채팅 카드 특기 표기 《분야n/특기》 (예: 《친구9/용기》)
+const skTag = (f, r) => `《${FIELD_NAMES[f]}${r + 2}/${SK[f][r]}》`;
 
 const on1 = v => v === '1' || v === 1 || v === 'on';
 const num = v => { const n = parseInt(String(v == null ? '' : v).replace(/[−－]/g, '-').trim(), 10); return Number.isNaN(n) ? null : n; };
@@ -297,9 +299,9 @@ const tail = v => {
 function rollSkill(id, title) {
   const p = pos(id);
   withCtx([], (v, T) => {
-    const t = title || `《${SK[p.f][p.r]}》 판정`;
+    const t = title || `${skTag(p.f, p.r)} 판정`;
     if (isIn(v) && sleepOf(v) >= 30) return info(v, { title: t, note: '졸음 30 · 행동 불능' });
-    check(v, { title: t, sub: FIELD_NAMES[p.f] + tgs(T[id]) + tail(v), target: T[id] });
+    check(v, { title: t, sub: (tgs(T[id]) + tail(v)).replace(/^ · /, ''), target: T[id] });
   });
 }
 
@@ -308,8 +310,8 @@ on(SKILL_IDS.map(id => `clicked:r${id.toLowerCase()}`).join(' '), e => {
   const m = (e.triggerName || '').match(/clicked:r([a-f])(\d+)$/i);
   if (m) rollSkill(m[1].toUpperCase() + m[2]);
 });
-// 공포 판정: 처음 보는 오바케를 만나면 《용기》 (친구 8 = C9)
-on('clicked:fear', () => rollSkill('C9', '공포 판정 《용기》'));
+// 공포 판정: 처음 보는 오바케를 만나면 《용기》 (친구 9 = C9)
+on('clicked:fear', () => rollSkill('C9', `공포 판정 ${skTag(2, 7)}`));
 
 // 마법 사용: 마력에서 코스트를 빼고 카드
 for (let i = 1; i <= 3; i++) {
@@ -323,7 +325,7 @@ for (let i = 1; i <= 3; i++) {
 // 랜덤 특기: 1D6 분야 · 2D6 특기
 on('clicked:rsk', () => getAttrs(['roll_display_to', 'sheet_type'], v => {
   post(`${prefix(v)}${TPL} {{tres=[[0]]}} {{te1=[[1d6]]}} {{te2=[[1d6]]}} {{te3=[[1d6]]}}${inf(v)}${field('title', '랜덤 특기')}`,
-    R => { const f = R.te1.result - 1; return { tres: `${FIELD_NAMES[f]} · 《${SK[f][R.te2.result + R.te3.result - 2]}》` }; });
+    R => { const f = R.te1.result - 1; return { tres: skTag(f, R.te2.result + R.te3.result - 2) }; });
 }));
 [1, 2, 3].forEach(n => on(`clicked:nd${n}`, () => getAttrs(['roll_display_to', 'sheet_type'], v => {
   const ks = Array.from({ length: n }, (_, i) => `n${i + 1}`);
