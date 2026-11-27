@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.118.1
+// @version      1.118.2
 // @updateURL    https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.118.1";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.118.2";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -16727,7 +16727,7 @@ const autofill = (() => {
         })();
         if (!row) return null;
         const sys = base.startsWith("Magic") ? "magicalogia"
-            : row.querySelector(`[name="attr_${base}Clan"]`) ? "shinobigami" : "insane";
+            : row.querySelector(`[name="attr_${base}Clan"]`) || el.closest(".sg") ? "shinobigami" : "insane";   // 한국어 시노비가미 시트(.sg)는 줄마다 유파 칸이 없다
         return { base, row, sys };
     };
 
