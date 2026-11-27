@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.118.2
+// @version      1.118.3
 // @updateURL    https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.118.2";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.118.3";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -16563,7 +16563,7 @@ const autofill = (() => {
     // 시스템별 "레코드 키 → 시트 필드명(접두어 뒤)"
     const FIELDS = {
         insane:      { name: "Name", type: "Types", skill: "Assigned_Skill", effect: "Effect" },
-        shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect" },
+        shinobigami: { name: "Name", group: "Clan", type: "Types", skill: "Assigned_Skill", range: "Range", cost: "Cost", effect: "Effect", flavor: "Flavor" },   // Flavor: 한국어 시트의 개요 칸 (없는 시트는 효과 뒤에)
         magicalogia: { name: "Name", type: "Types", skill: "Assigned_Skill", target: "skillTarget", cost: "Cost", charge: "Charge", effect: "Effect", recite: "Recite" },
         // 블러드문 시트: 반복 줄의 칸 이름이 그대로(name …), 팔로워 어빌리티는 ab1_ ~ ab3_ 이 앞에 붙는다
         // 레벨(lv · level)은 데이터에 있을 때만 — 시트에 Lv 칸이 생긴 판부터 채워진다
@@ -16719,13 +16719,16 @@ const autofill = (() => {
         const m = el.name?.match(NAME_RE);
         if (!m || el.disabled) return null;
         const base = m[1];
-        const row = el.closest(".repitem") || (() => {
+        let row = el.closest(".repitem") || (() => {
             let p = el.parentElement;
             for (let i = 0; p && i < 6; i++, p = p.parentElement)
                 if (p.querySelector(`[name="attr_${base}Effect"]`)) return p;
             return null;
         })();
         if (!row) return null;
+        // 한국어 시노비가미: 개요 칸이 인법 줄 바로 바깥(펴는 칸)에 있다 → 그 바깥까지를 줄로
+        const fl = `[name="attr_${base}Flavor"]`, up = row.parentElement;
+        if (!row.querySelector(fl) && up?.querySelector(fl) && !up.matches(".repcontainer")) row = up;
         const sys = base.startsWith("Magic") ? "magicalogia"
             : row.querySelector(`[name="attr_${base}Clan"]`) || el.closest(".sg") ? "shinobigami" : "insane";   // 한국어 시노비가미 시트(.sg)는 줄마다 유파 칸이 없다
         return { base, row, sys };
@@ -16799,6 +16802,16 @@ const autofill = (() => {
             el.value = opt.value;
         } else if (el.type === "checkbox") {
             el.checked = String(value) === "1";
+        } else if (el.type === "radio") {
+            // 고르기 단추(예: 한국어 시노비가미 공 · 서 · 장): 같은 이름 단추 무리에서 값이나 글자가 맞는 것 — 글자는 앞글자만 맞아도 (공 = 공격)
+            let box = el.parentElement;
+            for (let i = 0; box && i < 4 && box.querySelectorAll(`input[type=radio][name="${el.name}"]`).length < 2; i++) box = box.parentElement;
+            const want = norm(value), group = [...(box || el.ownerDocument).querySelectorAll(`input[type=radio][name="${el.name}"]`)];
+            const hit = group.find(r => norm(r.value) === want || norm(r.value) === `@{${want}}`)
+                || group.find(r => { const t = norm(r.closest("label")?.textContent); return t && (t === want || want.startsWith(t)); });
+            if (!hit) { console.warn("[자동완성] 고르기 단추에 없는 값:", value, el.name); return; }
+            hit.checked = true;
+            el = hit;
         } else {
             el.value = value;
         }
@@ -16807,7 +16820,7 @@ const autofill = (() => {
         el.dispatchEvent(new Ev("change", { bubbles: true }));
         // Roll20 시트는 글칸 값을 '포커스가 빠질 때' 저장한다 → 칸에 들어왔다 나간 신호를 보내 저장되게 (실제 포커스는 그대로 이름칸)
         // 안 보내면 시트 밖을 누를 때 저장 안 된 칸이 비워진다 (칸을 직접 눌렀다 떼야 남던 것)
-        if (el.tagName !== "SELECT" && el.type !== "checkbox") ["focus", "focusin", "blur", "focusout"].forEach(t => el.dispatchEvent(new Fe(t, { bubbles: t.endsWith("in") || t.endsWith("out") })));
+        if (el.tagName !== "SELECT" && el.type !== "checkbox" && el.type !== "radio") ["focus", "focusin", "blur", "focusout"].forEach(t => el.dispatchEvent(new Fe(t, { bubbles: t.endsWith("in") || t.endsWith("out") })));
     };
 
     // ── 적과 흑: LV 줄 · 계보의 기본 선언 〔기동〕 ("현장 재구축 흑：6 / 인물 재구축 흑：7 …")

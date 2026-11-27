@@ -18,6 +18,7 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
       futari_background: [{ name: '운명의 혈통 · 클론', class: '운명의 혈통', n: '10', title: '클론', desc: 'DNA' },
         { name: '괴짜 형사 · 클론', class: '괴짜 형사', n: '3', title: '클론', desc: '다른 클래스' },
         { name: '운명의 혈통 · 명탐정 선조', class: '운명의 혈통', n: '1', title: '명탐정 선조', desc: '조상' }],
+      shinobigami: [{ name: '접근전 공격', group: '범용 인법', type: '공격', skill: '자유', range: '1', cost: '없음', effect: '접근전 대미지 1점', flavor: '일반적인 접근전 공격.' }],
       redblack_magic: [{ name: '소각 권한', group: '흑검 1장', boot: '？：10', black: '2', red: '2', acc: 1, sup: 1, flavor: '흑염', effect: '1대미지' },
         { name: '재단 권한', group: '흑검 1장', boot: '흑：8', black: '3', red: '3', sup: 1, effect: '손패 1장' },
         { name: '흑사 현현', group: '현현 · 공격 강화형', boot: '？：10', effect: '지속: 살해', enemy: 1 }],
@@ -37,6 +38,9 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
         <div class="mg au"><input type="text" name="attr_au1_name"><input type="text" name="attr_au1_boot"><input name="attr_au1_black"><input name="attr_au1_red">
           <input type="checkbox" name="attr_au1_acc" value="1"><input type="checkbox" name="attr_au1_sup" value="1" checked><span name="attr_au1_text"></span><textarea name="attr_au1_text"></textarea></div>
         ${card('bc', 1)}${card('bc', 2)}${card('bc', 3)}${card('nc', 1)}</div>
+      <div class="sg" id="sg" style="position:absolute;left:20px;top:420px;width:600px"><div class="nw"><div class="nr">
+        <input type="text" name="attr_Ninpo_01_Name"><span class="ty"><input type="radio" class="none" name="attr_Ninpo_01_Types" value="" checked><label class="tyk"><input type="radio" name="attr_Ninpo_01_Types" value="@{Tool}"><span>공</span></label><label class="tyk"><input type="radio" name="attr_Ninpo_01_Types" value="@{support}"><span>서</span></label></span>
+        <input name="attr_Ninpo_01_Range"><input name="attr_Ninpo_01_Cost"><input name="attr_Ninpo_01_Assigned_Skill"><textarea name="attr_Ninpo_01_Effect"></textarea></div><textarea name="attr_Ninpo_01_Flavor"></textarea></div></div>
       <div id="rightsidebar" style="position:fixed;right:0;top:0;width:300px;height:100%"></div>`;
     document.querySelector('.repcontrol_add').addEventListener('click', () => setTimeout(() => document.querySelector('.repcontainer').insertAdjacentHTML('beforeend', row()), 80));
     const coll = arr => ({ models: arr, get: () => null, on() {}, off() {}, forEach: f => arr.forEach(f), filter: f => arr.filter(f), map: f => arr.map(f), length: arr.length });
@@ -89,6 +93,11 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   ok('계보에 없는 선언 = —', await vals('#rb [name="attr_bc3_boot"]'), ['—']);
   await type('#rb [name="attr_nc1_name"]', '탐정'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
   ok('상급 선언', await vals('#rb [name^="attr_nc1_"]'), ['탐정 알고리즘', '', '흑：18', '미발견 각본\nLV3: 대상 변경']);
+
+  // ── 한국어 시노비가미(.sg): 시노비가미로 알아봄 · 공/서/장 고르기 · 개요 칸
+  await type('#sg [name="attr_Ninpo_01_Name"]', '접근'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
+  ok('공 고름', await p.$eval('#sg input[value="@{Tool}"]', e => e.checked), true);
+  ok('효과 · 개요 따로', await vals('#sg :is([name="attr_Ninpo_01_Effect"],[name="attr_Ninpo_01_Flavor"],[name="attr_Ninpo_01_Range"])'), ['1', '접근전 대미지 1점', '일반적인 접근전 공격.']);
 
   // ── 데이터 주소: 열쇠가 있으면 본문으로 POST (새 페이지 — 주소 · 열쇠를 넣어 두고 스크립트를 띄우면 바로 받아 온다)
   const q = await b.newPage(); q.on('pageerror', e => errs.push(e.message));
