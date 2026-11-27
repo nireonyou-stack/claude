@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.118.5
+// @version      1.119.0
 // @updateURL    https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.118.5";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.119.0";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -9666,7 +9666,9 @@ const quickFind = (() => {
         if (isGM() && btnVisible.bulk && FEAT.bulkEditor?.open) {
             add("✎", "일괄 편집기 열기", "저널 · BGM · 매크로 · 굴림표 · 덱", () => FEAT.bulkEditor.open());
             add("🔗", "링크 점검 열기", "안 열리는 · 너무 큰 그림 주소 찾아 고치기 — 일괄 편집기", () => FEAT.bulkEditor.open("links"));
+            add("⛶", "일괄 편집기 최대화 · 이전 크기", "브라우저 안에서 꽉 채우기 / 최대화 전 자리 · 크기로", () => FEAT.bulkEditor.toggleMax());
         }
+        if (btnVisible.winmem && FEAT.winMemory?.resetFront) add("↺", "시트 · 핸드아웃 창 원래 크기로", "맨 앞 창을 Roll20 기본 크기로 (다음에 열 때도)", () => FEAT.winMemory.resetFront());
         if (isGM() && btnVisible.jbdrawer && FEAT.jbDrawer?.open) add("♪", "주크박스 서랍 열기", "채팅 왼쪽에 펼치기", () => FEAT.jbDrawer.open());
         if (btnVisible.jndrawer && FEAT.jnDrawer?.open) add("📒", "저널 서랍 열기", "채팅 왼쪽에 펼치기", () => FEAT.jnDrawer.open());
         if (isGM() && window.Jukebox?.playlist?.models) add("■", "주크박스 모두 멈춤", "지금 나오는 곡을 모두 멈추기", () => {
@@ -10612,7 +10614,7 @@ const winMemory = (() => {
     // 시트 · 핸드아웃은 단추줄 바로 밑(빠른 찾기를 붙이는 자리)에서 열린다 — 여는 자리만 그곳, 열린 뒤엔 자유롭게 옮김 · 📌 로 기억한 자리가 먼저
     // 제목줄 [◨ 붙임 | ❐ 떠 있기] 로 창마다 고른다(기억 방식을 따름 · 떠 있기만 적어 둔다) · 폭은 크기를 바꾸면 시트 · 핸드아웃 따로 기억
     const OPEN = "r20_win_open";
-    const op = (() => { try { const o = JSON.parse(aioPref.get(OPEN) || "{}") || {}; return { f: o.f || {}, w: o.w || {}, v: o.v }; } catch (e) { return { f: {}, w: {} }; } })();
+    const op = (() => { try { const o = JSON.parse(aioPref.get(OPEN) || "{}") || {}; return { f: o.f || {}, w: o.w || {}, b: o.b || {}, v: o.v }; } catch (e) { return { f: {}, w: {}, b: {} }; } })();
     const keepOp = () => aioPref.set(OPEN, JSON.stringify(op));
     // v1.115.2 전에는 제목줄 단추(Edit · Show to Players)를 누른 뒤 넓어진 폭도 '핸드아웃 여는 폭'으로 적혔다 → 한 번 지워 Roll20 폭으로
     if (!op.v) { delete op.w.handout; op.v = 2; keepOp(); }
@@ -10634,7 +10636,9 @@ const winMemory = (() => {
     // 기억한 자리 · 크기로: jQuery UI 창이면 그 옵션으로(안쪽 높이까지 같이 맞춰진다), 아니면 직접
     const apply = dlg => {
         const f = info(dlg), g = f && (mem[keyOf(f)]?.g || (opensDocked(f) ? dockGeom(f, dlg) : null));
-        if (!g) return;
+        if (g) put(dlg, g);
+    };
+    const put = (dlg, g) => {
         const W = innerWidth, H = innerHeight;
         const w = Math.min(g.w, W - 8), h = Math.min(g.h, H - 8);
         const l = Math.max(0, Math.min(g.l, W - w)), t = Math.max(0, Math.min(g.t, H - h));
@@ -10651,6 +10655,50 @@ const winMemory = (() => {
         }
         dlg.style.left = l + "px";
         dlg.style.top = t + "px";
+    };
+    // ↺ 원래 크기: Roll20 이 창을 새로 열 때 준 크기(dlg.r20wmBase · 종류별 op.b)로. 붙임이면 오른쪽 끝을 그대로 두고 폭만,
+    // 떠 있기면 왼쪽 위를 그대로 두고 폭 · 높이. 종류별로 기억한 여는 폭은 지우고(다음에 열 때도 원래 크기), 📌 켠 창은 기억한 크기도 바꾼다
+    const resetSize = dlg => {
+        const f = info(dlg);
+        if (!f || !dockable(f)) return;
+        const k = keyOf(f), before = { g: geom(dlg), w: op.w[f.kind], m: mem[k] };
+        dlg.r20wmTouched = true;
+        dlg.r20wmGuard?.disconnect();
+        if (op.w[f.kind] != null) { delete op.w[f.kind]; keepOp(); }
+        const base = dlg.r20wmBase || op.b[f.kind];
+        if (!base) return aioToast("원래 크기를 아직 몰라요 — 창을 닫았다 다시 열면 원래 크기로 열려요", { kind: "info" });
+        const cur = before.g, anchorRight = opensDocked(f) && !mem[k];
+        put(dlg, anchorRight ? { l: cur.l + cur.w - base.w, t: cur.t, w: base.w, h: cur.h } : { l: cur.l, t: cur.t, w: base.w, h: base.h });
+        if (mem[k]) { mem[k] = { g: geom(dlg) }; keep(); }
+        aioToast("창을 원래 크기로 되돌렸어요", { kind: "ok", undo: () => {
+            put(dlg, before.g);
+            if (before.w != null) { op.w[f.kind] = before.w; keepOp(); }
+            if (before.m) { mem[k] = before.m; keep(); }
+        } });
+    };
+    // ↺ 는 × 바로 왼쪽. 그 자리에 Roll20 단추(Edit · Show to Players 등)가 있으면 오른쪽 무리를 단추 하나만큼 왼쪽으로 민다 (모양만 · 누르는 자리도 같이)
+    const OURS = ".r20wm-rs, .r20wm-pin, .r20wm-dock, .r20shot, .r20home, .ui-dialog-titlebar-close";
+    const placeRs = dlg => {
+        const bar = dlg.querySelector(":scope > .ui-dialog-titlebar"), b = bar?.querySelector(".r20wm-rs");
+        if (!b || !dlg.getClientRects().length) return;
+        b.classList.remove("inline");
+        const x = bar.querySelector(".ui-dialog-titlebar-close"), br = bar.getBoundingClientRect();
+        const xr = x?.getClientRects().length ? x.getBoundingClientRect() : null;
+        const right = Math.round(xr ? br.right - xr.left + 2 : 30);
+        b.style.right = right + "px";
+        // 좁은 창이라 왼쪽의 📌 · 자리 단추와 겹치면 그 뒤에 나란히 (겹친 채 두면 📌 를 못 누른다)
+        const mine = b.getBoundingClientRect(), hit = r => r.left < mine.right && r.right > mine.left && r.top < mine.bottom && r.bottom > mine.top;
+        if ([...bar.querySelectorAll(".r20wm-pin, .r20wm-dock, .r20shot, .r20home")].some(el => el.getClientRects().length && hit(el.getBoundingClientRect()))) { b.classList.add("inline"); return; }
+        if (dlg.querySelector("[data-r20wm-shift]")) return;
+        const me = { l: br.right - right - b.offsetWidth, r: br.right - right };
+        const near = [...dlg.querySelectorAll("button, a, .btn, input[type=button], [role=button]")].filter(el => {
+            if (el.closest(OURS) || !el.getClientRects().length) return false;
+            const r = el.getBoundingClientRect();
+            return r.top < br.bottom && r.bottom > br.top && r.left > br.left + br.width / 2;
+        });
+        if (!near.some(el => { const r = el.getBoundingClientRect(); return r.left < me.r && r.right > me.l; })) return;
+        const w = b.offsetWidth + 4;
+        near.filter(el => !near.some(o => o !== el && o.contains(el))).forEach(el => { el.style.translate = `-${w}px 0`; el.dataset.r20wmShift = "1"; });
     };
     const paint = (b, dlg) => {
         const f = info(dlg), on = !!(f && mem[keyOf(f)]);
@@ -10733,6 +10781,18 @@ const winMemory = (() => {
                     sg.querySelector('[data-v="float"]').title = "떠 있기 — Roll20 이 정한 자리에서 열기";
                     sg.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
                     b.after(sg);
+                    const rs = document.createElement("button");
+                    rs.type = "button";
+                    rs.className = "r20wm-rs";
+                    rs.textContent = "↺";
+                    rs.setAttribute("aria-label", "원래 크기");
+                    rs.title = "원래 크기 — Roll20 기본 크기로 되돌림 (다음에 열 때도 그 크기)";
+                    rs.addEventListener("mousedown", e => e.stopPropagation());        // 창 끌기 시작 막기
+                    rs.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); resetSize(dlg); });
+                    const x = bar.querySelector(".ui-dialog-titlebar-close");
+                    x ? x.before(rs) : bar.append(rs);
+                    placeRs(dlg);
+                    setTimeout(() => placeRs(dlg), 700);        // Roll20 단추가 늦게 그려지는 경우
                 }
                 if (dlg.r20wmSeen && !dlg.r20wmTouched) apply(dlg);         // 단추가 들어가 제목줄이 높아진 만큼 다시 맞춤
             }
@@ -10755,11 +10815,16 @@ const winMemory = (() => {
         const $ = window.jQuery;
         if (bound || !$) return;
         bound = true;
-        $(document).on("dialogdragstop.r20wm dialogresizestop.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d?.querySelector(".r20wm-pin")) setTimeout(() => save(d, e.type === "dialogresizestop"), 0); });
+        $(document).on("dialogdragstop.r20wm dialogresizestop.r20wm", e => { const d = e.target.closest?.(".ui-dialog"); if (d?.querySelector(".r20wm-pin")) setTimeout(() => { save(d, e.type === "dialogresizestop"); if (e.type === "dialogresizestop") placeRs(d); }, 0); });
         // 창이 열리는 그 순간(그리기 전)에 자리를 잡는다 — 새 창 · 닫았던 창을 다시 여는 경우 모두 (본체 감시는 늦어서 원래 자리가 한 번 보였다)
         $(document).on("dialogopen.r20wm", e => {
             const d = e.target.closest?.(".ui-dialog");
             if (!d) return;
+            if (btnVisible.winmem && !d.r20wmBase && d.getClientRects().length) {     // 처음 열린 창 = Roll20 기본 크기 (다시 연 창은 크기가 남아 있을 수 있어 처음 것만)
+                const f0 = info(d);
+                d.r20wmBase = geom(d);
+                if (dockable(f0)) { op.b[f0.kind] = { w: d.r20wmBase.w, h: d.r20wmBase.h }; keepOp(); }
+            }
             if (btnVisible.winmem && info(d)) { d.r20wmSeen = true; opened(d); } else d.r20wmSeen = false;
             setTimeout(inject, 0);          // 📌 · ◨ 단추
         });
@@ -10781,8 +10846,19 @@ const winMemory = (() => {
     const setMode = m => { mode = m === "kind" ? "kind" : "item"; localStorage.setItem(MODE, mode); paintAll(); };
     // 설정 창 줄: 기억 방식 (항목마다 · 종류별 하나)
     const modeRow = () => aioSegRow("기억 방식", "항목마다: 캐릭터 · 핸드아웃마다 따로 · 종류별 하나: 시트는 시트끼리, 핸드아웃은 핸드아웃끼리 같은 자리 (덱 선택창 등 그 밖의 창은 늘 창 제목마다)", [["item", "항목마다"], ["kind", "종류별 하나"]], () => mode, setMode);
-    const setEnabled = on => { if (on) { bindJq(); inject(); } else document.querySelectorAll(".r20wm-pin, .r20wm-dock").forEach(b => b.remove()); };
-    return { inject, setEnabled, modeRow, info, dockAt, watch: ".ui-dialog" };
+    const setEnabled = on => {
+        if (on) { bindJq(); inject(); return; }
+        document.querySelectorAll(".r20wm-pin, .r20wm-dock, .r20wm-rs").forEach(b => b.remove());
+        document.querySelectorAll("[data-r20wm-shift]").forEach(el => { el.style.translate = ""; delete el.dataset.r20wmShift; });
+    };
+    // 빠른 찾기 명령: 맨 앞에 열린 시트 · 핸드아웃 창을 원래 크기로
+    const resetFront = () => {
+        const ds = [...document.querySelectorAll(".ui-dialog")].filter(d => d.getClientRects().length && dockable(info(d)));
+        const d = ds.sort((a, b) => (+getComputedStyle(b).zIndex || 0) - (+getComputedStyle(a).zIndex || 0))[0];
+        if (!d) return aioToast("열린 캐릭터 시트 · 핸드아웃 창이 없어요", { kind: "info" });
+        resetSize(d);
+    };
+    return { inject, setEnabled, modeRow, info, dockAt, resetSize, resetFront, watch: ".ui-dialog" };
 })();
 
 addCss(`
@@ -10915,6 +10991,10 @@ addCss(`
             & .r20wm-pin.flash { animation:r20wm-flash 0.4s ease-in-out 3 alternate; }
             & .r20wm-pin:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
             & .r20wm-dock { float:left; margin:10px 0 0 2px; }
+            & .r20wm-rs { position:absolute; top:50%; z-index:1; width:var(--aio-h-sm); height:var(--aio-h-sm); margin:-11px 0 0; padding:0; border:1px solid transparent; border-radius:var(--aio-r-sm); background:none; color:var(--aio-ink-3); font-size:var(--aio-fs-xl); line-height:20px; cursor:pointer; box-shadow:none; text-shadow:none; }
+            & .r20wm-rs:hover { border-color:var(--aio-accent); background:var(--aio-accent-bg); color:var(--aio-accent); }
+            & .r20wm-rs:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
+            & .r20wm-rs.inline { position:static; float:left; margin:10px 0 0 2px; }
         }
         @keyframes r20wm-flash { to { transform:scale(1.25); } }
         @keyframes r20sn-in { from { transform:translateX(-100%); } }
@@ -15579,6 +15659,7 @@ const bulkEditor = (() => {
             e.preventDefault();
             const r = p.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
             const mv = ev => {
+                dropMax();
                 p.style.left = zpx(Math.min(Math.max(0, r.left + ev.clientX - sx), window.innerWidth - 80));
                 p.style.top = zpx(Math.min(Math.max(0, r.top + ev.clientY - sy), window.innerHeight - 40));
             };
@@ -15586,7 +15667,41 @@ const bulkEditor = (() => {
             window.addEventListener("mousemove", mv);
             window.addEventListener("mouseup", up);
         });
-        p.addEventListener("mouseup", keep);    // 모서리로 크기를 바꾼 뒤 기억
+        // 모서리로 크기를 바꾼 뒤 기억 (최대화 중이었으면 그 크기가 새 보통 크기)
+        p.addEventListener("mouseup", () => { if (maxed() && (p.style.width !== zpx(innerWidth - 16) || p.style.height !== zpx(innerHeight - 16))) dropMax(); keep(); });
+        // ⛶ 최대화 · ❐ 이전 크기: 최대화 전 자리 · 크기는 r20be_rect_prev, 최대화 여부는 r20be_max (닫았다 열어도 최대화로)
+        const mxb = head.querySelector(".r20be-max");
+        function maxed() { return p.classList.contains("r20be-maxed"); }
+        const fillView = () => Object.assign(p.style, { left: zpx(8), top: zpx(8), width: zpx(innerWidth - 16), height: zpx(innerHeight - 16) });
+        const paintMax = () => {
+            const on = maxed();
+            mxb.textContent = on ? "❐" : "⛶";
+            mxb.setAttribute("aria-label", on ? "이전 크기" : "최대화");
+            mxb.setAttribute("aria-pressed", String(on));
+            mxb.title = on ? "이전 크기 — 최대화 전 자리 · 크기로" : "최대화 — 브라우저 안에서 꽉 채우기";
+        };
+        const setMax = on => {
+            if (on === maxed()) return;
+            if (on) {
+                aioPref.set("r20be_rect_prev", JSON.stringify({ left: p.style.left, top: p.style.top, width: p.offsetWidth + "px", height: p.offsetHeight + "px" }));
+                p.classList.add("r20be-maxed");
+                fillView();
+            } else {
+                p.classList.remove("r20be-maxed");
+                try { const r = JSON.parse(aioPref.get("r20be_rect_prev") || "null"); if (r) Object.assign(p.style, r); } catch (e) {}
+            }
+            aioPref.set("r20be_max", on ? "1" : "");
+            keep();
+            paintMax();
+        };
+        // 손으로 옮기거나 크기를 바꾸면 최대화는 풀린 것으로 (지금 자리 · 크기가 새 보통 크기)
+        function dropMax() { if (!maxed()) return; p.classList.remove("r20be-maxed"); aioPref.set("r20be_max", ""); paintMax(); }
+        mxb.addEventListener("click", () => setMax(!maxed()));
+        window.addEventListener("resize", () => { if (maxed()) fillView(); });
+        if (aioPref.get("r20be_max") === "1") { p.classList.add("r20be-maxed"); fillView(); }
+        paintMax();
+        ui.toggleMax = () => setMax(!maxed());
+        ui.refitMax = () => { if (maxed()) fillView(); };
         p.addEventListener("keydown", e => {
             e.stopPropagation();    // Roll20 단축키(토큰 삭제 등)로 새지 않게
             if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && ui.pane.querySelector(".r20be-docnav")) { e.preventDefault(); stepDoc(e.key === "ArrowUp" ? -1 : 1); }
@@ -15695,6 +15810,7 @@ const bulkEditor = (() => {
             el("div", { class: "r20be-seg aio-tabs" }, ui.segJ, ui.segB, ui.segM, ui.segD, ui.segT, ui.segI, ui.segP, ui.segPg, ui.segL, ui.segS),
             el("span", { class: "r20be-flex" }),
             zmWrap,
+            el("button", { type: "button", class: "r20be-ib aio-ib r20be-max", "aria-label": "최대화", "aria-pressed": "false" }, "⛶"),
             el("button", { type: "button", class: "r20be-ib aio-ib", "aria-label": "닫기", title: "닫기 (저장 안 한 변경은 남아 있음)", html: ICON.x, onclick: close }));
         // 머리줄을 끌면 창이 옮겨지고 자리를 기억 (다음에 열 때 그 자리)
         ui.search = el("input", { class: "aio-in r20be-in r20be-search", type: "search", placeholder: "이름 검색", "aria-label": "이름 검색",
@@ -15757,6 +15873,7 @@ const bulkEditor = (() => {
         if (!dirtyCount()) TABS.forEach(k => { S[k] = null; });     // 저장 안 한 변경이 없으면 늘 최신 상태로 연다
         ui.root.classList.add("r20be-show");
         aioZoom.fit(ui.root);
+        ui.refitMax?.();
         setStatus();
         switchTab(tab === "settings" ? S.tab : tab || S.tab);
         if (tab === "settings") return showSettings(true);
@@ -15791,7 +15908,8 @@ const bulkEditor = (() => {
 
     // ⚙ 단추: 설정 화면이 떠 있으면 닫고, 아니면 연다
     const toggleSettings = () => { if (ui?.root.classList.contains("r20be-show") && setOn) close(); else open("settings"); };
-    return { inject, setEnabled, open, toggleSettings, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
+    const toggleMax = () => { if (!ui.root?.classList.contains("r20be-show")) open(); ui.toggleMax?.(); };
+    return { inject, setEnabled, open, toggleSettings, toggleMax, openButton: () => el("button", { type: "button", class: "r20be-mini", onclick: () => open() }, "열기") };
 })();
 
 addCss(`
