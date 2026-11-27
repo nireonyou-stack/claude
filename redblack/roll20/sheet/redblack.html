@@ -201,7 +201,8 @@ on('clicked:clr', () => writeHand([]));
 on('sheet:opened', () => getAttrs(['sheet_version'], v => { if ((num(v.sheet_version) || 0) < 1) setAttrs({ sheet_version: 1, sum_b: 0, sum_r: 0, sum_n: 0 }, { silent: true }); }));
 
 // ════════ 채팅 카드 — startRoll 로 보낸다 (굴림 없음) ════════
-const clean = s => String(s == null ? '' : s).replace(/\r?\n/g, ' ').replace(/\{/g, '｛').replace(/\}/g, '｝')
+// 줄바꿈은 Roll20 의 %NEWLINE% 로 (날 줄바꿈은 채팅 명령을 끊는다)
+const clean = s => String(s == null ? '' : s).replace(/\r?\n/g, '%NEWLINE%').replace(/\{/g, '｛').replace(/\}/g, '｝')
   .replace(/\[\[/g, '[ [').replace(/\]\]/g, '] ]').replace(/([@%&])\{/g, '$1 {').trim();
 const field = (k, v) => (v === '' || v == null ? '' : ` {{${k}=${clean(v)}}}`);
 const prefix = v => (String(v.roll_display_to || '').trim() ? '/w gm ' : '');

@@ -27,6 +27,8 @@ const on1 = v => v === '1' || v === 1 || v === 'on';
 const num = v => { const n = parseInt(String(v == null ? '' : v).replace(/[−－]/g, '-').trim(), 10); return Number.isNaN(n) ? null : n; };
 const slotState = v => (/\(lost\)/.test(v || '') ? 'lost' : /\(dirty\)/.test(v || '') ? 'dirty' : '');
 const pos = id => ({ f: COLS.indexOf(id[0]), r: +id.slice(1) - 2 });
+// 특기 표기 《분야n/특기》 (룰북 표기 — 모술11/유언비어). 특기 리스트에 없는 이름은 《이름》 그대로
+const skTag = (s, name) => (s ? `《${FIELD_NAMES[s.f]}${s.r + 2}/${SK[s.f][s.r]}》` : `《${name}》`);
 const findSkill = s => {
   const n = String(s || '').replace(/[《》〈〉<>\s]/g, '');
   for (let f = 0; f < 6; f++) { const r = SK[f].findIndex(x => x.replace(/\s/g, '') === n); if (r >= 0) return { f, r, id: `${COLS[f]}${r + 2}` }; }
@@ -157,7 +159,8 @@ on('sheet:opened', () => getAttrs(['sheet_version'], v => {
 // 공개: roll_display_to 가 "/w gm " 이면 GM 에게 귓속말 (중국어 시트와 같은 값)
 
 // 매크로에 넣는 글: 템플릿 · 인라인 굴림 · 속성 호출을 깨뜨리는 문자를 바꾼다(줄바꿈은 공백)
-const clean = s => String(s == null ? '' : s).replace(/\r?\n/g, ' ').replace(/\{/g, '｛').replace(/\}/g, '｝')
+// 줄바꿈은 Roll20 의 %NEWLINE% 로 (날 줄바꿈은 채팅 명령을 끊는다)
+const clean = s => String(s == null ? '' : s).replace(/\r?\n/g, '%NEWLINE%').replace(/\{/g, '｛').replace(/\}/g, '｝')
   .replace(/\[\[/g, '[ [').replace(/\]\]/g, '] ]').replace(/([@%&])\{/g, '$1 {').trim();
 const field = (k, v) => (v === '' || v == null ? '' : ` {{${k}=${clean(v)}}}`);
 // 그림: Roll20 은 확장자가 그림인 주소만 그림으로 보이므로 없으면 #.png 를 붙인다
@@ -176,6 +179,7 @@ const info = (v, { title, sub, img, eff, fl, set, gm, ougi, to }) => post(`${to 
   + `${field('set', set)}${field('eff', eff)}${gm ? pairs(gm) : ''}${field('fl', fl)}${ougi ? ' {{ougi=1}}' : ''}`);
 
 // 판정 카드 둘째 줄 꼬리: 펌블치 · 스페셜치(기본값이 아니면) · 전장(전투 중) · 걸린 상태이상
+const CHECK_CONDS = ['juushou', 'hidaruma', 'yabou'];
 const fumOf = v => { const f = num(v.fumble); return f === null ? 2 : f; };
 const spcOf = v => { const s = num(v.special); return s === null ? 12 : s; };
 const battleOn = (v, k) => v.scene === 'battle' && on1(v[`bf_${k}`]);
@@ -184,7 +188,8 @@ function tail(v) {
   if (f !== 2) parts.push(`펌블치 ${f}`);
   if (s !== 12) parts.push(`스페셜치 ${s}`);
   BF.slice(1).forEach(([k, n]) => { if (battleOn(v, k)) parts.push(n); });
-  CONDS.forEach(([k, n, stack]) => {
+  // 상태이상은 판정에 영향을 주는 것만: 중상(명중·정보·감정 판정마다 대미지) · 불덩어리(펌블치+1) · 야망(명중+1, 그 외 -1)
+  CONDS.filter(([k]) => CHECK_CONDS.includes(k)).forEach(([k, n, stack]) => {
     if (stack) { const c = num(v[`cond_${k}`]) || 0; if (c > 0) parts.push(`${n} ${c}`); } else if (on1(v[`cond_${k}`])) parts.push(n);
   });
   return parts.map(p => ` · ${p}`).join('');
@@ -212,7 +217,7 @@ on(SKILL_IDS.map(id => `clicked:r${id.toLowerCase()}`).join(' '), e => {
   const m = (e.triggerName || '').match(/clicked:r([a-f])(\d+)$/i);
   if (!m) return;
   const id = m[1].toUpperCase() + m[2], p = pos(id);
-  withCtx([], (v, T) => check(v, { title: `《${SK[p.f][p.r]}》 판정`, sub: FIELD_NAMES[p.f] + tgs(T[id]) + slotTag(v, p.f) + tail(v), target: T[id] }));
+  withCtx([], (v, T) => check(v, { title: `${skTag(p)} 판정`, sub: (tgs(T[id]) + slotTag(v, p.f) + tail(v)).replace(/^ · /, ''), target: T[id] }));
 });
 
 // 인법: 지정 특기가 특기 리스트에 있으면 판정, 없으면 효과만. 악천후(전투 중)면 공격 인법 간격 +1
@@ -221,7 +226,7 @@ function rollNinpo(v, T, a) {
   const tyN = TYPE_NAMES[a.Types] || '', s = findSkill(a.Assigned_Skill), t = s ? T[s.id] : null;
   const rg = a.Range && (tyN === '공격' && battleOn(v, 'storm') ? `간격 ${a.Range}+1` : `간격 ${a.Range}`);
   const sk = a.Assigned_Skill.replace(/[《》]/g, '').trim();
-  const sub = [tyN, rg, a.Cost && `코스트 ${a.Cost}`, sk && `《${sk}》`].filter(Boolean).join(' · ') + (s ? tgs(t) + tail(v) : '');
+  const sub = [tyN, rg, a.Cost && `코스트 ${a.Cost}`, sk && skTag(s, sk)].filter(Boolean).join(' · ') + (s ? tgs(t) + tail(v) : '');
   const title = `【${a.Name || '인법'}】`;
   if (!s) return info(v, { title, sub, img: a.Img, eff: a.Effect, fl: a.Flavor });
   check(v, { title, sub, target: t, img: a.Img, eff: a.Effect, fl: a.Flavor });
@@ -238,15 +243,15 @@ on('clicked:repeating_acitems:use', e => {
 // 파훼 판정 (인물 칸의 오의 지정특기): 오의마다 수정치가 달라 성공 · 실패는 찍지 않고 스페셜 · 펌블만
 PEOPLE.forEach(k => on(`clicked:brk${k}`, () => withCtx([`relation_name_${k}`, `relation_ougi_${k}`], (v, T) => {
   const who = (v[`relation_name_${k}`] || '').trim(), sk = (v[`relation_ougi_${k}`] || '').replace(/[《》]/g, '').trim(), s = findSkill(sk), t = s ? T[s.id] : null;
-  const sub = ([who && `${who}의 오의`, s && FIELD_NAMES[s.f] + tgs(t) + slotTag(v, s.f)].filter(Boolean).join(' · ') + tail(v)).replace(/^ · /, '');
-  check(v, { title: sk ? `《${sk}》 파훼 판정` : '파훼 판정', sub, target: t, only: true });
+  const sub = ([who && `${who}의 오의`, s && (tgs(t) + slotTag(v, s.f)).replace(/^ · /, '')].filter(Boolean).join(' · ') + tail(v)).replace(/^ · /, '');
+  check(v, { title: sk ? `${skTag(s, sk)} 파훼 판정` : '파훼 판정', sub, target: t, only: true });
 })));
 
 // 오의 (강점 · 결점은 한 쌍씩 카드에) · 진실 · 배경: 채팅에 출력
 [[1, 'ougia'], [2, 'ougib']].forEach(([i, sec]) => on(`clicked:ougi${i}`, () => getAttrs([`Ougi${i}_name`, `Ougi${i}_skill`, `Ougi${i}`, `Ougi${i}_img`, 'roll_display_to', 'crest_url'], v => {
   readSection(sec, ['sname', 'seff', 'wname', 'weff'], rows => {
     const sk = (v[`Ougi${i}_skill`] || '').replace(/[《》]/g, '').trim();
-    info(v, { title: v[`Ougi${i}_name`] || '오의', ougi: 1, sub: '오의' + (sk ? ` · 《${sk}》` : ''), img: v[`Ougi${i}_img`], eff: v[`Ougi${i}`], gm: Object.values(rows) });
+    info(v, { title: v[`Ougi${i}_name`] || '오의', ougi: 1, sub: '오의' + (sk ? ` · ${skTag(findSkill(sk), sk)}` : ''), img: v[`Ougi${i}_img`], eff: v[`Ougi${i}`], gm: Object.values(rows) });
   });
 })));
 [1, 2, 3].forEach(i => on(`clicked:truth${i}`, () => getAttrs([`truth_name_${i}`, `truth_set_${i}`, `truth_eff_${i}`, 'roll_display_to', 'crest_url'], v => {
@@ -267,6 +272,13 @@ function useGear(v, name, eff, key) {
   info(v, { title: `${name} 사용`, eff });
   info(v, { title: name, sub: `남은 개수 ${cur} → ${cur - 1}`, to: '/w gm ' });
 }
+// 닌자도구 개수 ○×6: 누른 칸까지 · 칠한 맨 끝 칸을 다시 누르면 하나 줄임 (1개에서 다시 누르면 0개)
+const tapCount = (cur, k) => ((num(cur) || 0) === k ? k - 1 : k);
+GEAR.forEach(([k], i) => [1, 2, 3, 4, 5, 6].forEach(c => on(`clicked:gear${i + 1}c${c}`, () => getAttrs([`gear_${k}`], v => setAttrs({ [`gear_${k}`]: tapCount(v[`gear_${k}`], c) })))));
+[1, 2, 3, 4, 5, 6].forEach(c => on(`clicked:repeating_gear:cnt${c}`, e => {
+  const row = rowOf(e, 'gear');
+  if (row) getAttrs([`${row}count`], v => setAttrs({ [`${row}count`]: tapCount(v[`${row}count`], c) }));
+}));
 GEAR.forEach(([k, n, e], i) => on(`clicked:gear${i + 1}`, () => getAttrs([`gear_${k}`, 'roll_display_to', 'crest_url'], v => useGear(v, n, e, `gear_${k}`))));
 on('clicked:repeating_gear:use', e => {
   const row = rowOf(e, 'gear');

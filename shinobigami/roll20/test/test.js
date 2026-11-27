@@ -94,8 +94,8 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.dice.push(4, 3); s.click('rc7'); await s.settle();
   let r = last(s);
   has('skill roll template', r.macro, '&{template:shinobigami}');
-  has('skill roll title', r.macro, '{{title=《은형술》 판정}}');
-  has('skill roll sub', r.macro, '{{sub=인술 · 목표치 5}}');
+  has('skill roll title', r.macro, '{{title=《인술7/은형술》 판정}}');
+  has('skill roll sub', r.macro, '{{sub=목표치 5}}');
   eq('skill roll: success', [r.computed.ok, r.computed.total], [3, 7]);
   s.dice.push(6, 6); s.click('ra12'); await s.settle();
   eq('special', last(s).computed.ok, 1);
@@ -103,16 +103,17 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   eq('fumble', last(s).computed.ok, 2);
   s.dice.push(2, 3); s.click('ra12'); await s.settle();
   eq('failure (target 12)', last(s).computed.ok, 4);
-  s.set('scene', 'battle'); s.set('plot', '4'); s.set('bf_high', '1'); s.set('bf_water', '1'); s.set('cond_mahi', '1'); await s.settle();
+  s.set('scene', 'battle'); s.set('plot', '4'); s.set('bf_high', '1'); s.set('bf_water', '1'); s.set('cond_mahi', '1'); s.set('cond_yabou', '1'); await s.settle();
   s.dice.push(1, 3); s.click('rc7'); await s.settle();
   r = last(s);
   eq('battle fumble 4 + highland note', [r.computed.ok, r.computed.hi], [2, 1]);
-  has('tail', r.macro, '목표치 5 · 펌블치 4 · 수중 · 고지대 · 마비 1');
+  // 판정에 영향 없는 상태이상(마비 등)은 카드에 쓰지 않음
+  has('tail', r.macro, '목표치 5 · 펌블치 4 · 수중 · 고지대 · 야망}}');
   has('water note', r.macro, '{{note=수중 · 회피 판정 -2}}');
   s.set('roll_display_to', '/w gm '); await s.settle();
   s.dice.push(3, 3); s.click('rc7'); await s.settle();
   eq('gm only', last(s).macro.startsWith('/w gm '), true);
-  s.set('roll_display_to', ' '); s.set('scene', 'drama'); s.set('cond_mahi', ''); await s.settle();
+  s.set('roll_display_to', ' '); s.set('scene', 'drama'); s.set('cond_mahi', ''); s.set('cond_yabou', ''); await s.settle();
 
   // 인법 · 악천후 · 그림
   s.set('Ninpo_01_Name', '그림자 베기'); s.set('Ninpo_01_Types', '@{Tool}'); s.set('Ninpo_01_Range', '1'); s.set('Ninpo_01_Cost', '1');
@@ -120,7 +121,7 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.dice.push(5, 5); s.click('np01'); await s.settle();
   r = last(s);
   has('ninpo title', r.macro, '{{title=【그림자 베기】}}');
-  has('ninpo sub', r.macro, '{{sub=공격 · 간격 1 · 코스트 1 · 《은형술》 · 목표치 5}}');
+  has('ninpo sub', r.macro, '{{sub=공격 · 간격 1 · 코스트 1 · 《인술7/은형술》 · 목표치 5}}');
   has('ninpo image', r.macro, '{{img=[【그림자 베기】](https://example.com/a#.png)}}');
   s.set('scene', 'battle'); s.set('bf_storm', '1'); await s.settle();
   s.dice.push(5, 5); s.click('np01'); await s.settle();
@@ -134,8 +135,8 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.set('relation_name_01', '츠바키'); s.set('relation_ougi_01', '변장술'); await s.settle();
   s.dice.push(3, 4); s.click('brk01'); await s.settle();
   r = last(s);
-  has('break title', r.macro, '{{title=《변장술》 파훼 판정}}');
-  has('break sub', r.macro, '{{sub=츠바키의 오의 · 인술 · 목표치 6}}');
+  has('break title', r.macro, '{{title=《인술8/변장술》 파훼 판정}}');
+  has('break sub', r.macro, '{{sub=츠바키의 오의 · 목표치 6}}');
   eq('break: no success stamp', r.computed.ok, 0);
   s.dice.push(6, 6); s.click('brk01'); await s.settle();
   eq('break: special', last(s).computed.ok, 1);
@@ -168,6 +169,16 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.set('crest_url', 'https://example.com/crest.png'); await s.settle();
   s.dice.push(2); s.click('rt2'); await s.settle();
   has('crest watermark', last(s).macro, '{{crest=[문장](https://example.com/crest.png)}}');
+
+  // 닌자도구 개수 ○×6: 누른 칸까지 · 칠한 끝 칸을 다시 누르면 하나 줄임 (1 → 0)
+  s.set('gear_01', '0'); await s.settle(); s.click('gear1c1'); await s.settle(); eq('gear 1', g(s, 'gear_01'), ['1']);
+  s.click('gear1c1'); await s.settle(); eq('gear 1 again → 0', g(s, 'gear_01'), ['0']);
+  s.click('gear1c3'); await s.settle(); s.click('gear1c3'); await s.settle(); eq('gear 3 again → 2', g(s, 'gear_01'), ['2']);
+  // 마비 · 저주는 특기 · 인법마다 누르는 단추
+  eq('paralysis / curse buttons', [/name="attr_C7_mahi"/.test(HTML), /name="attr_Ninpo_01_noroi"/.test(HTML), /name="attr_Ninpo_noroi"/.test(HTML)], [true, true, true]);
+  // 줄바꿈은 %NEWLINE%
+  s.set('Ninpo_02_Effect', '첫 줄\n둘째 줄'); await s.settle(); s.click('np02'); await s.settle();
+  has('newline in card', last(s).macro, '첫 줄%NEWLINE%둘째 줄');
 
   const errs = s.log.filter(l => l[0] !== 'INFO');
   eq('worker log clean', errs, []);

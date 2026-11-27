@@ -51,7 +51,7 @@ def skills():
         for i, (col, _, _, names) in enumerate(FIELDS):
             n = names[r - 2]
             line += (f'<div class="c f{col.lower()}"><input type="checkbox" class="own" name="attr_{col}{r}" value="1" title="{n} 습득">'
-                     f'<span class="ic ima" title="마비">마</span>'
+                     f'<label class="ic ima" title="마비 — 눌러서 이 특기를 마비로"><input type="checkbox" name="attr_{col}{r}_mahi" value="1"><span>마</span></label>'
                      f'<button type="action" class="n" name="act_r{col}{r}" title="{n} 판정">{n}</button>'
                      f'<span class="tn" name="attr_{col}{r}_value"></span></div>')
             if i < 5:
@@ -107,7 +107,7 @@ def ninpo_row(p, btn, title):
     """인법 한 줄 + 펴는 칸(그림 주소 · 개요 · 썸네일). p = 속성 앞부분(Ninpo_01_ 또는 반복 줄의 Ninpo_)."""
     return (f'<div class="nw"><input type="checkbox" class="tgl tnp" name="attr_{p}open" value="1" title="그림 주소 · 개요 칸 펴기">'
             f'<div class="nr"><span><button type="action" class="dic" name="act_{btn}" title="{title}"></button></span>'
-            f'<span class="nnw"><input type="text" class="nn" name="attr_{p}Name" title="인법명"><input type="hidden" class="npf" name="attr_{p}on" value="0"><span class="ic inr" title="저주">저</span></span>'
+            f'<span class="nnw"><input type="text" class="nn" name="attr_{p}Name" title="인법명"><input type="hidden" class="npf" name="attr_{p}on" value="0"><label class="ic inr" title="저주 — 눌러서 이 인법을 저주로"><input type="checkbox" name="attr_{p}noroi" value="1"><span>저</span></label></span>'
             f'<span class="ty">{type_radios(f"attr_{p}Types")}</span>'
             f'<span class="ctr"><input type="text" name="attr_{p}Range" title="간격"></span>'
             f'<span class="ctr"><input type="text" name="attr_{p}Cost" title="코스트"></span>'
@@ -167,21 +167,22 @@ def hpbox():
     return ''.join(out)
 
 
-def circles(name):
-    """개수 ○×6: 0(숨김) + 1~6 라디오, 누른 칸까지 칠해진다."""
-    return (f'<span class="cir"><input type="radio" class="hz" name="{name}" value="0" checked>'
-            + ''.join(f'<input type="radio" name="{name}" value="{k}" title="{k}개">' for k in range(1, 7)) + '</span>')
+def circles(name, act):
+    """개수 ○×6: 누른 칸까지 칠한다 · 칠한 맨 끝 칸을 다시 누르면 하나 줄인다 (1개 → 0개 — 라디오로는 0 으로 못 돌아감).
+    값은 예전 라디오와 같은 속성 (숨은 칸) · 단추 act_<act>1~6 은 워커가 받는다."""
+    return (f'<span class="cir"><input type="hidden" class="hv" name="{name}" value="0">'
+            + ''.join(f'<button type="action" class="cc" name="act_{act}{k}" title="{k}개"></button>' for k in range(1, 7)) + '</span>')
 
 
 def gear():
     return '\n'.join(
         f'<div class="gi"><div class="gh"><button type="action" class="bub" name="act_gear{int(k)}" title="사용 (1개 줄이고 채팅에 출력)"></button>'
-        f'<b>{n}<i>&times;</i></b>{circles(f"attr_gear_{k}")}</div><p>{e}</p></div>' for k, n, e in GEAR)
+        f'<b>{n}<i>&times;</i></b>{circles(f"attr_gear_{k}", f"gear{int(k)}c")}</div><p>{e}</p></div>' for k, n, e in GEAR)
 
 
 def gear_rep():
     return ('<div class="gi"><div class="gh"><button type="action" class="bub" name="act_use" title="사용 (1개 줄이고 채팅에 출력)"></button>'
-            f'<input type="text" name="attr_name" title="특수 닌자도구 이름">{circles("attr_count")}</div>'
+            f'<input type="text" name="attr_name" title="특수 닌자도구 이름">{circles("attr_count", "cnt")}</div>'
             '<textarea name="attr_effect" title="특수 닌자도구 효과"></textarea></div>')
 
 

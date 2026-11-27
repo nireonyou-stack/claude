@@ -274,7 +274,8 @@ function clientCode() {
     const p = pending.get(id); if (!p) return; pending.delete(id);
     const comp = Object.fromEntries(Object.entries(computed || {}).map(([k, v]) => [k, v]));
     const rollSpan = (roll, shown) => { const ds = roll.ds, crit = ds.length && ds.every(x => x.d === x.sides), fail = ds.length && ds.every(x => x.d === 1); return '<span class="inlinerollresult showtip tipsy-n-right' + (crit ? ' fullcrit' : fail ? ' fullfail' : '') + '">' + esc(shown) + '</span>'; };
-    const show = k => { const f = p.fields[k]; if (!f) return ''; return esc(f.text).replace(/\u0000(\d+)\u0000/g, (a, i) => rollSpan(f.rolls[+i], f.rolls[+i].r)); };
+    // %NEWLINE% = Roll20 의 줄바꿈 (<br>)
+    const show = k => { const f = p.fields[k]; if (!f) return ''; return esc(f.text).replace(/%NEWLINE%/g, '<br>').replace(/\u0000(\d+)\u0000/g, (a, i) => rollSpan(f.rolls[+i], f.rolls[+i].r)); };
     const showComputed = k => { const f = p.fields[k]; const v = k in comp ? comp[k] : f && f.rolls[0] ? f.rolls[0].r : ''; return f && f.rolls[0] ? rollSpan(f.rolls[0], v) : esc(v); };
     const valOf = arg => { const m = arg.match(/^computed::(.+)$/); if (m) return Number(comp[m[1]]); const f = p.fields[arg]; return f && f.rolls[0] ? Number(f.rolls[0].r) : NaN; };
     const truthy = k => { const f = p.fields[k]; return !!f && f.text !== ''; };

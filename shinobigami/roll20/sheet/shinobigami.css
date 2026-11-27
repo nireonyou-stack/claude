@@ -20,13 +20,18 @@
 .sheet-rolltemplate-shinobigami .sheet-sub{font-size:11px;color:var(--sub)}
 .sheet-rolltemplate-shinobigami .sheet-roll{display:flex;align-items:center;gap:5px}
 .sheet-rolltemplate-shinobigami .sheet-die .inlinerollresult{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin:0;padding:0;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);font:700 14px/1 Arial,Helvetica,sans-serif;cursor:default}
-.sheet-rolltemplate-shinobigami .sheet-big .sheet-die .inlinerollresult{width:36px;height:36px;border-width:2px;border-radius:6px;font:800 21px/1 Arial,Helvetica,sans-serif}
+.sheet-rolltemplate-shinobigami .sheet-big .sheet-die .inlinerollresult{width:34px;height:34px;border-width:1.5px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#eeeeee);box-shadow:0 2px 0 currentColor;font:800 19px/1 Arial,Helvetica,sans-serif}
+.sheet-rolltemplate-shinobigami.sheet-rolltemplate-darkmode .sheet-big .sheet-die .inlinerollresult{background:linear-gradient(180deg,#333333,#262626)}
+/* shuriken in place of = (CSS only: 4-point star with a hole) */
+.sheet-rolltemplate-shinobigami .sheet-shq{position:relative;flex:none;width:15px;height:15px;margin:0 1px;background:var(--accent);transform:rotate(18deg);clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
+.sheet-rolltemplate-shinobigami .sheet-shq::after{content:"";position:absolute;left:5.5px;top:5.5px;width:4px;height:4px;border-radius:50%;background:#ffffff}
 .sheet-rolltemplate-shinobigami .sheet-die .inlinerollresult.fullcrit{border-color:var(--green);color:var(--green)}
 .sheet-rolltemplate-shinobigami .sheet-die .inlinerollresult.fullfail{border-color:var(--accent);color:var(--accent)}
 .sheet-rolltemplate-shinobigami .sheet-die .inlinerollresult.importantroll{border-color:var(--ink);color:var(--ink)}
 .sheet-rolltemplate-shinobigami .sheet-eq{color:var(--sub)}
 .sheet-rolltemplate-shinobigami .sheet-tot{font:800 20px/1 Arial,Helvetica,sans-serif;color:var(--navy)}
-.sheet-rolltemplate-shinobigami .sheet-big .sheet-tot{font-size:28px}
+/* total as tall as the dice boxes (digit height of Arial is about 0.72 em) */
+.sheet-rolltemplate-shinobigami .sheet-big .sheet-tot{display:inline-flex;align-items:center;height:36px;font-size:47px;line-height:36px;letter-spacing:-.03em}
 .sheet-rolltemplate-shinobigami .sheet-tot .inlinerollresult,.sheet-rolltemplate-shinobigami .sheet-rtx .inlinerollresult{padding:0;margin:0;border:0;background:none;color:inherit;font:inherit}
 .sheet-rolltemplate-shinobigami .sheet-stp{margin-left:auto;border:2px solid var(--navy);color:var(--navy);padding:1px 5px;letter-spacing:-.04em;font:800 15px/1.2 'Nanum Myeongjo',serif;transform:rotate(-4deg)}
 .sheet-rolltemplate-shinobigami .sheet-spc{border-color:var(--green);color:var(--green);letter-spacing:-.1em;padding:1px 4px 1px 3px}
@@ -87,6 +92,14 @@ body.sheet-darkmode .sg .title input[type=number],body.sheet-darkmode .sg .title
 .t-cmahi:not([value="0"]) ~ .sg .c .own:checked ~ .ima,
 .t-cboukyaku:not([value="0"]) ~ .sg .emf[value="1"] ~ .ibk,
 .t-cnoroi:not([value="0"]) ~ .sg .npf[value="1"] ~ .inr{display:inline-flex}
+/* paralysis / curse badges are buttons: dim until pressed, red when this skill / ninpo is the affected one */
+.sg label.ic{pointer-events:auto;cursor:pointer;background:transparent;margin:0;padding:0}
+.sg label.ic input{position:absolute;opacity:0;width:0;height:0;margin:0}
+.sg label.ic span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;box-sizing:border-box;border:1px solid var(--sub);border-radius:2px;background:var(--paper);color:var(--sub)}
+.sg label.ic input:checked + span{background:var(--accent);border-color:var(--accent);color:#ffffff}
+/* Modify: Roll20 puts the delete and move handles (.itemcontrol) at the start of each row. The invisible toggles of the row sit above them, so take them out of the way */
+.sg .repcontainer.editmode .repitem input.tgl{pointer-events:none}
+.sg .repcontainer.editmode .itemcontrol{z-index:10}
 
 /* icon buttons drawn with CSS (no emoji, no image). Color follows the button text color */
 .sg button[type=action].dic{display:inline-block;flex:none;width:16px;height:16px;padding:0;border:1.5px solid currentColor;border-radius:3px;background-color:transparent;color:var(--sub);cursor:pointer;
@@ -365,8 +378,9 @@ body.sheet-darkmode .sg .title input[type=number],body.sheet-darkmode .sg .title
 .sg .gi p{margin:2px 0 0;font-size:10.5px;line-height:1.45}
 .sg .gi textarea{font-size:10.5px;line-height:1.45;min-height:30px;margin-top:3px;background:var(--paper);padding:2px 4px}
 .sg .cir{margin-left:auto;display:flex;gap:1px;flex:none}
-.sg .cir input{-webkit-appearance:none;appearance:none;width:12px;height:12px;margin:0;border:1px solid var(--ink);border-radius:50%;background:var(--ink)}
-.sg .cir input:checked ~ input{background:var(--paper)}
+.sg .cir button[type=action].cc{-webkit-appearance:none;appearance:none;flex:none;width:12px;height:12px;min-width:0;margin:0;padding:0;border:1px solid var(--ink);border-radius:50%;background:var(--paper);box-shadow:none;cursor:pointer}
+.sg .cir .hv[value="1"] ~ .cc:nth-of-type(-n+1),.sg .cir .hv[value="2"] ~ .cc:nth-of-type(-n+2),.sg .cir .hv[value="3"] ~ .cc:nth-of-type(-n+3),
+.sg .cir .hv[value="4"] ~ .cc:nth-of-type(-n+4),.sg .cir .hv[value="5"] ~ .cc:nth-of-type(-n+5),.sg .cir .hv[value="6"] ~ .cc:nth-of-type(-n+6){background:var(--ink)}
 .sg .band .repcontrol{padding:0}
 .sg .band .repcontrol_add,.sg .band .repcontrol_edit{background:transparent;color:#dddddd;border-color:#666666}
 .sg .band .og .repcontrol_add,.sg .band .og .repcontrol_edit{background:var(--paper);color:var(--sub);border-color:var(--line)}
