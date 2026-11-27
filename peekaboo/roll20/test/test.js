@@ -61,6 +61,10 @@ const g = (s, ...ks) => ks.map(k => String(s.get(k)));
   s.click('rc9'); await s.settle();
   not('sleep 30: no dice', last(s).macro, '{{d1=');
   has('sleep 30: 행동 불능', last(s).macro, '{{note=졸음 30 · 행동 불능}}');
+  // 늘어날 졸음은 실패 · 펌블 도장 밑 작은 글씨 (아래 줄 안내는 없앰)
+  has('sleep caption under fail stamp', HTML, '<span class="sheet-stp sheet-ng">실패</span>{{#up}}{{#rollTotal() computed::up 1}}<span class="sheet-cap">졸음+1</span>');
+  has('sleep caption under fumble stamp', HTML, '<span class="sheet-stp sheet-fb">펌블</span>{{#up}}');
+  eq('no sleep note line', HTML.includes('실패 · 졸음 +1</div>'), false);
 
   // ── 스푸키: 졸음 없음 · in 표시 없음 · 마법 = 마력에서 코스트
   s = makeSim(HTML, { dice: [3, 3] }); s.open(); await s.settle();
