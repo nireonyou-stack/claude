@@ -57,6 +57,9 @@
 
 ## 5. 제출 (Roll20/roll20-character-sheets 로 PR)
 
+제출 · 머지 뒤 배포 확인 · 리뷰어 요청 전체는 [SUBMIT.md](SUBMIT.md). 아래는 처음 시트를 올릴 때의 기록.
+
+
 - 폴더: `<시트 이름>/` 에 html · css · sheet.json · 미리보기 png (+ images/)
 - ✔ sheet.json: html · css · authors · roll20userid · preview · instructions · legacy
 - 포크 `sai-korokoro/Blood-Moon-Korean-` 에 upstream master 에서 새 브랜치 → 사용자가 compare 링크로 PR
