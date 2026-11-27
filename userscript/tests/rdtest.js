@@ -19,7 +19,9 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
         { name: '괴짜 형사 · 클론', class: '괴짜 형사', n: '3', title: '클론', desc: '다른 클래스' },
         { name: '운명의 혈통 · 명탐정 선조', class: '운명의 혈통', n: '1', title: '명탐정 선조', desc: '조상' }],
       shinobigami: [{ name: '접근전 공격', group: '범용 인법', type: '공격', skill: '자유', range: '1', cost: '없음', effect: '접근전 대미지 1점', flavor: '일반적인 접근전 공격.' },
-        { name: '동원', group: '히라사카 기관', type: '서포트', skill: '경제력', range: '없음', cost: '3', effect: '전장을 「혼잡」으로 변경한다.\n유파 : 히라사카 기관 ——— 전장을 혼란에 빠뜨린다.' }],
+        { name: '동원', group: '히라사카 기관', type: '서포트', skill: '경제력', range: '없음', cost: '3', effect: '전장을 「혼잡」으로 변경한다.\n유파 : 히라사카 기관 ——— 전장을 혼란에 빠뜨린다.' },
+        { name: '은형', group: '범용 인법', type: '서포트', skill: '은형술', range: '없음', cost: '1', effect: '플롯을 숨긴다.\n범용 인법 ——— 모습을 감추는 기술.' },
+        { name: '외도술', group: '고류 유파 외도', type: '장비', skill: '없음', range: '없음', cost: '없음', effect: '대미지 +1.\n고류 유파 외도 ——— 금지된 기술.\n둘째 줄 개요.' }],
       redblack_magic: [{ name: '소각 권한', group: '흑검 1장', boot: '？：10', black: '2', red: '2', acc: 1, sup: 1, flavor: '흑염', effect: '1대미지' },
         { name: '재단 권한', group: '흑검 1장', boot: '흑：8', black: '3', red: '3', sup: 1, effect: '손패 1장' },
         { name: '흑사 현현', group: '현현 · 공격 강화형', boot: '？：10', effect: '지속: 살해', enemy: 1 }],
@@ -104,6 +106,10 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   await p.fill('#sg [name="attr_Ninpo_01_Name"]', ''); await type('#sg [name="attr_Ninpo_01_Name"]', '동원'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
   ok('유파 줄 → 개요 칸', await vals('#sg :is([name="attr_Ninpo_01_Effect"],[name="attr_Ninpo_01_Flavor"])'), ['전장을 「혼잡」으로 변경한다.', '유파 : 히라사카 기관 ——— 전장을 혼란에 빠뜨린다.']);
   await type('#sgold [name="attr_Ninpo_09_Name"]', '동원'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
+  for (const [nm, eff, fl] of [['은형', '플롯을 숨긴다.', '범용 인법 ——— 모습을 감추는 기술.'], ['외도술', '대미지 +1.', '고류 유파 외도 ——— 금지된 기술.\n둘째 줄 개요.']]) {
+    await p.fill('#sg [name="attr_Ninpo_01_Name"]', ''); await type('#sg [name="attr_Ninpo_01_Name"]', nm); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
+    ok(`——— 줄 → 개요 칸 (${nm})`, await vals('#sg :is([name="attr_Ninpo_01_Effect"],[name="attr_Ninpo_01_Flavor"])'), [eff, fl]);
+  }
   ok('개요 칸 없는 시트는 효과에 그대로', await vals('#sgold [name="attr_Ninpo_09_Effect"]'), ['전장을 「혼잡」으로 변경한다.\n유파 : 히라사카 기관 ——— 전장을 혼란에 빠뜨린다.']);
 
   // ── 데이터 주소: 열쇠가 있으면 본문으로 POST (새 페이지 — 주소 · 열쇠를 넣어 두고 스크립트를 띄우면 바로 받아 온다)
