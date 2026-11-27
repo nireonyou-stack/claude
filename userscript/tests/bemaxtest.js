@@ -22,11 +22,11 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   ok('보통 때 단추 ⛶ 최대화', await btn(), ['⛶', '최대화', 'false']);
   ok('Aa 와 ✕ 사이', await p.$eval('#r20be .r20be-max', b => [b.previousElementSibling?.classList.contains('r20be-aa'), b.nextElementSibling?.getAttribute('aria-label')]), [true, '닫기']);
   await p.click('#r20be .r20be-max'); await p.waitForTimeout(150);
-  ok('최대화 → 브라우저 안 꽉 (가장자리 8px)', await rect(), [8, 8, 1366 - 16, 768 - 16]);
+  ok('최대화 → 여백 없이 꽉', await rect(), [0, 0, 1366, 768]);
   ok('최대화 때 단추 ❐ 이전 크기', await btn(), ['❐', '이전 크기', 'true']);
   // 닫았다 열어도 최대화
   await p.click('#r20be .r20be-head [aria-label="닫기"]'); await p.waitForTimeout(100); await p.click('#r20-bebtn'); await p.waitForTimeout(200);
-  ok('닫았다 열어도 최대화', await rect(), [8, 8, 1366 - 16, 768 - 16]);
+  ok('닫았다 열어도 최대화', await rect(), [0, 0, 1366, 768]);
   await p.click('#r20be .r20be-max'); await p.waitForTimeout(150);
   ok('❐ → 최대화 전 자리 · 크기', await rect(), before);
   ok('단추 다시 ⛶', (await btn())[0], '⛶');
@@ -35,6 +35,11 @@ const us = fs.readFileSync(process.env.US || require('path').join(__dirname, '..
   const h = await (await p.$('#r20be .r20be-head strong')).boundingBox();
   await p.mouse.move(h.x + 5, h.y + 5); await p.mouse.down(); await p.mouse.move(h.x + 60, h.y + 45, { steps: 5 }); await p.mouse.up(); await p.waitForTimeout(150);
   ok('최대화 중 끌기 → 풀림', [(await btn())[0], await p.evaluate(() => localStorage.getItem('r20be_max'))], ['⛶', '']);
-  ok('창 크기 바꾸면 최대화 창도 따라감', await (async () => { await p.click('#r20be .r20be-max'); await p.setViewportSize({ width: 1200, height: 700 }); await p.waitForTimeout(200); return rect(); })(), [8, 8, 1200 - 16, 700 - 16]);
+  ok('창 크기 바꾸면 최대화 창도 따라감', await (async () => { await p.click('#r20be .r20be-max'); await p.setViewportSize({ width: 1200, height: 700 }); await p.waitForTimeout(200); return rect(); })(), [0, 0, 1200, 700]);
+  // 페이지 스크롤 막대가 있어도 그 자리까지 (최대화 동안만 숨김)
+  await p.evaluate(() => { document.body.style.cssText = 'margin:0;width:3000px;height:3000px'; window.dispatchEvent(new Event('resize')); }); await p.waitForTimeout(150);
+  ok('스크롤 막대 숨기고 끝까지', [await rect(), await p.evaluate(() => getComputedStyle(document.documentElement).overflow)], [[0, 0, 1200, 700], 'hidden']);
+  await p.click('#r20be .r20be-max'); await p.waitForTimeout(150);
+  ok('이전 크기 → 스크롤 막대 되돌림', await p.evaluate(() => getComputedStyle(document.documentElement).overflow), 'visible');
   console.log('errors:', errs); await b.close();
 })();

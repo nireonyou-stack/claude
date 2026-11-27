@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         롤20 레이아웃2 올인원
-// @version      1.119.0
+// @version      1.119.1
 // @updateURL    https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @downloadURL  https://raw.githubusercontent.com/sai-korokoro/claude/claude/hopeful-archimedes-j83l7a/userscript/roll20-layout2-allinone.user.js
 // @match        https://app.roll20.net/editor*
@@ -22,7 +22,7 @@ const warnDuplicate = () => {
 };
 if (window.__r20aio) { warnDuplicate(); return; }
 window.__r20aio = true;
-const SCRIPT_VER = "1.119.0";     // @version 과 같이 올린다
+const SCRIPT_VER = "1.119.1";     // @version 과 같이 올린다
 
 // 저장된 설정 읽기 · 쓰기 한곳 — 키 이름은 그대로라 지금 설정이 유지된다. 사생활 보호 창 · 저장 공간 없음에서도 멈추지 않게 감싼다
 const aioPref = {
@@ -15668,11 +15668,17 @@ const bulkEditor = (() => {
             window.addEventListener("mouseup", up);
         });
         // 모서리로 크기를 바꾼 뒤 기억 (최대화 중이었으면 그 크기가 새 보통 크기)
-        p.addEventListener("mouseup", () => { if (maxed() && (p.style.width !== zpx(innerWidth - 16) || p.style.height !== zpx(innerHeight - 16))) dropMax(); keep(); });
+        p.addEventListener("mouseup", () => { if (maxed() && (p.style.width !== fill.w || p.style.height !== fill.h)) dropMax(); keep(); });
         // ⛶ 최대화 · ❐ 이전 크기: 최대화 전 자리 · 크기는 r20be_rect_prev, 최대화 여부는 r20be_max (닫았다 열어도 최대화로)
         const mxb = head.querySelector(".r20be-max");
         function maxed() { return p.classList.contains("r20be-maxed"); }
-        const fillView = () => Object.assign(p.style, { left: zpx(8), top: zpx(8), width: zpx(innerWidth - 16), height: zpx(innerHeight - 16) });
+        // 여백 없이 보이는 곳 전부 — 최대화 중에는 Roll20 페이지 스크롤 막대를 숨기므로(CSS :has) 그걸 뺀 뒤의 폭 · 높이
+        const fill = { w: "", h: "" };
+        const fillView = () => {
+            const de = document.documentElement;
+            fill.w = zpx(de.clientWidth || innerWidth); fill.h = zpx(de.clientHeight || innerHeight);
+            Object.assign(p.style, { left: "0px", top: "0px", width: fill.w, height: fill.h });
+        };
         const paintMax = () => {
             const on = maxed();
             mxb.textContent = on ? "❐" : "⛶";
@@ -15916,6 +15922,9 @@ addCss(`
         #r20be { position:fixed; z-index:calc(var(--aio-z-win) + 2); display:none; flex-direction:column; width:900px; height:600px; min-width:420px; min-height:320px; max-width:calc((100vw - 16px) / var(--aio-z, 1)); max-height:calc((100vh - 16px) / var(--aio-z, 1)); font-family:sans-serif; font-size:var(--aio-fs-md); color:var(--aio-ink-2); resize:both; overflow:hidden; box-sizing:border-box; }
         /* Roll20(Bootstrap)의 .show { display:block !important } 와 겹치지 않게 전용 클래스를 쓴다 */
         #r20be.r20be-show { display:flex !important; }
+        /* ⛶ 최대화: 여백 없이 꽉 · Roll20 페이지 스크롤 막대(오른쪽 · 아래 틈)는 최대화 동안만 숨김 — Roll20 의 overflow 를 덮어써야 해서 !important */
+        #r20be.r20be-maxed { max-width:none; max-height:none; border-radius:0; }
+        html:has(#r20be.r20be-show.r20be-maxed), html:has(#r20be.r20be-show.r20be-maxed) body { overflow:hidden !important; }
         #r20be {
             & *, & *::before, & *::after { box-sizing:border-box; }
             & button:focus-visible, & input:focus-visible, & select:focus-visible, & textarea:focus-visible { outline:2px solid var(--aio-accent); outline-offset:1px; }
