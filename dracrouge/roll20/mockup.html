@@ -166,7 +166,11 @@ textarea{resize:none;display:block}
 .order li.me span{background:var(--rouge);color:#fff;padding:0 6px}
 
 /* 판정 띠 */
-.rollbar{display:flex;align-items:center;gap:8px;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:5px 4px;flex-wrap:wrap}
+.rollbar{display:flex;align-items:center;gap:6px;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:5px 4px;flex-wrap:wrap}
+.rollbar .vsep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.vis{display:inline-flex;align-items:center;gap:6px;font:500 11px var(--sans);color:var(--sub);white-space:nowrap}
+.vis label{display:inline-flex;align-items:center;gap:2px;cursor:pointer;color:var(--ink)}
+.vis input{margin:0;width:12px;height:12px;accent-color:var(--rouge)}
 .rollbar .tl{font:700 11px var(--sans);color:var(--sub)}
 .rollbar .sp{flex:1}
 .rollbar .hint{font-size:11px;color:var(--sub)}
@@ -178,18 +182,17 @@ textarea{resize:none;display:block}
 .seg2 input:checked+span{background:var(--ink);color:#fff}
 
 /* 눈 배정: 행위 판정 결과를 시트에 남기고, 눈을 눌러 고른 뒤 행위 ▶ */
-.rollbar .ln{display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap}
-.rollbar .ln+.ln{border-top:1px dotted var(--line);padding-top:5px}
 .tray{display:flex;gap:5px;flex-wrap:wrap}
-.tc{position:relative;width:30px;height:30px;border:1.5px solid var(--ink);border-radius:3px;background:#fff;font:900 15px var(--sans);cursor:pointer;padding:0}
+.tc{position:relative;width:26px;height:26px;border:1.5px solid var(--ink);border-radius:3px;background:#fff;font:900 15px var(--sans);cursor:pointer;padding:0}
 .tc.t{border-color:var(--rouge);color:var(--rouge)}
 .tc.t small{position:absolute;top:-8px;right:-7px;background:var(--rouge);color:#fff;font:700 9px/1 var(--sans);padding:2px 3px;border-radius:2px}
-.tc.g{background:var(--rouge);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1.5px var(--gold);width:34px}
+.tc.g{background:var(--rouge);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1.5px var(--gold);width:30px}
 .tc[aria-pressed=true]{transform:translateY(-3px);box-shadow:0 3px 0 var(--ink)}
 .tc.g[aria-pressed=true]{box-shadow:0 0 0 1.5px var(--gold),0 3px 0 var(--ink)}
 .tc:disabled{opacity:.3;cursor:default;text-decoration:line-through}
 .tsum{font:700 12px var(--sans)}
-.tsum b{font:900 18px var(--sans);color:var(--rouge)}
+.tsum b{font:900 16px var(--sans);color:var(--rouge)}
+.tray .hint{font-size:11px;color:#a8a2a4}
 .tr.done .go{border-color:var(--rouge);background:var(--rsoft)}
 /* 행위 표 */
 .acts{display:flex}
@@ -310,22 +313,18 @@ textarea{resize:none;display:block}
     </div>
   </div>
 
+  <!-- 판정 한 줄: 굴림 단추 · 눈 배정 · 공개 범위 -->
   <div class="rollbar">
-    <div class="ln">
-      <span class="tl">판정</span>
-      <button class="btn dk" type="button" id="act">행위 판정</button>
-      <button class="btn" type="button" id="reroll" title="자신에 대한 누아르 1점을 얻고 같은 수로 다시 굴림">다시 굴림</button>
-      <button class="btn dk" type="button" id="res">저항 판정</button>
-      <span class="sp"></span>
-      <span class="seg2"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>DR에게</span></label></span>
-    </div>
-    <div class="ln">
-      <span class="tl">눈 배정</span>
-      <span class="tray" id="tray"><span class="hint">행위 판정을 굴리면 여기에 눈이 남아요</span></span>
-      <span class="sp"></span>
-      <span class="tsum" id="tsum"></span>
-      <button class="btn" type="button" id="tclr" title="남은 눈을 지움 (실제 시트: 저장한 굴림 값을 비움)">비우기</button>
-    </div>
+    <button class="btn dk" type="button" id="act">행위 판정</button>
+    <button class="btn" type="button" id="reroll" title="자신에 대한 누아르 1점을 얻고 같은 수로 다시 굴림">다시 굴림</button>
+    <button class="btn dk" type="button" id="res">저항 판정</button>
+    <span class="vsep"></span>
+    <span class="tl">눈</span>
+    <span class="tray" id="tray"></span>
+    <span class="tsum" id="tsum"></span>
+    <button class="btn" type="button" id="tclr" title="남은 눈을 지움 (실제 시트: 저장한 굴림 값을 비움)">비우기</button>
+    <span class="sp"></span>
+    <span class="vis" role="radiogroup" aria-label="굴림 공개 범위">굴림 <label><input type="radio" name="rmode" value="" checked>공개</label><label><input type="radio" name="rmode" value="gm">DR</label></span>
   </div>
 
   <div class="acts"><div class="vt2"><span class="vtt">전투의 행위</span><span class="pm v" data-k="a1"></span></div><div class="bx">
@@ -478,11 +477,11 @@ function actRoll({ n, cheer = 0, forced, reroll }) {
 }
 function renderTray() {
   $('tclr').disabled = !tray.length;
-  if (!tray.length) { $('tray').innerHTML = '<span class="hint">행위 판정을 굴리면 여기에 눈이 남아요</span>'; $('tsum').innerHTML = ''; return; }
+  if (!tray.length) { $('tray').innerHTML = '<span class="hint">굴리면 여기에</span>'; $('tsum').innerHTML = ''; return; }
   $('tray').innerHTML = tray.map((d, k) => `<button type="button" class="tc${d.g ? ' g' : ''}${d.add ? ' t' : ''}" data-k="${k}" aria-pressed="${!!d.sel}" ${d.used ? 'disabled' : ''} aria-label="눈 ${d.v}${d.g ? ' (영광의 눈)' : ''}">${d.v}${d.add ? `<small>+${d.add}</small>` : ''}</button>`).join('');
   $('tray').querySelectorAll('.tc').forEach(b => b.onclick = () => { const d = tray[+b.dataset.k]; d.sel = !d.sel; renderTray(); });
   const s = tray.filter(d => d.sel);
-  $('tsum').innerHTML = s.length ? `고른 눈 <b>${s.reduce((a, d) => a + d.v, 0)}</b> → 행위 ▶` : tray.some(d => !d.used) ? '눈을 눌러 고른 뒤 행위 ▶' : '';
+  $('tsum').innerHTML = s.length ? `합 <b>${s.reduce((a, d) => a + d.v, 0)}</b> → ▶` : tray.some(d => !d.used) ? '골라서 ▶' : '';
 }
 $('act').onclick = () => {
   const ch = prompt(`${isH() ? '외포점' : '갈채점'} 사용 (보통 0 · 1, 종막은 라운드 수까지)`, '0'); if (ch === null) return;
@@ -533,6 +532,16 @@ $('fall').onclick = () => fall();
 document.querySelectorAll('input[name=stype]').forEach(r => r.onchange = () => { sheet.dataset.t = r.value; renderOrder(); });
 $('cimg').onclick = () => $('crest').classList.toggle('open');
 
+// ── #empty: 견본 값 없이 (미리보기 그림용)
+function clearSheet() {
+  sheet.querySelectorAll('input[type=text]:not([readonly]), textarea').forEach(i => { i.value = ''; i.dispatchEvent(new Event('input')); });
+  ['thirst', 'relief', 'cheer'].forEach(id => { $(id).value = 0; });
+  B.forEach((b, i) => { b.t = i ? '' : '자신'; b.n.fill(''); b.r.fill(''); b.in = b.ir = false; });
+  CNT.ep.n = 1; CNT.bond.n = 4; CNT.a1.n = CNT.a2.n = 3;
+  renderBond(); ['ep', 'a1', 'a2'].forEach(applyCnt); renderOrder(); syncThirst();
+  tray = []; lastN = 0; document.querySelectorAll('.tr.done').forEach(r => r.classList.remove('done')); renderTray(); log.innerHTML = '';
+}
+
 // ── 첫 화면
 renderBond(); renderOrder(); syncThirst();
 actRoll({ n: 5, cheer: 1, forced: [6, 6, 3, 2, 5] });
@@ -540,4 +549,5 @@ tray[1].sel = tray[5].sel = true; useAct($('a1').querySelector('.tr:nth-child(2)
 tray[4].sel = true; useAct($('a2').querySelector('.tr:nth-child(1)'), '일상의 행위');
 tray[2].sel = true; renderTray();
 resist(2, 7, false, [4, 3]);
+if (location.hash === '#empty') clearSheet();
 </script>

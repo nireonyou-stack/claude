@@ -190,7 +190,9 @@ textarea{resize:none;display:block}
 .sk .tr .ef{grid-column:1/6;grid-row:2;border-left:0}
 .bl .tr .ef,.sk .tr .ef{border-top:1px dotted var(--line);min-height:23px}
 /* 에너미 시트 (258~261 · 270쪽): 왼쪽 = 이름 · 분류 · 근원 · 위협도 · 타입 · 생명력 · 선제치 · 행동 지침 · 해설, 오른쪽 = 에너미 특기 */
-.espread{display:grid;grid-template-columns:300px minmax(0,1fr);gap:10px;align-items:start}
+.espread{display:grid;grid-template-columns:300px minmax(0,1fr);gap:10px;align-items:stretch}
+/* 두 단 높이 맞춤: 각 단의 마지막 칸(해설 · 에너미 특기)이 남는 높이를 가짐 */
+.espread>.col>.bx:last-child{flex:1}
 .espread>.col{display:flex;flex-direction:column;gap:8px;min-width:0}
 .enm{font:900 19px var(--sans);height:36px;padding:0 8px;border-bottom:1px solid var(--line)}
 .gauge .mx input{width:34px;height:22px;text-align:center;font:700 13px var(--sans);border-bottom:1px solid var(--line);padding:0}
@@ -685,7 +687,7 @@ function renderLife() {
 $('elife').oninput = renderLife; $('elmax').oninput = renderLife;
 $('eini').oninput = () => { $('heini').textContent = $('eini').value; };
 const EK = [['〈피의 일격〉', '공격', '단일', '작성', '없음', '대상에게 [덱 1장 + 5] 점 대미지.', '흉포한 일격.'], ['〈피의 갑주〉', '개시', '자신', '작성', '혈전 1회', '덱에서 카드를 [PC 수] 장 뽑아 스택.', ''], ['〈송곳니〉', '상시', '자신', '5', '없음', '〈특기〉로 주는 대미지 +3.', ''], ...Array.from({ length: 9 }, () => ['', '', '', '', '', '', ''])];
-let ekN = 4;
+let ekN = 6;
 $('ek').innerHTML = EK.map(([n, ti, ta, ac, cd, e, o], i) => `<div class="tr"><span class="nm"><input type="text" value="${esc(n)}" aria-label="에너미 특기 ${i + 1} 명칭"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${ac}" aria-label="획득"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><textarea class="ag" rows="1" aria-label="해설" placeholder="해설">${esc(e)}</textarea></span><span class="ov"><textarea class="ag" rows="1" aria-label="개요" placeholder="개요">${esc(o)}</textarea></span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`).join('');
 autoGrow($('ek'));
 function applyEk() {
@@ -699,6 +701,18 @@ $('ek').querySelectorAll('.bub').forEach(b => b.onclick = () => {
   card({ title: v[0], head: '에너미 특기', cards: hand.slice(), calc: hand.length ? `낸 카드 합계 <b>${hand.reduce((a, c) => a + val(c), 0)}</b> · ${hand.length}장` : '', kv: [['타이밍', v[1]], ['대상', v[2]], ['조건', v[4]]], eff: v[5] });
   hand = []; renderHand();
 });
+
+// ── #empty: 견본 값 없이 (미리보기 그림용)
+function clearSheet() {
+  sheet.querySelectorAll('input[type=text], textarea').forEach(i => { i.value = ''; i.dispatchEvent(new Event('input')); });
+  sheet.querySelectorAll('input[type=number]').forEach(i => { i.value = ''; });
+  $('ren').value = 1; Object.keys(vals).forEach(k => { vals[k] = ''; });
+  sheet.querySelectorAll('#memo input[type=checkbox]').forEach(c => { c.checked = false; });
+  bpOn = [true, false, false]; BP.forEach(b => { b[2] = ''; }); BL_EX.forEach(r => r.fill('')); prog = 0;
+  renderAbl(); renderBP(); renderBL(); renderProg(); hand = []; renderHand(); log.innerHTML = '';
+  ['hdur', 'hmax', 'helife', 'helmax', 'heini'].forEach(id => { $(id).textContent = '—'; }); $('durmax').textContent = '—';
+  $('elife').value = $('elmax').value = ''; renderLife(); $('helife').textContent = $('helmax').textContent = '—';
+}
 
 // ── 용어표
 const G1 = [['人鬼血盟RPG', '인귀혈맹 RPG'], ['ブラッドパス', '블러드패스'], ['キャラクターシート（人間/吸血鬼）', '캐릭터 시트 (인간 / 흡혈귀)'], ['上級者用 (傷号欄あり)', '상급자용 (상호 칸)'], ['プレイヤー名', '플레이어'], ['名前 · 年齢 · 性別', '이름 · 나이 · 성별'], ['年齢 外見/実', '나이 외견 / 실제'], ['所属', '소속'], ['過去', '과거'], ['経緯', '경위'], ['喪失 (人間)', '상실'], ['欠落 (吸血鬼)', '결락'], ['外見的特徴', '외견적 특징'], ['住まい', '거처'], ['使用武器', '사용 무기'], ['自由欄（設定・イラストなど）', '자유란 (설정 · 일러스트 등)'],
@@ -717,4 +731,5 @@ renderAbl(); renderBP(); renderBL(); renderProg(); renderHand();
 hand = [{ s: 's', k: 'A' }]; investigate();
 hand = [{ s: 'd', k: '5' }]; investigate();
 hand = [{ s: 'c', k: '9' }]; document.querySelector('#sk .tr .bub').click();
+if (location.hash === '#empty') clearSheet();
 </script>
