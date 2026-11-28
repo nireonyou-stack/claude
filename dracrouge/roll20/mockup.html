@@ -37,16 +37,16 @@ textarea{resize:none;display:block}
 .seg{display:inline-flex;border:1px solid #fff}
 .seg label{cursor:pointer}
 .seg input{position:absolute;opacity:0;width:0;height:0}
-.seg span{display:block;padding:0 10px;font:500 11.5px/22px var(--sans);color:#ddd}
+.seg span{display:block;padding:0 9px;font:500 11px/18px var(--sans);color:#ddd}
 .seg label+label span{border-left:1px solid #fff}
 .seg input:checked+span{background:#fff;color:var(--ink);font-weight:700}
 .seg input:focus-visible+span{outline:2px solid var(--rouge)}
 
 /* 머리 */
-.top{display:flex;align-items:center;gap:12px;background:var(--bar);color:#fff;margin:-10px -10px 0;padding:8px 12px}
+.top{display:flex;align-items:center;gap:12px;background:var(--bar);color:#fff;margin:-10px -10px 0;padding:3px 10px}
 .top .lg{display:flex;align-items:baseline;gap:10px}
-.top .t0{font:500 10px var(--sans);letter-spacing:.25em;opacity:.75}
-.top .t1{font:800 24px/1.1 var(--serif);letter-spacing:.08em}
+.top .t0{font:500 9px var(--sans);letter-spacing:.2em;opacity:.75}
+.top .t1{font:800 16px/1.2 var(--serif);letter-spacing:.06em}
 .top .t1 b{color:#e04a62;font-weight:800}
 .top .sp{flex:1}
 
@@ -55,10 +55,10 @@ textarea{resize:none;display:block}
 .pm button{width:22px;height:20px;border:1px solid var(--ink);background:#fff;font:700 14px/1 var(--sans);cursor:pointer;padding:0}
 .pm button:hover{border-color:var(--rouge);color:var(--rouge)}
 .pm button:disabled{opacity:.4;cursor:default;border-color:var(--ink);color:var(--ink)}
-.vt2{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--bar);color:#fff;width:26px;flex:none;padding:8px 0}
-.vt2 .vtt{writing-mode:vertical-rl;text-orientation:upright;font:700 13px/1 var(--serif);letter-spacing:.35em}
-.pm.v{flex-direction:column;gap:3px;color:#cfcfcf}
-.pm.v button{width:20px;height:20px;border-color:#fff;background:transparent;color:#fff}
+.vt2{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--bar);color:#fff;width:24px;flex:none;padding:4px 0}
+.vt2 .vtt{writing-mode:vertical-rl;text-orientation:upright;font:700 12px/1 var(--serif);letter-spacing:.15em}
+.pm.v{flex-direction:column;gap:2px;color:#cfcfcf}
+.pm.v button{width:15px;height:12px;border-color:#fff;background:transparent;color:#fff;font:700 10px/1 var(--sans)}
 .pm.v button:hover{border-color:#f08b9b;color:#f08b9b}
 .pm.v button:disabled{border-color:#fff;color:#fff}
 .pm.v span{font-size:9.5px;letter-spacing:0}

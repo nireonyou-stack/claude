@@ -30,9 +30,9 @@ textarea{resize:none;display:block}
 .sheet[data-trio="0"] .trio>:not(.fold){display:none}
 
 /* ── 시트 ── */
-.sz{container-type:inline-size;width:var(--w,830px);min-width:800px;max-width:1400px}
+/* 폭: Roll20 기본 800px ~ 최대 1400px 로 늘어남. 폭 따라 배치를 바꾸는 @media · @container 는 Roll20 에서 못 씀 (LESSONS.md 1장) */
+.sz{width:var(--w,830px);min-width:800px;max-width:1400px}
 .sheet{width:100%;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
-.logo3{display:none}
 .bx{border:1.5px solid var(--ink);display:flex;flex-direction:column;min-width:0}
 .hb{background:var(--bar);color:#fff;font:700 13px/1 var(--sans);padding:5px 8px 4px;display:flex;align-items:center;gap:6px;letter-spacing:.06em}
 .hb small{font:400 10.5px var(--sans);opacity:.8;letter-spacing:0}
@@ -59,32 +59,24 @@ textarea{resize:none;display:block}
 .chip{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font:500 11px var(--sans);color:var(--sub)}
 
 /* 머리: 로고 · 탭(공식 PDF 두 장) · 지금 값 — 두 탭 공통 */
-.top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"logo hud" "tabs kind";align-items:end;column-gap:12px;row-gap:2px;background:var(--bar);color:#fff;padding:6px 10px 0;margin:-10px -10px 0}
-.logo2{grid-area:logo;display:flex;align-items:baseline;gap:8px;line-height:1;padding-bottom:2px}
-.logo2 .t0{font:700 9.5px var(--sans);letter-spacing:.2em;opacity:.8}
-.logo2 .t1{font:400 26px/1 var(--brush);letter-spacing:.02em}
-.logo2 .t1 b{font-weight:400;color:#e0434c}
-.tabs,.etab{grid-area:tabs}
+.top{display:flex;align-items:flex-end;gap:12px;background:var(--bar);color:#fff;padding:4px 10px 0;margin:-10px -10px 0}
 .tabs{display:flex;gap:3px}
-.etab{justify-self:start;padding:6px 16px;font:700 12.5px/1 var(--sans);background:var(--paper);color:var(--ink);border-radius:3px 3px 0 0}
 .tabs label{cursor:pointer}
 .tabs input{display:none}
-.tabs span{display:block;padding:6px 16px;font:700 12.5px/1 var(--sans);background:#3a3a3a;color:#cfcfcf;border-radius:3px 3px 0 0}
+.tabs span{display:flex;align-items:center;padding:6px 14px;font:700 12.5px/1 var(--sans);background:#3a3a3a;color:#cfcfcf;border-radius:3px 3px 0 0}
 .tabs input:checked+span{background:var(--paper);color:var(--ink)}
+/* 캐릭터 시트 탭 안의 시트 종류 고르기 (실제 시트: 고르면 캐릭터 시트 탭으로) */
+.tabs select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;font:500 12px/1 var(--sans);padding:0 13px 0 4px;margin:0;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(-45deg,transparent 50%,currentColor 50%);background-size:4px 4px;background-position:right 4px center,right 0 center;background-repeat:no-repeat}
+.tabs select option{color:var(--ink)}
+.hadv{align-self:center;color:#ddd}
+.hadv .ck{border-color:#bbb;background-color:transparent}
 .tabs input:focus-visible+span{outline:2px solid #fff;outline-offset:-3px}
-.hud{grid-area:hud;display:flex;justify-content:flex-end;gap:12px;padding-bottom:4px;font:500 11px var(--sans);color:#cfcfcf;white-space:nowrap}
+.hud{margin-left:auto;display:flex;justify-content:flex-end;gap:12px;padding-bottom:6px;font:500 11px var(--sans);color:#cfcfcf;white-space:nowrap}
 .hud b{font:900 15px var(--sans);color:#fff}
 .hud i{font-style:normal}
 .pane{display:none;flex-direction:column;gap:8px}
 .sheet[data-tab=c] .pane.c,.sheet[data-tab=r] .pane.r{display:flex}
-/* 머리줄 안의 시트 종류 · 상급자용 (어두운 바탕용) */
-.kind{grid-area:kind;justify-self:end;display:flex;align-items:center;gap:10px;padding-bottom:5px}
-.kind .seg{border-color:#fff}
-.kind .seg span{color:#ddd;line-height:18px}
-.kind .seg label+label span{border-left-color:#fff}
-.kind .seg input:checked+span{background:var(--accent);color:#fff}
-.kind .chip{color:#ddd}
-.kind .ck{border-color:#bbb;background-color:transparent}
 /* 캐릭터 시트 탭: 공식 v2 의 왼쪽 쪽 | 오른쪽 쪽 */
 .spread{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
 .spread>.col{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -249,24 +241,6 @@ textarea{resize:none;display:block}
 .prog .gold span{background:#c9c9c9;color:var(--ink)}
 .prog .on span{background:var(--accent);color:#fff}
 
-/* ── 창 폭 따라: 800px(Roll20 기본 폭) ~ 1400px. 1000px 부터 공식 v2 처럼 ──
-   실제 시트는 Roll20 시트 창 폭(iframe)을 따라 바뀜 */
-@container (min-width:1000px){
-  /* 공식 v2: 로고는 오른쪽 쪽 위, 자유란 크게, 혈계 2 늘 펼침, 카드 패드는 아래로 */
-  .sheet:not([data-t=e]) .top .logo2{display:none}
-  .logo3{display:block;text-align:right;padding:2px 6px 6px;line-height:1}
-  .logo3 .t0{font:700 11px var(--sans);letter-spacing:.3em;color:var(--sub)}
-  .logo3 .t1{font:400 54px/1 var(--brush);letter-spacing:.02em}
-  .logo3 .t1 b{font-weight:400;color:var(--red)}
-  .spread{gap:22px}
-  .pf{grid-template-columns:minmax(0,.9fr) minmax(0,1fr)}
-  .portrait{min-height:170px}
-  .sheet[data-trio="0"] .trio>.sec{display:flex}
-  .sheet[data-trio="0"] .trio>.kv{display:grid}
-  .trio .fold{pointer-events:none}
-  .trio .fold .arr{display:none}
-  .strip{order:9;border-bottom:0;border-top:2px solid var(--ink)}
-}
 /* ── 채팅 ── */
 .chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
 .chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
@@ -310,22 +284,18 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">블러드패스 — Roll20 시트 목업</h1>
-<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. 시트 종류에서 <b>에너미</b>를 고르면 GM 용 에너미 시트(이름 · 분류 · 근원 · 위협도 · 타입 · 생명력 · 선제치 · 에너미 특기 · 행동 지침 · 해설)로 바뀌어요 — 레코드 탭은 없어요. <b>창을 넓히면</b>(아래 막대) 공식 시트에 가까워져요 — 1000px 부터는 공식 v2 처럼(로고는 오른쪽 쪽 위, 혈계 2 늘 펼침, 카드 패드는 아래), 최대 1400px 까지 넓어져요. 최소는 Roll20 기본 폭 800px. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
+<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. 시트 종류에서 <b>에너미</b>를 고르면 GM 용 에너미 시트(이름 · 분류 · 근원 · 위협도 · 타입 · 생명력 · 선제치 · 에너미 특기 · 행동 지침 · 해설)로 바뀌어요 — 레코드 탭은 없어요. 창을 넓히면(아래 막대) 시트가 최대 1400px 까지 넓어져요 (최소는 Roll20 기본 폭 800px). 폭에 따라 배치를 바꾸는 CSS(@media · @container)는 Roll20 채팅 카드를 깨뜨려서 쓰지 않아요. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
 
 <div class="wctl">Roll20 시트 창 폭 <input type="range" id="wr" min="800" max="1800" step="10" value="830" aria-label="시트 창 폭"> <b id="wv">830px</b> <button type="button" data-w="800">기본 (800)</button><button type="button" data-w="1150">넓게</button><button type="button" data-w="1700">최대 (1400 에서 멈춤)</button></div>
 <div class="wrap">
 <div class="scroll"><div class="sz" id="sz"><div class="sheet" id="sheet" data-t="h" data-adv="1" data-trio="0" data-tab="c">
 
   <!-- 머리: 로고 · 탭 (공식 PDF 두 장) · 지금 값 — 두 탭 공통 -->
+  <!-- 머리 한 줄: 캐릭터 시트 탭(시트 종류 고르기) · 레코드 시트 탭 · 상급자용 …… 지금 값 -->
   <div class="top">
-    <div class="logo2"><span class="t0">인귀혈맹 RPG</span><span class="t1">블러드<b>패</b>스</span></div>
+    <div class="tabs" role="tablist"><label><input type="radio" name="tab" value="c" checked><span>캐릭터 시트<select id="stype" aria-label="시트 종류"><option value="h">(인간)</option><option value="v">(흡혈귀)</option><option value="e">(에너미)</option></select></span></label><label class="pc-only"><input type="radio" name="tab" value="r"><span>레코드 시트</span></label></div>
+    <label class="chip hadv pc-only"><input type="checkbox" class="ck" id="adv" checked>상급자용</label>
     <div class="hud"><span class="pc-only">내구치 <b id="hdur">18</b>/<i id="hmax">26</i></span><span class="pc-only">강도 <b id="hlv">2</b></span><span class="pc-only">손패 <b id="handn">4</b></span><span class="pc-only">혈위 <b id="blv">1</b></span><span class="pc-only">조사 <b id="hprog">4</b>/15</span><span class="e-only">생명력 <b id="helife">6</b>/<i id="helmax">9</i></span><span class="e-only">선제치 <b id="heini">17</b></span></div>
-    <div class="tabs pc-only" role="tablist"><label><input type="radio" name="tab" value="c" checked><span>캐릭터 시트</span></label><label><input type="radio" name="tab" value="r"><span>레코드 시트</span></label></div>
-    <span class="etab e-only">에너미 시트</span>
-    <div class="kind">
-      <span class="seg" role="radiogroup" aria-label="시트 종류"><label><input type="radio" name="stype" value="h" checked><span>인간</span></label><label><input type="radio" name="stype" value="v"><span>흡혈귀</span></label><label><input type="radio" name="stype" value="e"><span>에너미</span></label></span>
-      <label class="chip pc-only"><input type="checkbox" class="ck" id="adv" checked>상급자용</label>
-    </div>
   </div>
 
   <!-- 카드 패드 (두 탭 공통: 조사 · 특기 · 혈위의 대가) -->
@@ -416,7 +386,6 @@ textarea{resize:none;display:block}
       </div>
       <!-- 오른쪽 쪽 -->
       <div class="col">
-        <div class="logo3"><div class="t0">인귀혈맹 RPG</div><div class="t1">블러드<b>패</b>스</div></div>
         <div class="bx scar adv">
           <div class="hb">상호</div>
           <div class="kv"><b>상호명</b><span><input type="text" value="달을 쏘는 자" aria-label="상호명"></span><b>설정</b><span><textarea class="ag" aria-label="상호 설정">사냥한 흡혈귀의 수만큼 탄피를 모은다.</textarea></span></div>
@@ -666,10 +635,11 @@ function useRow(tr, kind, isBl) {
 $('gmb').onclick = () => card({ title: 'GM 에게', head: '귓속말', eff: '레이와의 교류 장면을 먼저 하고 싶어요.', to: 'GM 에게' });
 
 // ── 시트 종류 · 옵션 · 탭 · 혈계 2 접기 · 내구치 (머리 값과 이어짐)
-document.querySelectorAll('input[name=stype]').forEach(r => r.onchange = () => {
-  sheet.dataset.t = r.value;
-  if (r.value === 'e') { sheet.dataset.tab = 'c'; document.querySelector('input[name=tab][value=c]').checked = true; } else { renderAbl(); renderBL(); }
-});
+$('stype').onchange = () => {
+  const v = $('stype').value; sheet.dataset.t = v;
+  sheet.dataset.tab = 'c'; document.querySelector('input[name=tab][value=c]').checked = true;
+  if (v !== 'e') { renderAbl(); renderBL(); }
+};
 document.querySelectorAll('input[name=tab]').forEach(r => r.onchange = () => { sheet.dataset.tab = r.value; });
 $('adv').onchange = e => { sheet.dataset.adv = e.target.checked ? '1' : '0'; };
 $('trio').onclick = () => { const on = sheet.dataset.trio !== '1'; sheet.dataset.trio = on ? '1' : '0'; $('trio').setAttribute('aria-expanded', on); };

@@ -342,8 +342,8 @@ body.sheet-darkmode .bi .logo select{color:#ffffff}
 .bi .pip.p6 i:nth-child(5){left:calc(28% - 1.5px);top:calc(78% - 1.5px)}
 .bi .pip.p6 i:nth-child(6){left:calc(72% - 1.5px);top:calc(78% - 1.5px)}
 
-/* auto height text fields (roll20kit/autogrow.py): the hidden mirror span of the same attribute sets the height, the textarea covers it */
-.bi div.auto{position:relative;display:block;width:100%;min-width:0;flex:1 1 auto;align-self:stretch}
+/* auto height text fields (roll20kit/autogrow.py): the hidden mirror span and the textarea share one grid cell, field-sizing grows it while typing */
+.bi div.auto{position:relative;display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-width:0;flex:1 1 auto;align-self:stretch}
 .bi span.mir{display:block;width:100%;min-width:0;margin:0;padding:0 4px;background:transparent;color:var(--ink);border:0;border-radius:0;box-shadow:none;font:inherit;line-height:1.4;outline:0}
 body.sheet-darkmode .bi span.mir{background-color:transparent;color:var(--ink)}
 .bi .link span.mir{min-height:34px;margin:1px 0 0;font-size:10.5px;line-height:1.4}
@@ -351,7 +351,8 @@ body.sheet-darkmode .bi span.mir{background-color:transparent;color:var(--ink)}
 .bi .pq span.mir{font-size:12px;line-height:1.45;min-height:44px;padding:3px 4px;background:var(--cell)}
 .bi .cos .cr span.mir{font-size:11.5px;line-height:1.45;min-height:22px;min-height:24px;padding:2px 4px}
 .bi .uinfo .um span.mir{min-height:110px;font-size:13px;line-height:1.6;padding:4px 6px;background:var(--cell)}
-.bi div.auto > span.mir{display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;pointer-events:none}
+.bi div.auto > span.mir{grid-area:1/1;display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;pointer-events:none}
 .bi div.auto > span.mir::after{content:"."}
-.bi div.auto > textarea.at{position:absolute;top:0;left:0;width:100%;height:100%;min-height:0;margin:0;overflow:hidden;resize:none}
+.bi div.auto > textarea.at{grid-area:1/1;align-self:stretch;position:static;width:100%;height:auto;min-height:0;margin:0;overflow:hidden;resize:none;field-sizing:content}
+.bi div.auto > textarea.at:focus{overflow-y:auto}
 /* end auto height text fields */

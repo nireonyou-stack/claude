@@ -44,6 +44,10 @@
 - 아이콘 단추(주사위 · 말풍선 등)는 `.루트 button[type=action].dic` 처럼 쓴다 — 리셋 `.루트 button[type=action]`(0,2,1) 이 `.루트 .dic`(0,2,0) 을 이겨 테두리 · 무늬가 사라진다 (시노비가미)
 - 반복 섹션 아래 Roll20 이 `Modify` · `+Add` 단추(`.repcontrol`)를 붙인다 — 시트 모양에 맞게 다시 그린다 (9416a6d)
 - **시트 폭은 830px** 기준. 넘치면 오른쪽 칸이 밀려난다 (cdb5625)
+- 폭에 따라 배치를 바꾸는 `@media` · `@container` 는 못 쓴다 (1장 — at-rule 이 있으면 채팅 카드 CSS 가 통째로 빠짐). 넓은 창에서는 그리드 · flex 가 늘어나게만 (블러드패스 목업에서 뺌, 2026-11-28)
+- 글만큼 늘어나는 textarea(`roll20kit/autogrow.py`): Roll20 은 같은 속성 span 을 **칸을 벗어날 때(change)** 채운다 → 치는 동안은 칸이 그대로라 Enter 로 만든 줄이 숨어 '줄바꿈이 안 된다'로 보인다 (2026-11-28 사용자 지적).
+  span 과 textarea 를 grid 한 칸에 겹치고 textarea 에 `field-sizing:content` · `rows="1"` → Chrome · Edge 123+ 는 치는 동안 늘어나고, 그 밖은 치는 동안 스크롤 막대 → 벗어나면 늘어남.
+  확인: Enter 로 여러 줄을 쳐서 치는 동안 · 벗어난 뒤 둘 다 넘침이 없는지 (9개 시트 모두 통과)
 
 ## 4. HTML · 워커
 
@@ -61,6 +65,7 @@
 
 
 - 폴더: `<시트 이름>/` 에 html · css · sheet.json · 미리보기 png (+ images/)
+- 미리보기 png 는 **견본 값 없는 빈 시트**로 찍는다 (견본 값은 AI 가 만든 티가 난다 — 2026-11-28 사용자 요청). 가상 Roll20(view.js)의 시트 iframe 을 내용 높이만큼, 폭 870px
 - ✔ sheet.json: html · css · authors · roll20userid · preview · instructions · legacy
 - 포크 `sai-korokoro/Blood-Moon-Korean-` 에 upstream master 에서 새 브랜치 → 사용자가 compare 링크로 PR
 - 커밋 제목 꼴: `[시트 이름] New Sheet: …` · `[시트 이름] Bugfix: …`

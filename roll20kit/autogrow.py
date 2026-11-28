@@ -2,6 +2,9 @@
 
 Roll20 에서 흔히 쓰는 방식: 같은 속성을 보여 주는 숨은 span(.mir)이 높이를 잡고, textarea 가 그 위를 덮는다.
 워커 없이 Roll20 이 span 글을 속성 값으로 채워 주므로 줄바꿈 · 긴 글만큼 칸이 커진다.
+다만 Roll20 은 span 을 칸을 벗어날 때(change) 채우므로, 치는 동안에는 칸이 그대로라 Enter 로 만든 줄이 숨어 버린다 (2026-11-28 사용자 지적).
+→ span 과 textarea 를 grid 한 칸에 겹치고 textarea 에 field-sizing:content 를 준다: 지원하는 브라우저(Chrome · Edge 123+)는 치는 동안
+  textarea 자체가 늘어 칸을 밀고, 아닌 곳은 치는 동안 스크롤 막대 → 칸을 벗어나면 span 이 높이를 잡는다. at-rule(@supports) 없이.
 
     wrap(html)       시트 부분의 <textarea name="attr_X" class="c" …>…</textarea> 를
                      <div class="auto"><span class="mir c" name="attr_X"></span><textarea class="at c" …>…</textarea></div> 로 감싼다.
@@ -31,6 +34,8 @@ def wrap(html):
         else:
             attrs = ' class="at"' + attrs
         only = ' '.join(c for c in extra.split() if c.endswith('-only'))   # 시트 종류별로 숨기는 class 는 감싸개에도
+        if not re.search(r'\brows=', attrs):   # 겹친 칸에서 textarea 기본 높이(2줄)가 최소 높이를 넘지 않게
+            attrs += ' rows="1"'
         return (f'<div class="auto{(" " + only) if only else ""}"><span class="mir{(" " + extra) if extra else ""}" name="{name.group(1)}"></span>'
                 f'<textarea{attrs}>{inner}</textarea></div>')
 
@@ -75,11 +80,12 @@ def css(text, root):
         decls = _mirror_decls(m.group(2))
         if decls:
             extra.append(','.join(re.sub(r'(^|(?<=[\s>+~]))textarea\b', 'span.mir', s) for s in hit) + '{' + decls + '}')
-    base = (f'\n{START}: the hidden mirror span of the same attribute sets the height, the textarea covers it */\n'
-            f'{root} div.auto{{position:relative;display:block;width:100%;min-width:0;flex:1 1 auto;align-self:stretch}}\n'
+    base = (f'\n{START}: the hidden mirror span and the textarea share one grid cell, field-sizing grows it while typing */\n'
+            f'{root} div.auto{{position:relative;display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-width:0;flex:1 1 auto;align-self:stretch}}\n'
             + '\n'.join(extra) + '\n'
-            f'{root} div.auto > span.mir{{display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;pointer-events:none}}\n'
+            f'{root} div.auto > span.mir{{grid-area:1/1;display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;pointer-events:none}}\n'
             f'{root} div.auto > span.mir::after{{content:"."}}\n'
-            f'{root} div.auto > textarea.at{{position:absolute;top:0;left:0;width:100%;height:100%;min-height:0;margin:0;overflow:hidden;resize:none}}\n'
+            f'{root} div.auto > textarea.at{{grid-area:1/1;align-self:stretch;position:static;width:100%;height:auto;min-height:0;margin:0;overflow:hidden;resize:none;field-sizing:content}}\n'
+            f'{root} div.auto > textarea.at:focus{{overflow-y:auto}}\n'
             f'{END}\n')
     return text.rstrip() + '\n' + base

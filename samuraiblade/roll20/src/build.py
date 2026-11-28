@@ -54,7 +54,7 @@ def abilities():
         cells = ''.join(f'<span{AN if k == "name" else ""}><input type="text" name="attr_ab{lv}_{k}" title="{t}"></span>'
                         for k, t in [('name', '어빌리티'), ('cond', '조건'), ('timing', '타이밍'), ('skill', '기능'), ('range', '간격'), ('target', '대상'), ('count', '회수')])
         out.append(f'<div class="ar"><span><button type="action" class="dic" name="act_ab{lv}" title="판정"></button></span><span class="lv">{lv}</span>{cells}'
-                   f'<span class="ef"><div class="auto"><span class="mir" name="attr_ab{lv}_effect"></span><textarea name="attr_ab{lv}_effect" title="효과"></textarea></div></span>'
+                   f'<span class="ef"><div class="auto"><span class="mir" name="attr_ab{lv}_effect"></span><textarea name="attr_ab{lv}_effect" title="효과" rows="1"></textarea></div></span>'
                    f'<span class="cks">' + ''.join(f'<input type="checkbox" class="ck" name="attr_ab{lv}_u{k}" value="1" title="사용함">' for k in (1, 2, 3)) + '</span></div>')
     return '\n'.join(out)
 

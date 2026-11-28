@@ -276,8 +276,8 @@ body.sheet-darkmode .kd .title select{color:#ffffff}
 .kd .tok .hv[value="5"] ~ button[type=action].sk:nth-of-type(-n+5){background-color:var(--accent);border-color:var(--accent);--eye:#ffffff}
 .kd .tok .hv[value="6"] ~ button[type=action].sk:nth-of-type(-n+6){background-color:var(--accent);border-color:var(--accent);--eye:#ffffff}
 
-/* auto height text fields (roll20kit/autogrow.py): the hidden mirror span of the same attribute sets the height, the textarea covers it */
-.kd div.auto{position:relative;display:block;width:100%;min-width:0;flex:1 1 auto;align-self:stretch}
+/* auto height text fields (roll20kit/autogrow.py): the hidden mirror span and the textarea share one grid cell, field-sizing grows it while typing */
+.kd div.auto{position:relative;display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-width:0;flex:1 1 auto;align-self:stretch}
 .kd span.mir{display:block;width:100%;min-width:0;margin:0;padding:0 4px;background:transparent;color:var(--ink);border:0;border-radius:0;box-shadow:none;font:inherit;line-height:1.4;outline:0}
 body.sheet-darkmode .kd span.mir{background-color:transparent;color:var(--ink)}
 body.sheet-darkmode .kd .sub span.mir,body.sheet-darkmode .kd .slug span.mir{background-color:var(--cell)}
@@ -287,7 +287,8 @@ body.sheet-darkmode .kd .sub span.mir,body.sheet-darkmode .kd .slug span.mir{bac
 .kd .sub span.mir{min-height:44px;font-size:12px;line-height:1.45;background:var(--cell);padding:3px 5px}
 .kd .st span.mir{min-height:40px;font-size:12px;line-height:1.45;background:var(--cell);padding:3px 5px}
 .kd .memo span.mir{min-height:70px;font-size:12px;line-height:1.5;padding:6px}
-.kd div.auto > span.mir{display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;pointer-events:none}
+.kd div.auto > span.mir{grid-area:1/1;display:block;visibility:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;pointer-events:none}
 .kd div.auto > span.mir::after{content:"."}
-.kd div.auto > textarea.at{position:absolute;top:0;left:0;width:100%;height:100%;min-height:0;margin:0;overflow:hidden;resize:none}
+.kd div.auto > textarea.at{grid-area:1/1;align-self:stretch;position:static;width:100%;height:auto;min-height:0;margin:0;overflow:hidden;resize:none;field-sizing:content}
+.kd div.auto > textarea.at:focus{overflow-y:auto}
 /* end auto height text fields */
