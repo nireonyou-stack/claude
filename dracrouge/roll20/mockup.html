@@ -22,7 +22,7 @@ textarea{resize:none;display:block}
 .sheet[data-t=k] .h-only,.sheet[data-t=h] .k-only{display:none}
 
 /* ── 시트 ── */
-.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:10px}
+.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
 .bx{border:1.5px solid var(--ink);min-width:0}
 .vt{writing-mode:vertical-rl;text-orientation:upright;background:var(--bar);color:#fff;font:700 13px/1 var(--serif);letter-spacing:.35em;display:flex;align-items:center;justify-content:center;width:26px;flex:none;padding:6px 0}
 .fl{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;border-bottom:1px solid var(--line);min-height:26px}
@@ -33,6 +33,7 @@ textarea{resize:none;display:block}
 .btn:hover{border-color:var(--rouge);color:var(--rouge)}
 .btn.dk{background:var(--ink);color:#fff}
 .btn.dk:hover{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.btn:disabled{opacity:.4;cursor:default;border-color:var(--ink);color:var(--ink)}
 .seg{display:inline-flex;border:1px solid #fff}
 .seg label{cursor:pointer}
 .seg input{position:absolute;opacity:0;width:0;height:0}
@@ -50,56 +51,64 @@ textarea{resize:none;display:block}
 .pgh{display:flex;align-items:center;gap:8px;font:800 14px var(--serif);border-bottom:2px solid var(--ink);padding-bottom:3px}
 .pgh small{font:500 11px var(--sans);color:var(--sub)}
 
-/* 1쪽: 초상화 | 외견 · 과거 */
-.r1,.r2{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:10px;align-items:stretch}
-.portrait{border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:3px;margin:4px;position:relative;min-height:330px;background:repeating-linear-gradient(45deg,#f3f0f1 0 8px,#faf9f9 8px 16px);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
-.portrait b{position:absolute;left:8px;top:6px;font:700 12px var(--serif);color:var(--ink)}
+/* 1쪽: 세션 중 덜 보는 곳이라 얇게 — 그림 · 이름 띠(작은 초상화 · 이름 칸 · 작은 문장) / 외견 · 과거 / 일화 표 */
+.idb{display:grid;grid-template-columns:112px minmax(0,1fr) 120px;gap:8px;align-items:stretch}
+.pt{border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:2px;margin:3px;min-height:140px;background:repeating-linear-gradient(45deg,#f3f0f1 0 7px,#faf9f9 7px 14px);display:flex;align-items:flex-start;padding:4px 6px;font:700 11px var(--serif);color:var(--sub)}
+.idm{display:flex;flex-direction:column;border:1.5px solid var(--ink)}
+.idm .ttl{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;border-bottom:1px solid var(--line);padding:2px 0 0}
+.idm .ttl b{font:500 10.5px var(--sans);color:var(--sub);padding:0 6px}
+.idm .ttl input{height:22px;font:700 12.5px var(--serif)}
+.idm .nmi{font:800 22px/1.2 var(--serif);height:40px;padding:0 8px;border-bottom:1px solid var(--line)}
+.lin{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr)}
+.lin>b{font:500 10.5px var(--sans);color:var(--sub);padding:0 6px;display:flex;align-items:center;white-space:nowrap}
+.lin>input{height:26px;border-bottom:1px solid var(--line);font-weight:700}
+.lin:last-child>input{border-bottom:0}
+.lin.one{grid-template-columns:auto minmax(0,1fr)}
+.crest{display:flex;flex-direction:column;border:1.5px solid var(--ink)}
+.crest .hd{display:flex;align-items:center;padding:2px 4px 0 6px;font:700 11px var(--serif)}
+.crest .hd .sp{flex:1}
+.crest .ic{width:20px;height:20px;border:1px solid var(--line);background:#fff;cursor:pointer;position:relative;padding:0}
+.crest .ic::before{content:"";position:absolute;left:4px;top:5px;width:10px;height:8px;border:1.5px solid var(--sub);border-radius:1px}
+.crest .ic::after{content:"";position:absolute;left:7px;top:8px;width:5px;height:3px;border-top:1.5px solid var(--sub);transform:skewY(-30deg)}
+.crest .ic:hover{border-color:var(--rouge)}
+.crest .url{display:none;padding:0 4px 3px}
+.crest .url input{border-bottom:1px solid var(--line);height:20px;font-size:10.5px;padding:0 2px}
+.crest.open .url{display:block}
+.crest .art{flex:1;display:flex;align-items:center;justify-content:center;padding:3px 0}
+.shield{width:72px;height:84px;clip-path:polygon(9% 0,91% 0,100% 9%,100% 56%,50% 100%,0 56%,0 9%);background:#b9b3b5;padding:1.5px}
+.shield>div{width:100%;height:100%;clip-path:inherit;background:repeating-linear-gradient(45deg,#f3f0f1 0 6px,#faf9f9 6px 12px)}
+.sheet[data-t=h] .shield{width:84px;height:84px;clip-path:none;border-radius:2px}
+.crest .fl{border-top:1px solid var(--line);min-height:24px}
+.crest .fl input{height:22px}
+.p2r{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:8px}
 .blk{display:flex}
 .blk>.bx{flex:1;border-left:0}
-.eye{display:grid;grid-template-columns:minmax(0,1fr) 84px}
-.eye .sx{border-left:1px solid var(--line);border-bottom:1px solid var(--line);grid-row:span 2;display:flex;flex-direction:column}
-.eye .sx b{font:500 11px var(--sans);color:var(--sub);padding:3px 6px 0}
+.blk .vt{font-size:11.5px;width:22px}
+.g{display:grid;border-bottom:1px solid var(--line);min-height:26px;align-items:center}
+.g:last-child{border-bottom:0}
+.g>b{font:500 10.5px var(--sans);color:var(--sub);padding:0 4px 0 6px;white-space:nowrap}
+.g>input{height:24px;min-width:0}
+.g>i{font-style:normal;font-size:10.5px;color:var(--sub);padding-right:6px}
+.g3{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr) auto 52px}
+.g2{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr)}
+.g1{grid-template-columns:auto minmax(0,1fr)}
+.gy{grid-template-columns:auto minmax(0,1fr) auto 40px auto}
+.gy input.n{text-align:right;font-weight:700}
+.g textarea{font-size:12px;line-height:1.5;padding:4px 5px}
 /* 성별: 비어 있을 때만 밑줄 (입력칸인 걸 알 수 있게) */
-.eye .sx input{flex:1;text-align:center;font-weight:700;margin:4px 8px 6px;width:auto;border-bottom:1.5px solid transparent}
-.eye .sx input:placeholder-shown{border-bottom-color:#a59ea1}
-.sign textarea{min-height:58px;padding:4px 6px;font-size:12px;line-height:1.55}
-.yr{display:grid;grid-template-columns:auto minmax(0,1fr) auto 44px auto;align-items:center}
-.yr i{font-style:normal;font-size:11px;color:var(--sub);padding:0 6px 0 2px}
-.yr input.n{text-align:right;font-weight:700}
-
-/* 1쪽: 이름 · 과거 | 외견 */
-.nmcol{display:flex;flex-direction:column;gap:6px}
-.nm-big{display:flex;flex-direction:column;min-height:70px}
-.nm-big b{font:500 11px var(--sans);color:var(--sub);padding:3px 6px 0}
-.nm-big input{font:800 22px/1.3 var(--serif);height:40px;padding:0 8px}
-.lin{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr)}
-.lin>b{font:500 11px var(--sans);color:var(--sub);padding:0 6px;display:flex;align-items:center;white-space:nowrap}
-.lin>input{height:30px;border-bottom:1px solid var(--line);font-weight:700}
-.lin.one{grid-template-columns:auto minmax(0,1fr)}
-.crest{display:flex;flex-direction:column}
-.crest .hd{display:flex;align-items:center;padding:3px 6px;font:700 12px var(--serif)}
-.crest .hd .sp{flex:1}
-.crest .ic{width:22px;height:22px;border:1px solid var(--line);background:#fff;cursor:pointer;position:relative;padding:0}
-.crest .ic::before{content:"";position:absolute;left:5px;top:6px;width:10px;height:8px;border:1.5px solid var(--sub);border-radius:1px}
-.crest .ic::after{content:"";position:absolute;left:8px;top:9px;width:5px;height:3px;border-top:1.5px solid var(--sub);transform:skewY(-30deg)}
-.crest .ic:hover{border-color:var(--rouge)}
-.crest .url{display:none;padding:0 6px 4px}
-.crest .url input{border-bottom:1px solid var(--line);height:22px;font-size:11px}
-.crest.open .url{display:block}
-.crest .art{flex:1;display:flex;align-items:center;justify-content:center;padding:6px 0 12px;min-height:250px}
-.shield{width:200px;height:230px;clip-path:polygon(9% 0,91% 0,100% 9%,100% 56%,50% 100%,0 56%,0 9%);background:#b9b3b5;padding:2px}
-.shield>div{width:100%;height:100%;clip-path:inherit;background:repeating-linear-gradient(45deg,#f3f0f1 0 8px,#faf9f9 8px 16px);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10.5px;color:var(--sub)}
-.sheet[data-t=h] .shield{width:250px;height:230px;clip-path:none;border-radius:2px}
-.crest .fl{border-top:1px solid var(--line);border-bottom:0}
-
-/* 일화 다섯 */
-.eps{display:flex;flex-direction:column;gap:5px}
-.ep{display:grid;grid-template-columns:44px minmax(0,1fr) 44px minmax(0,1.4fr);border:1.5px solid var(--ink)}
-.ep>b{background:var(--bar);color:#fff;font:700 12px var(--serif);display:flex;align-items:center;justify-content:center}
-.ep>input{height:26px;border-bottom:1px solid var(--line)}
-.ep>.ef{grid-column:2/-1}
-.ep>b.e2{border-top:1px solid #444}
-
+.g input.sx{text-align:center;font-weight:700;margin:0 6px;width:auto;height:20px;border-bottom:1.5px solid transparent}
+.g input.sx:placeholder-shown{border-bottom-color:#a59ea1}
+/* 일화: 한 줄에 일화 · 내용 · 효과 (글만큼 늘어남) */
+.eps{border:1.5px solid var(--ink)}
+.eh,.er{display:grid;grid-template-columns:22px 170px minmax(0,1fr) minmax(0,1.35fr)}
+.eh{background:var(--bar);color:#fff;font:700 11.5px var(--serif)}
+.eh span{padding:2px 6px}
+.er{border-top:1px solid var(--line);min-height:26px}
+.er>*{display:flex;align-items:center;min-width:0}
+.er>*+*{border-left:1px solid var(--line)}
+.er .no{justify-content:center;font:700 10.5px var(--sans);color:var(--sub)}
+.er input{height:25px;font-weight:700}
+.er textarea{font-size:12px;line-height:1.45;padding:4px 6px;min-height:25px}
 /* 2쪽: 유대 */
 .bwrap{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px}
 .bond{border:1.5px solid var(--ink);display:flex;flex-direction:column}
@@ -227,7 +236,7 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">드라크루주 — Roll20 시트 목업</h1>
-<p class="pg">공식 「상야국 RPG 드라크루주」 캐릭터 시트 두 장(1쪽 기사 · 2쪽 유대와 행위)을 Roll20 830px 한 장에 차례로 옮긴 배치예요. 머리줄에서 <b>기사 / 이단</b>(헬레티카 누아르)을 고르면 이름이 다른 칸이 바뀌어요. 유대 칸을 누르면 내용(누아르 멸 · 질 · 욕 · 노 · 살 · 원 / 루주 연 · 우 · 신 · 애 · 경 · 주)을 고르고, 대상 양옆 작은 칸을 누르면 「지워지지 않는 유대」로 칠해져요. 다섯 칸이 차면 「가득」 단추가 나와요. 「행위 판정」을 굴리면 눈이 「눈 배정」 줄에 남아요 — 눈을 눌러 고르고 행위 줄의 ▶ 를 누르면 그 눈의 합으로 발동을 판정하고, 쓴 눈은 흐려져요. 값은 예시예요.</p>
+<p class="pg">공식 「상야국 RPG 드라크루주」 캐릭터 시트 두 장(1쪽 기사 · 2쪽 유대와 행위)을 Roll20 830px 한 장에 차례로 옮긴 배치예요. 머리줄에서 <b>기사 / 이단</b>(헬레티카 누아르)을 고르면 이름이 다른 칸이 바뀌어요. 1쪽(그림 · 프로필 · 일화)은 세션 중 덜 보는 곳이라 얇게 줄였어요. 유대 칸을 누르면 내용(누아르 멸 · 질 · 욕 · 노 · 살 · 원 / 루주 연 · 우 · 신 · 애 · 경 · 주)을 고르고, 대상 양옆 작은 칸을 누르면 「지워지지 않는 유대」로 칠해져요. 다섯 칸이 차면 「가득」 단추가 나와요. 「행위 판정」을 굴리면 눈이 「눈 배정」 줄에 남아요 — 눈을 눌러 고르고 행위 줄의 ▶ 를 누르면 그 눈의 합으로 발동을 판정하고, 쓴 눈은 흐려져요. 값은 예시예요.</p>
 
 <div class="wrap">
 <div class="scroll"><div class="sheet" id="sheet" data-t="k">
@@ -240,43 +249,35 @@ textarea{resize:none;display:block}
 
   <!-- ── 1쪽 ── -->
   <div class="pgh">1쪽 <small><span class="k-only">기사</span><span class="h-only">이단</span></small></div>
-  <div class="r1">
-    <div class="portrait"><b>초상화</b>그림 (Roll20 아바타)</div>
-    <div class="bx crest" id="crest">
+  <div class="idb">
+    <div class="pt">초상화</div>
+    <div class="idm">
+      <div class="ttl"><b>이명</b><input type="text" value="철벽의" aria-label="이명"></div>
+      <input class="nmi" type="text" id="cname" value="레오폴트 폰 드라크" aria-label="이름">
+      <div class="lin"><b>혈통</b><input type="text" value="드라크" aria-label="혈통"><b class="k-only">가문</b><b class="h-only"></b><input type="text" value="솟구치는 용" aria-label="가문"></div>
+      <div class="lin k-only"><b>길</b><input type="text" id="road" value="영주" aria-label="길"><b>상징</b><input type="text" value="성벽" aria-label="상징"></div>
+      <div class="lin one h-only"><b>길</b><input type="text" id="road2" value="이단" aria-label="길"></div>
+    </div>
+    <div class="crest" id="crest">
       <div class="hd"><span class="k-only">문장</span><span class="h-only">각인</span><span class="sp"></span><button type="button" class="ic" id="cimg" aria-label="그림 주소" title="그림 주소 넣기"></button></div>
-      <div class="url"><input type="text" placeholder="그림 주소 (https://…)" aria-label="문장 그림 주소"></div>
-      <div class="art"><div class="shield"><div><span>그림 주소를 넣으면<br><span class="k-only">방패 모양으로 잘라</span><span class="h-only">이 칸에 맞춰</span> 보여 줌</span></div></div></div>
+      <div class="url"><input type="text" placeholder="그림 주소" aria-label="문장 그림 주소"></div>
+      <div class="art"><div class="shield"><div></div></div></div>
       <div class="fl"><b>색채</b><input type="text" value="칠흑" aria-label="색채"></div>
     </div>
   </div>
-  <div class="r2">
-    <div class="nmcol">
-      <div class="bx fl"><b>이명</b><input type="text" value="철벽의" aria-label="이명"></div>
-      <div class="bx nm-big"><b>이름</b><input type="text" id="cname" value="레오폴트 폰 드라크" aria-label="이름"></div>
-      <div class="bx">
-        <div class="lin"><b>혈통</b><input type="text" value="드라크" aria-label="혈통"><b class="k-only">가문</b><b class="h-only"></b><input type="text" value="솟구치는 용" aria-label="가문"></div>
-        <div class="lin k-only"><b>길</b><input type="text" id="road" value="영주" aria-label="길"><b>상징</b><input type="text" value="성벽" aria-label="상징"></div>
-        <div class="lin one h-only"><b>길</b><input type="text" id="road2" value="이단" aria-label="길"></div>
-      </div>
-      <div class="blk"><div class="vt">과거</div><div class="bx">
-        <div class="fl"><b><span class="k-only">원풍경</span><span class="h-only">원죄</span></b><input type="text" value="불타는 성문" aria-label="원풍경 · 원죄"></div>
-        <div class="fl yr"><b><span class="k-only">서훈</span><span class="h-only">수난</span></b><input type="text" value="전장에서" aria-label="서훈 · 수난"><b><span class="k-only">서훈연령</span><span class="h-only">외견연령</span></b><input class="n" type="text" value="19" aria-label="서훈연령 · 외견연령"><i>세</i></div>
-        <div class="fl yr"><b><span class="k-only">서훈 후</span><span class="h-only">경력</span></b><input type="text" value="영지를 받다" aria-label="서훈 후 · 경력"><b><span class="k-only">기사력</span><span class="h-only">활동햇수</span></b><input class="n" type="text" value="120" aria-label="기사력 · 활동햇수"><i>년</i></div>
-      </div></div>
-    </div>
-    <div class="blk"><div class="vt">외견</div><div class="bx" style="display:flex;flex-direction:column">
-      <div class="eye">
-        <div class="fl"><b>눈동자 색</b><input type="text" value="진홍" aria-label="눈동자 색"></div>
-        <div class="sx"><b>성별</b><input type="text" placeholder=" " aria-label="성별"></div>
-        <div class="fl"><b>머리카락 색</b><input type="text" value="백금" aria-label="머리카락 색"></div>
-      </div>
-      <div class="fl"><b>특징 1</b><input type="text" value="왼손의 인장 반지" aria-label="특징 1"></div>
-      <div class="fl"><b>특징 2</b><input type="text" value="늘 장갑을 낀다" aria-label="특징 2"></div>
-      <div class="fl"><b><span class="k-only">타락의 조짐</span><span class="h-only">이상</span></b><input type="text" aria-label="타락의 조짐 · 이상"></div>
-      <div class="sign" style="flex:1"><textarea class="ag" aria-label="타락의 조짐 · 이상 (이어서)"></textarea></div>
+  <div class="p2r">
+    <div class="blk"><div class="vt">외견</div><div class="bx">
+      <div class="g g3"><b>눈동자 색</b><input type="text" value="진홍" aria-label="눈동자 색"><b>머리카락 색</b><input type="text" value="백금" aria-label="머리카락 색"><b>성별</b><input class="sx" type="text" placeholder=" " aria-label="성별"></div>
+      <div class="g g2"><b>특징 1</b><input type="text" value="왼손의 인장 반지" aria-label="특징 1"><b>특징 2</b><input type="text" value="늘 장갑을 낀다" aria-label="특징 2"></div>
+      <div class="g g1"><b><span class="k-only">타락의 조짐</span><span class="h-only">이상</span></b><span><textarea class="ag" aria-label="타락의 조짐 · 이상"></textarea></span></div>
+    </div></div>
+    <div class="blk"><div class="vt">과거</div><div class="bx">
+      <div class="g g1"><b><span class="k-only">원풍경</span><span class="h-only">원죄</span></b><input type="text" value="불타는 성문" aria-label="원풍경 · 원죄"></div>
+      <div class="g gy"><b><span class="k-only">서훈</span><span class="h-only">수난</span></b><input type="text" value="전장에서" aria-label="서훈 · 수난"><b><span class="k-only">서훈연령</span><span class="h-only">외견연령</span></b><input class="n" type="text" value="19" aria-label="서훈연령 · 외견연령"><i>세</i></div>
+      <div class="g gy"><b><span class="k-only">서훈 후</span><span class="h-only">경력</span></b><input type="text" value="영지를 받다" aria-label="서훈 후 · 경력"><b><span class="k-only">기사력</span><span class="h-only">활동햇수</span></b><input class="n" type="text" value="120" aria-label="기사력 · 활동햇수"><i>년</i></div>
     </div></div>
   </div>
-  <div class="eps" id="eps"></div>
+  <div class="eps"><div class="eh"><span></span><span>일화</span><span>내용</span><span>효과</span></div><div id="eps"></div></div>
 
   <!-- ── 2쪽 ── -->
   <div class="pgh">2쪽 <small>유대 · 행위</small></div>
@@ -309,6 +310,7 @@ textarea{resize:none;display:block}
       <span class="tray" id="tray"><span class="hint">행위 판정을 굴리면 여기에 눈이 남아요</span></span>
       <span class="sp"></span>
       <span class="tsum" id="tsum"></span>
+      <button class="btn" type="button" id="tclr" title="남은 눈을 지움 (실제 시트: 저장한 굴림 값을 비움)">비우기</button>
     </div>
   </div>
 
@@ -358,7 +360,7 @@ function autoGrow(root = document) {
 
 // ── 일화 다섯 (예시: 공식 샘플 「드라크의 영주」)
 const EP = [['우아 / 자수 리본', '문장에 붙은 리본. 공작가 당주와 가깝다는 증거', '[일상의 막] · [종막]에서 라운드마다 [저항 판정]을 1회 다시 굴릴 수 있다.'], ['', '', ''], ['', '', ''], ['', '', ''], ['', '', '']];
-$('eps').innerHTML = EP.map(([a, b, c], i) => `<div class="ep"><b>일화</b><input type="text" value="${esc(a)}" aria-label="일화 ${i + 1}"><b>내용</b><input type="text" value="${esc(b)}" aria-label="일화 ${i + 1} 내용"><b class="e2">효과</b><span class="ef"><textarea class="ag" aria-label="일화 ${i + 1} 효과">${esc(c)}</textarea></span></div>`).join('');
+$('eps').innerHTML = EP.map(([a, b, c], i) => `<div class="er"><span class="no">${i + 1}</span><span><input type="text" value="${esc(a)}" aria-label="일화 ${i + 1}"></span><span><textarea class="ag" aria-label="일화 ${i + 1} 내용">${esc(b)}</textarea></span><span><textarea class="ag" aria-label="일화 ${i + 1} 효과">${esc(c)}</textarea></span></div>`).join('');
 
 // ── 유대 아홉 줄: 누아르 5칸 · 지워지지 않는 유대 칸 · 대상 · 칸 · 루주 5칸
 const NOIR = ['멸', '질', '욕', '노', '살', '원'], ROUGE = ['연', '우', '신', '애', '경', '주'];
@@ -449,6 +451,8 @@ function actRoll({ n, cheer = 0, forced, reroll }) {
   renderTray();
 }
 function renderTray() {
+  $('tclr').disabled = !tray.length;
+  if (!tray.length) { $('tray').innerHTML = '<span class="hint">행위 판정을 굴리면 여기에 눈이 남아요</span>'; $('tsum').innerHTML = ''; return; }
   $('tray').innerHTML = tray.map((d, k) => `<button type="button" class="tc${d.g ? ' g' : ''}${d.add ? ' t' : ''}" data-k="${k}" aria-pressed="${!!d.sel}" ${d.used ? 'disabled' : ''} aria-label="눈 ${d.v}${d.g ? ' (영광의 눈)' : ''}">${d.v}${d.add ? `<small>+${d.add}</small>` : ''}</button>`).join('');
   $('tray').querySelectorAll('.tc').forEach(b => b.onclick = () => { const d = tray[+b.dataset.k]; d.sel = !d.sel; renderTray(); });
   const s = tray.filter(d => d.sel);
@@ -462,6 +466,7 @@ $('act').onclick = () => {
   actRoll({ n: Math.max(1, 4 + c + (+add || 0)), cheer: c });
 };
 $('reroll').onclick = () => { if (lastN) actRoll({ n: lastN, reroll: true }); };
+$('tclr').onclick = () => { tray = []; document.querySelectorAll('.tr.done').forEach(r => r.classList.remove('done')); renderTray(); };
 
 // 행위 ▶ (235 · 236): 고른 눈의 합 = 판정치 ≥ 목표치 → 발동. 쓴 눈은 흐리게(한 눈은 한 행위에만), 같은 행위는 한 판정에 한 번
 function useAct(tr, kind) {

@@ -13,6 +13,9 @@ body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);
 h1.pg{font:900 18px/1.3 var(--sans);margin:0 0 4px;text-wrap:balance}
 p.pg{margin:0 0 12px;color:var(--sub);font-size:12px;max-width:1150px}
 .wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.wctl{display:flex;align-items:center;gap:8px;margin:0 0 10px;font:500 12px var(--sans);flex-wrap:wrap}
+.wctl input{width:260px}
+.wctl button{border:1px solid var(--ink);background:#fff;font:500 11.5px/20px var(--sans);padding:0 8px;cursor:pointer}
 .scroll{overflow-x:auto;max-width:100%}
 input,select,textarea,button{font:inherit;color:inherit}
 input[type=text],input[type=number],textarea{border:0;background:transparent;width:100%;min-width:0;padding:0 4px;outline:0}
@@ -25,7 +28,9 @@ textarea{resize:none;display:block}
 .sheet[data-trio="0"] .trio>:not(.fold){display:none}
 
 /* ── 시트 ── */
-.sheet{width:830px;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
+.sz{container-type:inline-size;width:var(--w,830px);min-width:800px}
+.sheet{width:100%;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
+.logo3,.rhead{display:none}
 .bx{border:1.5px solid var(--ink);display:flex;flex-direction:column;min-width:0}
 .hb{background:var(--bar);color:#fff;font:700 13px/1 var(--sans);padding:5px 8px 4px;display:flex;align-items:center;gap:6px;letter-spacing:.06em}
 .hb small{font:400 10.5px var(--sans);opacity:.8;letter-spacing:0}
@@ -213,6 +218,46 @@ textarea{resize:none;display:block}
 .prog .gold span{background:#c9c9c9;color:var(--ink)}
 .prog .on span{background:var(--accent);color:#fff}
 
+/* ── 창 폭 따라: 기본(~1000px) = 지금 배치 · 넓으면 공식 v2 처럼 · 더 넓으면 레코드 시트까지 나란히 ──
+   실제 시트는 Roll20 시트 창 폭(iframe)을 따라 같은 단계로 바뀜 */
+@container (min-width:1000px){
+  /* 공식 v2: 로고는 오른쪽 쪽 위, 자유란 크게, 혈계 2 늘 펼침, 카드 패드는 아래로 */
+  .top .logo2{display:none}
+  .top{grid-template-columns:auto 1fr}
+  .logo3{display:block;text-align:right;padding:2px 6px 6px;line-height:1}
+  .logo3 .t0{font:700 11px var(--sans);letter-spacing:.3em;color:var(--sub)}
+  .logo3 .t1{font:400 54px/1 var(--brush);letter-spacing:.02em}
+  .logo3 .t1 b{font-weight:400;color:var(--red)}
+  .spread{gap:22px}
+  .pf{grid-template-columns:minmax(0,.9fr) minmax(0,1fr)}
+  .portrait{min-height:170px}
+  .sheet[data-trio="0"] .trio>.sec{display:flex}
+  .sheet[data-trio="0"] .trio>.kv{display:grid}
+  .trio .fold{pointer-events:none}
+  .trio .fold .arr{display:none}
+  .strip{order:9;border-bottom:0;border-top:2px solid var(--ink)}
+}
+@container (min-width:1400px){
+  /* 공식 두 장을 나란히: 캐릭터 시트 | 레코드 시트 (탭 · 머리줄 값은 숨김, 카드 패드는 레코드 쪽 위) */
+  .sheet{display:grid;grid-template-columns:minmax(0,1fr) 390px;grid-template-rows:auto auto 1fr;column-gap:16px;row-gap:8px;align-items:start}
+  .top{grid-column:1/-1}
+  .tabs,.hud{display:none}
+  .top{min-height:6px;padding:0}
+  .pane.c{display:flex;grid-column:1;grid-row:2/4}
+  .strip{grid-column:2;grid-row:2;order:0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+  .pane.r{display:flex;grid-column:2;grid-row:3}
+  .rhead{display:block;font:900 17px var(--sans);border-bottom:2px solid var(--ink);padding-bottom:4px}
+  .rc1{grid-template-columns:minmax(0,1fr) 104px}
+  .rc1>:first-child{grid-column:1/-1}
+  .bpt .th,.bpt .tr{grid-template-columns:30px 22px minmax(0,1fr) 104px}
+  .bpt .th span:nth-child(4){display:none}
+  .bpt .tr .ef{grid-column:3/-1;grid-row:2;border-left:0;border-top:1px dotted var(--line)}
+  .prog{gap:2px;padding:6px 4px}
+  .prog span{padding:0 6px 0 4px;font-size:10.5px}
+  .prog label+label span{padding:0 5px 0 7px}
+  .info{grid-template-columns:1fr}
+}
+
 /* ── 채팅 ── */
 .chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
 .chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
@@ -256,10 +301,11 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">블러드패스 — Roll20 시트 목업</h1>
-<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
+<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. <b>창을 넓히면</b>(아래 막대) 공식 시트에 가까워져요 — 1000px 부터는 공식 v2 처럼(로고는 오른쪽 쪽 위, 혈계 2 늘 펼침, 카드 패드는 아래), 1400px 부터는 레코드 시트가 옆에 나란히 와요. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
 
+<div class="wctl">Roll20 시트 창 폭 <input type="range" id="wr" min="800" max="1800" step="10" value="830" aria-label="시트 창 폭"> <b id="wv">830px</b> <button type="button" data-w="830">기본</button><button type="button" data-w="1150">넓게</button><button type="button" data-w="1500">더 넓게</button></div>
 <div class="wrap">
-<div class="scroll"><div class="sheet" id="sheet" data-t="h" data-adv="1" data-trio="0" data-tab="c">
+<div class="scroll"><div class="sz" id="sz"><div class="sheet" id="sheet" data-t="h" data-adv="1" data-trio="0" data-tab="c">
 
   <!-- 머리: 로고 · 탭 (공식 PDF 두 장) · 지금 값 — 두 탭 공통 -->
   <div class="top">
@@ -362,6 +408,7 @@ textarea{resize:none;display:block}
       </div>
       <!-- 오른쪽 쪽 -->
       <div class="col">
+        <div class="logo3"><div class="t0">인귀혈맹 RPG</div><div class="t1">블러드<b>패</b>스</div></div>
         <div class="bx scar adv">
           <div class="hb">상호</div>
           <div class="kv"><b>상호명</b><span><input type="text" value="달을 쏘는 자" aria-label="상호명"></span><b>설정</b><span><textarea class="ag" aria-label="상호 설정">사냥한 흡혈귀의 수만큼 탄피를 모은다.</textarea></span></div>
@@ -387,6 +434,7 @@ textarea{resize:none;display:block}
 
   <!-- ── 레코드 시트 탭: 공식 레코드 시트 배치 ── -->
   <div class="pane r">
+    <div class="rhead">레코드 시트</div>
     <div class="rc1">
       <div class="bx prof">
         <div class="k">GM</div><div class="v"><input type="text" value="미나토" aria-label="GM 이름"></div>
@@ -416,7 +464,7 @@ textarea{resize:none;display:block}
       <div class="bx"><div class="hb">정보 2</div><div class="kv kv2c"><b>정보 항목명</b><span><input type="text" aria-label="정보 2 항목명"></span><b>개시치</b><span><input type="text" aria-label="정보 2 개시치"></span></div><textarea class="ag imemo" aria-label="정보 2 내용 메모" placeholder="정보의 내용 메모"></textarea></div>
     </div>
   </div>
-</div></div>
+</div></div></div>
 
 <div class="chat"><h2>Roll20 채팅 (예시)</h2><div class="log" id="log"></div></div>
 </div>
@@ -578,6 +626,11 @@ $('trio').onclick = () => { const on = sheet.dataset.trio !== '1'; sheet.dataset
 $('dur').oninput = () => { $('hdur').textContent = $('dur').value; };
 $('dmax').oninput = () => { $('durmax').textContent = $('hmax').textContent = $('dmax').value; };
 $('imax').oninput = () => { $('ini').value = $('imax').value; };
+
+// ── 목업 조작: 시트 창 폭 (실제 시트는 Roll20 창 폭을 따름)
+const setW = w => { $('sz').style.setProperty('--w', w + 'px'); $('wr').value = w; $('wv').textContent = w + 'px'; };
+$('wr').oninput = () => setW(+$('wr').value);
+document.querySelectorAll('.wctl [data-w]').forEach(b => b.onclick = () => setW(+b.dataset.w));
 
 // ── 용어표
 const G1 = [['人鬼血盟RPG', '인귀혈맹 RPG'], ['ブラッドパス', '블러드패스'], ['キャラクターシート（人間/吸血鬼）', '캐릭터 시트 (인간 / 흡혈귀)'], ['上級者用 (傷号欄あり)', '상급자용 (상호 칸)'], ['プレイヤー名', '플레이어'], ['名前 · 年齢 · 性別', '이름 · 나이 · 성별'], ['年齢 外見/実', '나이 외견 / 실제'], ['所属', '소속'], ['過去', '과거'], ['経緯', '경위'], ['喪失 (人間)', '상실'], ['欠落 (吸血鬼)', '결락'], ['外見的特徴', '외견적 특징'], ['住まい', '거처'], ['使用武器', '사용 무기'], ['自由欄（設定・イラストなど）', '자유란 (설정 · 일러스트 등)'],
