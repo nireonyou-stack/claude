@@ -108,6 +108,10 @@ textarea{resize:none;display:block}
 .bpt .tr .ef input{text-align:left}
 .info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .kv.kv2c{grid-template-columns:auto minmax(0,1fr)}
+/* 정보: 조사 진행도가 개시치에 닿으면 「개시」 (254 · 255쪽) */
+.hb .open{font:700 10.5px/18px var(--sans);padding:0 7px;border-radius:2px;letter-spacing:0}
+.hb .open.on{background:var(--accent);color:#fff}
+.hb .open.wait{color:#bdbdbd}
 .imemo{border-top:1px solid var(--line)!important;min-height:64px;padding:4px 8px!important;font-size:12px;line-height:1.55}
 .fold{border:0;width:100%;text-align:left;cursor:pointer}
 .fold .arr{width:0;height:0;border-left:5px solid #fff;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
@@ -438,8 +442,8 @@ textarea{resize:none;display:block}
       <div class="prog" id="prog"></div>
     </div>
     <div class="info">
-      <div class="bx"><div class="hb">정보 1</div><div class="kv kv2c"><b>정보 항목명</b><span><input type="text" value="폐교회의 지하" aria-label="정보 1 항목명"></span><b>개시치</b><span><input type="text" value="6" aria-label="정보 1 개시치"></span></div><textarea class="ag imemo" aria-label="정보 1 내용 메모" placeholder="정보의 내용 메모"></textarea></div>
-      <div class="bx"><div class="hb">정보 2</div><div class="kv kv2c"><b>정보 항목명</b><span><input type="text" aria-label="정보 2 항목명"></span><b>개시치</b><span><input type="text" aria-label="정보 2 개시치"></span></div><textarea class="ag imemo" aria-label="정보 2 내용 메모" placeholder="정보의 내용 메모"></textarea></div>
+      <div class="bx inf"><div class="hb">정보 1<span class="sp"></span><span class="open"></span></div><div class="kv kv2c"><b>정보 항목명</b><span><input type="text" value="폐교회의 지하" aria-label="정보 1 항목명"></span><b>개시치</b><span><input type="text" class="thr" value="4" aria-label="정보 1 개시치"></span></div><textarea class="ag imemo" aria-label="정보 1 내용 메모" placeholder="정보의 내용 메모"></textarea></div>
+      <div class="bx inf"><div class="hb">정보 2<span class="sp"></span><span class="open"></span></div><div class="kv kv2c"><b>정보 항목명</b><span><input type="text" value="업혈귀의 거처" aria-label="정보 2 항목명"></span><b>개시치</b><span><input type="text" class="thr" value="10" aria-label="정보 2 개시치"></span></div><textarea class="ag imemo" aria-label="정보 2 내용 메모" placeholder="정보의 내용 메모"></textarea></div>
     </div>
   </div>
 </div></div></div>
@@ -536,8 +540,18 @@ let prog = 4;
 function renderProg() {
   $('prog').innerHTML = Array.from({ length: 15 }, (_, i) => `<label class="${i + 1 <= prog ? 'on' : ''}${(i + 1) % 5 === 0 ? ' gold' : ''}"><input type="radio" name="prog"><span>${i + 1}</span></label>`).join('');
   $('prog').querySelectorAll('label').forEach((l, i) => l.onclick = () => { prog = prog === i + 1 ? i : i + 1; renderProg(); });
-  $('hprog').textContent = prog;
+  $('hprog').textContent = prog; syncInfo();
 }
+
+// ── 정보 1 · 2: 진행도 ≥ 개시치 → 「개시」, 아니면 남은 진행도
+function syncInfo() {
+  document.querySelectorAll('.inf').forEach(b => {
+    const v = parseInt(b.querySelector('.thr').value, 10), o = b.querySelector('.open');
+    o.className = 'open' + (isNaN(v) ? '' : prog >= v ? ' on' : ' wait');
+    o.textContent = isNaN(v) ? '' : prog >= v ? '개시' : `개시까지 ${v - prog}`;
+  });
+}
+document.querySelectorAll('.inf .thr').forEach(i => i.oninput = syncInfo);
 
 // ── 카드 패드: 모양 고르고 숫자
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
