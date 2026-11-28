@@ -28,9 +28,9 @@ textarea{resize:none;display:block}
 .sheet[data-trio="0"] .trio>:not(.fold){display:none}
 
 /* ── 시트 ── */
-.sz{container-type:inline-size;width:var(--w,830px);min-width:800px}
+.sz{container-type:inline-size;width:var(--w,830px);min-width:800px;max-width:1400px}
 .sheet{width:100%;background:var(--paper);border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px}
-.logo3,.rhead{display:none}
+.logo3{display:none}
 .bx{border:1.5px solid var(--ink);display:flex;flex-direction:column;min-width:0}
 .hb{background:var(--bar);color:#fff;font:700 13px/1 var(--sans);padding:5px 8px 4px;display:flex;align-items:center;gap:6px;letter-spacing:.06em}
 .hb small{font:400 10.5px var(--sans);opacity:.8;letter-spacing:0}
@@ -218,8 +218,8 @@ textarea{resize:none;display:block}
 .prog .gold span{background:#c9c9c9;color:var(--ink)}
 .prog .on span{background:var(--accent);color:#fff}
 
-/* ── 창 폭 따라: 기본(~1000px) = 지금 배치 · 넓으면 공식 v2 처럼 · 더 넓으면 레코드 시트까지 나란히 ──
-   실제 시트는 Roll20 시트 창 폭(iframe)을 따라 같은 단계로 바뀜 */
+/* ── 창 폭 따라: 800px(Roll20 기본 폭) ~ 1400px. 1000px 부터 공식 v2 처럼 ──
+   실제 시트는 Roll20 시트 창 폭(iframe)을 따라 바뀜 */
 @container (min-width:1000px){
   /* 공식 v2: 로고는 오른쪽 쪽 위, 자유란 크게, 혈계 2 늘 펼침, 카드 패드는 아래로 */
   .top .logo2{display:none}
@@ -237,27 +237,6 @@ textarea{resize:none;display:block}
   .trio .fold .arr{display:none}
   .strip{order:9;border-bottom:0;border-top:2px solid var(--ink)}
 }
-@container (min-width:1400px){
-  /* 공식 두 장을 나란히: 캐릭터 시트 | 레코드 시트 (탭 · 머리줄 값은 숨김, 카드 패드는 레코드 쪽 위) */
-  .sheet{display:grid;grid-template-columns:minmax(0,1fr) 390px;grid-template-rows:auto auto 1fr;column-gap:16px;row-gap:8px;align-items:start}
-  .top{grid-column:1/-1}
-  .tabs,.hud{display:none}
-  .top{min-height:6px;padding:0}
-  .pane.c{display:flex;grid-column:1;grid-row:2/4}
-  .strip{grid-column:2;grid-row:2;order:0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
-  .pane.r{display:flex;grid-column:2;grid-row:3}
-  .rhead{display:block;font:900 17px var(--sans);border-bottom:2px solid var(--ink);padding-bottom:4px}
-  .rc1{grid-template-columns:minmax(0,1fr) 104px}
-  .rc1>:first-child{grid-column:1/-1}
-  .bpt .th,.bpt .tr{grid-template-columns:30px 22px minmax(0,1fr) 104px}
-  .bpt .th span:nth-child(4){display:none}
-  .bpt .tr .ef{grid-column:3/-1;grid-row:2;border-left:0;border-top:1px dotted var(--line)}
-  .prog{gap:2px;padding:6px 4px}
-  .prog span{padding:0 6px 0 4px;font-size:10.5px}
-  .prog label+label span{padding:0 5px 0 7px}
-  .info{grid-template-columns:1fr}
-}
-
 /* ── 채팅 ── */
 .chat{width:300px;max-width:100%;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}
 .chat h2{margin:0;font:700 12px var(--sans);padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub)}
@@ -301,9 +280,9 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">블러드패스 — Roll20 시트 목업</h1>
-<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. <b>창을 넓히면</b>(아래 막대) 공식 시트에 가까워져요 — 1000px 부터는 공식 v2 처럼(로고는 오른쪽 쪽 위, 혈계 2 늘 펼침, 카드 패드는 아래), 1400px 부터는 레코드 시트가 옆에 나란히 와요. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
+<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. <b>창을 넓히면</b>(아래 막대) 공식 시트에 가까워져요 — 1000px 부터는 공식 v2 처럼(로고는 오른쪽 쪽 위, 혈계 2 늘 펼침, 카드 패드는 아래), 최대 1400px 까지 넓어져요. 최소는 Roll20 기본 폭 800px. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
 
-<div class="wctl">Roll20 시트 창 폭 <input type="range" id="wr" min="800" max="1800" step="10" value="830" aria-label="시트 창 폭"> <b id="wv">830px</b> <button type="button" data-w="830">기본</button><button type="button" data-w="1150">넓게</button><button type="button" data-w="1500">더 넓게</button></div>
+<div class="wctl">Roll20 시트 창 폭 <input type="range" id="wr" min="800" max="1800" step="10" value="830" aria-label="시트 창 폭"> <b id="wv">830px</b> <button type="button" data-w="800">기본 (800)</button><button type="button" data-w="1150">넓게</button><button type="button" data-w="1700">최대 (1400 에서 멈춤)</button></div>
 <div class="wrap">
 <div class="scroll"><div class="sz" id="sz"><div class="sheet" id="sheet" data-t="h" data-adv="1" data-trio="0" data-tab="c">
 
@@ -434,7 +413,6 @@ textarea{resize:none;display:block}
 
   <!-- ── 레코드 시트 탭: 공식 레코드 시트 배치 ── -->
   <div class="pane r">
-    <div class="rhead">레코드 시트</div>
     <div class="rc1">
       <div class="bx prof">
         <div class="k">GM</div><div class="v"><input type="text" value="미나토" aria-label="GM 이름"></div>

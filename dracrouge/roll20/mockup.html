@@ -48,38 +48,37 @@ textarea{resize:none;display:block}
 .top .t1{font:800 24px/1.1 var(--serif);letter-spacing:.08em}
 .top .t1 b{color:#e04a62;font-weight:800}
 .top .sp{flex:1}
-.pgh{display:flex;align-items:center;gap:8px;font:800 14px var(--serif);border-bottom:2px solid var(--ink);padding-bottom:3px}
-.pgh small{font:500 11px var(--sans);color:var(--sub)}
 
+/* 칸 더하기 · 빼기 (공식 시트의 칸 수가 최대) */
+.pm{display:inline-flex;align-items:center;gap:3px;font:500 10.5px var(--sans);color:var(--sub)}
+.pm button{width:22px;height:20px;border:1px solid var(--ink);background:#fff;font:700 14px/1 var(--sans);cursor:pointer;padding:0}
+.pm button:hover{border-color:var(--rouge);color:var(--rouge)}
+.pm button:disabled{opacity:.4;cursor:default;border-color:var(--ink);color:var(--ink)}
+.eh .pm{color:#ccc;justify-content:flex-end;padding:1px 4px}
+.eh .pm button{border-color:#fff;background:transparent;color:#fff;height:18px}
+.off{display:none!important}
 /* 1쪽: 세션 중 덜 보는 곳이라 얇게 — 그림 · 이름 띠(작은 초상화 · 이름 칸 · 작은 문장) / 외견 · 과거 / 일화 표 */
-.idb{display:grid;grid-template-columns:112px minmax(0,1fr) 120px;gap:8px;align-items:stretch}
-.pt{border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:2px;margin:3px;min-height:140px;background:repeating-linear-gradient(45deg,#f3f0f1 0 7px,#faf9f9 7px 14px);display:flex;align-items:flex-start;padding:4px 6px;font:700 11px var(--serif);color:var(--sub)}
-.idm{display:flex;flex-direction:column;border:1.5px solid var(--ink)}
+.idb{display:grid;grid-template-columns:144px minmax(0,1fr) 144px;gap:8px;align-items:stretch}
+.sq{position:relative;width:144px;height:144px;border:1.5px solid var(--ink);background:repeating-linear-gradient(45deg,#f3f0f1 0 7px,#faf9f9 7px 14px)}
+.sq>b{position:absolute;left:5px;top:3px;font:700 11px var(--serif);color:var(--sub)}
+.pt{outline:1px solid var(--ink);outline-offset:2px;margin:3px;width:138px;height:138px}
+.idm{display:flex;flex-direction:column;justify-content:space-between;border:1.5px solid var(--ink)}
 .idm .ttl{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;border-bottom:1px solid var(--line);padding:2px 0 0}
 .idm .ttl b{font:500 10.5px var(--sans);color:var(--sub);padding:0 6px}
 .idm .ttl input{height:22px;font:700 12.5px var(--serif)}
-.idm .nmi{font:800 22px/1.2 var(--serif);height:40px;padding:0 8px;border-bottom:1px solid var(--line)}
+.idm .nmi{font:800 22px/1.2 var(--serif);height:38px;padding:0 8px;border-bottom:1px solid var(--line)}
 .lin{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr)}
 .lin>b{font:500 10.5px var(--sans);color:var(--sub);padding:0 6px;display:flex;align-items:center;white-space:nowrap}
-.lin>input{height:26px;border-bottom:1px solid var(--line);font-weight:700}
+.lin>input{height:24px;border-bottom:1px solid var(--line);font-weight:700}
 .lin:last-child>input{border-bottom:0}
 .lin.one{grid-template-columns:auto minmax(0,1fr)}
-.crest{display:flex;flex-direction:column;border:1.5px solid var(--ink)}
-.crest .hd{display:flex;align-items:center;padding:2px 4px 0 6px;font:700 11px var(--serif)}
-.crest .hd .sp{flex:1}
-.crest .ic{width:20px;height:20px;border:1px solid var(--line);background:#fff;cursor:pointer;position:relative;padding:0}
+.crest .ic{position:absolute;right:4px;top:4px;width:20px;height:20px;border:1px solid var(--line);background:#fff;cursor:pointer;padding:0}
 .crest .ic::before{content:"";position:absolute;left:4px;top:5px;width:10px;height:8px;border:1.5px solid var(--sub);border-radius:1px}
 .crest .ic::after{content:"";position:absolute;left:7px;top:8px;width:5px;height:3px;border-top:1.5px solid var(--sub);transform:skewY(-30deg)}
 .crest .ic:hover{border-color:var(--rouge)}
-.crest .url{display:none;padding:0 4px 3px}
-.crest .url input{border-bottom:1px solid var(--line);height:20px;font-size:10.5px;padding:0 2px}
+.crest .url{display:none;position:absolute;left:4px;right:4px;bottom:4px;background:#fff;border:1px solid var(--line)}
+.crest .url input{height:22px;font-size:10.5px;padding:0 4px}
 .crest.open .url{display:block}
-.crest .art{flex:1;display:flex;align-items:center;justify-content:center;padding:3px 0}
-.shield{width:72px;height:84px;clip-path:polygon(9% 0,91% 0,100% 9%,100% 56%,50% 100%,0 56%,0 9%);background:#b9b3b5;padding:1.5px}
-.shield>div{width:100%;height:100%;clip-path:inherit;background:repeating-linear-gradient(45deg,#f3f0f1 0 6px,#faf9f9 6px 12px)}
-.sheet[data-t=h] .shield{width:84px;height:84px;clip-path:none;border-radius:2px}
-.crest .fl{border-top:1px solid var(--line);min-height:24px}
-.crest .fl input{height:22px}
 .p2r{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:8px}
 .blk{display:flex}
 .blk>.bx{flex:1;border-left:0}
@@ -102,7 +101,7 @@ textarea{resize:none;display:block}
 .eps{border:1.5px solid var(--ink)}
 .eh,.er{display:grid;grid-template-columns:22px 170px minmax(0,1fr) minmax(0,1.35fr)}
 .eh{background:var(--bar);color:#fff;font:700 11.5px var(--serif)}
-.eh span{padding:2px 6px}
+.eh>span{padding:2px 6px}
 .er{border-top:1px solid var(--line);min-height:26px}
 .er>*{display:flex;align-items:center;min-width:0}
 .er>*+*{border-left:1px solid var(--line)}
@@ -110,7 +109,7 @@ textarea{resize:none;display:block}
 .er input{height:25px;font-weight:700}
 .er textarea{font-size:12px;line-height:1.45;padding:4px 6px;min-height:25px}
 /* 2쪽: 유대 */
-.bwrap{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px}
+.bwrap{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px;align-items:start}
 .bond{border:1.5px solid var(--ink);display:flex;flex-direction:column}
 .bh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;background:var(--bar);color:#fff;padding:3px 8px}
 .bh .l{font:500 10px/1.25 var(--sans);opacity:.85}
@@ -136,9 +135,10 @@ textarea{resize:none;display:block}
 .full{border:0;background:var(--ink);color:#fff;font:700 10px/20px var(--sans);padding:0 6px;cursor:pointer;white-space:nowrap;flex:none}
 .full.rg{background:var(--rouge)}
 .brow.fn .bb.nr,.brow.fr .bb.rg{box-shadow:0 0 0 2px #f2c94c}
-.thirst{display:grid;grid-template-columns:1fr 1fr;border-top:1.5px solid var(--ink)}
+.thirst{display:grid;grid-template-columns:1fr auto 1fr;border-top:1.5px solid var(--ink)}
 .thirst>div{display:flex;align-items:center;gap:8px;padding:5px 8px}
-.thirst>div+div{border-left:1px solid var(--line);justify-content:flex-end}
+.thirst>div:last-child{justify-content:flex-end}
+.thirst>.pm{padding:0 8px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
 .thirst b{font:800 15px var(--serif)}
 .big{width:44px!important;height:34px;border:1.5px solid var(--ink)!important;text-align:center;font:900 20px var(--sans);padding:0!important}
 .thirst .warn{border-color:var(--rouge)!important;color:var(--rouge);background:var(--rsoft)}
@@ -148,7 +148,7 @@ textarea{resize:none;display:block}
 .aside .pts{width:60px;height:46px;text-align:center;font:900 30px var(--sans);border-bottom:1.5px solid var(--ink)}
 .order{flex:1;justify-content:flex-start}
 .order ol{list-style:none;margin:2px 0 0;padding:0;text-align:center;font:700 12.5px/1.25 var(--serif)}
-.order li{padding:2px 6px}
+.order li{padding:1px 6px}
 .order li+li::before{content:"";display:block;width:0;height:0;margin:1px auto 3px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--ink)}
 .order li.me span{background:var(--rouge);color:#fff;padding:0 6px}
 
@@ -236,7 +236,7 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">드라크루주 — Roll20 시트 목업</h1>
-<p class="pg">공식 「상야국 RPG 드라크루주」 캐릭터 시트 두 장(1쪽 기사 · 2쪽 유대와 행위)을 Roll20 830px 한 장에 차례로 옮긴 배치예요. 머리줄에서 <b>기사 / 이단</b>(헬레티카 누아르)을 고르면 이름이 다른 칸이 바뀌어요. 1쪽(그림 · 프로필 · 일화)은 세션 중 덜 보는 곳이라 얇게 줄였어요. 유대 칸을 누르면 내용(누아르 멸 · 질 · 욕 · 노 · 살 · 원 / 루주 연 · 우 · 신 · 애 · 경 · 주)을 고르고, 대상 양옆 작은 칸을 누르면 「지워지지 않는 유대」로 칠해져요. 다섯 칸이 차면 「가득」 단추가 나와요. 「행위 판정」을 굴리면 눈이 「눈 배정」 줄에 남아요 — 눈을 눌러 고르고 행위 줄의 ▶ 를 누르면 그 눈의 합으로 발동을 판정하고, 쓴 눈은 흐려져요. 값은 예시예요.</p>
+<p class="pg">공식 「상야국 RPG 드라크루주」 캐릭터 시트 두 장(1쪽 기사 · 2쪽 유대와 행위)을 Roll20 830px 한 장에 차례로 옮긴 배치예요. 머리줄에서 <b>기사 / 이단</b>(헬레티카 누아르)을 고르면 이름이 다른 칸이 바뀌어요. 그림 · 프로필 · 일화는 세션 중 덜 보는 곳이라 얇게 줄였어요. 일화 · 유대 · 행위는 − + 로 줄 수를 바꿔요 (공식 시트 칸 수가 최대: 일화 5 · 유대 8 · 행위 6, − 는 줄을 숨기기만 하고 값은 남김). 유대 칸을 누르면 내용(누아르 멸 · 질 · 욕 · 노 · 살 · 원 / 루주 연 · 우 · 신 · 애 · 경 · 주)을 고르고, 대상 양옆 작은 칸을 누르면 「지워지지 않는 유대」로 칠해져요. 다섯 칸이 차면 「가득」 단추가 나와요. 「행위 판정」을 굴리면 눈이 「눈 배정」 줄에 남아요 — 눈을 눌러 고르고 행위 줄의 ▶ 를 누르면 그 눈의 합으로 발동을 판정하고, 쓴 눈은 흐려져요. 값은 예시예요.</p>
 
 <div class="wrap">
 <div class="scroll"><div class="sheet" id="sheet" data-t="k">
@@ -248,21 +248,20 @@ textarea{resize:none;display:block}
   </div>
 
   <!-- ── 1쪽 ── -->
-  <div class="pgh">1쪽 <small><span class="k-only">기사</span><span class="h-only">이단</span></small></div>
   <div class="idb">
-    <div class="pt">초상화</div>
+    <div class="sq pt"><b>초상화</b></div>
     <div class="idm">
       <div class="ttl"><b>이명</b><input type="text" value="철벽의" aria-label="이명"></div>
       <input class="nmi" type="text" id="cname" value="레오폴트 폰 드라크" aria-label="이름">
       <div class="lin"><b>혈통</b><input type="text" value="드라크" aria-label="혈통"><b class="k-only">가문</b><b class="h-only"></b><input type="text" value="솟구치는 용" aria-label="가문"></div>
       <div class="lin k-only"><b>길</b><input type="text" id="road" value="영주" aria-label="길"><b>상징</b><input type="text" value="성벽" aria-label="상징"></div>
       <div class="lin one h-only"><b>길</b><input type="text" id="road2" value="이단" aria-label="길"></div>
+      <div class="lin one"><b>색채</b><input type="text" value="칠흑" aria-label="색채"></div>
     </div>
-    <div class="crest" id="crest">
-      <div class="hd"><span class="k-only">문장</span><span class="h-only">각인</span><span class="sp"></span><button type="button" class="ic" id="cimg" aria-label="그림 주소" title="그림 주소 넣기"></button></div>
+    <div class="sq crest" id="crest">
+      <b><span class="k-only">문장</span><span class="h-only">각인</span></b>
+      <button type="button" class="ic" id="cimg" aria-label="그림 주소" title="그림 주소 넣기"></button>
       <div class="url"><input type="text" placeholder="그림 주소" aria-label="문장 그림 주소"></div>
-      <div class="art"><div class="shield"><div></div></div></div>
-      <div class="fl"><b>색채</b><input type="text" value="칠흑" aria-label="색채"></div>
     </div>
   </div>
   <div class="p2r">
@@ -277,16 +276,16 @@ textarea{resize:none;display:block}
       <div class="g gy"><b><span class="k-only">서훈 후</span><span class="h-only">경력</span></b><input type="text" value="영지를 받다" aria-label="서훈 후 · 경력"><b><span class="k-only">기사력</span><span class="h-only">활동햇수</span></b><input class="n" type="text" value="120" aria-label="기사력 · 활동햇수"><i>년</i></div>
     </div></div>
   </div>
-  <div class="eps"><div class="eh"><span></span><span>일화</span><span>내용</span><span>효과</span></div><div id="eps"></div></div>
+  <div class="eps"><div class="eh"><span></span><span>일화</span><span>내용</span><span style="display:flex;justify-content:space-between">효과<span class="pm" data-k="ep"></span></span></div><div id="eps"></div></div>
 
-  <!-- ── 2쪽 ── -->
-  <div class="pgh">2쪽 <small>유대 · 행위</small></div>
+  <!-- ── 유대 · 행위 ── -->
   <div class="bwrap">
     <div class="bond">
       <div class="bh"><span class="l">C·J·D·A·K·V (멸/질/욕/노/살/원)<b>누아르 ⇐</b></span><span class="c">유대</span><span class="r"><b>⇒ 루주</b>P·F·T·L·R·O (연/우/신/애/경/주)</span></div>
       <div id="bond"></div>
       <div class="thirst">
         <div><b>갈증</b><input class="big" type="number" id="thirst" value="1" min="0" aria-label="갈증"><button class="btn" type="button" id="fall" title="갈증 3 이상: 2D6 − 갈증">타락표</button></div>
+        <span class="pm" data-k="bond"></span>
         <div><button class="btn" type="button" id="quench" title="해갈 1 소비 → 갈증 1 감소">해갈 사용</button><input class="big" type="number" id="relief" value="1" min="0" aria-label="해갈"><b>해갈</b></div>
       </div>
     </div>
@@ -316,11 +315,11 @@ textarea{resize:none;display:block}
 
   <div class="acts"><div class="vt">전투의 행위</div><div class="bx">
     <div class="th"><span>명칭</span><span>목표치</span><span>간격</span><span>대상</span><span>효과</span><span></span></div>
-    <div id="a1"></div><div class="addr">+ 행위 더하기</div>
+    <div id="a1"></div><div class="addr"><span class="pm" data-k="a1"></span></div>
   </div></div>
   <div class="acts"><div class="vt">일상의 행위</div><div class="bx">
     <div class="th"><span>명칭</span><span>목표치</span><span>간격</span><span>대상</span><span>효과</span><span></span></div>
-    <div id="a2"></div><div class="addr">+ 행위 더하기</div>
+    <div id="a2"></div><div class="addr"><span class="pm" data-k="a2"></span></div>
   </div></div>
 </div></div>
 
@@ -358,19 +357,28 @@ function autoGrow(root = document) {
   });
 }
 
+// ── 칸 수: 공식 시트의 칸 수가 최대. − 는 마지막 줄을 숨길 뿐 값은 남김 (+ 로 되살아남)
+const CNT = { ep: { n: 1, min: 1, max: 5, sel: '#eps .er', lab: '일화' }, bond: { n: 4, min: 1, max: 8, sel: '#bond .brow', lab: '유대' }, a1: { n: 3, min: 1, max: 6, sel: '#a1 .tr', lab: '행위' }, a2: { n: 3, min: 1, max: 6, sel: '#a2 .tr', lab: '행위' } };
+function applyCnt(k) {
+  const c = CNT[k]; document.querySelectorAll(c.sel).forEach((r, i) => r.classList.toggle('off', i >= c.n));
+  const pm = document.querySelector(`.pm[data-k="${k}"]`); if (!pm) return;
+  pm.innerHTML = `<span>${c.lab} ${c.n}/${c.max}</span><button type="button" aria-label="${c.lab} 한 줄 빼기" title="마지막 줄 숨김 (값은 남음)" ${c.n <= c.min ? 'disabled' : ''}>−</button><button type="button" aria-label="${c.lab} 한 줄 더하기" ${c.n >= c.max ? 'disabled' : ''}>+</button>`;
+  const [m, p] = pm.querySelectorAll('button'); m.onclick = () => { c.n--; applyCnt(k); }; p.onclick = () => { c.n++; applyCnt(k); };
+}
+
 // ── 일화 다섯 (예시: 공식 샘플 「드라크의 영주」)
 const EP = [['우아 / 자수 리본', '문장에 붙은 리본. 공작가 당주와 가깝다는 증거', '[일상의 막] · [종막]에서 라운드마다 [저항 판정]을 1회 다시 굴릴 수 있다.'], ['', '', ''], ['', '', ''], ['', '', ''], ['', '', '']];
 $('eps').innerHTML = EP.map(([a, b, c], i) => `<div class="er"><span class="no">${i + 1}</span><span><input type="text" value="${esc(a)}" aria-label="일화 ${i + 1}"></span><span><textarea class="ag" aria-label="일화 ${i + 1} 내용">${esc(b)}</textarea></span><span><textarea class="ag" aria-label="일화 ${i + 1} 효과">${esc(c)}</textarea></span></div>`).join('');
 
 // ── 유대 아홉 줄: 누아르 5칸 · 지워지지 않는 유대 칸 · 대상 · 칸 · 루주 5칸
 const NOIR = ['멸', '질', '욕', '노', '살', '원'], ROUGE = ['연', '우', '신', '애', '경', '주'];
-const MARK = ['지', '워', '지', '지', '않', '는', '', '유', '대'];
+const MARK = ['지', '워', '지', '지', '않', '는', '유', '대'];
 const B = [
   { t: '자신', n: ['욕', '', '', '', ''], r: ['', '', '', '', ''] },
   { t: '에리카 (편력)', n: ['', '', '', '', ''], r: ['우', '신', '신', '애', ''], ir: 1 },
   { t: '다리우스 (근위)', n: ['질', '노', '', '', ''], r: ['경', '', '', '', ''] },
   { t: '공작가 당주', n: ['', '', '', '', ''], r: ['주', '', '', '', ''] },
-  ...Array.from({ length: 5 }, () => ({ t: '', n: ['', '', '', '', ''], r: ['', '', '', '', ''] }))];
+  ...Array.from({ length: 4 }, () => ({ t: '', n: ['', '', '', '', ''], r: ['', '', '', '', ''] }))];
 const sel = (v, list, rg, lab) => `<select class="bb${rg ? ' rg' : ' nr'}${v ? ' on' : ''}" aria-label="${lab}"><option value=""></option>${list.map(x => `<option${x === v ? ' selected' : ''}>${x}</option>`).join('')}</select>`;
 function renderBond() {
   $('bond').innerHTML = B.map((b, i) => {
@@ -381,6 +389,7 @@ function renderBond() {
       + `<input type="checkbox" class="mk rg" data-c="${MARK[i]}" ${b.ir ? 'checked' : ''} aria-label="루주를 지워지지 않는 유대로" title="지워지지 않는 유대 (루주)">`
       + `${b.r.map((v, j) => sel(v, ROUGE, 1, `${b.t || '대상 ' + (i + 1)} 루주 ${j + 1}`)).join('')}</div>`;
   }).join('');
+  applyCnt('bond');
   $('bond').querySelectorAll('.brow').forEach(row => {
     const b = B[+row.dataset.i];
     row.querySelectorAll('select').forEach((s, k) => s.onchange = () => { (k < 5 ? b.n : b.r)[k % 5] = s.value; renderBond(); });
@@ -412,6 +421,7 @@ const actRows = (id, rows, kind) => {
   $(id).querySelectorAll('.go').forEach(b => b.onclick = () => useAct(b.closest('.tr'), kind));
 };
 actRows('a1', A1, '전투의 행위'); actRows('a2', A2, '일상의 행위');
+applyCnt('ep'); applyCnt('a1'); applyCnt('a2');
 autoGrow();
 
 // ── 채팅 카드
