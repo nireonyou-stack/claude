@@ -7,7 +7,7 @@
 :root{--paper:#ffffff;--ink:#151515;--sub:#5f5f5f;--line:#c9c9c9;--cell:#f3f3f3;--bar:#151515;--page:#e3e3e3;
   --accent:#2a7c82;--soft:#e2f0f0;--red:#b5121b;
   --sans:'Noto Sans KR','Malgun Gothic',sans-serif;--brush:'Nanum Brush Script','Noto Sans KR',sans-serif;color-scheme:light}
-.sheet[data-t=v]{--accent:#b5121b;--soft:#f8e3e4}
+.sheet[data-t=v],.sheet[data-t=e]{--accent:#b5121b;--soft:#f8e3e4}
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);font:13px/1.5 var(--sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
 h1.pg{font:900 18px/1.3 var(--sans);margin:0 0 4px;text-wrap:balance}
@@ -24,6 +24,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 textarea{resize:none;display:block}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .sheet[data-t=h] .v-only,.sheet[data-t=v] .h-only{display:none}
+/* 시트 종류: 인간 / 흡혈귀 / 에너미 (에너미는 레코드 탭 없음) */
+.sheet:not([data-t=e]) .e-only,.sheet[data-t=e] .pc-only{display:none!important}
 .sheet[data-adv="0"] .adv{display:none}
 .sheet[data-trio="0"] .trio>:not(.fold){display:none}
 
@@ -187,6 +189,22 @@ textarea{resize:none;display:block}
 .bl .tr .ef{grid-column:2/5;grid-row:2}
 .sk .tr .ef{grid-column:1/6;grid-row:2;border-left:0}
 .bl .tr .ef,.sk .tr .ef{border-top:1px dotted var(--line);min-height:23px}
+/* 에너미 시트 (258~261 · 270쪽): 왼쪽 = 이름 · 분류 · 근원 · 위협도 · 타입 · 생명력 · 선제치 · 행동 지침 · 해설, 오른쪽 = 에너미 특기 */
+.espread{display:grid;grid-template-columns:300px minmax(0,1fr);gap:10px;align-items:start}
+.espread>.col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.enm{font:900 19px var(--sans);height:36px;padding:0 8px;border-bottom:1px solid var(--line)}
+.gauge .mx input{width:34px;height:22px;text-align:center;font:700 13px var(--sans);border-bottom:1px solid var(--line);padding:0}
+.life{display:flex;flex-wrap:wrap;gap:3px;padding:0 8px 8px}
+.life button{width:18px;height:26px;border:1.3px solid var(--ink);border-radius:3px;cursor:pointer;padding:0;background:repeating-linear-gradient(45deg,var(--ink) 0 2px,#5a5a5a 2px 4px)}
+.life button.x{background:#fff;border-style:dashed;border-color:#aaa}
+.etx textarea{min-height:60px;padding:5px 8px;font-size:12px;line-height:1.55}
+.ek .th,.ek .tr{grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,1fr)) 24px}
+.ek .tr .bb{grid-row:span 3}
+.ek .tr .ov{grid-column:1/6;grid-row:3;border-left:0;border-top:1px dotted var(--line);min-height:21px}
+.ek .tr .ov textarea{font-size:11px;color:var(--sub)}
+.pmb{display:inline-flex;gap:3px;align-items:center;font:500 10.5px var(--sans);color:#ccc;letter-spacing:0}
+.pmb button{width:20px;height:18px;border:1px solid #fff;background:transparent;color:#fff;font:700 13px/1 var(--sans);cursor:pointer;padding:0}
+.pmb button:disabled{opacity:.4;cursor:default}
 .memo .th,.memo .tr{grid-template-columns:minmax(0,1fr) 54px 136px}
 .th{font:700 10.5px var(--sans);text-align:center;color:#fff;background:#3a3a3a}
 .th span{padding:2px 0}
@@ -226,7 +244,7 @@ textarea{resize:none;display:block}
    실제 시트는 Roll20 시트 창 폭(iframe)을 따라 바뀜 */
 @container (min-width:1000px){
   /* 공식 v2: 로고는 오른쪽 쪽 위, 자유란 크게, 혈계 2 늘 펼침, 카드 패드는 아래로 */
-  .top .logo2{display:none}
+  .sheet:not([data-t=e]) .top .logo2{display:none}
   .top{grid-template-columns:auto 1fr}
   .logo3{display:block;text-align:right;padding:2px 6px 6px;line-height:1}
   .logo3 .t0{font:700 11px var(--sans);letter-spacing:.3em;color:var(--sub)}
@@ -284,7 +302,7 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">블러드패스 — Roll20 시트 목업</h1>
-<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. <b>창을 넓히면</b>(아래 막대) 공식 시트에 가까워져요 — 1000px 부터는 공식 v2 처럼(로고는 오른쪽 쪽 위, 혈계 2 늘 펼침, 카드 패드는 아래), 최대 1400px 까지 넓어져요. 최소는 Roll20 기본 폭 800px. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
+<p class="pg">공식 「인귀혈맹 RPG 블러드패스」 자료 두 장을 그대로 탭 둘로 옮긴 배치예요 (2026-11-28 B안). <b>캐릭터 시트</b> 탭은 공식 v2 의 왼쪽 쪽(인물 · 자유란 · 팩터 · 숙련도 · 혈계) | 오른쪽 쪽(상호 · 혈위 · 특기 · 효과 메모), <b>레코드 시트</b> 탭은 공식 레코드 시트(GM · 시나리오 · 내구치 · 선제치 · 블러드패스 강도 · 조사 진행도 · 정보 1 · 2). 머리줄의 지금 값과 카드 패드는 두 탭 공통이에요. 시트 종류에서 <b>에너미</b>를 고르면 GM 용 에너미 시트(이름 · 분류 · 근원 · 위협도 · 타입 · 생명력 · 선제치 · 에너미 특기 · 행동 지침 · 해설)로 바뀌어요 — 레코드 탭은 없어요. <b>창을 넓히면</b>(아래 막대) 공식 시트에 가까워져요 — 1000px 부터는 공식 v2 처럼(로고는 오른쪽 쪽 위, 혈계 2 늘 펼침, 카드 패드는 아래), 최대 1400px 까지 넓어져요. 최소는 Roll20 기본 폭 800px. 값은 예시예요. 「혈계 2」 머리줄을 누르면 3인 혈맹 칸이 펼쳐지고, 카드 패드로 낸 카드를 고른 뒤 「조사」를 누르면 조사력을 계산해요.</p>
 
 <div class="wctl">Roll20 시트 창 폭 <input type="range" id="wr" min="800" max="1800" step="10" value="830" aria-label="시트 창 폭"> <b id="wv">830px</b> <button type="button" data-w="800">기본 (800)</button><button type="button" data-w="1150">넓게</button><button type="button" data-w="1700">최대 (1400 에서 멈춤)</button></div>
 <div class="wrap">
@@ -293,8 +311,8 @@ textarea{resize:none;display:block}
   <!-- 머리: 로고 · 탭 (공식 PDF 두 장) · 지금 값 — 두 탭 공통 -->
   <div class="top">
     <div class="logo2"><div class="t0">인귀혈맹 RPG</div><div class="t1">블러드<b>패</b>스</div></div>
-    <div class="tabs" role="tablist"><label><input type="radio" name="tab" value="c" checked><span>캐릭터 시트</span></label><label><input type="radio" name="tab" value="r"><span>레코드 시트</span></label></div>
-    <div class="hud"><span>내구치 <b id="hdur">18</b>/<i id="hmax">26</i></span><span>강도 <b id="hlv">2</b></span><span>손패 <b id="handn">4</b></span><span>혈위 <b id="blv">1</b></span><span>조사 <b id="hprog">4</b>/15</span></div>
+    <div class="tabs pc-only" role="tablist"><label><input type="radio" name="tab" value="c" checked><span>캐릭터 시트</span></label><label><input type="radio" name="tab" value="r"><span>레코드 시트</span></label></div>
+    <div class="hud"><span class="pc-only">내구치 <b id="hdur">18</b>/<i id="hmax">26</i></span><span class="pc-only">강도 <b id="hlv">2</b></span><span class="pc-only">손패 <b id="handn">4</b></span><span class="pc-only">혈위 <b id="blv">1</b></span><span class="pc-only">조사 <b id="hprog">4</b>/15</span><span class="e-only">생명력 <b id="helife">6</b>/<i id="helmax">9</i></span><span class="e-only">선제치 <b id="heini">17</b></span></div>
   </div>
 
   <!-- 카드 패드 (두 탭 공통: 조사 · 특기 · 혈위의 대가) -->
@@ -309,20 +327,20 @@ textarea{resize:none;display:block}
     <div class="sr">
       <span class="tl">낸 카드</span><div class="hand" id="hand"></div>
       <span class="sum" id="sum"></span>
-      <button class="btn dk" type="button" id="inv">조사</button><button class="btn" type="button" id="clr">비우기</button>
-      <button class="btn" type="button" id="gmb">GM 귓속말</button>
+      <button class="btn dk pc-only" type="button" id="inv">조사</button><button class="btn" type="button" id="clr">비우기</button>
+      <button class="btn pc-only" type="button" id="gmb">GM 귓속말</button>
     </div>
   </div>
 
   <!-- ── 캐릭터 시트 탭: 공식 v2 의 왼쪽 쪽 | 오른쪽 쪽 ── -->
   <div class="pane c">
     <div class="ttl">
-      <h2>캐릭터 시트 <small>(<span class="h-only">인간</span><span class="v-only">흡혈귀</span>)</small></h2>
+      <h2><span class="pc-only">캐릭터 시트 <small>(<span class="h-only">인간</span><span class="v-only">흡혈귀</span>)</small></span><span class="e-only">에너미 시트</span></h2>
       <span class="sp"></span>
-      <span class="seg"><label><input type="radio" name="stype" value="h" checked><span>인간</span></label><label><input type="radio" name="stype" value="v"><span>흡혈귀</span></label></span>
-      <label class="chip"><input type="checkbox" class="ck" id="adv" checked>상급자용</label>
+      <span class="seg"><label><input type="radio" name="stype" value="h" checked><span>인간</span></label><label><input type="radio" name="stype" value="v"><span>흡혈귀</span></label><label><input type="radio" name="stype" value="e"><span>에너미</span></label></span>
+      <label class="chip pc-only"><input type="checkbox" class="ck" id="adv" checked>상급자용</label>
     </div>
-    <div class="spread">
+    <div class="spread pc-only">
       <!-- 왼쪽 쪽 -->
       <div class="col">
         <div class="pf">
@@ -410,6 +428,36 @@ textarea{resize:none;display:block}
           <div class="hb">특기 효과 메모란</div>
           <div class="th"><span>효과의 종별</span><span>수정치</span><span>효과 시간</span></div>
           <div id="memo"></div>
+        </div>
+      </div>
+    </div>
+    <!-- 에너미 시트 -->
+    <div class="espread e-only">
+      <div class="col">
+        <div class="bx">
+          <div class="hb">에너미</div>
+          <input class="enm" type="text" id="ename" value="핏빛 사냥꾼" aria-label="에너미 이름">
+          <div class="prof">
+            <div class="k">분류</div><div class="v"><input type="text" value="보스, 업혈귀" aria-label="분류"></div>
+            <div class="k">근원</div><div class="v"><input type="text" value="투쟁" aria-label="근원"></div>
+            <div class="k">위협도</div><div class="v"><input type="text" value="3" aria-label="위협도"></div>
+            <div class="k">타입</div><div class="v"><input type="text" value="어설트" aria-label="타입"></div>
+          </div>
+        </div>
+        <div class="bx">
+          <div class="hb">생명력<span class="sp"></span><small>남은 생명 카드</small></div>
+          <div class="gauge"><span class="lb">현재</span><input class="now" type="number" id="elife" value="6" min="0" aria-label="현재 생명력"><span class="mx">/ 최대 <input type="number" id="elmax" value="9" min="1" aria-label="최대 생명력"></span></div>
+          <div class="life" id="lifep"></div>
+        </div>
+        <div class="bx"><div class="hb">선제치</div><div class="gauge ini"><input class="now" type="number" id="eini" value="17" aria-label="선제치"></div></div>
+        <div class="bx etx"><div class="hb">행동 지침</div><textarea class="ag" aria-label="행동 지침">개시에 〈피의 갑주〉. 차례에는 공격으로 〈피의 일격〉.</textarea></div>
+        <div class="bx etx"><div class="hb">해설</div><textarea class="ag" aria-label="해설"></textarea></div>
+      </div>
+      <div class="col">
+        <div class="bx tbl sk ek">
+          <div class="hb">에너미 특기<span class="sp"></span><span class="pmb" id="ekpm"></span></div>
+          <div class="th"><span>명칭</span><span>타이밍</span><span>대상</span><span>획득</span><span>조건</span><span></span></div>
+          <div id="ek"></div>
         </div>
       </div>
     </div>
@@ -570,7 +618,7 @@ $('clr').onclick = () => { hand = []; renderHand(); };
 
 // ── 채팅 카드
 const log = $('log');
-const name = () => $('cname').value || '이름 없음';
+const name = () => (sheet.dataset.t === 'e' ? $('ename') : $('cname')).value || '이름 없음';
 function card({ title, head, cards, calc, stamp, kv, notes = [], eff, table, to }) {
   const mode = document.querySelector('input[name=rmode]:checked').value, dest = to || (mode === 'gm' ? 'GM 에게' : '');
   const w = el('div'); w.append(el('div', 'who', `${esc(name())}${dest ? ` <em>(${dest})</em>` : ''}`));
@@ -582,7 +630,7 @@ function card({ title, head, cards, calc, stamp, kv, notes = [], eff, table, to 
   if (kv) b += `<div class="kv2">${kv.filter(([, v]) => v).map(([k, v]) => `<span>${k} <b>${esc(v)}</b></span>`).join('')}</div>`;
   b += notes.filter(Boolean).map(n => `<div class="note">${esc(n)}</div>`).join('');
   if (eff) b += `<div class="eff">${esc(eff)}</div>`;
-  w.append(el('div', 'cd' + (isV() ? ' v' : ''), `<div class="ch">${esc(title)}${head ? `<small>${esc(head)}</small>` : ''}</div><div class="cb">${b}</div>`));
+  w.append(el('div', 'cd' + (sheet.dataset.t !== 'h' ? ' v' : ''), `<div class="ch">${esc(title)}${head ? `<small>${esc(head)}</small>` : ''}</div><div class="cb">${b}</div>`));
   log.append(w); log.scrollTop = log.scrollHeight;
 }
 
@@ -611,7 +659,10 @@ function useRow(tr, kind, isBl) {
 $('gmb').onclick = () => card({ title: 'GM 에게', head: '귓속말', eff: '레이와의 교류 장면을 먼저 하고 싶어요.', to: 'GM 에게' });
 
 // ── 시트 종류 · 옵션 · 탭 · 혈계 2 접기 · 내구치 (머리 값과 이어짐)
-document.querySelectorAll('input[name=stype]').forEach(r => r.onchange = () => { sheet.dataset.t = r.value; renderAbl(); renderBL(); });
+document.querySelectorAll('input[name=stype]').forEach(r => r.onchange = () => {
+  sheet.dataset.t = r.value;
+  if (r.value === 'e') { sheet.dataset.tab = 'c'; document.querySelector('input[name=tab][value=c]').checked = true; } else { renderAbl(); renderBL(); }
+});
 document.querySelectorAll('input[name=tab]').forEach(r => r.onchange = () => { sheet.dataset.tab = r.value; });
 $('adv').onchange = e => { sheet.dataset.adv = e.target.checked ? '1' : '0'; };
 $('trio').onclick = () => { const on = sheet.dataset.trio !== '1'; sheet.dataset.trio = on ? '1' : '0'; $('trio').setAttribute('aria-expanded', on); };
@@ -623,6 +674,31 @@ $('imax').oninput = () => { $('ini').value = $('imax').value; };
 const setW = w => { $('sz').style.setProperty('--w', w + 'px'); $('wr').value = w; $('wv').textContent = w + 'px'; };
 $('wr').oninput = () => setW(+$('wr').value);
 document.querySelectorAll('.wctl [data-w]').forEach(b => b.onclick = () => setW(+b.dataset.w));
+
+// ── 에너미: 생명력(남은 생명 카드) · 선제치 · 특기 (줄 수 − +, 기본 4 · 최대 12)
+function renderLife() {
+  const mx = Math.max(1, Math.min(20, +$('elmax').value || 1)), cur = Math.max(0, Math.min(mx, +$('elife').value || 0));
+  $('lifep').innerHTML = Array.from({ length: mx }, (_, i) => `<button type="button" class="${i < cur ? '' : 'x'}" data-i="${i}" aria-label="생명 카드 ${i + 1}${i < cur ? '' : ' (파괴됨)'}" title="누르면 남은 생명 카드를 여기까지"></button>`).join('');
+  $('lifep').querySelectorAll('button').forEach(b => b.onclick = () => { const i = +b.dataset.i; $('elife').value = i + 1 === cur ? i : i + 1; renderLife(); });
+  $('helife').textContent = cur; $('helmax').textContent = mx;
+}
+$('elife').oninput = renderLife; $('elmax').oninput = renderLife;
+$('eini').oninput = () => { $('heini').textContent = $('eini').value; };
+const EK = [['〈피의 일격〉', '공격', '단일', '작성', '없음', '대상에게 [덱 1장 + 5] 점 대미지.', '흉포한 일격.'], ['〈피의 갑주〉', '개시', '자신', '작성', '혈전 1회', '덱에서 카드를 [PC 수] 장 뽑아 스택.', ''], ['〈송곳니〉', '상시', '자신', '5', '없음', '〈특기〉로 주는 대미지 +3.', ''], ...Array.from({ length: 9 }, () => ['', '', '', '', '', '', ''])];
+let ekN = 4;
+$('ek').innerHTML = EK.map(([n, ti, ta, ac, cd, e, o], i) => `<div class="tr"><span class="nm"><input type="text" value="${esc(n)}" aria-label="에너미 특기 ${i + 1} 명칭"></span><span><input type="text" value="${ti}" aria-label="타이밍"></span><span><input type="text" value="${ta}" aria-label="대상"></span><span><input type="text" value="${ac}" aria-label="획득"></span><span><input type="text" value="${cd}" aria-label="조건"></span><span class="ef"><textarea class="ag" rows="1" aria-label="해설" placeholder="해설">${esc(e)}</textarea></span><span class="ov"><textarea class="ag" rows="1" aria-label="개요" placeholder="개요">${esc(o)}</textarea></span><span class="bb"><button class="bub" type="button" title="채팅에 올림"></button></span></div>`).join('');
+autoGrow($('ek'));
+function applyEk() {
+  $('ek').querySelectorAll('.tr').forEach((r, i) => r.style.display = i < ekN ? '' : 'none');
+  $('ekpm').innerHTML = `${ekN}/12<button type="button" aria-label="특기 한 줄 빼기" title="마지막 줄 숨김 (값은 남음)" ${ekN <= 1 ? 'disabled' : ''}>−</button><button type="button" aria-label="특기 한 줄 더하기" ${ekN >= 12 ? 'disabled' : ''}>+</button>`;
+  const [m, p] = $('ekpm').querySelectorAll('button'); m.onclick = () => { ekN--; applyEk(); }; p.onclick = () => { ekN++; applyEk(); };
+}
+applyEk(); renderLife();
+$('ek').querySelectorAll('.bub').forEach(b => b.onclick = () => {
+  const v = [...b.closest('.tr').querySelectorAll('input,textarea')].map(i => i.value); if (!v[0]) return;
+  card({ title: v[0], head: '에너미 특기', cards: hand.slice(), calc: hand.length ? `낸 카드 합계 <b>${hand.reduce((a, c) => a + val(c), 0)}</b> · ${hand.length}장` : '', kv: [['타이밍', v[1]], ['대상', v[2]], ['조건', v[4]]], eff: v[5] });
+  hand = []; renderHand();
+});
 
 // ── 용어표
 const G1 = [['人鬼血盟RPG', '인귀혈맹 RPG'], ['ブラッドパス', '블러드패스'], ['キャラクターシート（人間/吸血鬼）', '캐릭터 시트 (인간 / 흡혈귀)'], ['上級者用 (傷号欄あり)', '상급자용 (상호 칸)'], ['プレイヤー名', '플레이어'], ['名前 · 年齢 · 性別', '이름 · 나이 · 성별'], ['年齢 外見/実', '나이 외견 / 실제'], ['所属', '소속'], ['過去', '과거'], ['経緯', '경위'], ['喪失 (人間)', '상실'], ['欠落 (吸血鬼)', '결락'], ['外見的特徴', '외견적 특징'], ['住まい', '거처'], ['使用武器', '사용 무기'], ['自由欄（設定・イラストなど）', '자유란 (설정 · 일러스트 등)'],
