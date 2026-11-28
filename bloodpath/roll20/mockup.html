@@ -59,25 +59,32 @@ textarea{resize:none;display:block}
 .chip{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font:500 11px var(--sans);color:var(--sub)}
 
 /* 머리: 로고 · 탭(공식 PDF 두 장) · 지금 값 — 두 탭 공통 */
-.top{display:grid;grid-template-columns:auto auto 1fr;align-items:end;gap:14px;background:var(--bar);color:#fff;padding:6px 10px 0;margin:-10px -10px 0}
-.logo2{padding-bottom:6px;line-height:1}
+.top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"logo hud" "tabs kind";align-items:end;column-gap:12px;row-gap:2px;background:var(--bar);color:#fff;padding:6px 10px 0;margin:-10px -10px 0}
+.logo2{grid-area:logo;display:flex;align-items:baseline;gap:8px;line-height:1;padding-bottom:2px}
 .logo2 .t0{font:700 9.5px var(--sans);letter-spacing:.2em;opacity:.8}
-.logo2 .t1{font:400 30px/1 var(--brush);letter-spacing:.02em}
+.logo2 .t1{font:400 26px/1 var(--brush);letter-spacing:.02em}
 .logo2 .t1 b{font-weight:400;color:#e0434c}
+.tabs,.etab{grid-area:tabs}
 .tabs{display:flex;gap:3px}
+.etab{justify-self:start;padding:6px 16px;font:700 12.5px/1 var(--sans);background:var(--paper);color:var(--ink);border-radius:3px 3px 0 0}
 .tabs label{cursor:pointer}
 .tabs input{display:none}
 .tabs span{display:block;padding:6px 16px;font:700 12.5px/1 var(--sans);background:#3a3a3a;color:#cfcfcf;border-radius:3px 3px 0 0}
 .tabs input:checked+span{background:var(--paper);color:var(--ink)}
 .tabs input:focus-visible+span{outline:2px solid #fff;outline-offset:-3px}
-.hud{display:flex;justify-content:flex-end;gap:12px;padding-bottom:8px;font:500 11px var(--sans);color:#cfcfcf;white-space:nowrap}
+.hud{grid-area:hud;display:flex;justify-content:flex-end;gap:12px;padding-bottom:4px;font:500 11px var(--sans);color:#cfcfcf;white-space:nowrap}
 .hud b{font:900 15px var(--sans);color:#fff}
 .hud i{font-style:normal}
 .pane{display:none;flex-direction:column;gap:8px}
 .sheet[data-tab=c] .pane.c,.sheet[data-tab=r] .pane.r{display:flex}
-.ttl{display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:4px}
-.ttl h2{margin:0;font:900 17px var(--sans)}
-.ttl h2 small{font:500 12px var(--sans);color:var(--sub)}
+/* 머리줄 안의 시트 종류 · 상급자용 (어두운 바탕용) */
+.kind{grid-area:kind;justify-self:end;display:flex;align-items:center;gap:10px;padding-bottom:5px}
+.kind .seg{border-color:#fff}
+.kind .seg span{color:#ddd;line-height:18px}
+.kind .seg label+label span{border-left-color:#fff}
+.kind .seg input:checked+span{background:var(--accent);color:#fff}
+.kind .chip{color:#ddd}
+.kind .ck{border-color:#bbb;background-color:transparent}
 /* 캐릭터 시트 탭: 공식 v2 의 왼쪽 쪽 | 오른쪽 쪽 */
 .spread{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
 .spread>.col{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -247,7 +254,6 @@ textarea{resize:none;display:block}
 @container (min-width:1000px){
   /* 공식 v2: 로고는 오른쪽 쪽 위, 자유란 크게, 혈계 2 늘 펼침, 카드 패드는 아래로 */
   .sheet:not([data-t=e]) .top .logo2{display:none}
-  .top{grid-template-columns:auto 1fr}
   .logo3{display:block;text-align:right;padding:2px 6px 6px;line-height:1}
   .logo3 .t0{font:700 11px var(--sans);letter-spacing:.3em;color:var(--sub)}
   .logo3 .t1{font:400 54px/1 var(--brush);letter-spacing:.02em}
@@ -312,9 +318,14 @@ textarea{resize:none;display:block}
 
   <!-- 머리: 로고 · 탭 (공식 PDF 두 장) · 지금 값 — 두 탭 공통 -->
   <div class="top">
-    <div class="logo2"><div class="t0">인귀혈맹 RPG</div><div class="t1">블러드<b>패</b>스</div></div>
-    <div class="tabs pc-only" role="tablist"><label><input type="radio" name="tab" value="c" checked><span>캐릭터 시트</span></label><label><input type="radio" name="tab" value="r"><span>레코드 시트</span></label></div>
+    <div class="logo2"><span class="t0">인귀혈맹 RPG</span><span class="t1">블러드<b>패</b>스</span></div>
     <div class="hud"><span class="pc-only">내구치 <b id="hdur">18</b>/<i id="hmax">26</i></span><span class="pc-only">강도 <b id="hlv">2</b></span><span class="pc-only">손패 <b id="handn">4</b></span><span class="pc-only">혈위 <b id="blv">1</b></span><span class="pc-only">조사 <b id="hprog">4</b>/15</span><span class="e-only">생명력 <b id="helife">6</b>/<i id="helmax">9</i></span><span class="e-only">선제치 <b id="heini">17</b></span></div>
+    <div class="tabs pc-only" role="tablist"><label><input type="radio" name="tab" value="c" checked><span>캐릭터 시트</span></label><label><input type="radio" name="tab" value="r"><span>레코드 시트</span></label></div>
+    <span class="etab e-only">에너미 시트</span>
+    <div class="kind">
+      <span class="seg" role="radiogroup" aria-label="시트 종류"><label><input type="radio" name="stype" value="h" checked><span>인간</span></label><label><input type="radio" name="stype" value="v"><span>흡혈귀</span></label><label><input type="radio" name="stype" value="e"><span>에너미</span></label></span>
+      <label class="chip pc-only"><input type="checkbox" class="ck" id="adv" checked>상급자용</label>
+    </div>
   </div>
 
   <!-- 카드 패드 (두 탭 공통: 조사 · 특기 · 혈위의 대가) -->
@@ -336,12 +347,6 @@ textarea{resize:none;display:block}
 
   <!-- ── 캐릭터 시트 탭: 공식 v2 의 왼쪽 쪽 | 오른쪽 쪽 ── -->
   <div class="pane c">
-    <div class="ttl">
-      <h2><span class="pc-only">캐릭터 시트 <small>(<span class="h-only">인간</span><span class="v-only">흡혈귀</span>)</small></span><span class="e-only">에너미 시트</span></h2>
-      <span class="sp"></span>
-      <span class="seg"><label><input type="radio" name="stype" value="h" checked><span>인간</span></label><label><input type="radio" name="stype" value="v"><span>흡혈귀</span></label><label><input type="radio" name="stype" value="e"><span>에너미</span></label></span>
-      <label class="chip pc-only"><input type="checkbox" class="ck" id="adv" checked>상급자용</label>
-    </div>
     <div class="spread pc-only">
       <!-- 왼쪽 쪽 -->
       <div class="col">
