@@ -51,23 +51,23 @@ textarea{resize:none;display:block}
 .pgh small{font:500 11px var(--sans);color:var(--sub)}
 
 /* 1쪽: 초상화 | 외견 · 과거 */
-.r1{display:grid;grid-template-columns:372px minmax(0,1fr);gap:10px}
-.portrait{border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:3px;margin:4px;position:relative;min-height:300px;background:repeating-linear-gradient(45deg,#f3f0f1 0 8px,#faf9f9 8px 16px);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
+.r1,.r2{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:10px;align-items:stretch}
+.portrait{border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:3px;margin:4px;position:relative;min-height:330px;background:repeating-linear-gradient(45deg,#f3f0f1 0 8px,#faf9f9 8px 16px);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:11px}
 .portrait b{position:absolute;left:8px;top:6px;font:700 12px var(--serif);color:var(--ink)}
-.side{display:flex;flex-direction:column;gap:8px}
 .blk{display:flex}
 .blk>.bx{flex:1;border-left:0}
-.eye{display:grid;grid-template-columns:minmax(0,1fr) 92px}
+.eye{display:grid;grid-template-columns:minmax(0,1fr) 84px}
 .eye .sx{border-left:1px solid var(--line);border-bottom:1px solid var(--line);grid-row:span 2;display:flex;flex-direction:column}
 .eye .sx b{font:500 11px var(--sans);color:var(--sub);padding:3px 6px 0}
-.eye .sx input{flex:1;text-align:center;font-weight:700}
+/* 성별: 비어 있을 때만 밑줄 (입력칸인 걸 알 수 있게) */
+.eye .sx input{flex:1;text-align:center;font-weight:700;margin:4px 8px 6px;width:auto;border-bottom:1.5px solid transparent}
+.eye .sx input:placeholder-shown{border-bottom-color:#a59ea1}
 .sign textarea{min-height:58px;padding:4px 6px;font-size:12px;line-height:1.55}
 .yr{display:grid;grid-template-columns:auto minmax(0,1fr) auto 44px auto;align-items:center}
 .yr i{font-style:normal;font-size:11px;color:var(--sub);padding:0 6px 0 2px}
 .yr input.n{text-align:right;font-weight:700}
 
-/* 1쪽: 이름 칸 ⇒ 문장 · 각인 */
-.r2{display:grid;grid-template-columns:372px minmax(0,1fr);gap:10px;align-items:stretch}
+/* 1쪽: 이름 · 과거 | 외견 */
 .nmcol{display:flex;flex-direction:column;gap:6px}
 .nm-big{display:flex;flex-direction:column;min-height:70px}
 .nm-big b{font:500 11px var(--sans);color:var(--sub);padding:3px 6px 0}
@@ -76,7 +76,6 @@ textarea{resize:none;display:block}
 .lin>b{font:500 11px var(--sans);color:var(--sub);padding:0 6px;display:flex;align-items:center;white-space:nowrap}
 .lin>input{height:30px;border-bottom:1px solid var(--line);font-weight:700}
 .lin.one{grid-template-columns:auto minmax(0,1fr)}
-.flow{font:500 10.5px var(--sans);color:var(--sub);text-align:right;margin-top:auto}
 .crest{display:flex;flex-direction:column}
 .crest .hd{display:flex;align-items:center;padding:3px 6px;font:700 12px var(--serif)}
 .crest .hd .sp{flex:1}
@@ -87,10 +86,10 @@ textarea{resize:none;display:block}
 .crest .url{display:none;padding:0 6px 4px}
 .crest .url input{border-bottom:1px solid var(--line);height:22px;font-size:11px}
 .crest.open .url{display:block}
-.crest .art{flex:1;display:flex;align-items:center;justify-content:center;padding:6px 0 10px;min-height:190px}
-.shield{width:150px;height:172px;clip-path:polygon(9% 0,91% 0,100% 9%,100% 56%,50% 100%,0 56%,0 9%);background:#b9b3b5;padding:2px}
+.crest .art{flex:1;display:flex;align-items:center;justify-content:center;padding:6px 0 12px;min-height:250px}
+.shield{width:200px;height:230px;clip-path:polygon(9% 0,91% 0,100% 9%,100% 56%,50% 100%,0 56%,0 9%);background:#b9b3b5;padding:2px}
 .shield>div{width:100%;height:100%;clip-path:inherit;background:repeating-linear-gradient(45deg,#f3f0f1 0 8px,#faf9f9 8px 16px);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10.5px;color:var(--sub)}
-.sheet[data-t=h] .shield{width:190px;height:172px;clip-path:none;border-radius:2px}
+.sheet[data-t=h] .shield{width:250px;height:230px;clip-path:none;border-radius:2px}
 .crest .fl{border-top:1px solid var(--line);border-bottom:0}
 
 /* 일화 다섯 */
@@ -156,6 +155,20 @@ textarea{resize:none;display:block}
 .seg2 label+label span{border-left:1px solid var(--ink)}
 .seg2 input:checked+span{background:var(--ink);color:#fff}
 
+/* 눈 배정: 행위 판정 결과를 시트에 남기고, 눈을 눌러 고른 뒤 행위 ▶ */
+.rollbar .ln{display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap}
+.rollbar .ln+.ln{border-top:1px dotted var(--line);padding-top:5px}
+.tray{display:flex;gap:5px;flex-wrap:wrap}
+.tc{position:relative;width:30px;height:30px;border:1.5px solid var(--ink);border-radius:3px;background:#fff;font:900 15px var(--sans);cursor:pointer;padding:0}
+.tc.t{border-color:var(--rouge);color:var(--rouge)}
+.tc.t small{position:absolute;top:-8px;right:-7px;background:var(--rouge);color:#fff;font:700 9px/1 var(--sans);padding:2px 3px;border-radius:2px}
+.tc.g{background:var(--rouge);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1.5px var(--gold);width:34px}
+.tc[aria-pressed=true]{transform:translateY(-3px);box-shadow:0 3px 0 var(--ink)}
+.tc.g[aria-pressed=true]{box-shadow:0 0 0 1.5px var(--gold),0 3px 0 var(--ink)}
+.tc:disabled{opacity:.3;cursor:default;text-decoration:line-through}
+.tsum{font:700 12px var(--sans)}
+.tsum b{font:900 18px var(--sans);color:var(--rouge)}
+.tr.done .go{border-color:var(--rouge);background:var(--rsoft)}
 /* 행위 표 */
 .acts{display:flex}
 .acts>.bx{flex:1;border-left:0}
@@ -214,7 +227,7 @@ textarea{resize:none;display:block}
 </style>
 
 <h1 class="pg">드라크루주 — Roll20 시트 목업</h1>
-<p class="pg">공식 「상야국 RPG 드라크루주」 캐릭터 시트 두 장(1쪽 기사 · 2쪽 유대와 행위)을 Roll20 830px 한 장에 차례로 옮긴 배치예요. 머리줄에서 <b>기사 / 이단</b>(헬레티카 누아르)을 고르면 이름이 다른 칸이 바뀌어요. 유대 칸을 누르면 내용(누아르 멸 · 질 · 욕 · 노 · 살 · 원 / 루주 연 · 우 · 신 · 애 · 경 · 주)을 고르고, 대상 양옆 작은 칸을 누르면 「지워지지 않는 유대」로 칠해져요. 다섯 칸이 차면 「가득」 단추가 나와요. 판정 띠의 「행위 판정」 · 「저항 판정」, 행위 줄의 ▶ 를 눌러 보세요. 값은 예시예요.</p>
+<p class="pg">공식 「상야국 RPG 드라크루주」 캐릭터 시트 두 장(1쪽 기사 · 2쪽 유대와 행위)을 Roll20 830px 한 장에 차례로 옮긴 배치예요. 머리줄에서 <b>기사 / 이단</b>(헬레티카 누아르)을 고르면 이름이 다른 칸이 바뀌어요. 유대 칸을 누르면 내용(누아르 멸 · 질 · 욕 · 노 · 살 · 원 / 루주 연 · 우 · 신 · 애 · 경 · 주)을 고르고, 대상 양옆 작은 칸을 누르면 「지워지지 않는 유대」로 칠해져요. 다섯 칸이 차면 「가득」 단추가 나와요. 「행위 판정」을 굴리면 눈이 「눈 배정」 줄에 남아요 — 눈을 눌러 고르고 행위 줄의 ▶ 를 누르면 그 눈의 합으로 발동을 판정하고, 쓴 눈은 흐려져요. 값은 예시예요.</p>
 
 <div class="wrap">
 <div class="scroll"><div class="sheet" id="sheet" data-t="k">
@@ -229,23 +242,11 @@ textarea{resize:none;display:block}
   <div class="pgh">1쪽 <small><span class="k-only">기사</span><span class="h-only">이단</span></small></div>
   <div class="r1">
     <div class="portrait"><b>초상화</b>그림 (Roll20 아바타)</div>
-    <div class="side">
-      <div class="blk"><div class="vt">외견</div><div class="bx">
-        <div class="eye">
-          <div class="fl"><b>눈동자 색</b><input type="text" value="진홍" aria-label="눈동자 색"></div>
-          <div class="sx"><b>성별</b><input type="text" value="남" aria-label="성별"></div>
-          <div class="fl"><b>머리카락 색</b><input type="text" value="백금" aria-label="머리카락 색"></div>
-        </div>
-        <div class="fl"><b>특징 1</b><input type="text" value="왼손의 인장 반지" aria-label="특징 1"></div>
-        <div class="fl"><b>특징 2</b><input type="text" value="늘 장갑을 낀다" aria-label="특징 2"></div>
-        <div class="fl"><b><span class="k-only">타락의 조짐</span><span class="h-only">이상</span></b><input type="text" aria-label="타락의 조짐 · 이상"></div>
-        <div class="sign"><textarea class="ag" aria-label="타락의 조짐 · 이상 (이어서)"></textarea></div>
-      </div></div>
-      <div class="blk"><div class="vt">과거</div><div class="bx">
-        <div class="fl"><b><span class="k-only">원풍경</span><span class="h-only">원죄</span></b><input type="text" value="불타는 성문" aria-label="원풍경 · 원죄"></div>
-        <div class="fl yr"><b><span class="k-only">서훈</span><span class="h-only">수난</span></b><input type="text" value="전장에서" aria-label="서훈 · 수난"><b><span class="k-only">서훈연령</span><span class="h-only">외견연령</span></b><input class="n" type="text" value="19" aria-label="서훈연령 · 외견연령"><i>세</i></div>
-        <div class="fl yr"><b><span class="k-only">서훈 후</span><span class="h-only">경력</span></b><input type="text" value="영지를 받다" aria-label="서훈 후 · 경력"><b><span class="k-only">기사력</span><span class="h-only">활동햇수</span></b><input class="n" type="text" value="120" aria-label="기사력 · 활동햇수"><i>년</i></div>
-      </div></div>
+    <div class="bx crest" id="crest">
+      <div class="hd"><span class="k-only">문장</span><span class="h-only">각인</span><span class="sp"></span><button type="button" class="ic" id="cimg" aria-label="그림 주소" title="그림 주소 넣기"></button></div>
+      <div class="url"><input type="text" placeholder="그림 주소 (https://…)" aria-label="문장 그림 주소"></div>
+      <div class="art"><div class="shield"><div><span>그림 주소를 넣으면<br><span class="k-only">방패 모양으로 잘라</span><span class="h-only">이 칸에 맞춰</span> 보여 줌</span></div></div></div>
+      <div class="fl"><b>색채</b><input type="text" value="칠흑" aria-label="색채"></div>
     </div>
   </div>
   <div class="r2">
@@ -257,14 +258,23 @@ textarea{resize:none;display:block}
         <div class="lin k-only"><b>길</b><input type="text" id="road" value="영주" aria-label="길"><b>상징</b><input type="text" value="성벽" aria-label="상징"></div>
         <div class="lin one h-only"><b>길</b><input type="text" id="road2" value="이단" aria-label="길"></div>
       </div>
-      <div class="flow"><span class="k-only">가문 · 상징 · 일화 ⇒ 문장</span><span class="h-only">혈통 · 길 · 일화 ⇒ 각인</span></div>
+      <div class="blk"><div class="vt">과거</div><div class="bx">
+        <div class="fl"><b><span class="k-only">원풍경</span><span class="h-only">원죄</span></b><input type="text" value="불타는 성문" aria-label="원풍경 · 원죄"></div>
+        <div class="fl yr"><b><span class="k-only">서훈</span><span class="h-only">수난</span></b><input type="text" value="전장에서" aria-label="서훈 · 수난"><b><span class="k-only">서훈연령</span><span class="h-only">외견연령</span></b><input class="n" type="text" value="19" aria-label="서훈연령 · 외견연령"><i>세</i></div>
+        <div class="fl yr"><b><span class="k-only">서훈 후</span><span class="h-only">경력</span></b><input type="text" value="영지를 받다" aria-label="서훈 후 · 경력"><b><span class="k-only">기사력</span><span class="h-only">활동햇수</span></b><input class="n" type="text" value="120" aria-label="기사력 · 활동햇수"><i>년</i></div>
+      </div></div>
     </div>
-    <div class="bx crest" id="crest">
-      <div class="hd"><span class="k-only">문장</span><span class="h-only">각인</span><span class="sp"></span><button type="button" class="ic" id="cimg" aria-label="그림 주소" title="그림 주소 넣기"></button></div>
-      <div class="url"><input type="text" placeholder="그림 주소 (https://…)" aria-label="문장 그림 주소"></div>
-      <div class="art"><div class="shield"><div><span>그림 주소를 넣으면<br><span class="k-only">방패 모양으로 잘라</span><span class="h-only">이 칸에 맞춰</span> 보여 줌</span></div></div></div>
-      <div class="fl"><b>색채</b><input type="text" value="칠흑" aria-label="색채"></div>
-    </div>
+    <div class="blk"><div class="vt">외견</div><div class="bx" style="display:flex;flex-direction:column">
+      <div class="eye">
+        <div class="fl"><b>눈동자 색</b><input type="text" value="진홍" aria-label="눈동자 색"></div>
+        <div class="sx"><b>성별</b><input type="text" placeholder=" " aria-label="성별"></div>
+        <div class="fl"><b>머리카락 색</b><input type="text" value="백금" aria-label="머리카락 색"></div>
+      </div>
+      <div class="fl"><b>특징 1</b><input type="text" value="왼손의 인장 반지" aria-label="특징 1"></div>
+      <div class="fl"><b>특징 2</b><input type="text" value="늘 장갑을 낀다" aria-label="특징 2"></div>
+      <div class="fl"><b><span class="k-only">타락의 조짐</span><span class="h-only">이상</span></b><input type="text" aria-label="타락의 조짐 · 이상"></div>
+      <div class="sign" style="flex:1"><textarea class="ag" aria-label="타락의 조짐 · 이상 (이어서)"></textarea></div>
+    </div></div>
   </div>
   <div class="eps" id="eps"></div>
 
@@ -286,13 +296,20 @@ textarea{resize:none;display:block}
   </div>
 
   <div class="rollbar">
-    <span class="tl">판정</span>
-    <button class="btn dk" type="button" id="act">행위 판정</button>
-    <button class="btn" type="button" id="reroll" title="자신에 대한 누아르 1점을 얻고 같은 수로 다시 굴림">다시 굴림</button>
-    <button class="btn dk" type="button" id="res">저항 판정</button>
-    <span class="hint" id="last"></span>
-    <span class="sp"></span>
-    <span class="seg2"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>DR에게</span></label></span>
+    <div class="ln">
+      <span class="tl">판정</span>
+      <button class="btn dk" type="button" id="act">행위 판정</button>
+      <button class="btn" type="button" id="reroll" title="자신에 대한 누아르 1점을 얻고 같은 수로 다시 굴림">다시 굴림</button>
+      <button class="btn dk" type="button" id="res">저항 판정</button>
+      <span class="sp"></span>
+      <span class="seg2"><label><input type="radio" name="rmode" value="" checked><span>모두에게</span></label><label><input type="radio" name="rmode" value="gm"><span>DR에게</span></label></span>
+    </div>
+    <div class="ln">
+      <span class="tl">눈 배정</span>
+      <span class="tray" id="tray"><span class="hint">행위 판정을 굴리면 여기에 눈이 남아요</span></span>
+      <span class="sp"></span>
+      <span class="tsum" id="tsum"></span>
+    </div>
   </div>
 
   <div class="acts"><div class="vt">전투의 행위</div><div class="bx">
@@ -314,7 +331,7 @@ textarea{resize:none;display:block}
     <li><b>유대</b> (224 · 225): 칸 하나 = 1점, 칸에 내용(루주 연 · 우 · 신 · 애 · 경 · 주 / 누아르 멸 · 질 · 욕 · 노 · 살 · 원)을 적음. 같은 대상이라도 루주와 누아르는 따로. 한쪽이 5점이 되면 <b>가득 참</b> → 루주는 【해갈】 +1, 누아르는 【갈증】 +1, 그 유대는 사라짐(넘친 점수는 안 넘어감). 시트: 다섯 칸이 차면 「가득」 단추 → 누르면 +1 하고 칸을 비움.</li>
     <li><b>지워지지 않는 유대</b> (219 · 225): 대상 옆 칸을 칠해 구분. 가득 차도 사라지지 않고 1점으로 → 「가득」 단추가 첫 칸만 남김.</li>
     <li><b>행위 판정</b> (234 · 235): 4D6 (+【갈채점】 1점당 1개 · 행위 · 일화 효과로 증감). 1 이나 6 이 둘이면 <b>영광의 눈</b> 「10」 하나 추가. 【갈증】 1 이상이면 가장 큰 눈 하나에 갈증 값을 더함(7 이상 가능, 영광의 눈에는 안 더함). 쓴 갈채점은 시트에서 뺌.</li>
-    <li><b>행위의 발동</b> (235 · 236): 눈을 행위에 배정(여러 개 합쳐도 됨, 한 눈은 한 행위에만). 배정한 눈의 합 = 판정치 ≥ 목표치 → 발동. 시트: 행위 ▶ → 배정한 눈(예: 3+6)을 물어 판정치 · 발동 도장.</li>
+    <li><b>행위의 발동</b> (235 · 236): 눈을 행위에 배정(여러 개 합쳐도 됨, 한 눈은 한 행위에만). 배정한 눈의 합 = 판정치 ≥ 목표치 → 발동. 시트: 굴린 눈이 「눈 배정」 줄에 남음 → 눈을 눌러 고르고 행위 ▶ → 합 · 발동 도장, 쓴 눈은 흐려짐(다시 못 고름), 같은 행위를 또 누르면 경고.</li>
     <li><b>저항 판정</b> (236 · 237): 【저항할 힘】(라운드마다 2)만큼 굴려 합 = 판정치. 갈채점 · 영광의 눈 없음. 대상이 자신이면 목표치 이상, 다른 이면 목표치 초과 → 타파. 저항할 힘은 공식 시트에 칸이 없어 물어보기만.</li>
     <li><b>자신에 대한 누아르</b> (225): 1점 얻고 같은 수로 다시 굴림 → 「다시 굴림」 (자신 줄 칸은 직접 채움 — 내용을 골라야 해서).</li>
     <li><b>해갈 · 갈증 · 타락표</b> (226 · 227): 해갈 1 소비 → 갈증 −1. 갈증 3 이상이면 〔2D6 − 갈증〕으로 타락표 → 시트는 값만 굴리고 표 내용은 넣지 않음(룰북 227쪽).</li>
@@ -414,7 +431,7 @@ const syncThirst = () => { const t = +$('thirst').value || 0; $('thirst').classL
 $('thirst').oninput = syncThirst;
 
 // 행위 판정 (234 · 235): 4D6 + 갈채점 · 증감 → 영광의 눈(1 · 6 둘마다 「10」) → 갈증을 가장 큰 눈 하나에
-let lastN = 0;
+let lastN = 0, tray = [];
 function actRoll({ n, cheer = 0, forced, reroll }) {
   const dice = forced || Array.from({ length: n }, d6);
   const glory = Math.floor(dice.filter(x => x === 1).length / 2) + Math.floor(dice.filter(x => x === 6).length / 2);
@@ -424,8 +441,18 @@ function actRoll({ n, cheer = 0, forced, reroll }) {
   const face = sorted.map(({ v, i }) => i === top ? `<span class="d t" title="${v} + 갈증 ${th}">${v + th}<small>+${th}</small></span>` : `<span class="d">${v}</span>`).join('')
     + Array.from({ length: glory }, () => '<span class="dcol"><span class="d g">10</span></span>').join('');
   const parts = [`${n}D6`, cheer ? `${isH() ? '외포점' : '갈채점'} ${cheer} 사용` : '', glory ? `영광의 눈 ${glory}` : '', th ? `갈증 +${th}` : ''].filter(Boolean);
-  card({ title: '행위 판정', head: parts.join(' · '), body: `<div class="dice">${face}</div>`, notes: [reroll ? '자신에 대한 누아르 +1 로 다시 굴림 — 자신 줄 칸에 내용을 적으세요' : '', '눈을 행위에 배정한 뒤 ▶ 로 발동'] });
-  lastN = n; $('last').textContent = `지난 판정 ${n}개`;
+  card({ title: '행위 판정', head: parts.join(' · '), body: `<div class="dice">${face}</div>`, notes: [reroll ? '자신에 대한 누아르 +1 로 다시 굴림 — 자신 줄 칸에 내용을 적으세요' : ''] });
+  lastN = n;
+  // 트레이: 수정된 눈(큰 것부터) + 영광의 눈. 실제 시트는 굴림 결과를 숨은 속성에 남김 (startRoll → setAttrs)
+  tray = sorted.map(({ v, i }) => ({ v: i === top ? v + th : v, add: i === top ? th : 0 })).concat(Array.from({ length: glory }, () => ({ v: 10, g: 1 })));
+  document.querySelectorAll('.tr.done').forEach(r => r.classList.remove('done'));
+  renderTray();
+}
+function renderTray() {
+  $('tray').innerHTML = tray.map((d, k) => `<button type="button" class="tc${d.g ? ' g' : ''}${d.add ? ' t' : ''}" data-k="${k}" aria-pressed="${!!d.sel}" ${d.used ? 'disabled' : ''} aria-label="눈 ${d.v}${d.g ? ' (영광의 눈)' : ''}">${d.v}${d.add ? `<small>+${d.add}</small>` : ''}</button>`).join('');
+  $('tray').querySelectorAll('.tc').forEach(b => b.onclick = () => { const d = tray[+b.dataset.k]; d.sel = !d.sel; renderTray(); });
+  const s = tray.filter(d => d.sel);
+  $('tsum').innerHTML = s.length ? `고른 눈 <b>${s.reduce((a, d) => a + d.v, 0)}</b> → 행위 ▶` : tray.some(d => !d.used) ? '눈을 눌러 고른 뒤 행위 ▶' : '';
 }
 $('act').onclick = () => {
   const ch = prompt(`${isH() ? '외포점' : '갈채점'} 사용 (보통 0 · 1, 종막은 라운드 수까지)`, '0'); if (ch === null) return;
@@ -436,15 +463,18 @@ $('act').onclick = () => {
 };
 $('reroll').onclick = () => { if (lastN) actRoll({ n: lastN, reroll: true }); };
 
-// 행위 ▶ (236): 배정한 눈의 합 = 판정치 ≥ 목표치 → 발동
-function useAct(tr, kind, given) {
+// 행위 ▶ (235 · 236): 고른 눈의 합 = 판정치 ≥ 목표치 → 발동. 쓴 눈은 흐리게(한 눈은 한 행위에만), 같은 행위는 한 판정에 한 번
+function useAct(tr, kind) {
   const v = [...tr.querySelectorAll('input,textarea')].map(i => i.value);
   if (!v[0]) return;
-  const ans = given ?? prompt(`${v[0]} — 배정한 눈 (예: 3+6)`, ''); if (ans === null) return;
-  const nums = (ans.match(/\d+/g) || []).map(Number), sum = nums.reduce((a, x) => a + x, 0);
+  const picked = tray.filter(d => d.sel), nums = picked.map(d => d.v), sum = nums.reduce((a, x) => a + x, 0);
+  const again = picked.length && tr.classList.contains('done');
+  if (!again) picked.forEach(d => { d.used = true; d.sel = false; });
+  if (picked.length && !again) tr.classList.add('done');
+  renderTray();
   const goal = parseInt(v[1], 10);
   const body = nums.length ? `<div class="calc">${nums.map(x => `<span class="d" style="width:auto;min-width:24px;padding:0 3px;height:24px;font-size:13px">${x}</span>`).join('<span>+</span>')}<span>=</span><span class="tot">${sum}</span><span>/ 목표치 <b>${esc(v[1])}</b></span></div>` : '';
-  card({ title: v[0], head: kind, body, stamp: nums.length && !isNaN(goal) ? { ok: sum >= goal, t: sum >= goal ? '발동' : '미달' } : null, kv: [['간격', v[2]], ['대상', v[3]]], eff: v[4] });
+  card({ title: v[0], head: kind, body: again ? '' : body, stamp: nums.length && !again && !isNaN(goal) ? { ok: sum >= goal, t: sum >= goal ? '발동' : '미달' } : null, kv: [['간격', v[2]], ['대상', v[3]]], notes: [again ? '같은 행위는 한 판정에 한 번만 (236쪽)' : nums.length ? '' : '고른 눈 없음 — 눈 배정 줄에서 눈을 누른 뒤 ▶'], eff: v[4] });
 }
 
 // 저항 판정 (236 · 237): 저항할 힘만큼 굴려 합. 대상이 자신이면 목표치 이상, 다른 이면 초과 → 타파
@@ -475,7 +505,8 @@ $('cimg').onclick = () => $('crest').classList.toggle('open');
 // ── 첫 화면
 renderBond(); renderOrder(); syncThirst();
 actRoll({ n: 5, cheer: 1, forced: [6, 6, 3, 2, 5] });
-useAct($('a1').querySelector('.tr:nth-child(2)'), '전투의 행위', '6+10');
-useAct($('a2').querySelector('.tr:nth-child(1)'), '일상의 행위', '2');
+tray[1].sel = tray[5].sel = true; useAct($('a1').querySelector('.tr:nth-child(2)'), '전투의 행위');
+tray[4].sel = true; useAct($('a2').querySelector('.tr:nth-child(1)'), '일상의 행위');
+tray[2].sel = true; renderTray();
 resist(2, 7, false, [4, 3]);
 </script>
